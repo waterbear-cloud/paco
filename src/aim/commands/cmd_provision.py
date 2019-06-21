@@ -4,7 +4,7 @@ from aim.commands.cli import pass_context
 from aim.core.exception import StackException
 
 
-@click.command('provision', short_help='Provision an entire project or a specific environment.')
+@click.command('provision', short_help='Provision an AIM project or a specific environment.')
 @click.argument('controller_type', required=True, type=click.STRING)
 @click.argument('component_name', required=False, type=click.STRING)
 @click.argument('config_name', required=False, type=click.STRING)

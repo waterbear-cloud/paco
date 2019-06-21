@@ -4,7 +4,7 @@ from aim.commands.cli import pass_context
 from aim.core.exception import StackException
 
 
-@click.command('validate', short_help='Validate a project.')
+@click.command('validate', short_help='Validate an AIM project')
 @click.argument('controller_type', required=True, type=click.STRING)
 @click.argument('component_name', required=False, type=click.STRING)
 @click.argument('config_name', required=False, type=click.STRING)
