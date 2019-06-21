@@ -1,5 +1,5 @@
 import click
-from aim.cli import pass_context
+from aim.commands.cli import pass_context
 
 
 @click.command('status', short_help='Shows file changes.')

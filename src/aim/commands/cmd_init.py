@@ -1,5 +1,5 @@
 import click
-from aim.cli import pass_context
+from aim.commands.cli import pass_context
 
 
 @click.command('init', short_help='Initializes a Waterbear Cloud component.')

@@ -1,6 +1,6 @@
 import aim.models
 import click
-from aim.cli import pass_context
+from aim.commands.cli import pass_context
 from aim.core.exception import StackException
 
 

@@ -1,6 +1,6 @@
 import click
 import aim.models
-from aim.cli import pass_context
+from aim.commands.cli import pass_context
 
 @click.command('describe', short_help='Describe an AIM Project')
 @pass_context

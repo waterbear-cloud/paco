@@ -1,6 +1,6 @@
+import click
 import os
 import sys
-import click
 from aim.config.aim_context import AimContext, AccountContext
 
 CONTEXT_SETTINGS = dict(auto_envvar_prefix='COMPLEX')
@@ -22,12 +22,11 @@ class ComplexCLI(click.MultiCommand):
 
     def get_command(self, ctx, name):
         try:
-            mod = __import__(
-                'aim.commands.cmd_' + name, None, None, ['cli']
-            )
+            mod = __import__('aim.commands.cmd_' + name, None, None, ['cli'])
         except ImportError:
             # Click will give the user an error about command name
             # we don't need to tell them anything else
+            import pdb; pdb.set_trace();
             return
         return mod.cli
 

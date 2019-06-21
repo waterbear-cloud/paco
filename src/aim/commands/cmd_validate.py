@@ -1,7 +1,8 @@
 import click
-from aim.cli import pass_context
 import sys
+from aim.commands.cli import pass_context
 from aim.core.exception import StackException
+
 
 @click.command('validate', short_help='Validate a project.')
 @click.argument('controller_type', required=True, type=click.STRING)

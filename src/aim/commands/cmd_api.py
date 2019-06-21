@@ -1,8 +1,8 @@
 import click
-from aim.cli import pass_context
-
 from aim.api.api_network_environments import APICommands as NetworkEnvironmentAPI
 from aim.api.api_network_environments import NetworkEnvironments
+from aim.commands.cli import pass_context
+
 
 @click.command('api', short_help='Processes API calls from the API SQS Queue.')
 @click.argument('api_command', required=True, type=click.STRING)
