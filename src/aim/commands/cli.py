@@ -45,7 +45,7 @@ class ComplexCLI(click.MultiCommand):
 )
 @pass_context
 def cli(ctx, verbose, home):
-    """AIM: a Waterbear Cloud CLI"""
+    """AIM: Application Infrastructure Manager"""
     ctx.verbose = verbose
     # --home overrides the AIM_HOME Env var
     if not home:
