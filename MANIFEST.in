@@ -1,0 +1,8 @@
+global-exclude *.py[co]
+global-exclude *.egg-info
+
+graft src/aim
+recursive-exclude src __pycache__/*
+
+exclude *.txt *.ini *.cfg *.md *.lock Pipfile
+

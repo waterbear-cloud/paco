@@ -1,0 +1,62 @@
+# Python
+*.egg-info
+*__pycache__*
+build
+stacks
+venv
+env
+.venv
+.pytest_cache
+
+# AIM Administrator Credentials
+.credentials.yaml
+
+# AIM Resources
+Resources/
+
+# Buildout
+bin
+eggs
+parts
+develop-eggs
+.installed.cfg
+profile.sh
+
+# macos
+*.DS_Store
+.AppleDouble
+.LSOverride
+
+# JorbleScropt
+*~
+*.swp
+tmp/
+npm-debug.log
+.DS_Store
+
+.build/*
+.next
+.vscode/
+node_modules/
+.coverage
+.env
+.next
+
+
+yarn-error.log
+
+\#*
+\.#*
+
+# build artifacts
+include/
+lib/
+share/
+var/
+
+# run artifacts
+*.pid
+.noseids
+
+# Bootstrap
+dist/
