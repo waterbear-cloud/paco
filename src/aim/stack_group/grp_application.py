@@ -8,7 +8,10 @@ from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.models import loader, vocabulary
 from aim import models
+from aim.yaml import YAML
 
+yaml=YAML()
+yaml.default_flow_sytle = False
 
 class LaunchBundle():
     def __init__(self,

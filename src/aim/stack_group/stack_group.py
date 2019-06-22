@@ -6,7 +6,10 @@ from aim.core.exception import StackException
 from aim.core.exception import AimException, AimErrorCode
 from botocore.exceptions import ClientError
 from enum import Enum
+from aim.yaml import YAML
 
+yaml=YAML(typ="safe", pure=True)
+yaml.default_flow_sytle = False
 
 StackEnum = Enum('StackEnum', 'vpc segment')
 
