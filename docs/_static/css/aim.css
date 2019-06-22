@@ -1,3 +1,14 @@
-.wy-side-nav-search {
-    background: #010101 !important;
+.wy-nav-content {
+    max-width: 1000px !important;
+}
+
+.wy-table-responsive table td,
+.wy-table-responsive table th {
+    white-space: normal !important;
+}
+
+.wy-table td,
+.rst-content table.docutils td,
+.rst-content table.field-list td {
+    vertical-align: top !important;
 }

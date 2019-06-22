@@ -16,9 +16,10 @@ html_theme_options = {
     'titles_only': False
 }
 html_logo = './images/waterbear-cloud-url-head-1.png'
+html_static_path = ['_static',]
 
 def setup(app):
-    app.add_stylesheet('css/custom.css')
+    app.add_stylesheet('css/aim.css')
 
 import sys, os, datetime
 
