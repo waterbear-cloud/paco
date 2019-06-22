@@ -6,7 +6,7 @@ from aim.core.exception import StackException
 from aim.core.exception import AimException, AimErrorCode
 from botocore.exceptions import ClientError
 from enum import Enum
-from aim.yaml import YAML
+from aim.core.yaml import YAML
 
 yaml=YAML(typ="safe", pure=True)
 yaml.default_flow_sytle = False
@@ -247,7 +247,6 @@ class Stack():
         return new_cache_id
 
     def is_stack_cached(self):
-        return False
         try:
             new_cache_id = self.gen_cache_id()
         except AimException as e:

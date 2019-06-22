@@ -1,30 +1,9 @@
 import aim.cftemplates
 import copy
-from aim.config import IAMStackConfig
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.cftemplates import IAMRoles, IAMManagedPolicies
 from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup
-
-
-#class IAMStackGroupConfig():
-#    def __init__(self,
-#                 aim_ctx,
-#                 net_env_config,
-#                 sub_env_name,
-#                 iam_group_name):
-#        #aim_ctx.log("IAMStackConfig Init")
-#        self.config_dict = net_env_config.merged_iam_for_env_copy(sub_env_name, iam_group_name)
-#        #aim_ctx.log("IAMStackConfig Loaded: %s-%s" % (sub_env_name, iam_group_name))
-#
-#    def roles(self):
-#        return self.config_dict['roles']
-#
-#    def get_role_config(self, role_name):
-#
-#        roles = self.config_dict['roles']
-#
-#        return roles[role_name]
 
 class IAMStackGroup(StackGroup):
     def __init__(self,

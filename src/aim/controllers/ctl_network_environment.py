@@ -6,9 +6,8 @@ from aim.stack_group import ApplicationStackGroup
 from aim.stack_group import IAMStackGroup
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
-from aim.config import NetEnvConfig
 from aim.controllers.controllers import Controller
-from aim.yaml import YAML
+from aim.core.yaml import YAML
 
 yaml=YAML(typ="safe", pure=True)
 yaml.default_flow_sytle = False
@@ -243,8 +242,6 @@ class NetEnvContext():
         self.sub_envs = {}
         self.netenv_ctl = netenv_ctl
 
-        #self.config = NetEnvConfig(aim_ctx, self.netenv_id)
-        #self.config.load()
         self.config = self.aim_ctx.project['ne'][netenv_id]
 
     def init_sub_env(self, subenv_id, region):

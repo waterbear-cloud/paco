@@ -4,7 +4,6 @@ import time
 from aim.aws_api.acm import DNSValidatedACMCertClient
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
-from aim.config import ACMConfig
 from aim.controllers.controllers import Controller
 
 

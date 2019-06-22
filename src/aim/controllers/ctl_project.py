@@ -8,7 +8,7 @@ from aim.core.exception import AimErrorCode
 from aim.controllers.controllers import Controller
 from aim.stack_group import AccountStackGroup
 from aim.models import loader
-from aim.yaml import YAML
+from aim.core.yaml import YAML
 
 yaml=YAML()
 yaml.default_flow_sytle = False
@@ -55,7 +55,10 @@ class ProjectController(Controller):
         project_folder = os.path.join(self.aim_ctx.aim_path, project_folder, project_name)
         credentials_path = os.path.join(project_folder, '.credentials.yaml')
 
-        os.chmod(credentials_path, stat.S_IRWXU)
+        try:
+            os.chmod(credentials_path, stat.S_IRWXU)
+        except FileNotFoundError:
+            pass
 
         pathlib.Path(project_folder).mkdir(parents=True, exist_ok=True)
         with open(credentials_path, "w") as output_fd:

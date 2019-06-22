@@ -5,6 +5,9 @@ Changelog for aim
 ------------------
 
 - Document and clean-up AIM CLI.
+- Removed deprecated configuration
+- Added cmd_init
+- Moved yaml.py to aim.core
 
 
 0.6.0.dev0 (2019-06-21)

@@ -3,12 +3,11 @@ import os
 import pathlib
 import tarfile
 from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks
-from aim.config import S3Config
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.models import loader, vocabulary
 from aim import models
-from aim.yaml import YAML
+from aim.core.yaml import YAML
 
 yaml=YAML()
 yaml.default_flow_sytle = False

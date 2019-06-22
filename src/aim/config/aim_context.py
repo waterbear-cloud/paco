@@ -4,7 +4,6 @@ import aim.config.aws_credentials
 import aim.core.log
 import aim.controllers
 from functools import partial
-from aim.config.cfg_network_environment import NetEnvConfig
 from aim.models import load_project_from_yaml
 from aim.models import references
 from copy import deepcopy
@@ -95,19 +94,6 @@ class AimContext(object):
         self.project = None
         self.master_account = None
 
-    @property
-    def network_environments(self):
-        net_envs = []
-        for fname in os.listdir(self.config_folder + os.sep + "NetworkEnvironments"):
-            if fname.endswith('.yaml'):
-                name = fname[:-5]
-            elif fname.endswith('.yml'):
-                name = fname[:-4]
-            else:
-                continue
-            net_envs.append(NetEnvConfig(self, name))
-        return net_envs
-
     def get_account_context(self, account_ref=None, account_name=None):
         if account_ref != None:
             ref_dict = self.parse_ref(account_ref)
@@ -118,7 +104,6 @@ class AimContext(object):
         if account_name in self.accounts:
             return self.accounts[account_name]
 
-        #account_config = aim.config.AccountConfig(self, account_name)
         account_ctx = AccountContext(aim_ctx=self,
                                      name=account_name,
                                      mfa_account=self.master_account)

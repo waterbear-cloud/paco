@@ -2,14 +2,12 @@ import aim.core.log
 import copy
 import json
 import os
-from aim.yaml import YAML
+from aim.core.yaml import YAML
 
 yaml=YAML(typ="safe", pure=True)
 yaml.default_flow_sytle = False
 
 logger = aim.core.log.get_aim_logger()
-
-
 
 class Config():
 
@@ -51,13 +49,3 @@ class Config():
     def set_config_dict(self, config_dict):
         self.config_dict = config_dict
 
-    def config_override(self, master_dict, override_dict):
-        new_master = copy.deepcopy(master_dict)
-        new_override = copy.deepcopy(override_dict)
-        for key in new_override:
-            if key in new_master and type(new_override[key]) == dict:
-                new_master[key] = self.config_override(master_dict[key], new_override[key])
-            else:
-                new_master[key] = new_override[key]
-
-        return new_master

@@ -1,6 +1,5 @@
 from aim.api.api import API
 from enum import Enum
-from aim.config import NetEnvConfig
 import json
 
 APICommands = Enum('APICommands', 'DescribeNetworkEnvironments CreateNetworkEnvironment UpdateNetworkEnvironment')
@@ -33,18 +32,14 @@ class NetworkEnvironments( API ):
 
         api_data = json.loads(self.api_json)
 
-        net_env_config = NetEnvConfig(self.aim_ctx, api_data["name"])
-        net_env_config.set_config_dict(api_data["config"])
-        net_env_config.save()
+        #controller = self.aim_ctx.get_controller("NetEnv", api_data["name"])
+        #controller.init()
 
-        controller = self.aim_ctx.get_controller("NetEnv", api_data["name"])
-        controller.init()
-
-        try:
-            controller.validate()
-        except StackException as e:
-            aim_ctx.log("Error: " + e.response['code'] + ": " + e.response['message'])
-            aim_ctx.log(e.get_error_str())
+        #try:
+        #    controller.validate()
+        #except StackException as e:
+        #    aim_ctx.log("Error: " + e.response['code'] + ": " + e.response['message'])
+        #    aim_ctx.log(e.get_error_str())
 
 
         #net_env_config.set_config(new_env_config["config"])

@@ -6,7 +6,7 @@ from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.config import CodeCommitConfig
 from aim.controllers.controllers import Controller
-from aim.yaml import YAML
+from aim.core.yaml import YAML
 
 yaml=YAML(typ="safe", pure=True)
 yaml.default_flow_sytle = False

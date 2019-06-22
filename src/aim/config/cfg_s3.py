@@ -52,10 +52,6 @@ class S3Config(Config):
         default_config['defaults'] = self.config_dict['defaults']
         self.config_dict = default_config
 
-    def merge_in_config(self, merge_config):
-        new_config = self.config_override(self.config_dict, merge_config)
-        self.config_dict = new_config
-
     def enabled(self):
         if "enabled" not in self.config_dict:
             return False

@@ -1,7 +1,6 @@
 import aim.cftemplates
 import botocore
 from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks
-from aim.config import S3Config
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 

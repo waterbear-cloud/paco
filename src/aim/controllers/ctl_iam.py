@@ -5,7 +5,7 @@ from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.controllers.controllers import Controller
 from aim.stack_group import IAMStackGroup
-from aim.models import loader
+import aim.models
 
 
 class IAMContext():
@@ -72,7 +72,7 @@ class IAMContext():
                            template_params=None):
 
         policy_config = aim.models.iam.ManagedPolicy(policy_id, parent_config)
-        loader.apply_attributes_from_config(policy_config, policy_config_dict)
+        aim.models.loader.apply_attributes_from_config(policy_config, policy_config_dict)
         policy_config.resolve_ref_obj = resolve_ref_obj
         managed_policy = {
             'id': policy_id,

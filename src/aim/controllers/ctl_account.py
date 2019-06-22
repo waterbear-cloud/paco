@@ -6,7 +6,7 @@ from aim.controllers.controllers import Controller
 from aim.stack_group import AccountStackGroup, StackHooks
 from aim.models import loader
 from botocore.exceptions import ClientError
-from aim.yaml import YAML
+from aim.core.yaml import YAML
 
 yaml=YAML()
 yaml.default_flow_sytle = False
