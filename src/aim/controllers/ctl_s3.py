@@ -2,92 +2,106 @@ import os
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.stack_group import S3StackGroup
-from aim.config import S3Config
 from aim.controllers.controllers import Controller
 from botocore.exceptions import ClientError
-
+from aim.models import vocabulary
 
 class S3Context():
-    def __init__(self, aim_ctx, controller):
+    def __init__(self, aim_ctx, account_ctx, controller, context_id, region, group_name):
         self.aim_ctx = aim_ctx
-        self.stack_grps = []
+        self.stack_group = None
         self.controller = controller
+        self.buckets = []
+        self.region = region
+        self.account_ctx = account_ctx
+        self.context_id = context_id
+        self.group_name = group_name
 
-    def add_bucket_config(self,
-                          account_ctx,
-                          region,
-                          app_id,
-                          group_id,
-                          bucket_id,
-                          bucket_name_prefix,
-                          bucket_name_suffix,
-                          config_ref,
-                          config_name,
-                          config_dict,
-                          stack_hooks=None):
-        s3_config_dict = {
-            app_id: {
-                group_id: {
-                    bucket_id: config_dict
-                }
-            }
+    def bucket_context(self, app_id, group_id, bucket_id):
+        return '.'.join([app_id, group_id, bucket_id])
+
+    def add_bucket( self,
+                    region,
+                    bucket_id,
+                    bucket_name_prefix,
+                    bucket_name_suffix,
+                    bucket_ref,
+                    bucket_config,
+                    stack_hooks=None):
+
+        if bucket_name_suffix == None:
+            bucket_name_suffix = vocabulary.aws_regions[region]['short_name']
+        else:
+            bucket_name_suffix += '-'+vocabulary.aws_regions[region]['short_name']
+
+        bucket_context = {
+            'id': bucket_id,
+            'config': bucket_config,
+            'ref': bucket_ref,
+            'bucket_name_prefix': bucket_name_prefix,
+            'bucket_name_suffix': bucket_name_suffix
         }
+        self.buckets.append(bucket_context)
 
-        s3_config = S3Config(self.aim_ctx,
-                             region=region,
-                             config_ref=config_ref,
-                             config_name=config_name,
-                             config_dict=s3_config_dict,
-                             bucket_name_prefix=bucket_name_prefix,
-                             bucket_name_suffix=bucket_name_suffix)
-        s3_stack_grp = S3StackGroup(self.aim_ctx,
-                                    account_ctx,
-                                    s3_config,
-                                    config_name,
-                                    app_id,
-                                    group_id,
-                                    self.controller,
-                                    self.controller.context_id,
-                                    stack_hooks)
-        self.stack_grps.append(s3_stack_grp)
+        self.stack_group = S3StackGroup(self.aim_ctx,
+                                        self.account_ctx,
+                                        self.region,
+                                        self.group_name,
+                                        self.buckets,
+                                        self.controller,
+                                        self.context_id,
+                                        stack_hooks)
 
-    def get_bucket_arn(self, app_id, group_id, bucket_id):
-        for stack_grp in self.stack_grps:
-            if stack_grp.app_id == app_id and stack_grp.group_id == group_id:
-                return stack_grp.config.get_bucket_arn(app_id, group_id, bucket_id)
+    def get_bucket_context(self, bucket_ref):
+        for bucket_context in self.buckets:
+            if bucket_context['ref'] == bucket_ref:
+                return bucket_context
+        return None
 
-    def get_bucket_name(self, app_id, group_id, bucket_id):
-        for stack_grp in self.stack_grps:
-            if stack_grp.app_id == app_id and stack_grp.group_id == group_id:
-                return stack_grp.config.get_bucket_name(app_id, group_id, bucket_id)
+    def get_bucket_arn(self, bucket_ref):
+        return 'arn:aws:s3:::'+self.get_bucket_name(bucket_ref)
+
+    def get_bucket_name(self, bucket_ref):
+        bucket_context = self.get_bucket_context(bucket_ref)
+        bucket_name = '-'.join([bucket_context['bucket_name_prefix'],
+                                bucket_context['config'].name,
+                                bucket_context['bucket_name_suffix']])
+        return bucket_name.replace('_', '').lower()
+
+    def get_region(self):
+        return self.region
 
     def validate(self):
-        for stack_grp in self.stack_grps:
-            stack_grp.validate()
+        if self.stack_group:
+            self.stack_group.validate()
 
     def provision(self):
-        for stack_grp in self.stack_grps:
-            stack_grp.provision()
+        if self.stack_group:
+            self.stack_group.provision()
 
     def delete(self):
-        for stack_grp in reversed(self.stack_grps):
-            stack_grp.delete()
+        if self.stack_group:
+            self.stack_group.delete()
 
-    def empty_bucket(self, app_id, group_id, bucket_id):
-        for stack_grp in self.stack_grps:
-            if stack_grp.group_id == group_id:
+    def empty_bucket(self, bucket_ref):
+        for bucket_context in self.buckets:
+            if bucket_context['ref'] == bucket_ref:
                 break
-        if stack_grp == None:
+
+        if bucket_context == None:
             print("ctl_s3: empty_bucket: ERROR: Unable to locate stack group for group: " + group_id)
             raise StackException(AimErrorCode.Unknown)
 
-        s3_client = stack_grp.account_ctx.get_aws_client('s3')
-        bucket_name = self.get_bucket_name(app_id, group_id, bucket_id)
+
+        s3_client = self.account_ctx.get_aws_client('s3')
+        bucket_name = self.get_bucket_name(bucket_ref)
         try:
             response = s3_client.list_objects_v2(Bucket=bucket_name)
         except ClientError as e:
             if e.response['Error']['Code'] == 'NoSuchBucket':
                 return
+            else:
+                raise e
 
         if 'Contents' in response:
             for item in response['Contents']:
@@ -100,28 +114,6 @@ class S3Context():
                     for item in response['Contents']:
                         s3_client.delete_object(Bucket=bucket_name, Key=item['Key'])
 
-    def OLD_get_stack_from_ref(self, aim_ref):
-        stack = None
-        for stack_grp in self.stack_grps:
-            stack = stack_grp.get_stack_from_ref(aim_ref)
-            if stack:
-                break
-
-        return stack
-
-    def OLD_get_value_from_ref(self, aim_ref):
-        ref_dict = self.aim_ctx.parse_ref(aim_ref)
-        ref_parts = ref_dict['ref_parts']
-        # applications', 'app1', 'services', 's3', 'cpbd', 'buckets', 'deployment_artifacts', 'name'
-        last_idx = len(ref_parts)-1
-
-        stack = self.get_stack_from_ref(aim_ref)
-        if stack:
-            if ref_parts[last_idx] == 'name':
-                bucket_id = ref_parts[last_idx-1]
-                return stack.config.get_bucket_name(bucket_id)
-        return None
-
 class S3Controller(Controller):
     def __init__(self, aim_ctx):
         super().__init__(aim_ctx,
@@ -129,43 +121,44 @@ class S3Controller(Controller):
                          "S3")
 
         #self.aim_ctx.log("S3 Service: Configuration: %s" % (name))
-        self.s3_context = {}
-        self.context_id = None
+        self.contexts = {}
 
     def init(self, init_config):
         pass
 
-    def init_context(self, context_id):
-        self.context_id = context_id
-        if context_id not in self.s3_context.keys():
-            self.s3_context[context_id] = S3Context(self.aim_ctx, self)
+    def init_context(self, account_ctx, context_id, region, group_name):
+        if context_id not in self.contexts.keys():
+            self.contexts[context_id] = S3Context(self.aim_ctx, account_ctx, self, context_id, region, group_name)
 
-    def add_config(self, *args, **kwargs):
-        return self.s3_context[self.context_id].add_config(*args, **kwargs)
+    def add_bucket(self, context_id, *args, **kwargs):
+        return self.contexts[context_id].add_bucket(*args, **kwargs)
 
-    def add_bucket_config(self, *args, **kwargs):
-        return self.s3_context[self.context_id].add_bucket_config(*args, **kwargs)
+    def get_bucket_arn(self, context_id, *args, **kwargs):
+        return self.contexts[context_id].get_bucket_arn(*args, **kwargs)
 
-    def get_bucket_arn(self, *args, **kwargs):
-        return self.s3_context[self.context_id].get_bucket_arn(*args, **kwargs)
+    def get_bucket_name(self, context_id, *args, **kwargs):
+        return self.contexts[context_id].get_bucket_name(*args, **kwargs)
 
-    def get_bucket_name(self, *args, **kwargs):
-        return self.s3_context[self.context_id].get_bucket_name(*args, **kwargs)
+    def empty_bucket(self, context_id, *args, **kwargs):
+        return self.contexts[context_id].empty_bucket(*args, **kwargs)
 
-    def empty_bucket(self, *args, **kwargs):
-        return self.s3_context[self.context_id].empty_bucket(*args, **kwargs)
+    def get_region(self, context_id, *args, **kwargs):
+        return self.contexts[context_id].empty_bucket(*args, **kwargs)
 
-    def validate(self):
-        return self.s3_context[self.context_id].validate()
+    def validate(self, context_id):
+        if context_id in self.contexts:
+            return self.contexts[context_id].validate()
 
-    def provision(self):
-        return self.s3_context[self.context_id].provision()
+    def provision(self, context_id):
+        if context_id in self.contexts:
+            return self.contexts[context_id].provision()
 
-    def delete(self):
-        return self.s3_context[self.context_id].delete()
+    def delete(self, context_id):
+        if context_id in self.contexts:
+            return self.contexts[context_id].delete()
 
-    def get_stack_from_ref(self, *args, **kwargs):
-        return self.s3_context[self.context_id].get_stack_from_ref(*args, **kwargs)
+    def get_stack_from_ref(self, context_id, *args, **kwargs):
+        return self.contexts[context_id].get_stack_from_ref(*args, **kwargs)
 
-    def get_value_from_ref(self, *args, **kwargs):
-        return self.s3_context[self.context_id].get_value_from_ref(*args, **kwargs)
+    def get_value_from_ref(self, context_id, *args, **kwargs):
+        return self.contexts[context_id].get_value_from_ref(*args, **kwargs)

@@ -8,6 +8,7 @@ Changelog for aim
 - Removed deprecated configuration
 - Added cmd_init
 - Moved yaml.py to aim.core
+- Refactored S3 Controller
 
 
 0.6.0.dev0 (2019-06-21)

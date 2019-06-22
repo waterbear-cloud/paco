@@ -7,19 +7,21 @@ from enum import Enum
 
 
 class S3(CFTemplate):
-    def __init__(self, aim_ctx, account_ctx, s3_config, app_id, group_id, s3_context_id, config_ref):
-        aws_name = group_id
+    def __init__(self,
+                aim_ctx,
+                account_ctx,
+                buckets,
+                s3_context_id,
+                config_ref):
 
         super().__init__(aim_ctx,
                          account_ctx,
                          config_ref=config_ref,
-                         aws_name=aws_name,
+                         aws_name='S3',
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])
 
         self.s3_context_id = s3_context_id
-        self.s3_config = s3_config
-        self.app_id = app_id
-        self.group_id = group_id
+        self.buckets = buckets
 
         # Define the Template
         template_fmt = """
@@ -40,12 +42,6 @@ Outputs:
             'resources_yaml': "",
             'outputs_yaml': ""
         }
-
-#        s3_params_fmt ="""
-#  {0[?_name]:s}:
-#    Type: String
-#    Description: 'The path associated with the {0[role_path_param_name]:s} IAM Role'
-#"""
 
         s3_bucket_fmt = """
   {0[cf_resource_name_prefix]:s}Bucket:
@@ -105,23 +101,23 @@ Outputs:
         resources_yaml = ""
         outputs_yaml = ""
 
-        roles_yaml = ""
-        for bucket_id in s3_config.get_bucket_ids(self.app_id, self.group_id):
+        s3_ctl = self.aim_ctx.get_controller('S3')
+        for bucket_context in self.buckets:
             s3_bucket_table.clear()
-            bucket_name = s3_config.get_bucket_name(self.app_id, self.group_id, bucket_id)
-            s3_bucket_table['bucket_name'] = bucket_name
-            s3_bucket_table['cf_resource_name_prefix'] = self.gen_cf_logical_name(bucket_id, '_')
+            bucket_config = bucket_context['config']
+            s3_bucket_table['bucket_name'] = s3_ctl.get_bucket_name(self.s3_context_id, bucket_context['ref'])
+            s3_bucket_table['cf_resource_name_prefix'] = self.gen_cf_logical_name(bucket_context['id'], '_')
 
             # parameters_yaml += s3_bucket_params_fmt.format(s3_bucket_table)
             resources_yaml += s3_bucket_fmt.format(s3_bucket_table)
 
             # Bucket Policy
-            if s3_config.has_bucket_policy(self.app_id, self.group_id, bucket_id):
+            if len(bucket_config.policy) > 0:
                 s3_policy_table['cf_resource_name_prefix'] = s3_bucket_table['cf_resource_name_prefix']
-                s3_policy_table['bucket_name'] = bucket_name
+                s3_policy_table['bucket_name'] = s3_bucket_table['bucket_name']
                 s3_policy_table['policy_statements'] = ""
                 # Statement
-                for policy_statement in s3_config.get_bucket_policy_list(self.app_id, self.group_id, bucket_id):
+                for policy_statement in bucket_config.policy:
                     s3_policy_statement_table['action_list'] = ""
                     s3_policy_statement_table['principal'] = ""
                     s3_policy_statement_table['effect'] = ""
@@ -138,7 +134,7 @@ Outputs:
                             s3_policy_statement_table['principal'] += cf_principal_list_item.format(principal)
 
                     # Resource
-                    bucket_arn = "arn:aws:s3:::{0}".format(bucket_name)
+                    bucket_arn = s3_ctl.get_bucket_arn(self.s3_context_id, bucket_context['ref'])
                     if policy_statement.resource_suffix and len(policy_statement.resource_suffix) > 0:
                         for res_suffix in policy_statement.resource_suffix:
                             resource_arn = bucket_arn + res_suffix
@@ -171,7 +167,6 @@ Outputs:
 
     def delete(self):
         s3_ctl = self.aim_ctx.get_controller('S3')
-        s3_ctl.init(self.s3_context_id)
-        for bucket_id in self.s3_config.get_bucket_ids(self.app_id, self.group_id):
-            s3_ctl.empty_bucket(self.app_id, self.group_id, bucket_id)
+        for bucket_context in self.buckets:
+            s3_ctl.empty_bucket(self.s3_context_id, bucket_context['ref'])
         super().delete()
