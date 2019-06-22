@@ -27,7 +27,6 @@ import sys, os, datetime
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
-    'repoze.sphinx.autointerface',
     ]
 
 # Looks for aim.model's objects

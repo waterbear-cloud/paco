@@ -12,7 +12,6 @@ with open('version.txt') as f:
 docs_extras = [
     'Sphinx >= 1.3.5',
     'sphinx_rtd_theme',
-    'repoze.sphinx.autointerface',
 ]
 
 setup(
@@ -43,13 +42,15 @@ setup(
         'aim.core',
         'aim.stack_group',
         'aim.tests',
+        'aim.doc',
     ],
     include_package_data=True,
     zip_safe=False,
     package_dir={'': 'src'},
     entry_points={
         'console_scripts': [
-            'aim = aim.commands.cli:cli'
+            'aim = aim.commands.cli:cli',
+            'aim_doc = aim.doc.docschema:aim_schema_generate'
         ]
     },
     extras_require={
