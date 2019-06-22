@@ -2,9 +2,14 @@ import aim.core.log
 import copy
 import json
 import os
+from aim.yaml import YAML
 
+yaml=YAML(typ="safe", pure=True)
+yaml.default_flow_sytle = False
 
 logger = aim.core.log.get_aim_logger()
+
+
 
 class Config():
 

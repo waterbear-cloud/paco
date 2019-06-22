@@ -8,6 +8,10 @@ from aim.core.exception import AimErrorCode
 from aim.controllers.controllers import Controller
 from aim.stack_group import AccountStackGroup
 from aim.models import loader
+from aim.yaml import YAML
+
+yaml=YAML()
+yaml.default_flow_sytle = False
 
 
 class ProjectController(Controller):

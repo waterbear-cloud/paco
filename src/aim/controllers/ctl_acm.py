@@ -73,6 +73,9 @@ class ACMController(Controller):
             acm_client = DNSValidatedACMCertClient(res_config['account_ctx'], ref.resource.domain_name)
             if acm_client:
                 cert_arn = acm_client.get_certificate_arn()
+                if cert_arn == None:
+                    self.provision()
+                    cert_arn = acm_client.get_certificate_arn()
                 acm_client.wait_for_certificate_validation( cert_arn )
                 # print("Certificate ARN: " + cert_domain + ": " + cert_arn)
                 return cert_arn
