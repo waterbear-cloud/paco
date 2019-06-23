@@ -71,13 +71,10 @@ Resources:
         outputs_yaml = ""
 
         for repo_item in repo_list:
-            group_id = repo_item['group_id']
-            repo_id = repo_item['repo_id']
-            repo_name = codecommit_config.get_repo_name(group_id, repo_id)
-            repo_desc = codecommit_config.get_repo_description(group_id, repo_id)
-            codecommit_repo_table['repository_name'] = repo_name
-            codecommit_repo_table['repository_description'] = repo_desc
-            cf_repo_name = '_'.join([group_id, repo_id])
+            repo_config = repo_item['repo_config']
+            codecommit_repo_table['repository_name'] = repo_config.name
+            codecommit_repo_table['repository_description'] = repo_config.description
+            cf_repo_name = '_'.join([repo_item['group_id'], repo_item['repo_id']])
             codecommit_repo_table['cf_resource_name_prefix'] = self.gen_cf_logical_name(cf_repo_name, '_')
 
             resources_yaml += codecommit_repo_fmt.format(codecommit_repo_table)

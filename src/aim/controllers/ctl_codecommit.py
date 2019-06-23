@@ -4,7 +4,6 @@ from aim.stack_group import CodeCommitStackGroup
 from aim.stack_group import IAMStackGroup
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
-from aim.config import CodeCommitConfig
 from aim.controllers.controllers import Controller
 from aim.core.yaml import YAML
 
@@ -30,16 +29,16 @@ class CodeCommitController(Controller):
         self.init_done = True
 
         self.name = init_config['name']
-        self.config = CodeCommitConfig(self.aim_ctx, self.name)
-        self.config.load()
+        self.config = self.aim_ctx.project['codecommit']
+        #self.config.load()
         self.init_stack_groups()
 
     def init_stack_groups(self):
         # CodeCommit Repository
-        for account_id in self.config.get_repo_account_ids():
-            for repo_region in self.config.get_account_region_ids(account_id):
+        for account_id in self.config.repo_account_ids():
+            for repo_region in self.config.account_region_ids(account_id):
                 account_ctx = self.aim_ctx.get_account_context(account_ref=account_id)
-                repo_list = self.config.get_repo_list_dict(account_id, repo_region)
+                repo_list = self.config.repo_list_dict(account_id, repo_region)
                 codecommit_stack_grp = CodeCommitStackGroup(self.aim_ctx,
                                                             account_ctx,
                                                             repo_region,
@@ -95,10 +94,10 @@ policies:
 """
         role_list_config = { }
         for repo_info in repo_list:
-            repo_account_ref = self.config.get_account(repo_info['group_id'], repo_info['repo_id'])
-            account_ctx = self.aim_ctx.get_account_context(repo_account_ref)
-            repo_table = { 'repo_name':  self.config.get_repo_name(repo_info['group_id'], repo_info['repo_id']),
-                           'repo_region': repo_info['aws_region'],
+            repo_config = repo_info['config']
+            account_ctx = self.aim_ctx.get_account_context(repo_config.account)
+            repo_table = { 'repo_name':  repo_config.name,
+                           'repo_region': repo_config.region,
                            'repo_account_id': account_ctx.get_id() }
             role_config = yaml.load(role_yaml.format(repo_table))
             role_list_config[repo_info['repo_id']] = role_config
@@ -106,18 +105,10 @@ policies:
         return role_list_config
 
     def validate(self):
-        if self.config.enabled() == False:
-            print("CodeCommit Service: validate: disabled")
-            return
-
         for stack_grp in self.stack_grps:
             stack_grp.validate()
 
     def provision(self):
-        if self.config.enabled() == False:
-            print("CodeCommit Service: provision: disabled")
-            return
-
         for stack_grp in self.stack_grps:
             stack_grp.provision()
 
@@ -125,16 +116,17 @@ policies:
         # codecommit.example.app1.name
         group_id = service_parts[1]
         repo_id = service_parts[2]
+        repo_config = self.stack_grps[0].config.repository_groups[group_id][repo_id]
         if service_parts[3] == "name":
-            return self.stack_grps[0].config.get_repo_name(group_id, repo_id)
+            return repo_config.name
         if service_parts[3] == "arn":
-            account_ref = self.stack_grps[0].config.get_account(group_id, repo_id)
+            account_ref = repo_config.account
             account_ctx = self.aim_ctx.get_account_context(account_ref)
-            aws_region = self.stack_grps[0].config.get_repo_aws_region(group_id, repo_id)
-            repo_name =  self.stack_grps[0].config.get_repo_name(group_id, repo_id)
+            aws_region = repo_config.region
+            repo_name =  repo_config.name
             return "arn:aws:codecommit:{0}:{1}:{2}".format(aws_region, account_ctx.get_id(), repo_name)
         elif service_parts[3] == "account_id":
-            account_ref = self.stack_grps[0].config.get_account(group_id, repo_id)
+            account_ref = repo_config.account
             account_ctx = self.aim_ctx.get_account_context(account_ref)
             return account_ctx.get_id()
 

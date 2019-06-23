@@ -1,5 +1,4 @@
 from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup
-from aim.config import CodeCommitConfig
 import aim.cftemplates
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
