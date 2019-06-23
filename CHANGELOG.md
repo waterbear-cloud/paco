@@ -9,6 +9,7 @@ Changelog for aim
 - Added cmd_init
 - Moved yaml.py to aim.core
 - Refactored S3 Controller
+- Ported Route53 config to the model
 
 
 0.6.0.dev0 (2019-06-21)

@@ -101,31 +101,33 @@ Outputs:
         records_set_yaml = ""
 
         for zone_id in route53_config.get_zone_ids(account_name=account_ctx.get_name()):
+            zone_config = route53_config.hosted_zones[zone_id]
             hosted_zone_table['cf_resource_name_prefix'] = self.gen_cf_logical_name(zone_id, '_')
-            hosted_zone_table['domain'] = route53_config.get_hosted_zone_domain_name(zone_id)
-            if route53_config.has_record_sets(zone_id):
+            hosted_zone_table['domain'] = zone_config.domain_name
+            if zone_config.has_record_sets():
                 hosted_zone_table['record_set_group'] = record_set_group_fmt.format(hosted_zone_table)
             else:
                 hosted_zone_table['record_set_group'] = ""
 
-            for record_set_id in route53_config.get_record_set_ids(zone_id):
-                record_sets_table.clear()
-                record_sets_table['domain'] = route53_config.get_record_set_domain_name(zone_id, record_set_id)
-                record_sets_table['type'] = route53_config.get_record_set_type(zone_id, record_set_id)
-                if route53_config.record_set_has_alias_target(zone_id, record_set_id):
-                    record_sets_table['ttl'] = "!Ref 'AWS::NoValue'"
-                    record_sets_table['resource_records'] = "!Ref 'AWS::NoValue'"
-                    record_sets_table['alias_target'] = route53_config.get_record_set_alias_target(zone_id, record_set_id)
-                else:
-                    record_sets_table['alias_target'] = "!Ref 'AWS::NoValue'"
-                    record_sets_table['ttl'] = route53_config.get_record_set_ttl(zone_id, record_set_id)
-                    record_sets_table['resource_records'] = ""
-                    for resource_record in route53_config.get_record_set_resource_records(zone_id, record_set_id):
-                        resource_records_table.clear()
-                        resource_records_table['resource_record'] = resource_record
-                        record_sets_table['resource_records'] += resource_record_fmt.format(resource_records_table)
+            # TODO: Uncomment this when RecordSets have been integrated into the model
+            #for record_set_id in zone_config.record_sets.keys():
+            #    record_sets_table.clear()
+            #    record_sets_table['domain'] = route53_config.get_record_set_domain_name(zone_id, record_set_id)
+            #    record_sets_table['type'] = route53_config.get_record_set_type(zone_id, record_set_id)
+            #    if route53_config.record_set_has_alias_target(zone_id, record_set_id):
+            #        record_sets_table['ttl'] = "!Ref 'AWS::NoValue'"
+            #        record_sets_table['resource_records'] = "!Ref 'AWS::NoValue'"
+            #        record_sets_table['alias_target'] = route53_config.get_record_set_alias_target(zone_id, record_set_id)
+            #    else:
+            #        record_sets_table['alias_target'] = "!Ref 'AWS::NoValue'"
+            #        record_sets_table['ttl'] = route53_config.get_record_set_ttl(zone_id, record_set_id)
+            #        record_sets_table['resource_records'] = ""
+            #        for resource_record in route53_config.get_record_set_resource_records(zone_id, record_set_id):
+            #            resource_records_table.clear()
+            #            resource_records_table['resource_record'] = resource_record
+            #           record_sets_table['resource_records'] += resource_record_fmt.format(resource_records_table)
 
-                hosted_zone_table['record_set_group'] += record_set_fmt.format(record_sets_table)
+            #    hosted_zone_table['record_set_group'] += record_set_fmt.format(record_sets_table)
 
             resources_yaml += hosted_zone_fmt.format(hosted_zone_table)
             outputs_yaml += outputs_fmt.format(hosted_zone_table)

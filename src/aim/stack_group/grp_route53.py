@@ -1,6 +1,5 @@
 import aim.cftemplates
 from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup
-from aim.config import Route53Config
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 
@@ -26,7 +25,7 @@ class Route53StackGroup(StackGroup):
                               self,
                               route53_config,
                               route53_template,
-                              aws_region=self.config.aws_region)
+                              aws_region=self.aim_ctx.project['credentials'].aws_default_region)
         route53_stack.set_termination_protection(True)
         self.stack_list.append(route53_stack)
 

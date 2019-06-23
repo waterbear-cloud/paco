@@ -2,9 +2,7 @@ import os
 from aim.stack_group import Route53StackGroup
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
-from aim.config import Route53Config
 from aim.controllers.controllers import Controller
-
 
 class Route53Controller(Controller):
     def __init__(self, aim_ctx):
@@ -12,8 +10,7 @@ class Route53Controller(Controller):
                          "Service",
                          "Route53")
 
-        self.config = Route53Config(aim_ctx)
-        self.config.load()
+        self.config = self.aim_ctx.project['route53']
 
         #self.aim_ctx.log("Route53 Service: Configuration: %s" % (name))
 
@@ -32,7 +29,7 @@ class Route53Controller(Controller):
         if self.second == True:
             raise StackException(AimErrorCode.Unknown)
         self.second = True
-        for account_name in self.config.get_account_names():
+        for account_name in self.config.get_hosted_zones_account_names():
             account_ctx = self.aim_ctx.get_account_context(account_name=account_name)
             route53_stack_grp = Route53StackGroup(self.aim_ctx,
                                                   account_ctx,
