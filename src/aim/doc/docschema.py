@@ -10,19 +10,19 @@ from aim.models import schemas
 aim_config_template = """
 .. _aim-config:
 
-What is AIM Configuration?
+AIM Configuration Overview
 ==========================
 
-AIM configuration is intended to be a complete description of an cloud Infrastructure-as-Code
-project. These files semantically describe cloud resources and logical groupings of those
-resources. The contents of these files describe accounts, networks,
-environments, applications, services, and monitoring configuration.
+AIM configuration is intended to be a complete declarative description of an Infrastructure-as-Code
+cloud project. These files semantically describe cloud resources and logical groupings of those
+resources. The contents of these files describe accounts, networks, environments, applications,
+services, and monitoring configuration.
 
 The AIM configuration files are parsed into a Python object model by the library
 ``aim.models``. This object model is used by AIM Orchestration to provision
 AWS resources using CloudFormation. However, the object model is a standalone
-Python package and can be used to work with cloud infrastructure semantically for
-other uses.
+Python package and can be used to work with cloud infrastructure semantically
+with other tooling.
 
 
 File format overview
@@ -36,23 +36,22 @@ files each with a different format. This directories are:
 
   * ``Accounts/``: Each file in this directory is an AWS account.
 
-  * ``NetworkEnvironments/``: This is the main show, each file in this
+  * ``NetworkEnvironments/``: This is the main show. Each file in this
     directory defines a complete set of networks, applications and environments.
     These can be provisioned into any of the accounts.
 
-  * ``MonitorConfig/``: These contain alarms and log source information.
-    These alarms and log sources can be used in NetworkEnvironments.
+  * ``MonitorConfig/``: These contain alarm and log source information.
 
   * ``Services/``: These contain global or shared resources, such as
     S3 Buckets, IAM Users, EC2 Keypairs.
 
 Also at the top level is a ``project.yaml`` file. Currently this file just
-contains ``name:`` and ``title:`` attributes.
+contains ``name:`` and ``title:`` attributes, but may be later extended to
+contain useful global project configuration.
 
-Most of the YAML files are hierarchical dictionaries. Depending on where
-the dictionary key name is within this hierarchy, it will map to an AIM schema.
-An AIM schema is a collection of fields. Every field has a name, data type and constraints,
-you can think of AIM schemas like SQL table descriptions.
+The YAML files are organized as nested key-value dictionaries. In each sub-directory,
+key names map to relevant AIM schemas. An AIM schema is a set of fields that describe
+the field name, type and constraints.
 
 An example of how this hierarchy looks, in a NetworksEnvironent file, a key name ``network:``
 must have attributes that match the Network schema. Within the Network schema there must be
@@ -69,9 +68,10 @@ an attribute named ``vpc:`` which contains attributes for the VPC schema. That l
             enable_dns_support: true
             enable_internet_gateway: true
 
-Some key names are containers. For containers, every key name must contain attributes
-that map to an AIM schema. Objects in containers have a special ``name`` attribute,
-this attribute isn't set normally but is instead derived from the key name.
+Some key names map to AIM schemas that are containers. For containers, every key must contain
+a set of key/value pairs that map to the AIM schema that container is for.
+Every AIM schema in a container has a special ``name`` attribute, this attribute is derived
+from the key name used in the container.
 
 For example, the NetworkEnvironments has a key name ``environments:`` that maps
 to an Environments container object. Environments containers contain Environment objects.
@@ -100,10 +100,12 @@ When this is parsed, there would be three Environment objects:
         name: prod
         title: Production
 
+.. Attention:: Key naming warning: As the key names you choose will be used in the names of
+    resources provisioned in AWS, they should be as short and simple as possible. If you wanted
+    rename keys, you need to first delete all of your AWS resources under their old key names,
+    then recreate them with their new name. Try to give everything short, reasonable names.
 
-Container names are special in the configuration, as they can be concatenated together
-to generate CloudFormation and AWS resource names. Since they are used this way,
-container names have the following restrictions on them:
+Key names have the following restrictions:
 
   * Can contain only letters, numbers, hyphens and underscores.
 
@@ -114,13 +116,22 @@ container names have the following restrictions on them:
 Certain AWS resources have additional naming limitations, namely S3 bucket names
 can not contain uppercase letters and certain resources have a name length of 64 characters.
 
-As the AIM Engine generates names by joining together keys in the hiearchy, it is recommended
-to keep names as short and sweet as possible.
+The ``title`` field is available in almost all AIM schemas. This is intended to be
+a human readable name. This field can contain any character except newline.
+The ``title`` field can also be added as a Tag to resources, so any characters
+beyond 255 characters would be truncated.
 
-If you want to have longer, more human readable names, many schemas have a ``title``
-field. This field can contain any character except newline. It is used purely for
-display, this field may be added as a Tag to resources, so any characters beyond 255
-will be truncated there.
+References
+----------
+
+Some values can be special references. These will allow you to reference other values in
+your AIM Configuration.
+
+ * ``netenv.ref``: NetworkEnvironment reference
+
+ * ``service.ref``: Service reference
+
+ * ``config.ref``: Config reference
 
 
 YAML Gotchas
@@ -154,6 +165,8 @@ will be the ``name`` of the account, with a .yml or .yaml extension.
 
 {account}
 
+{adminiamuser}
+
 NetworkEnvironments
 ===================
 
@@ -164,24 +177,35 @@ applications are deployed into networks, what kind of monitoring
 and logging the applications have, and which environments they are in.
 
 These files are hierarchical. They can nest many levels deep. At each
-node in the hierarchy a different config type is required.
-
-At the top level are three config types: network, applications and environments.
-
-These are simply YAML keys that must be named ``network:``, ``applications:`` and ``environments``:
+node in the hierarchy a different config type is required. At the top level
+there must be three key names, ``network:``, ``applications:`` and ``environments:``.
+The ``network:`` must contain a key/value pairs that match a NetworkEnvironment AIM schema.
+The ``applications:`` and ``environments:`` are containers that hold Application
+and Environment AIM schemas.
 
 .. code-block:: yaml
 
-    # my-apps.yaml
-
     network:
-        # network YAML here ...
+        availability_zones: 2
+        enabled: true
+        region: us-west-2
+        # more network YAML here ...
 
     applications:
-        # applications YAML here ...
+        my-aim-app:
+            managed_updates: true
+            # more application YAML here ...
+        reporting-app:
+            managed_updates: false
+            # more application YAML here ...
 
     environments:
-        # environments YAML here ...
+        dev:
+            title: Development Environment
+            # more environment YAML here ...
+        prod:
+            title: Production Environment
+            # more environment YAML here ...
 
 The network and applications configuration is intended to describe a complete default configuration - this configuration
 does not get direclty provisioned to the cloud though - think of it as templated configuration. Environments are where
@@ -199,29 +223,81 @@ Network
 The network config type defines a complete logical network: VPCs, Subnets, Route Tables, Network Gateways. The applications
 defined later in this file will be deployed into networks that are built from this network template.
 
+Networks have the following hierarchy:
+
+.. code-block:: yaml
+
+    network:
+        # general config here ...
+        vpc:
+            # VPC config here ...
+            nat_gateway:
+                # NAT gateways container
+            vpn_gateway:
+                # VPN gateways container
+            private_hosted_zone:
+                # private hosted zone config here ...
+            security_groups:
+                # security groups here ...
+
+.. Attention:: SecurityGroups is a special two level container. The first key will match the name of an application defined
+    in the ``applications:`` section. The second key must match the name of a resource defined in the application.
+    In addition, a SecurityGroup has egress and ingress rules that are a list of rules.
+
+    The following example has two SecurityGroups for the application named ``my-web-app``: ``lb`` which will apply to the load
+    balancer and ``webapp`` which will apply to the web server AutoScalingGroup.
+
+    .. code-block:: yaml
+
+        network:
+            vpc:
+                security_groups:
+                    my-web-app:
+                        lb:
+                            egress:
+                                - cidr_ip: 0.0.0.0/0
+                                  name: ANY
+                                  protocol: "-1"
+                            ingress:
+                                - cidr_ip: 128.128.255.255/32
+                                  from_port: 443
+                                  name: HTTPS
+                                  protocol: tcp
+                                  to_port: 443
+                                - cidr_ip: 128.128.255.255/32
+                                  from_port: 80
+                                  name: HTTP
+                                  protocol: tcp
+                                  to_port: 80
+                        webapp:
+                            egress:
+                                - cidr_ip: 0.0.0.0/0
+                                  name: ANY
+                                  protocol: "-1"
+                            ingress:
+                                - from_port: 80
+                                  name: HTTP
+                                  protocol: tcp
+                                  source_security_group_id: netenv.ref aimdemo.network.vpc.security_groups.app.lb.id
+                                  to_port: 80
+
 {network}
-
-VPC
----
-
-Every network has a ``vpc`` attribute with a VPC config type:
 
 {vpc}
 
-Gateways
---------
-
-There can be NAT Gateways and VPN Gateways.
-
-The ``natgateway`` has this config type:
-
 {natgateway}
-
-The ``vpngateway`` has this config type:
 
 {vpngateway}
 
 {privatehostedzone}
+
+{segment}
+
+{securitygroup}
+
+{egressrule}
+
+{ingressrule}
 
 Applications
 ============
@@ -246,7 +322,8 @@ In turn, each ResourceGroup contains ``resources:`` with names such as ``cpbd``,
                     type: Deployment
                     resources:
                         cpbd:
-                            type: CodePipeBuildDeploy # CodePipeline and CodeBuild CI/CD
+                            # CodePipeline and CodeBuild CI/CD
+                            type: CodePipeBuildDeploy
                             # configuration goes here ...
                 website:
                     type: Application
@@ -255,25 +332,21 @@ In turn, each ResourceGroup contains ``resources:`` with names such as ``cpbd``,
                             type: ACM
                             # configuration goes here ...
                         alb:
-                            type: LBApplication # Application Load Balancer (ALB)
+                            # Application Load Balancer (ALB)
+                            type: LBApplication
                             # configuration goes here ...
                         webapp:
-                            type: ASG # AutoScalingGroup (ASG) of web server instances
+                            # AutoScalingGroup (ASG) of web server instances
+                            type: ASG
                             # configuration goes here ...
                 bastion:
                     type: Bastion
                     resources:
                         instance:
-                            type: ASG # AutoScalingGroup (ASG) with only 1 instance (self-healing ASG)
+                            # AutoScalingGroup (ASG) with only 1 instance (self-healing ASG)
+                            type: ASG
                             # configuration goes here ...
 
-
-Key naming warning: As the key names you choose will be used in the names of resources provisioned
-in AWS, they should be as short and simple as possible. If you want to later rename things,
-you need to first delete all of your AWS resources under their old name, then recreate them
-in a new name. As renaming is not always easy, try to give everything short, reasonable names.
-There are ``title:`` fields where you can use human-readable names that can be changed without
-breaking anything.
 
 {applications}
 
@@ -345,6 +418,49 @@ overridden and only the ``sales-app`` would be deployed there.
 
 {environmentregion}
 
+Services
+========
+
+Services need to be documented.
+
+MonitorConfig
+=============
+
+This directory can contain two files: ``alarmsets.yaml`` and ``logsets.yaml``. These files
+contain CloudWatch Alarm and CloudWatch Agent Log Source configuration. These alarms and log sources
+are grouped into named sets, and sets of alarms and logs can be applied to resources.
+
+Currently only support for CloudWatch, but it is intended in the future to support other alarm and log sets.
+
+AlarmSets are first named by AWS Resource Type, then by the name of the AlarmSet. Each name in an AlarmSet is
+an Alarm.
+
+
+.. code-block:: yaml
+
+    # AutoScalingGroup alarms
+    ASG:
+        launch-health:
+            GroupPendingInstances-Low:
+                # alarm config here ...
+            GroupPendingInstances-Critical:
+                # alarm config here ...
+
+    # Application LoadBalancer alarms
+    LBApplication:
+        instance-health:
+            HealthyHostCount-Critical:
+                # alarm config here ...
+        response-latency:
+            TargetResponseTimeP95-Low:
+                # alarm config here ...
+            HTTPCode_Target_4XX_Count-Low:
+                # alarm config here ...
+
+{alarm}
+
+{logsource}
+
 """
 
 def convert_schema_to_list_table(schema):
@@ -356,13 +472,14 @@ def convert_schema_to_list_table(schema):
 .. _{name}:
 
 .. list-table::
-    :widths: 15 8 6 12 30
+    :widths: 15 8 4 12 15 30
     :header-rows: 1
 
     * - Field name
       - Type
-      - Required?
+      - Req?
       - Default
+      - Constraints
       - Purpose
 """.format(**{
         'name': schema.__name__[1:],
@@ -372,24 +489,33 @@ def convert_schema_to_list_table(schema):
     '      - {type}\n' + \
     '      - {required}\n' + \
     '      - {default}\n' + \
-    '      - {desc}\n'
+    '      - {constraints}\n'  + \
+    '      - {purpose}\n'
+
     for fieldname in sorted(zope.schema.getFields(schema).keys()):
         field = schema[fieldname]
-        desc = field.title
         if field.required:
             req_icon = '.. fa:: check'
         else:
             req_icon = '.. fa:: times'
-        if field.description:
-            desc = desc + ': ' + field.description
 
         data_type = field.__class__.__name__
         if data_type in ('TextLine', 'Text'):
             data_type = 'String'
-        if data_type == 'Bool':
+        elif data_type == 'Bool':
             data_type = 'Boolean'
-        if data_type == 'Object':
-            data_type = 'Object of type {}_'.format(field.schema.__name__[1:])
+        elif data_type == 'Object':
+            data_type = '{}_ AIM schema'.format(field.schema.__name__[1:])
+        elif data_type == 'Dict':
+            if field.value_type:
+                data_type = 'Container of {}_ AIM schemas'.format(field.value_type.schema.__name__[1:])
+            else:
+                data_type = 'Dict'
+        elif data_type == 'List':
+            if field.value_type and not zope.schema.interfaces.ITextLine.providedBy(field.value_type):
+                data_type = 'List of {}_ AIM schemas'.format(field.value_type.schema.__name__[1:])
+            else:
+                data_type = 'List of Strings'
 
         # don't display the name field, it is derived from the key
         name = field.getName()
@@ -401,7 +527,8 @@ def convert_schema_to_list_table(schema):
                         'type': data_type,
                         'required': req_icon,
                         'default': field.default,
-                        'desc': desc
+                        'purpose': field.title,
+                        'constraints': field.description,
                     }
                 )
             )
@@ -432,6 +559,14 @@ def aim_schema_generate():
                    'resourcegroup': convert_schema_to_list_table(schemas.IResourceGroup),
                    'resources': convert_schema_to_list_table(schemas.IResources),
                    'resource': convert_schema_to_list_table(schemas.IResource),
+                   'alarmset': convert_schema_to_list_table(schemas.IAlarmSet),
+                   'alarm': convert_schema_to_list_table(schemas.ICloudWatchAlarm),
+                   'logsource': convert_schema_to_list_table(schemas.ICWAgentLogSource),
+                   'adminiamuser': convert_schema_to_list_table(schemas.IAdminIAMUser),
+                   'segment': convert_schema_to_list_table(schemas.ISegment),
+                   'securitygroup': convert_schema_to_list_table(schemas.ISecurityGroup),
+                   'egressrule': convert_schema_to_list_table(schemas.IEgressRule),
+                   'ingressrule': convert_schema_to_list_table(schemas.IIngressRule),
                 }
             )
         )

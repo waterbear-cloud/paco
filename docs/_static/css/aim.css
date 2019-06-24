@@ -2,6 +2,10 @@
     max-width: 1000px !important;
 }
 
+.wy-nav-content p {
+    font-size: 15px !important;
+}
+
 .wy-table-responsive table td,
 .wy-table-responsive table th {
     white-space: normal !important;

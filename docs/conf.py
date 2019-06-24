@@ -64,7 +64,6 @@ release = version
 
 today_fmt = '%B %d, %Y'
 exclude_patterns = ['_themes/README.rst',]
-pygments_style = 'sphinx'
 
 
 # Options for HTML output
