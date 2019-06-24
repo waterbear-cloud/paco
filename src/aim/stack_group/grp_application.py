@@ -40,6 +40,7 @@ class LaunchBundle():
         self.bundle_files = []
         self.package_path = None
         self.cache_id = ""
+        self.s3_context_id = None
 
     def set_launch_script(self, launch_script):
         self.add_file("launch.sh", launch_script)
@@ -426,21 +427,13 @@ statement:
 
     def validate(self):
         pass
-        #for s3_context_id in self.launch_bundles.keys():
-        #    s3_ctl = self.aim_ctx.get_controller('S3')
-        #    s3_ctl.validate(s3_context_id)
 
     def provision(self):
         pass
-        #for s3_context_id in self.launch_bundles.keys():
-        #    s3_ctl = self.aim_ctx.get_controller('S3')
-        #    s3_ctl.provision(s3_context_id)
 
     def delete(self):
         pass
-        #for s3_context_id in self.launch_bundles.keys():
-        #    s3_ctl = self.aim_ctx.get_controller('S3')
-        #    s3_ctl.delete(s3_context_id)
+
 
 class ApplicationStackGroup(StackGroup):
     def __init__(self,
