@@ -37,12 +37,6 @@ class LaunchBundle():
                                          self.group_id,
                                          self.resource_id)
         self.s3_bucket_ref = None
-        self.s3_context_id = self.manager.subenv_ctx.gen_ref(
-                                    app_id=self.app_id,
-                                    grp_id=self.group_id,
-                                    res_id=self.bucket_id
-                            )
-
         self.bundle_files = []
         self.package_path = None
         self.cache_id = ""
@@ -112,7 +106,7 @@ class EC2LaunchManager():
     def stack_hook(self, hook, bundle):
         # Upload bundle to the S3 bucket
         s3_ctl = self.aim_ctx.get_controller('S3')
-        bucket_name = s3_ctl.get_bucket_name(bundle.s3_context_id, bundle.s3_bucket_ref)
+        bucket_name = s3_ctl.get_bucket_name(bundle.s3_bucket_ref)
         s3_client = self.account_ctx.get_aws_client('s3')
         bundle_s3_key = os.path.join("LaunchBundles", bundle.package_filename)
         s3_client.upload_file(bundle.package_path, bucket_name, bundle_s3_key)
@@ -121,9 +115,6 @@ class EC2LaunchManager():
         return bundle.get_cache_id()
 
     def init_bundle_s3_bucket(self, bundle):
-        s3_ctl = self.aim_ctx.get_controller('S3')
-        bucket_group_name = '-'.join([self.subenv_ctx.netenv_id, self.subenv_id, bundle.app_id, bundle.group_id, bundle.resource_id, self.id])
-        s3_ctl.init_context(self.account_ctx, bundle.s3_context_id, self.subenv_ctx.region, bucket_group_name)
         instance_iam_role_arn_ref = self.subenv_ctx.gen_ref(app_id=bundle.app_id,
                                                   grp_id=bundle.group_id,
                                                   res_id=bundle.resource_id,
@@ -133,7 +124,7 @@ class EC2LaunchManager():
 #        instance_role_arn_ref = str.join('.', [])
 
         bucket_config_dict = {
-            'name': bundle.resource_id,
+            'bucket_name': 'lb',
             'deletion_policy': 'delete',
             'policy': [
                 {
@@ -150,7 +141,7 @@ class EC2LaunchManager():
                 }
             ]
         }
-        bucket_config = models.resources.S3Bucket()
+        bucket_config = models.resources.S3Bucket(bundle.resource_id, None)
         bucket_config.update(bucket_config_dict)
         bucket_config.resolve_ref_obj = self
         bundle.s3_bucket_ref = '.'.join([self.config_ref, 'applications', bundle.app_id, 'resources', bundle.resource_id, self.id, 'bucket'])
@@ -164,12 +155,19 @@ class EC2LaunchManager():
         stack_hooks.add('EC2LaunchManager', 'update', 'post',
                         self.stack_hook, self.stack_hook_cache_id, bundle)
 
-        s3_ctl.add_bucket(  bundle.s3_context_id,
+        s3_ctl = self.aim_ctx.get_controller('S3')
+        #bucket_group_name = '-'.join([self.subenv_ctx.netenv_id, self.subenv_id, bundle.app_id, bundle.group_id, bundle.resource_id, self.id])
+        s3_ctl.init_context(self.account_ctx,
+                            self.subenv_ctx.region,
+                            bundle.s3_bucket_ref,
+                            self.parent)
+
+        s3_ctl.add_bucket(  bundle.s3_bucket_ref,
                             region=bucket_region,
                             bucket_id=bundle.bucket_id,
+                            bucket_group_id=bundle.group_id,
                             bucket_name_prefix=bucket_name_prefix,
                             bucket_name_suffix=bucket_name_suffix,
-                            bucket_ref=bundle.s3_bucket_ref,
                             bucket_config=bucket_config,
                             stack_hooks=stack_hooks)
 
@@ -179,7 +177,7 @@ class EC2LaunchManager():
             bundle = self.launch_bundles[bundle_key][0]
             if bundle.app_id == app_id and bundle.group_id == grp_id and bundle.bucket_id == bucket_id:
                 s3_ctl = self.aim_ctx.get_controller('S3')
-                return s3_ctl.get_bucket_name(bundle.s3_context_id, bundle.s3_bucket_ref)
+                return s3_ctl.get_bucket_name(bundle.s3_bucket_ref)
         return None
 
     def user_data_script(self, app_id, grp_id, resource_id):
@@ -228,10 +226,9 @@ echo "No Launch bundles to load"
         # be created once, so we initialize it here when we we init a
         # group of bundles
         if bundle.s3_context_id not in self.launch_bundles:
+            self.init_bundle_s3_bucket(bundle)
             self.launch_bundles[bundle.s3_context_id] = []
             # Initializes the CloudFormation for this S3 Context ID
-            self.init_bundle_s3_bucket(bundle)
-
         # Add the bundle to the S3 Context ID bucket
         self.launch_bundles[bundle.s3_context_id].append(bundle)
 
@@ -428,19 +425,22 @@ statement:
         self.add_bundle(cw_lb)
 
     def validate(self):
-        for s3_context_id in self.launch_bundles.keys():
-            s3_ctl = self.aim_ctx.get_controller('S3')
-            s3_ctl.validate(s3_context_id)
+        pass
+        #for s3_context_id in self.launch_bundles.keys():
+        #    s3_ctl = self.aim_ctx.get_controller('S3')
+        #    s3_ctl.validate(s3_context_id)
 
     def provision(self):
-        for s3_context_id in self.launch_bundles.keys():
-            s3_ctl = self.aim_ctx.get_controller('S3')
-            s3_ctl.provision(s3_context_id)
+        pass
+        #for s3_context_id in self.launch_bundles.keys():
+        #    s3_ctl = self.aim_ctx.get_controller('S3')
+        #    s3_ctl.provision(s3_context_id)
 
     def delete(self):
-        for s3_context_id in self.launch_bundles.keys():
-            s3_ctl = self.aim_ctx.get_controller('S3')
-            s3_ctl.delete(s3_context_id)
+        pass
+        #for s3_context_id in self.launch_bundles.keys():
+        #    s3_ctl = self.aim_ctx.get_controller('S3')
+        #    s3_ctl.delete(s3_context_id)
 
 class ApplicationStackGroup(StackGroup):
     def __init__(self,
@@ -465,16 +465,6 @@ class ApplicationStackGroup(StackGroup):
         self.cpbd_codecommit_role_template = None
         self.cpbd_kms_stack = None
         self.cpbd_codedeploy_stack = None
-        self.cpbd_s3_pre_id = self.subenv_ctx.gen_ref(app_id=self.app_id,
-                                                      attribute="cpbd.pre")
-        self.cpbd_s3_post_id = self.subenv_ctx.gen_ref(app_id=self.app_id,
-                                                       attribute="cpbd.post")
-        self.s3_context_id = self.subenv_ctx.gen_ref(app_id=self.app_id)
-        s3_ctl = self.aim_ctx.get_controller('S3')
-        s3_group_name = '-'.join([self.subenv_ctx.netenv_id, self.subenv_id, self.app_id])
-        s3_ctl.init_context(self.account_ctx, self.s3_context_id, self.subenv_ctx.region, s3_group_name)
-
-
         self.ec2_launch_manager = EC2LaunchManager(self.aim_ctx,
                                                    self,
                                                    self.app_id,
@@ -536,21 +526,24 @@ class ApplicationStackGroup(StackGroup):
                                             res_id,
                                             res_config)
 
-    def init_s3_resource(self, grp_id, res_id, res_config):
+    def init_s3bucket_resource(self, grp_id, res_id, res_config):
         if res_config.enabled == False:
             print("ApplicationStackGroup: Init: S3: %s *disabled*" % (res_id))
         else:
             print("ApplicationStackGroup: Init: S3: %s" % (res_id))
-            s3_config_ref = self.gen_resource_ref(grp_id, res_id)
+            s3_config_ref = "netenv.ref "+self.gen_resource_ref(grp_id, res_id)
             # Generate s3 bucket name for application deployment
             bucket_name_prefix = '-'.join([self.get_aws_name(), grp_id])
             #print("Application depoloyment bucket name: %s" % new_name)
-            s3_ctl.add_bucket(  self.s3_context_id,
+            s3_ctl = self.aim_ctx.get_controller('S3')
+            account_ctx = self.aim_ctx.get_account_context(account_ref=res_config.account)
+            s3_ctl.init_context(account_ctx, self.aws_region, s3_config_ref, self)
+            s3_ctl.add_bucket(  resource_ref=s3_config_ref,
                                 region=self.aws_region,
                                 bucket_id=res_id,
+                                bucket_group_id=grp_id,
                                 bucket_name_prefix=bucket_name_prefix,
                                 bucket_name_suffix=None,
-                                bucket_ref=s3_config_ref,
                                 bucket_config=res_config)
 
     def init_lbclassic_resource(self, grp_id, res_id, res_config):
@@ -721,29 +714,11 @@ class ApplicationStackGroup(StackGroup):
 
             # -----------------
             # S3 Artifacts Bucket:  PRE
+            artifacts_bucket_ref = res_config.artifacts_bucket
             s3_ctl = self.aim_ctx.get_controller('S3')
-            s3_group_name = '-'.join([self.subenv_ctx.netenv_id, self.subenv_id, self.app_id, grp_id])
-            s3_ctl.init_context(tools_account_ctx, self.cpbd_s3_pre_id, self.subenv_ctx.region, s3_group_name)
-            s3_artifacts_group_id=res_id
-            s3_artifacts_bucket_id='artifacts_bucket'
-            artifact_bucket_config = res_config.artifacts_bucket
-            s3_config_ref = self.gen_resource_ref(grp_id, res_id, s3_artifacts_bucket_id)
-            bucket_name_prefix = '-'.join([self.get_aws_name(), grp_id])
-            artifact_bucket_config.name = '-'.join([res_id, artifact_bucket_config.name])
-            s3_ctl.add_bucket(self.cpbd_s3_pre_id,
-                                region=self.aws_region,
-                                bucket_id=s3_artifacts_bucket_id,
-                                bucket_name_prefix=bucket_name_prefix,
-                                bucket_name_suffix=None,
-                                bucket_ref=s3_config_ref,
-                                bucket_config=artifact_bucket_config)
+            s3_artifacts_bucket_arn = s3_ctl.get_bucket_arn(artifacts_bucket_ref)
+            s3_artifacts_bucket_name = s3_ctl.get_bucket_name(artifacts_bucket_ref)
 
-            s3_artifacts_bucket_arn=s3_ctl.get_bucket_arn(self.cpbd_s3_pre_id,
-                                                            bucket_ref=s3_config_ref)
-
-
-            # S3 Artifacts Bucket:  POST
-            s3_ctl.init_context(tools_account_ctx, self.cpbd_s3_post_id, self.subenv_ctx.region, s3_group_name)
             codebuild_role_ref = self.subenv_ctx.gen_ref(app_id=self.app_id,
                                                          grp_id=grp_id,
                                                          res_id=res_id,
@@ -760,6 +735,7 @@ class ApplicationStackGroup(StackGroup):
                                                           grp_id=grp_id,
                                                           res_id=res_id,
                                                           attribute='codecommit_role.arn')
+
             cpbd_s3_bucket_policy = {
                 'aws': [
                     "aim.sub '${{{0}}}'".format(codebuild_role_ref),
@@ -772,16 +748,7 @@ class ApplicationStackGroup(StackGroup):
                 'resource_suffix': [ '/*', '' ]
             }
 
-            artifact_bucket_config.add_policy(cpbd_s3_bucket_policy)
-
-            s3_ctl.add_bucket(self.cpbd_s3_post_id,
-                                region=self.aws_region,
-                                bucket_id=s3_artifacts_bucket_id,
-                                bucket_name_prefix=bucket_name_prefix,
-                                bucket_name_suffix=None,
-                                bucket_ref=s3_config_ref,
-                                bucket_config=artifact_bucket_config)
-
+            s3_ctl.add_bucket_policy(artifacts_bucket_ref, cpbd_s3_bucket_policy)
 
             # ----------------
             # KMS Key
@@ -901,27 +868,6 @@ policies:
                              codecommit_iam_role_config,
                              iam_role_params)
 
-
-            #role_config_dict = { 'CodeCommit': role_yaml_dict }
-            #role_config_ref = '.'.join(["applications", self.app_id, "groups", grp_id, "resources", res_id, "codecommit.role"])
-            #codecommit_role_aws_name = '-'.join([self.subenv_ctx.get_aws_name(), self.subenv_id, self.app_id])
-            #role_template = aim.cftemplates.IAMRoles(self.aim_ctx,
-            #                                            data_account_ctx,
-            #                                            codecommit_role_aws_name,
-            #                                            res_id,
-            #                                            roles_config.roles,
-            #                                            role_config_ref,
-            #                                            res_id+"-CodeCommit",
-            #                                            iam_role_params)
-            #self.cpbd_codecommit_role_template = role_template
-            #role_stack = Stack(aim_ctx=self.aim_ctx,
-            #                    account_ctx=data_account_ctx,
-            #                    grp_ctx=self,
-            #                    stack_config=role_config_dict,
-            #                    template=role_template,
-            #                    aws_region=self.aws_region)
-
-            #self.stack_list.append(role_stack)
             # ----------------------------------------------------------
             # Code Deploy
             codedeploy_conf_ref = '.'.join(["applications", self.app_id, "groups", grp_id, "resources", res_id, "deploy"])
@@ -934,7 +880,7 @@ policies:
                                                              grp_id,
                                                              res_id,
                                                              res_config,
-                                                             s3_ctl.get_bucket_name(self.cpbd_s3_post_id, s3_config_ref),
+                                                             s3_artifacts_bucket_name,
                                                              codedeploy_conf_ref)
 
             codedeploy_stack = Stack(self.aim_ctx,
@@ -958,7 +904,7 @@ policies:
                                                                     grp_id,
                                                                     res_id,
                                                                     res_config,
-                                                                    s3_ctl.get_bucket_name(self.cpbd_s3_post_id, s3_config_ref),
+                                                                    s3_artifacts_bucket_name,
                                                                     codedeploy_template.get_tools_delegate_role_arn(),
                                                                     codepipebuild_conf_ref)
 
@@ -1015,8 +961,8 @@ policies:
                 res_config.resolve_ref_obj = self
                 if res_config.type == 'ACM':
                     self.init_acm_resource(grp_id, res_id, res_config)
-                elif res_config.type == 'S3':
-                    self.init_s3_resource(grp_id, res_id, res_config)
+                elif res_config.type == 'S3Bucket':
+                    self.init_s3bucket_resource(grp_id, res_id, res_config)
                 elif res_config.type == 'LBClassic':
                     self.init_lbclassic_resource(grp_id, res_id, res_config)
                 elif res_config.type == 'LBApplication':
@@ -1035,16 +981,10 @@ policies:
         iam_ctl.validate(self.iam_context_id)
 
         # App Group Validation
-        s3_ctl = self.aim_ctx.get_controller('S3')
-        s3_ctl.validate(self.cpbd_s3_pre_id)
-
         self.ec2_launch_manager.validate()
 
         super().validate()
 
-        # S3 Service Valdiation
-        s3_ctl.validate(self.s3_context_id)
-        s3_ctl.validate(self.cpbd_s3_post_id)
 
     def provision(self):
         # self.validate()
@@ -1057,29 +997,15 @@ policies:
         acm_ctl = self.aim_ctx.get_controller('ACM')
         acm_ctl.provision()
 
-        s3_ctl = self.aim_ctx.get_controller('S3', self.cpbd_s3_pre_id)
-        s3_ctl.provision(self.cpbd_s3_pre_id)
 
         self.ec2_launch_manager.provision()
 
         # Provison Application Group
         super().provision()
 
-        # Provision S3 Services
-        s3_ctl.provision(self.s3_context_id)
-        s3_ctl.provision(self.cpbd_s3_post_id)
 
     def delete(self):
 
-        s3_ctl = self.aim_ctx.get_controller('S3')
-        s3_ctl.delete(self.cpbd_s3_post_id)
-
-        # S3 Service Valdiation
-        s3_ctl.delete(self.s3_context_id)
-
-        # App Group Validation
-        s3_pre_ctl = self.aim_ctx.get_controller('S3')
-        s3_pre_ctl.delete(self.cpbd_s3_pre_id)
 
         super().delete()
 

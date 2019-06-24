@@ -11,6 +11,8 @@ Changelog for aim
 - Refactored S3 Controller
 - Ported Route53 config to the model
 - Ported CodeCommit config to the model
+- Refactored S3 to use Application StackGroup
+- CPBD artifacts s3 bucket now uses S3 Resource in NetEnv yaml instead
 
 0.6.0.dev0 (2019-06-21)
 -----------------------

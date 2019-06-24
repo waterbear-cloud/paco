@@ -5,67 +5,101 @@ from aim.stack_group import S3StackGroup
 from aim.controllers.controllers import Controller
 from botocore.exceptions import ClientError
 from aim.models import vocabulary
+from aim import models
+import aim.cftemplates
+from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks
+import copy
 
 class S3Context():
-    def __init__(self, aim_ctx, account_ctx, controller, context_id, region, group_name):
+    def __init__(self, aim_ctx, account_ctx, region, controller, stack_group, resource_ref):
         self.aim_ctx = aim_ctx
-        self.stack_group = None
+        self.stack_group = stack_group
         self.controller = controller
-        self.buckets = []
         self.region = region
         self.account_ctx = account_ctx
-        self.context_id = context_id
-        self.group_name = group_name
+        self.resource_ref = resource_ref
+        self.bucket_context = {
+            'id': None,
+            'group_id': None,
+            'config': None,
+            'ref': resource_ref,
+            'bucket_name_prefix': None,
+            'bucket_name_suffix': None,
+            'stack_hooks': None,
+            'bucket_policy_config': []
+        }
 
-    def bucket_context(self, app_id, group_id, bucket_id):
-        return '.'.join([app_id, group_id, bucket_id])
+    def add_stack(  self,
+                    bucket_policy_only=False,
+                    stack_hooks=None):
+        s3_template = aim.cftemplates.S3(self.aim_ctx,
+                                         self.account_ctx,
+                                         self.bucket_context,
+                                         bucket_policy_only,
+                                         self.resource_ref)
+        #s3_template.set_template_file_id(self.aim_ctx.md5sum(str_data=resource_ref))
+
+        s3_stack = Stack(self.aim_ctx,
+                         self.account_ctx,
+                         self.stack_group,
+                         self.bucket_context,
+                         s3_template,
+                         aws_region=self.region,
+                         hooks=stack_hooks)
+
+        self.stack_group.stack_list.append(s3_stack)
+        self.stack_group.add_stack_order(s3_stack)
 
     def add_bucket( self,
                     region,
                     bucket_id,
+                    bucket_group_id,
                     bucket_name_prefix,
                     bucket_name_suffix,
-                    bucket_ref,
                     bucket_config,
                     stack_hooks=None):
+
+        if self.bucket_context['id'] != None:
+            print("Bucket already exists: %s" % (self.resource_ref))
+            raise StackException(AimErrorCode.Unknown)
 
         if bucket_name_suffix == None:
             bucket_name_suffix = vocabulary.aws_regions[region]['short_name']
         else:
             bucket_name_suffix += '-'+vocabulary.aws_regions[region]['short_name']
 
-        bucket_context = {
-            'id': bucket_id,
-            'config': bucket_config,
-            'ref': bucket_ref,
-            'bucket_name_prefix': bucket_name_prefix,
-            'bucket_name_suffix': bucket_name_suffix
-        }
-        self.buckets.append(bucket_context)
+        self.bucket_context['id'] = bucket_id
+        self.bucket_context['group_id'] = bucket_group_id
+        self.bucket_context['config'] = bucket_config
+        self.bucket_context['ref'] = self.resource_ref
+        self.bucket_context['bucket_name_prefix'] = bucket_name_prefix
+        self.bucket_context['bucket_name_suffix'] = bucket_name_suffix
+        self.bucket_context['stack_hooks'] = stack_hooks
 
-        self.stack_group = S3StackGroup(self.aim_ctx,
-                                        self.account_ctx,
-                                        self.region,
-                                        self.group_name,
-                                        self.buckets,
-                                        self.controller,
-                                        self.context_id,
-                                        stack_hooks)
+        # S3 Delete on Stack Delete hook
+        if stack_hooks == None:
+            stack_hooks = StackHooks(self.aim_ctx)
 
-    def get_bucket_context(self, bucket_ref):
-        for bucket_context in self.buckets:
-            if bucket_context['ref'] == bucket_ref:
-                return bucket_context
-        return None
+        stack_hooks.add('S3StackGroup', 'delete', 'post',
+                        self.stack_hook_post_delete, None, self.bucket_context)
 
-    def get_bucket_arn(self, bucket_ref):
-        return 'arn:aws:s3:::'+self.get_bucket_name(bucket_ref)
+        self.add_stack(bucket_policy_only=False,
+                        stack_hooks=stack_hooks)
 
-    def get_bucket_name(self, bucket_ref):
-        bucket_context = self.get_bucket_context(bucket_ref)
-        bucket_name = '-'.join([bucket_context['bucket_name_prefix'],
-                                bucket_context['config'].name,
-                                bucket_context['bucket_name_suffix']])
+
+    def add_bucket_policy(self, policy_dict):
+        bucket_config = self.bucket_context['config']
+        bucket_config.add_policy(policy_dict)
+        self.add_stack(bucket_policy_only=True)
+
+    def get_bucket_arn(self):
+        return 'arn:aws:s3:::'+self.get_bucket_name()
+
+    def get_bucket_name(self):
+        bucket_name = '-'.join([self.bucket_context['bucket_name_prefix'],
+                                self.bucket_context['config'].name,
+                                self.bucket_context['config'].bucket_name,
+                                self.bucket_context['bucket_name_suffix']])
         return bucket_name.replace('_', '').lower()
 
     def get_region(self):
@@ -83,18 +117,35 @@ class S3Context():
         if self.stack_group:
             self.stack_group.delete()
 
-    def empty_bucket(self, bucket_ref):
-        for bucket_context in self.buckets:
-            if bucket_context['ref'] == bucket_ref:
-                break
+    def stack_hook_post_delete(self, hook, hook_arg):
+        # Empty the S3 Bucket if enabled
+        buckets = hook_arg
+        for bucket_context in buckets:
+            s3_config = bucket_context['config']
+            s3_resource = self.account_ctx.get_aws_resource('s3', self.region)
+            deletion_policy = s3_config.deletion_policy
+            bucket_name = self.get_bucket_name()
+            if deletion_policy == "delete":
+                print("Deleting S3 Bucket: %s" % (bucket_name))
+                bucket = s3_resource.Bucket(bucket_name)
+                try:
+                    bucket.objects.all().delete()
+                    bucket.delete()
+                except botocore.exceptions.ClientError as e:
+                    if e.response['Error']['Code'] != 'NoSuchBucket':
+                        print("%s: %s" % (e.response['Error']['Code'], e.response['Error']['Message']))
+                        raise StackException(AimErrorCode.Unknown)
+            else:
+                print("Retaining S3 Bucket: %s" % (bucket_name))
 
-        if bucket_context == None:
+    def empty_bucket(self):
+        if self.bucket_context == None:
             print("ctl_s3: empty_bucket: ERROR: Unable to locate stack group for group: " + group_id)
             raise StackException(AimErrorCode.Unknown)
 
 
         s3_client = self.account_ctx.get_aws_client('s3')
-        bucket_name = self.get_bucket_name(bucket_ref)
+        bucket_name = self.get_bucket_name()
         try:
             response = s3_client.list_objects_v2(Bucket=bucket_name)
         except ClientError as e:
@@ -126,39 +177,43 @@ class S3Controller(Controller):
     def init(self, init_config):
         pass
 
-    def init_context(self, account_ctx, context_id, region, group_name):
-        if context_id not in self.contexts.keys():
-            self.contexts[context_id] = S3Context(self.aim_ctx, account_ctx, self, context_id, region, group_name)
+    def init_context(self, account_ctx, region, resource_ref, stack_group):
+        if resource_ref not in self.contexts.keys():
+            self.contexts[resource_ref] = S3Context(self.aim_ctx, account_ctx, region, self, stack_group, resource_ref)
 
-    def add_bucket(self, context_id, *args, **kwargs):
-        return self.contexts[context_id].add_bucket(*args, **kwargs)
+    def add_bucket(self, resource_ref, *args, **kwargs):
+        return self.contexts[resource_ref].add_bucket(*args, **kwargs)
 
-    def get_bucket_arn(self, context_id, *args, **kwargs):
-        return self.contexts[context_id].get_bucket_arn(*args, **kwargs)
+    def add_bucket_policy(self, resource_ref, *args, **kwargs):
+        return self.contexts[resource_ref].add_bucket_policy(*args, **kwargs)
 
-    def get_bucket_name(self, context_id, *args, **kwargs):
-        return self.contexts[context_id].get_bucket_name(*args, **kwargs)
+    def get_bucket_arn(self, resource_ref, *args, **kwargs):
+        return self.contexts[resource_ref].get_bucket_arn(*args, **kwargs)
 
-    def empty_bucket(self, context_id, *args, **kwargs):
-        return self.contexts[context_id].empty_bucket(*args, **kwargs)
+    def get_bucket_name(self, resource_ref, *args, **kwargs):
+        return self.contexts[resource_ref].get_bucket_name(*args, **kwargs)
 
-    def get_region(self, context_id, *args, **kwargs):
-        return self.contexts[context_id].empty_bucket(*args, **kwargs)
+    def empty_bucket(self, resource_ref, *args, **kwargs):
+        return self.contexts[resource_ref].empty_bucket(*args, **kwargs)
 
-    def validate(self, context_id):
-        if context_id in self.contexts:
-            return self.contexts[context_id].validate()
+    def get_region(self, resource_ref, *args, **kwargs):
+        return self.contexts[resource_ref].empty_bucket(*args, **kwargs)
 
-    def provision(self, context_id):
-        if context_id in self.contexts:
-            return self.contexts[context_id].provision()
+    def validate(self):
 
-    def delete(self, context_id):
-        if context_id in self.contexts:
-            return self.contexts[context_id].delete()
+        if resource_ref in self.contexts:
+            return self.contexts[resource_ref].validate()
 
-    def get_stack_from_ref(self, context_id, *args, **kwargs):
-        return self.contexts[context_id].get_stack_from_ref(*args, **kwargs)
+    def provision(self, resource_ref):
+        if resource_ref in self.contexts:
+            return self.contexts[resource_ref].provision()
 
-    def get_value_from_ref(self, context_id, *args, **kwargs):
-        return self.contexts[context_id].get_value_from_ref(*args, **kwargs)
+    def delete(self, resource_ref):
+        if resource_ref in self.contexts:
+            return self.contexts[resource_ref].delete()
+
+    def get_stack_from_ref(self, resource_ref, *args, **kwargs):
+        return self.contexts[resource_ref].get_stack_from_ref(*args, **kwargs)
+
+    def get_value_from_ref(self, resource_ref, *args, **kwargs):
+        return self.contexts[resource_ref].get_value_from_ref(*args, **kwargs)

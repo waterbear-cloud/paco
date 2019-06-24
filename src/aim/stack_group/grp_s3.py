@@ -13,7 +13,7 @@ class S3StackGroup(StackGroup):
                  group_name,
                  buckets,
                  controller,
-                 s3_context_id,
+                 resource_ref,
                  stack_hooks=None):
         print("S3 Group Name: " + group_name)
         aws_name = group_name
@@ -25,7 +25,7 @@ class S3StackGroup(StackGroup):
 
         # Initialize config with a deepcopy of the project defaults
         self.stack_list = []
-        self.s3_context_id = s3_context_id
+        self.resource_ref = resource_ref
         self.stack_hooks = stack_hooks
         self.buckets = buckets
         self.region = region
@@ -33,9 +33,9 @@ class S3StackGroup(StackGroup):
         s3_template = aim.cftemplates.S3(self.aim_ctx,
                                          self.account_ctx,
                                          self.buckets,
-                                         self.s3_context_id,
+                                         self.resource_ref,
                                          None)
-        s3_template.set_template_file_id(self.aim_ctx.md5sum(str_data=s3_context_id))
+        s3_template.set_template_file_id(self.aim_ctx.md5sum(str_data=resource_ref))
 
         # S3 Delete on Stack Delete hook
         if self.stack_hooks == None:
@@ -62,7 +62,7 @@ class S3StackGroup(StackGroup):
             s3_config = bucket_context['config']
             s3_resource = self.account_ctx.get_aws_resource('s3', self.region)
             deletion_policy = s3_config.deletion_policy
-            bucket_name = self.controller.get_bucket_name(self.s3_context_id, bucket_context['ref'])
+            bucket_name = self.controller.get_bucket_name(bucket_context['ref'])
             if deletion_policy == "delete":
                 print("Deleting S3 Bucket: %s" % (bucket_name))
                 bucket = s3_resource.Bucket(bucket_name)
