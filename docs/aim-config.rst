@@ -37,7 +37,7 @@ files each with a different format. This directories are:
   * ``Services/``: These contain global or shared resources, such as
     S3 Buckets, IAM Users, EC2 Keypairs.
 
-In addition at the top level is a ``project.yaml`` file. Currently this file just
+Also at the top level is a ``project.yaml`` file. Currently this file just
 contains ``name:`` and ``title:`` attributes.
 
 Most of the YAML files are hierarchical dictionaries. Depending on where
@@ -139,10 +139,15 @@ You can quote scalar values in YAML with single quotes or double quotes:
 Accounts
 ========
 
-AWS account information is kept in the ``Accounts`` directory.
+AWS account information is kept in the ``Accounts/`` directory.
 Each file in this directory will define one AWS account, the filename
-will be the name of the account, with a .yml or .yaml extension.
+will be the ``name`` of the account, with a .yml or .yaml extension.
 
+
+Account
+--------
+
+.. _Account:
 
 .. list-table::
     :widths: 15 8 6 12 30
@@ -214,7 +219,7 @@ node in the hierarchy a different config type is required.
 
 At the top level are three config types: network, applications and environments.
 
-These are simply YAML keys:
+These are simply YAML keys that must be named ``network:``, ``applications:`` and ``environments``:
 
 .. code-block:: yaml
 
@@ -229,16 +234,27 @@ These are simply YAML keys:
     environments:
         # environments YAML here ...
 
-The network and applications types are intended to contain a full set of default configuration. This configuration is
-used as a template in the environments types to create actual provisioned AWS environments. The environments will not
-only declare which applications are deployed where, but can override any configuration in the default templates.
+The network and applications configuration is intended to describe a complete default configuration - this configuration
+does not get direclty provisioned to the cloud though - think of it as templated configuration. Environments are where
+cloud resources are declared to be provisioned. Environments stamp the default network configuration and declare it should
+be provisioned into specific account. Applications are then named in Environments, to indicate that the default application
+configuration should be copied into that environment's network.
+
+In environments, any of the default configuration can be overridden. This could be used for running a smaller instance size
+in the dev environment than the production environment, applying detailed monitoring metrics to a production environment,
+or specifying a different git branch name for a CI/CD for each environment.
 
 Network
--------
+=======
 
 The network config type defines a complete logical network: VPCs, Subnets, Route Tables, Network Gateways. The applications
 defined later in this file will be deployed into networks that are built from this network template.
 
+
+Network
+--------
+
+.. _Network:
 
 .. list-table::
     :widths: 15 8 6 12 30
@@ -270,7 +286,7 @@ defined later in this file will be deployed into networks that are built from th
       - 
       - Title
     * - vpc
-      - Object of type IVPC
+      - Object of type VPC_
       - .. fa:: times
       - None
       - VPC
@@ -281,6 +297,11 @@ VPC
 
 Every network has a ``vpc`` attribute with a VPC config type:
 
+
+VPC
+----
+
+.. _VPC:
 
 .. list-table::
     :widths: 15 8 6 12 30
@@ -317,7 +338,7 @@ Every network has a ``vpc`` attribute with a VPC config type:
       - {}
       - NAT Gateway
     * - private_hosted_zone
-      - Object of type IPrivateHostedZone
+      - Object of type PrivateHostedZone_
       - .. fa:: check
       - None
       - Private hosted zone
@@ -345,6 +366,11 @@ There can be NAT Gateways and VPN Gateways.
 
 The ``natgateway`` has this config type:
 
+
+NATGateway
+-----------
+
+.. _NATGateway:
 
 .. list-table::
     :widths: 15 8 6 12 30
@@ -380,6 +406,11 @@ The ``natgateway`` has this config type:
 The ``vpngateway`` has this config type:
 
 
+VPNGateway
+-----------
+
+.. _VPNGateway:
+
 .. list-table::
     :widths: 15 8 6 12 30
     :header-rows: 1
@@ -396,11 +427,90 @@ The ``vpngateway`` has this config type:
       - Enabled: Could be deployed to AWS
 
 
+
+PrivateHostedZone
+------------------
+
+.. _PrivateHostedZone:
+
+.. list-table::
+    :widths: 15 8 6 12 30
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Required?
+      - Default
+      - Purpose
+    * - enabled
+      - Boolean
+      - .. fa:: check
+      - False
+      - Enabled: Could be deployed to AWS
+    * - name
+      - String
+      - .. fa:: check
+      - None
+      - Hosted zone name
+
+
 Applications
 ============
 
 Applications define a collection of AWS resources that work together to support a workload.
 
+Applications specify the sets of AWS resources needed for an application workload.
+Applications contain a mandatory ``groups:`` field which is container of ResrouceGroup objects.
+Every AWS resource for an application must be contained in a ResrouceGroup with a unique name, and every
+ResourceGroup has a Resources container where each Resource is given a unique name.
+
+In the example below, the ``groups:`` contain keys named ``cicd``, ``website`` and ``bastion``.
+In turn, each ResourceGroup contains ``resources:`` with names such as ``cpbd``, ``cert`` and ``alb``.
+
+.. code-block:: yaml
+
+    applications:
+        my-aim-app:
+            enabled: true
+            groups:
+                cicd:
+                    type: Deployment
+                    resources:
+                        cpbd:
+                            type: CodePipeBuildDeploy # CodePipeline and CodeBuild CI/CD
+                            # configuration goes here ...
+                website:
+                    type: Application
+                    resources:
+                        cert:
+                            type: ACM
+                            # configuration goes here ...
+                        alb:
+                            type: LBApplication # Application Load Balancer (ALB)
+                            # configuration goes here ...
+                        webapp:
+                            type: ASG # AutoScalingGroup (ASG) of web server instances
+                            # configuration goes here ...
+                bastion:
+                    type: Bastion
+                    resources:
+                        instance:
+                            type: ASG # AutoScalingGroup (ASG) with only 1 instance (self-healing ASG)
+                            # configuration goes here ...
+
+
+Key naming warning: As the key names you choose will be used in the names of resources provisioned
+in AWS, they should be as short and simple as possible. If you want to later rename things,
+you need to first delete all of your AWS resources under their old name, then recreate them
+in a new name. As renaming is not always easy, try to give everything short, reasonable names.
+There are ``title:`` fields where you can use human-readable names that can be changed without
+breaking anything.
+
+
+ApplicationEngines
+-------------------
+
+.. _ApplicationEngines:
 
 .. list-table::
     :widths: 15 8 6 12 30
@@ -416,6 +526,168 @@ Applications define a collection of AWS resources that work together to support 
       - .. fa:: times
       - 
       - Title
+
+
+
+Application
+------------
+
+.. _Application:
+
+.. list-table::
+    :widths: 15 8 6 12 30
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Required?
+      - Default
+      - Purpose
+    * - enabled
+      - Boolean
+      - .. fa:: check
+      - False
+      - Enabled: Could be deployed to AWS
+    * - groups
+      - Object of type ResourceGroups_
+      - .. fa:: check
+      - None
+      - 
+    * - managed_updates
+      - Boolean
+      - .. fa:: check
+      - False
+      - Managed Updates
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - Title
+
+
+
+ResourceGroups
+---------------
+
+.. _ResourceGroups:
+
+.. list-table::
+    :widths: 15 8 6 12 30
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Required?
+      - Default
+      - Purpose
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - Title
+
+
+
+ResourceGroup
+--------------
+
+.. _ResourceGroup:
+
+.. list-table::
+    :widths: 15 8 6 12 30
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Required?
+      - Default
+      - Purpose
+    * - order
+      - Int
+      - .. fa:: check
+      - None
+      - Group Dependency: The order in which the group will be deployed.
+    * - resources
+      - Object of type Resources_
+      - .. fa:: check
+      - None
+      - 
+    * - title
+      - String
+      - .. fa:: check
+      - 
+      - Title
+    * - type
+      - String
+      - .. fa:: check
+      - None
+      - Type
+
+
+
+Resources
+----------
+
+.. _Resources:
+
+.. list-table::
+    :widths: 15 8 6 12 30
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Required?
+      - Default
+      - Purpose
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - Title
+
+
+
+Resource
+---------
+
+.. _Resource:
+
+.. list-table::
+    :widths: 15 8 6 12 30
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Required?
+      - Default
+      - Purpose
+    * - enabled
+      - Boolean
+      - .. fa:: check
+      - False
+      - Enabled: Could be deployed to AWS
+    * - order
+      - Int
+      - .. fa:: check
+      - None
+      - Resource Dependency: The order in which the resource will be deployed.
+    * - resource_name
+      - String
+      - .. fa:: check
+      - None
+      - AWS Resource Name
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - Title
+    * - type
+      - String
+      - .. fa:: check
+      - None
+      - Type of Resources
+
+
 
 
 
@@ -443,67 +715,9 @@ groups of actual environments.
             title: Production
 
 
-.. list-table::
-    :widths: 15 8 6 12 30
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Required?
-      - Default
-      - Purpose
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - Title
-
-
 Environments contain EnvironmentRegions. The name of an EnvironmentRegion must match
 a valid AWS region name, or the special ``default`` name, which is used to override
 network and application config for a whole environment, regardless of region.
-
-
-.. list-table::
-    :widths: 15 8 6 12 30
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Required?
-      - Default
-      - Purpose
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - Title
-
-
-EnvironmentRegion
------------------
-
-
-.. list-table::
-    :widths: 15 8 6 12 30
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Required?
-      - Default
-      - Purpose
-    * - enabled
-      - Boolean
-      - .. fa:: check
-      - False
-      - Enabled: Could be deployed to AWS
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - Title
-
 
 The following example enables the applications named ``marketing-app`` and
 ``sales-app`` into all dev environments by default. In ``us-west-2`` this is
@@ -527,3 +741,75 @@ overridden and only the ``sales-app`` would be deployed there.
                         enabled: false
             ca-central-1:
                 enabled: true
+
+
+NetworkEnvironments
+--------------------
+
+.. _NetworkEnvironments:
+
+.. list-table::
+    :widths: 15 8 6 12 30
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Required?
+      - Default
+      - Purpose
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - Title
+
+
+
+Environment
+------------
+
+.. _Environment:
+
+.. list-table::
+    :widths: 15 8 6 12 30
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Required?
+      - Default
+      - Purpose
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - Title
+
+
+
+EnvironmentRegion
+------------------
+
+.. _EnvironmentRegion:
+
+.. list-table::
+    :widths: 15 8 6 12 30
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Required?
+      - Default
+      - Purpose
+    * - enabled
+      - Boolean
+      - .. fa:: check
+      - False
+      - Enabled: Could be deployed to AWS
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - Title
+
+
