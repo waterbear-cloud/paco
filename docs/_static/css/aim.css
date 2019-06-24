@@ -12,3 +12,14 @@
 .rst-content table.field-list td {
     vertical-align: top !important;
 }
+
+ /* Icons */
+ .fa-check {
+     color: green;
+     font-size: 1.5em;
+ }
+
+ .fa-times {
+    color: red;
+    font-size: 1.5em;
+}
