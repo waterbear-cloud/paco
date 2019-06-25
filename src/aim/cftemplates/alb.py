@@ -176,6 +176,7 @@ Outputs:
         HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID"""
 
         record_set_table = {
+          'idx': 0,
           'hosted_zone_id': None,
           'domain_name': None
         }
@@ -187,16 +188,16 @@ Outputs:
 """
 
         ssl_cert_param_fmt = """
-  SSLCertificateIdL{0[listener_idx]:d}C{0[cert_idx]:d}:
+  SSLCertificateIdL{0[listener_name]:s}C{0[cert_idx]:d}:
     Description: The Arn of the SSL Certificate to associate with this Load Balancer
     Type: String
 """
 
         ssl_certificate_list_fmt = """
-        - CertificateArn: !Ref SSLCertificateIdL{0[listener_idx]:d}C{0[cert_idx]:d}"""
+        - CertificateArn: !Ref SSLCertificateIdL{0[listener_name]:s}C{0[cert_idx]:d}"""
 
         ssl_certificate_table = {
-            'listener_idx': 0,
+            'listener_name': 0,
             'cert_idx': 0
         }
 
@@ -219,7 +220,7 @@ Outputs:
         }
 
         listener_fmt = """
-  Listener{0[idx]:d}:
+  Listener{0[name]:s}:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Condition: ALBIsEnabled
     Properties:
@@ -233,16 +234,16 @@ Outputs:
 """
 
         listener_certificate_fmt = """
-  Listener{0[idx]:d}Certificate:
+  Listener{0[name]:s}Certificate:
     Type: AWS::ElasticLoadBalancingV2::ListenerCertificate
     Condition: ALBIsEnabled
     Properties:
       Certificates: {0[ssl_listener_cert_list]:s}
-      ListenerArn : !Ref Listener{0[idx]:d}
+      ListenerArn : !Ref Listener{0[name]:s}
 """
 
         listener_table = {
-            'idx': None,
+            'name': None,
             'port': None,
             'protocol': None,
             'ssl_certificates': None,
@@ -252,7 +253,7 @@ Outputs:
         }
 
         listener_forward_rule_fmt = """
-  Listener{0[listener_idx]:d}Rule{0[rule_idx]:d}:
+  Listener{0[listener_name]:s}Rule{0[rule_name]:s}:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
     Condition: ALBIsEnabled
     Properties:
@@ -262,18 +263,43 @@ Outputs:
       Conditions:
         - Field: host-header
           Values:
-            - '{0[host_value]:s}'
-      ListenerArn: !Ref Listener{0[listener_idx]:d}
+            - '{0[host]:s}'
+      ListenerArn: !Ref Listener{0[listener_name]:s}
       Priority: {0[priority]:d}
 """
         listener_forward_rule_table = {
-            'listener_idx': 0,
-            'rule_idx': 0,
+            'listener_name': 0,
+            'rule_name': None,
             'target_group_id': None,
-            'host_value': None,
+            'host': None,
             'priority': 0
         }
 
+
+        listener_redirect_rule_fmt = """
+  Listener{0[listener_name]:s}Rule{0[rule_name]:s}:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Condition: ALBIsEnabled
+    Properties:
+      Actions:
+        - Type: redirect
+          RedirectConfig:
+            Host: {0[redirect_host]:s}
+            StatusCode: HTTP_301
+      Conditions:
+        - Field: host-header
+          Values:
+            - '{0[host]:s}'
+      ListenerArn: !Ref Listener{0[listener_name]:s}
+      Priority: {0[priority]:d}
+"""
+        listener_redirect_rule_table = {
+            'listener_name': 0,
+            'rule_name': None,
+            'redirect_host': None,
+            'host': None,
+            'priority': 0
+        }
         target_group_fmt = """
   TargetGroup{0[id]:s}:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -323,9 +349,10 @@ Outputs:
         #print("------------------")
         listener_yaml = ""
         ssl_cert_param_yaml = ""
-        listener_idx = 0
-        for listener in alb_config.listeners:
-            listener_table['idx'] = listener_idx
+        for listener_id in alb_config.listeners.keys():
+            listener = alb_config.listeners[listener_id]
+            listener_name = self.normalize_resource_name(listener_id)
+            listener_table['name'] = listener_name
             listener_table['port'] = listener.port
             listener_table['protocol'] = listener.protocol
             if listener.redirect != None:
@@ -345,28 +372,40 @@ Outputs:
             if len(listener.ssl_certificates) > 0:
                 listener_table['ssl_certificates'] = ssl_certificate_fmt
                 ssl_certificate_table['cert_idx'] = 0
-                ssl_certificate_table['listener_idx'] = listener_idx
+                ssl_certificate_table['listener_name'] = listener_name
                 listener_table['ssl_certificates'] += ssl_certificate_list_fmt.format(ssl_certificate_table)
                 for ssl_cert_idx in range(0, len(listener.ssl_certificates)):
                     ssl_certificate_table['cert_idx'] = ssl_cert_idx
                     listener_table['ssl_listener_cert_list'] += ssl_certificate_list_fmt.format(ssl_certificate_table)
                     #print(listener_yaml)
                     ssl_cert_param_yaml += ssl_cert_param_fmt.format(ssl_certificate_table)
-                    self.set_parameter('SSLCertificateIdL%dC%d' % (listener_idx, ssl_cert_idx),listener.ssl_certificates[ssl_cert_idx])
+                    self.set_parameter('SSLCertificateIdL%sC%d' % (listener_name, ssl_cert_idx),listener.ssl_certificates[ssl_cert_idx])
                 listener_table['listener_certificate'] = listener_certificate_fmt.format(listener_table)
             # Listener
             listener_yaml += listener_fmt.format(listener_table)
 
             # Listener Rules
-            listener_forward_rule_table['rule_idx'] = 0
-            for forward in listener.forward_hosts:
-              listener_forward_rule_table['listener_idx'] = listener_idx
-              listener_forward_rule_table['target_group_id'] = forward.target_group
-              listener_forward_rule_table['host_value'] = forward.host
-              listener_forward_rule_table['priority'] = forward.priority
-              listener_yaml += listener_forward_rule_fmt.format(listener_forward_rule_table)
-              listener_forward_rule_table['rule_idx'] += 1
-            listener_idx += 1
+            if listener.rules != None:
+                for rule_id in listener.rules.keys():
+                    rule = listener.rules[rule_id]
+                    if rule.enabled == False:
+                      continue
+                    rule_name = self.normalize_resource_name(rule_id)
+                    if rule.rule_type == "forward":
+                        listener_forward_rule_table['listener_name'] = listener_name
+                        listener_forward_rule_table['target_group_id'] = rule.target_group
+                        listener_forward_rule_table['host'] = rule.host
+                        listener_forward_rule_table['priority'] = rule.priority
+                        listener_forward_rule_table['rule_name'] = rule_name
+                        listener_yaml += listener_forward_rule_fmt.format(listener_forward_rule_table)
+                    elif rule.rule_type == "redirect":
+                        listener_redirect_rule_table['listener_name'] = listener_name
+                        listener_redirect_rule_table['host'] = rule.host
+                        listener_redirect_rule_table['redirect_host'] = rule.redirect_host
+                        listener_redirect_rule_table['priority'] = rule.priority
+                        listener_redirect_rule_table['rule_name'] = rule_name
+                        listener_yaml += listener_redirect_rule_fmt.format(listener_redirect_rule_table)
+
         #print("------------------")
         #print(listener_yaml)
         #print("------------------")

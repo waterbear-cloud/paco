@@ -97,7 +97,7 @@ class ASG(CFTemplate):
             self.set_parameter('UserDataScript', user_data_64.decode('ascii'))
 
         enable_metrics_collection = False
-        if asg_config.monitoring != None and asg_config.monitoring.enabled == True:
+        if asg_config.monitoring != None and asg_config.monitoring.enabled == True and len(asg_config.monitoring.asg_metrics) > 0:
             enable_metrics_collection = True
             self.set_parameter('MetricsCollectionList', asg_config.monitoring.asg_metrics)
         self.set_parameter('EnableMetricsCollection', enable_metrics_collection)
