@@ -1,3 +1,7 @@
+import sphinx_fontawesome
+import sys, os, datetime
+
+
 html_theme = "sphinx_rtd_theme"
 html_theme_options = {
     'canonical_url': '',
@@ -16,18 +20,19 @@ html_theme_options = {
     'titles_only': False
 }
 html_logo = './images/waterbear-cloud-url-head-1.png'
+html_static_path = ['_static',]
+
 
 def setup(app):
-    app.add_stylesheet('css/custom.css')
+    app.add_stylesheet('css/aim.css')
 
-import sys, os, datetime
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
-    'repoze.sphinx.autointerface',
+    'sphinx_fontawesome'
     ]
 
 # Looks for aim.model's objects
@@ -59,7 +64,6 @@ release = version
 
 today_fmt = '%B %d, %Y'
 exclude_patterns = ['_themes/README.rst',]
-pygments_style = 'sphinx'
 
 
 # Options for HTML output
