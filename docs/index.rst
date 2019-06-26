@@ -22,7 +22,13 @@ CloudFormation stacks and provisions and manages those stacks in your AWS accoun
 
 .. toctree::
    :maxdepth: 3
-   :caption: Documentation
+   :caption: AIM CLI
+
+   cli
+
+.. toctree::
+   :maxdepth: 3
+   :caption: AIM Configuration
 
    aim-config
 
