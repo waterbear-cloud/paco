@@ -7,6 +7,7 @@ from aim.commands.cli import pass_context
 @pass_context
 def cli(ctx):
     """Describe an AIM project"""
+    project = aim.models.load_project_from_yaml(ctx, ctx.home)
     try:
         project = aim.models.load_project_from_yaml(ctx, ctx.home)
     except AttributeError:

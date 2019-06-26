@@ -1,0 +1,17 @@
+{
+    "project_title": "My AIM Project",
+    "project_name": "{{cookiecutter.project_title.lower().replace('-', '_').replace(' ', '_')}}",
+    "starting_template": [
+        "empty",
+        "simple-web-app"
+    ],
+    "network_environment_title": "My AIM NetworkEnvironment",
+    "network_environment_name": "{{cookiecutter.network_environment_title.lower().replace('-', '_').replace(' ', '_')}}",
+    "application_title": "My AIM Application",
+    "application_name": "{{cookiecutter.application_title.lower().replace('-', '_').replace(' ', '_')}}",
+    "aws_access_key_id": "Administrator AWS Access Key ID",
+    "aws_secret_access_key": "Administrator AWS Secret Access Key",
+    "aws_default_region": "Administrator Default AWS Region",
+    "master_account_id": "Master AWS Account Id",
+    "master_admin_iam_username": "Master Admin IAM Username"
+}

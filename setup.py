@@ -31,7 +31,14 @@ setup(
         "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
     ],
     keywords=['AWS','Waterbear','Cloud','Infrastructure-as-Code'],
-    install_requires=['Setuptools', 'click', 'boto3', 'tldextract','aim.models'],
+    install_requires=[
+        'aim.models',
+        'boto3',
+        'click',
+        'cookiecutter',
+        'Setuptools',
+        'tldextract',
+    ],
     packages=[
         'aim.adapters',
         'aim.api',
