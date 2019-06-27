@@ -1,5 +1,6 @@
 import aim.models
 import click
+import sys
 from aim.commands.cli import pass_context
 from aim.core.exception import StackException
 
@@ -12,6 +13,9 @@ from aim.core.exception import StackException
 @pass_context
 def cli(aim_ctx, controller_type, component_name=None, config_name=None, config_region=None):
     """Provision AWS Resources"""
+    if not aim_ctx.home:
+        print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')
+        sys.exit()
     #project = aim.models.load_project_from_yaml(aim_ctx.home)
     #aim_obj = project.find_object_from_cli(
     #    controller_type,

@@ -7,12 +7,10 @@ from aim.commands.cli import pass_context
 @pass_context
 def cli(ctx):
     """Describe an AIM project"""
-    project = aim.models.load_project_from_yaml(ctx, ctx.home)
-    try:
-        project = aim.models.load_project_from_yaml(ctx, ctx.home)
-    except AttributeError:
+    if not ctx.home:
         print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')
         sys.exit()
+    project = aim.models.load_project_from_yaml(ctx, ctx.home)
 
     print('Project: {} - {}'.format(project.name, project.title))
     print('Location: {}'.format(ctx.home))

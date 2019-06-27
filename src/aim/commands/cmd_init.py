@@ -11,4 +11,7 @@ from cookiecutter.main import cookiecutter
 def cli(aim_ctx, config_type='project'):
     """Initializes an AIM Project"""
     if config_type == 'project':
+        print("\nAIM Project initialization")
+        print("--------------------------\n")
+        print("About to create a new AIM Project directory at {}\n".format(os.getcwd()))
         cookiecutter(os.path.dirname(__file__) + os.sep + 'aim-cookiecutter' + os.sep)
