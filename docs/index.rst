@@ -18,7 +18,7 @@ CloudFormation stacks and provisions and manages those stacks in your AWS accoun
    :caption: Introduction
 
    install
-   quickstart
+   quickstart101
 
 .. toctree::
    :maxdepth: 3
