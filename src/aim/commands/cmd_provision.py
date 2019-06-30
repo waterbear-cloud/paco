@@ -1,27 +1,19 @@
 import aim.models
 import click
 import sys
-from aim.commands.cli import pass_context
+from aim.commands.helpers import controller_args, aim_home_option, init_aim_home_option, pass_aim_context
 from aim.core.exception import StackException
 
-
-@click.command('provision', short_help='Provision an AIM project or a specific environment.')
-@click.argument('controller_type', required=True, type=click.STRING)
-@click.argument('component_name', required=False, type=click.STRING)
-@click.argument('config_name', required=False, type=click.STRING)
-@click.argument('config_region', required=False, type=click.STRING)
-@pass_context
-def cli(aim_ctx, controller_type, component_name=None, config_name=None, config_region=None):
+@click.command(name='provision', short_help='Provision an AIM project or a specific environment.')
+@controller_args
+@aim_home_option
+@pass_aim_context
+def provision_command(aim_ctx, controller_type, component_name=None, config_name=None, config_region=None, home='.'):
     """Provision AWS Resources"""
+    init_aim_home_option(aim_ctx, home)
     if not aim_ctx.home:
         print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')
         sys.exit()
-    #project = aim.models.load_project_from_yaml(aim_ctx.home)
-    #aim_obj = project.find_object_from_cli(
-    #    controller_type,
-    #    component_name,
-    #    config_name
-    #)
     aim_ctx.log("Provisioning Configuration: %s.%s", controller_type, component_name )
     aim_ctx.init_project(aim_ctx.home)
     config_arg = None
