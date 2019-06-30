@@ -1,4 +1,8 @@
 .wy-nav-content {
+    background: #ffffff !important;
+}
+
+.wy-nav-content {
     max-width: 1000px !important;
 }
 

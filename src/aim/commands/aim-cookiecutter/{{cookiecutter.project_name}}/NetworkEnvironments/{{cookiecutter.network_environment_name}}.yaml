@@ -14,7 +14,7 @@ network:
         availability_zone: 1
         segment: public
         default_route_segments:
-          - webserver
+          - web
     vpn_gateway:
       {{cookiecutter.application_name}}:
         enabled: false
@@ -39,7 +39,7 @@ network:
               name: HTTP
               protocol: tcp
               to_port: 80
-        webserver:
+        web:
           egress:
             - cidr_ip: 0.0.0.0/0
               name: ANY
@@ -53,14 +53,13 @@ network:
     segments:
       public:
         enabled: true
-      webapp:
+      web:
         enabled: true
 
 {% endif %}
 
 applications:
 {% if cookiecutter.starting_template == 'simple-web-app' %}
-
   {{cookiecutter.application_name}}:
     title: {{cookiecutter.application_title}}
     enabled: true
@@ -93,7 +92,7 @@ applications:
             security_groups:
               - netenv.ref {{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.alb.id
             segment: public
-          webapp:
+          web:
             type: ASG
             order: 2
             enabled: true
@@ -104,8 +103,8 @@ applications:
             health_check_type: ELB
             instance_iam_role:
               enabled: true
-            instance_ami: ami-01bbe152bf19d0289
-            instance_key_pair: to-do
+            instance_ami: 'ami-0cc293023f983ed53' # latest Amazon Linux 2, June 2019
+            instance_key_pair: EC2KEYPAIRNAME-XXX-TODO
             instance_monitoring: false
             instance_type: t2.nano
             max_instances: 2
@@ -114,8 +113,8 @@ applications:
             target_groups:
               - netenv.ref {{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.alb.target_groups.{{cookiecutter.application_name}}.arn
             security_groups:
-              - netenv.ref {{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.webapp.id
-            segment: webapp
+              - netenv.ref {{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.web.id
+            segment: web
             termination_policies:
               - Default
             update_policy_max_batch_size: 1
@@ -142,7 +141,7 @@ environments:
         {{cookiecutter.application_name}}:
           enabled: true
       network:
-        aws_account: config.ref accounts.dev
+        aws_account: config.ref accounts.master
         availability_zones: 2
         name: example
         vpc:
@@ -152,7 +151,7 @@ environments:
               az1_cidr: 10.20.1.0/24
               az2_cidr: 10.20.2.0/24
               internet_access: true
-            webapp:
+            web:
               az1_cidr: 10.20.3.0/24
               az2_cidr: 10.20.4.0/24
           nat_gateway:
@@ -161,14 +160,21 @@ environments:
     {{cookiecutter.aws_default_region}}:
       enabled: true
 
-  demo:
-    title: "Demo Environment"
+  prod:
+    title: "Production Environment"
     default:
       applications:
         {{cookiecutter.application_name}}:
           enabled: true
+          groups:
+            site:
+              web:
+                instance_type: t2.medium
+                max_instances: 4
+                min_instances: 2
+                desired_capacity: 2
       network:
-        aws_account: config.ref accounts.dev
+        aws_account: config.ref accounts.master
         availability_zones: 2
         name: example
         vpc:
@@ -178,14 +184,14 @@ environments:
               az1_cidr: 10.20.1.0/24
               az2_cidr: 10.20.2.0/24
               internet_access: true
-            webapp:
+            web:
               az1_cidr: 10.20.3.0/24
               az2_cidr: 10.20.4.0/24
           nat_gateway:
             {{cookiecutter.application_name}}:
               enabled: false
     {{cookiecutter.aws_default_region}}:
-      enabled: true
+      enabled: false
 
 {% endif -%}
 

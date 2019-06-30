@@ -1,0 +1,8 @@
+name: Master
+title: Master AWS Account
+account_type: AWS
+account_id: '{{cookiecutter.master_account_id}}'
+aws_profile: ''
+admin_delegate_role_name: 'AIM-Organization-Account-Delegate-Role'
+mfa_account_id: '{{cookiecutter.master_account_id}}'
+mfa_iam_user_name: '{{cookiecutter.master_admin_iam_username}}'
