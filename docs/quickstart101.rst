@@ -62,12 +62,13 @@ on the `AIM Configuration`_ page.
 
 .. Attention:: Names are used extensively in AIM projects. Every object has a name.
     All Accounts, NetworkEnvironments, Applications, Environments and more will be named.
-    These AIM names are concatened together to create unique AWS Resource Names.
+    These **names should be as short as possible** as they are concatened together
+    to create unique AWS Resource Names.
 
-    Some AWS Resource Names have character name limits, so you should
-    try to always keep your names as short as possible. This will also make it
+    As some AWS Resource Names have character length limits, in addition to
+    keeping the name short (no more than 10 characters, but 3 to 5 is ideal),
+    you can only use alphanumeric, underscore and hypeh characters. Short names also make it
     easier to see what workload each resource is supporting in the AWS Console.
-    About no more than 10 characters is a rule of thumb.
 
     If your names are too long for a resource, your CloudFormation stack will fail to create.
     If you  have already create resources, you can't rename them without
@@ -99,27 +100,27 @@ You will be asked questions about your project. First, choose ``2`` to use the
 ``simple-web-app`` template. This will give you basic network, with a simple
 application that is deployed into two environments.
 
-You will be asked for a ``project_title`` and ``project_name``. The title is a
-human-readable string, so you can use space and other characters. The name will
-be used not only as the directory name of your project, but will also be a key
-which is used in the name of AWS resources. The name should be short, only
-contain alphanumeric, underscore or hyphen characters.
+You will be asked for a ``project_name`` and ``project_title``. The
+``project_name`` must follow the naming restrictions
+(short with only alphanumeric, underscore and hyphen characters).
+The title is a human-readable string, so you can use spaces and other characters,
+and you don't have to worry about the length.
 
 .. code-block:: text
 
-    project_title [My AIM Project]: First Project
-    project_name [first_project]: first_project
+    project_name [myproj]: myproj
+    project_title [My AIM Project]: My AIM Project
 
-Next you will be asked for network and application titles and names. In this simple
+Next you will be asked for network and application names and titles. In this simple
 walkthrough, you will create one network and one application. In more complex
 AIM uses, you can create a single network and deploy mulitple applications into it.
 
 .. code-block:: text
 
-    network_environment_title [My AIM NetworkEnvironment]: Basic Network
-    network_environment_name [basic_network]: basic_network
-    application_title [My AIM Application]: Apache Web Server
-    application_name [apache_web_server]: apache_web_server
+    network_environment_name [mynet]: mynet
+    network_environment_title [My AIM NetworkEnvironment]: My AIM NetworkEnvironment
+    application_name [myapp]: myapp
+    application_title [My AIM Application]: My AIM Application
 
 
 You will be asked for a default AWS Region name, if you don't know
@@ -146,12 +147,12 @@ also ensure that your files are in the correct format.
 
 .. code-block:: text
 
-    $ aim --home ./first_project/ describe
-    Project: first_project - First Project
-    Location: /Users/kteague/water/temparoo/first_project
+    $ aim --home ./myproj/ describe
+    Project: myproj - My first AIM project
+    Location: /Users/username/projects/myproj
 
     Accounts
-    - .credentials -
+    - master - Master AWS Account
 
     Network Environments
     - basic_network - Basic Network
@@ -399,7 +400,103 @@ provisioned.
 Provision an environment
 ------------------------
 
-The aim provision command creates all the AWS resources needed for an environments.
+The ``aim provision`` command create or updates the AWS resources needed for environments.
+
+This command needs the path to an AIM Project directory. For this command you can either
+supply this argument with the ``--home`` switch, or set the environment variable ``AIM_HOME``.
+
+The provision command can act on different AIM configuration types, such as NetEnv, S3, Route53 and IAM.
+These types are called controllers and they control how CloudFormation stacks are provisioned.
+The NetEnv controller will provision a complete NetworkEnvironment YAML file, which you can
+run to provision the ``dev`` environment for the ``mynet`` NetworkEnvironment.
+
+Now run ``aim provision --home myproj NetEnv mynet`` and you should provision the ``dev`` environment.
+You should see the following output on the CLI:
+
+.. code-block:: text
+
+    $ aim provision --home myproj NetEnv mynet
+    Provisioning Configuration: NetEnv.mynet
+    MFA Token: master: 123456
+    Network Environment
+    NetEnv: mynet: Init: Starting
+    Environment: dev
+    Environment Init: Starting
+    NetworkStackGroup Init: VPC
+    NetworkStackGroup Init: Segments
+    NetworkStackGroup Init: Security Groups
+    NetworkStackGroup Init: NAT Gateway: myapp
+    NetworkStackGroup Init: Completed
+    ApplicationStackGroup: Init
+    ApplicationStackGroup: Init: LBApplication: alb
+    ApplicationStackGroup: Init: ASG: web
+    ApplicationStackGroup: Init: Completed
+    Environment Init: Complete
+    Environment: prod
+    Environment Init: Starting
+    NetworkStackGroup Init: VPC
+    NetworkStackGroup Init: Segments
+    NetworkStackGroup Init: Security Groups
+    NetworkStackGroup Init: NAT Gateway: myapp
+    NetworkStackGroup Init: Completed
+    ApplicationStackGroup: Init
+    ApplicationStackGroup: Init: LBApplication: alb
+    ApplicationStackGroup: Init: ASG: web
+    ApplicationStackGroup: Init: Completed
+    Environment Init: Complete
+    NetEnv: mynet: Init: Complete
+    master: Create:  NE-mynet-dev-Net-VPC
+            Waiting: NE-mynet-dev-Net-VPC
+            Done:    NE-mynet-dev-Net-VPC
+    master: Create:  NE-mynet-dev-Net-Segments-public
+    master: Create:  NE-mynet-dev-Net-Segments-web
+    master: Create:  NE-mynet-dev-Net-SecurityGroups-myapp
+            Waiting: NE-mynet-dev-Net-Segments-public
+            Done:    NE-mynet-dev-Net-Segments-public
+    master: Create:  NE-mynet-dev-Net-NGW-myapp
+            Waiting: NE-mynet-dev-Net-NGW-myapp
+            Done:    NE-mynet-dev-Net-NGW-myapp
+    master: Create:  NE-mynet-dev-App-myapp-euc1-IAM-Roles
+            Waiting: NE-mynet-dev-App-myapp-euc1-IAM-Roles
+            Done:    NE-mynet-dev-App-myapp-euc1-IAM-Roles
+    master: Create:  NE-mynet-dev-App-myapp-ALB-site-alb
+            Waiting: NE-mynet-dev-App-myapp-ALB-site-alb
+            Done:    NE-mynet-dev-App-myapp-ALB-site-alb
+    master: Create:  NE-mynet-dev-App-myapp-ASG-site-web
+            Waiting: NE-mynet-dev-App-myapp-ASG-site-web
+            Done:    NE-mynet-dev-App-myapp-ASG-site-web
+
+While this is running, you can visit the AWS Console and go to the CloudFormation service and watch
+the stacks being launched. You will see the stack ``NE-mynet-dev-Net-VPC`` created first.
+
+    .. image:: ./images/simple-stack-one.png
+
+Where possible, AIM will launch multiple stacks at once, for example, the web and public subnets stacks
+will both be created at the same time. It will take about 10 minutes for all of the stacks to be created
+to build the ``dev`` environment. When it's done you should see eight stacks,
+
+    .. image:: ./images/simple-stack-two.png
+
+Notice that stack names such as ``NE-mynet-dev-App-myapp-ASG-site-web`` are built by concatenating
+together the names you chose when you created the AIM project. You can use the CloudFormation search
+feature to display just the stacks requried a particular aspect of your environment. For example,
+search for ``dev-App`` to display the stacks that provision the application resources for the dev environment,
+or ``dev-Net`` to display the stacks that provision the network resources for that environment.
+
+    .. image:: ./images/simple-stack-three.png
+
+Now visit the EC2 service in the AWS Console and you should see an instance running:
+
+    .. image:: ./images/simple-ec2-one.png
+
+Then click on **Load Balancers** in the EC2 Services and you should see an application load balancer
+running:
+
+    .. image:: ./images/simple-alb-one.png
+
+Copy the DNS name to the clipboard and paste it into your web browser. Your application should
+return a static web page:
+
 
 
 Clean-up and next steps
