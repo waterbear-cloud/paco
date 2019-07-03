@@ -9,7 +9,7 @@ from aim.core.exception import StackException
 @controller_args
 @aim_home_option
 @pass_aim_context
-def delete_command(aim_ctx, controller_type, component_name=None, config_name=None, config_region=None):
+def delete_command(aim_ctx, controller_type, component_name=None, config_name=None, config_region=None, home='.'):
     """Deletes provisioned AWS Resources"""
     init_aim_home_option(aim_ctx, home)
     if not aim_ctx.home:
