@@ -3,12 +3,14 @@
 Quickstart Lab 101
 ==================
 
-This quickstart will walk you through creating an AIM project. An AIM project is a directory
-of YAML files that semantically describes an Infrastructure as code (IaC) project. It consists of
-data for concepts such as networks, applications and environments.
+This quickstart will walk you through creating and provisioning an AIM project.
+An AIM project is a directory of YAML files that semantically describes an
+Infrastructure as code (IaC) project. It consists of
+data for concepts such as networks, applications and environments. AIM projects
+can be provisioned to AWS using the AIM CLI.
 
-This Quickstart 101 will walk you through creating an AIM project that hosts a simple
-web application. You will copy a starting AIM project template, and provision the resources
+You will learn how to create an AIM project that hosts a simple web application.
+You will copy a starting AIM project template, and provision the resources
 it defines to an AWS account. This will give you simple but working application.
 Later Quickstarts will demonstrate how to add a bastion, monitoring,
 alerting and a CI/CD.
@@ -213,30 +215,25 @@ this file will describe your network and looks like this:
                     alb:
                         egress:
                             - cidr_ip: 0.0.0.0/0
-                            name: ANY
-                            protocol: "-1"
+                              name: ANY
+                              protocol: "-1"
                         ingress:
-                            - cidr_ip: 70.68.173.245/32
-                            from_port: 443
-                            name: HTTPS
-                            protocol: tcp
-                            to_port: 443
-                            - cidr_ip: 70.68.173.245/32
-                            from_port: 80
-                            name: HTTP
-                            protocol: tcp
-                            to_port: 80
+                            - cidr_ip: 0.0.0.0/32
+                              from_port: 80
+                              name: HTTP
+                              protocol: tcp
+                              to_port: 80
                     webserver:
                         egress:
                             - cidr_ip: 0.0.0.0/0
-                            name: ANY
-                            protocol: "-1"
+                              name: ANY
+                              protocol: "-1"
                         ingress:
                             - from_port: 80
-                            name: HTTP
-                            protocol: tcp
-                            source_security_group_id: netenv.ref mynet.network.vpc.security_groups.myapp.alb.id
-                            to_port: 80
+                              name: HTTP
+                              protocol: tcp
+                              source_security_group_id: netenv.ref mynet.network.vpc.security_groups.myapp.alb.id
+                              to_port: 80
             segments:
                 public:
                     enabled: true
@@ -315,12 +312,10 @@ section. There is only one application in this quickstart and it is named ``myap
                     update_policy_min_instances_in_service: 0
                     user_data_script: |
                         #!/bin/bash
-
                         yum update -y
                         yum install httpd -y
-
-                        # Restart apache
-                        apachectl restart
+                        echo "<html><body><h1>Hello world!</h1></body></html>" > /var/www/html/index.html
+                        service httpd start
 
 Finally the environments section will deploy AWS Resources to create networks and applications to
 support each environment. In this quickstart, there will be two environments, one named ``dev``
@@ -356,9 +351,6 @@ provisioned.
                         webserver:
                             az1_cidr: 10.20.3.0/24
                             az2_cidr: 10.20.4.0/24
-                    nat_gateway:
-                        myapp:
-                            enabled: false
             eu-central-1:
                 enabled: true
 
@@ -387,9 +379,6 @@ provisioned.
                             webserver:
                                 az1_cidr: 10.20.3.0/24
                                 az2_cidr: 10.20.4.0/24
-                        nat_gateway:
-                            myapp:
-                                enabled: false
             eu-central-1:
                 enabled: false
 
@@ -512,6 +501,12 @@ delete your environments and networks.
     resources, then save your aim project directory for later use
     and run ``aim provision NetEnv dev`` to recreate your envrionment.
     However, it does take about 20 minutes to spin up a new environment.
+
+    If you have completely deleted aim or your AIM project, and left
+    the AWS resources provisioned, then you can login to the AWS Console
+    and go to the CloudFormation service. There you can manually delete
+    all of the CloudFormation stacks to remove everything from your
+    AWS account.
 
 You can delete the NetworkEnvironment named ``mynet`` that you created
 with:
