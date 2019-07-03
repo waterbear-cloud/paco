@@ -3,7 +3,20 @@ import os
 import os.path
 from aim.commands.helpers import pass_aim_context
 from cookiecutter.main import cookiecutter
+from jinja2.ext import Extension
 
+
+def env_override(value, key):
+    env_value = os.getenv(key, value)
+    if env_value:
+        return env_value
+    else:
+        return value
+
+class EnvOverrideExtension(Extension):
+    def __init__(self, environment):
+        super(EnvOverrideExtension, self).__init__(environment)
+        environment.filters['env_override'] = env_override
 
 @click.command('init', short_help='Initializes AIM Project files', help="""
 Initializes AIM Project files. The types of resources possible are:
