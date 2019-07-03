@@ -702,8 +702,7 @@ class ApplicationStackGroup(StackGroup):
             print("ApplicationStackGroup: Init: CodePipeBuildDeploy: %s" % (res_id))
             # Tools account
             tools_account_ctx = self.aim_ctx.get_account_context(res_config.tools_account)
-            # XXX: Fix Hardcoded!!!
-            data_account_ctx = self.aim_ctx.get_account_context("config.ref accounts.data")
+            data_account_ctx = self.aim_ctx.get_account_context(res_config.data_account)
 
             # -----------------
             # S3 Artifacts Bucket:  PRE

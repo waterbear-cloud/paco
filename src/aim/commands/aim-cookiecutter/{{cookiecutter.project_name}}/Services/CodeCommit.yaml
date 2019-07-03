@@ -1,0 +1,13 @@
+{%if cookiecutter.starting_template == 'complete-web-app' %}
+{{cookiecutter.network_environment_name}}:
+  {{cookiecutter.application_name}}:
+    enabled: true
+    account: config.ref accounts.master
+    region: '{{cookiecutter.aws_default_region}}'
+    description: "App repository"
+    name: "{{cookiecutter.network_environment_name}}-{{cookiecutter.application_name}}"
+    users:
+      - services.ref iam.users.kevin.t@waterbear.cloud  # XXX TODO
+    services:
+      - netenv.ref {{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.deployments.cpbd.codepipeline
+{% endif %}
