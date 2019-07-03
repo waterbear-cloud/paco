@@ -39,7 +39,7 @@ class SubNetEnvContext():
         self.resource_yaml_filename = "{}-{}-{}.yaml".format(self.netenv_id,
                                                              self.subenv_id,
                                                              self.region)
-        self.resource_yaml_path = os.path.join(self.aim_ctx.config_folder,
+        self.resource_yaml_path = os.path.join(self.aim_ctx.project_folder,
                                                'Resources',
                                                'NetworkEnvironments')
         self.resource_yaml = os.path.join(self.resource_yaml_path, self.resource_yaml_filename)
@@ -199,12 +199,22 @@ class SubNetEnvContext():
         for stack_grp in reversed(self.stack_grps):
             stack_grp.delete()
 
-    def backup(self, resource):
+    def backup(self, resource_path):
         # Get resource config
         # applications.groups.compute.resources.cloud
-        res_ref = self.gen_ref() + '.' + resourcex
+        res_ref = self.gen_ref() + '.' + resource_path
         resource_config = self.aim_ctx.get_ref(res_ref)
-        # TODO: Use ASG backup config to make a backup and add permissions to AMI
+
+        # TODO
+        # Lookup ASG, if more than once instance error
+        # Get instance ID from ASG
+        # Generate image name
+        # Add permissions
+        # Return AMI ID and image name
+        ec2_client = self.account_ctx.get_aws_client('ec2')
+        ec2_client.create_image(InstanceId=instance_id,
+                                Name=image_name)
+
 
     def gen_ref(self,
                 app_id=None,

@@ -33,9 +33,14 @@ class ComplexCLI(click.MultiCommand):
 
 @click.command(cls=ComplexCLI, context_settings=CONTEXT_SETTINGS)
 @click.option(
-    '--home',
+    '--config_folder',
     type=click.Path(exists=True, file_okay=False, resolve_path=True),
-    help='Path to an AIM Project configuration folder. Can also be set with the environment variable AIM_HOME.'
+    help='Path to an AIM Project configuration folder. Can also be set with the environment variable AIM_CONFIG_FOLDER.'
+)
+@click.option(
+    '--project',
+    type=click.Path(exists=True, file_okay=False, resolve_path=False),
+    help='The name of the project folder in the config_folder or AIM_CONFIG_FOLDER Env variable.'
 )
 @click.option(
     '-v', '--verbose',
@@ -43,11 +48,17 @@ class ComplexCLI(click.MultiCommand):
     help='Enables verbose mode.'
 )
 @pass_context
-def cli(ctx, verbose, home):
+def cli(ctx, verbose, config_folder, project):
     """AIM: Application Infrastructure Manager"""
     ctx.verbose = verbose
-    # --home overrides the AIM_HOME Env var
-    if not home:
-        home = os.environ.get('AIM_HOME')
-    if home is not None:
-        ctx.home = home
+    # --config_folder overrides the AIM_CONFIG_FOLDER Env var
+    # --project overrides the AIM_PROJECT Env var
+    if not config_folder:
+        config_folder = os.environ.get('AIM_CONFIG_FOLDER')
+    if not project:
+        project_relative_folder = os.environ.get('AIM_PROJECT')
+    if config_folder is not None:
+        ctx.config_folder = config_folder
+    if project_relative_folder is not None:
+        ctx.project_relative_folder = project_relative_folder
+

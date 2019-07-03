@@ -12,7 +12,7 @@ from aim.core.exception import StackException
 @pass_context
 def cli(aim_ctx, controller_type, component_name=None, config_name=None, config_region=None):
     """Validates a Config CloudFormation"""
-    aim_ctx.init_project(aim_ctx.home)
+    aim_ctx.init_project()
     config_arg = None
     if controller_type == "NetEnv":
         config_arg = {

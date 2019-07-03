@@ -44,10 +44,7 @@ class AccountController(Controller):
     def cache_id(self, hook, hook_arg):
         return self.init_accounts_cache_id
 
-    def init(self, account_config):
-        if self.init_done == True:
-            return
-        self.init_done = True
+    def init(self, config_arg):
         # Get the master account config
         self.master_account_config = None
         for account_id in self.aim_ctx.project['accounts']:
@@ -75,7 +72,7 @@ class AccountController(Controller):
                                                     self.master_account_config,
                                                     stack_hooks,
                                                     self)
-        self.master_stack_group.init()
+        self.master_stack_group.init(do_not_cache=True)
 
     def init_org_accounts(self, org_client):
         # Next we process the Master account's organization accounts
