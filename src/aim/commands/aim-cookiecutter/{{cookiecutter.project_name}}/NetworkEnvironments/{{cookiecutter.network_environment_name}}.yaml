@@ -29,12 +29,7 @@ network:
               name: ANY
               protocol: "-1"
           ingress:
-            - cidr_ip: 70.68.173.245/32
-              from_port: 443
-              name: HTTPS
-              protocol: tcp
-              to_port: 443
-            - cidr_ip: 70.68.173.245/32
+            - cidr_ip: 0.0.0.0/32
               from_port: 80
               name: HTTP
               protocol: tcp
@@ -121,12 +116,10 @@ applications:
             update_policy_min_instances_in_service: 0
             user_data_script: |
               #!/bin/bash
-
               yum update -y
               yum install httpd -y
-
-              # Restart apache
-              apachectl restart
+              echo "<html><body><h1>Hello world!</h1></body></html>" > /var/www/html/index.html
+              service httpd start
 
 {% endif %}
 
@@ -154,9 +147,6 @@ environments:
             web:
               az1_cidr: 10.20.3.0/24
               az2_cidr: 10.20.4.0/24
-          nat_gateway:
-            {{cookiecutter.application_name}}:
-              enabled: false
     {{cookiecutter.aws_default_region}}:
       enabled: true
 
@@ -187,9 +177,6 @@ environments:
             web:
               az1_cidr: 10.20.3.0/24
               az2_cidr: 10.20.4.0/24
-          nat_gateway:
-            {{cookiecutter.application_name}}:
-              enabled: false
     {{cookiecutter.aws_default_region}}:
       enabled: false
 
