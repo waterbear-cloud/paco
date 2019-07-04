@@ -23,6 +23,11 @@ def provision_command(aim_ctx, controller_type, component_name=None, config_name
             'subenv_id': config_name,
             'region' : config_region
         }
+    elif controller_type == "EC2":
+        config_arg = {
+            'service': component_name,
+            'id': config_name
+        }
     else:
         config_arg = {
             'name': component_name

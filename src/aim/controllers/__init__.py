@@ -7,6 +7,7 @@ from aim.controllers.ctl_iam import IAMController
 from aim.controllers.ctl_governance import GovernanceController
 from aim.controllers.ctl_account import AccountController
 from aim.controllers.ctl_project import ProjectController
+from aim.controllers.ctl_ec2 import EC2Controller
 
 klass = {
     'NetEnv': NetEnvController,
@@ -17,5 +18,6 @@ klass = {
     'IAM': IAMController,
     'Governance': GovernanceController,
     'Account': AccountController,
-    'Project': ProjectController
+    'Project': ProjectController,
+    'EC2': EC2Controller
 }
