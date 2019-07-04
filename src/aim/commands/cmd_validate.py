@@ -9,6 +9,7 @@ from aim.commands.helpers import pass_aim_context, controller_args, aim_home_opt
 @pass_aim_context
 def validate_command(aim_ctx, controller_type, component_name=None, config_name=None, config_region=None, home='.'):
     """Validates a Config CloudFormation"""
+
     init_aim_home_option(aim_ctx, home)
     if not aim_ctx.home:
         print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')

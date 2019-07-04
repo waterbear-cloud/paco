@@ -15,6 +15,7 @@ from aim.commands.helpers import pass_aim_context
     default=False,
     help='Enables verbose mode.'
 )
+
 @pass_aim_context
 def cli(ctx, verbose):
     """AIM: Application Infrastructure Manager"""

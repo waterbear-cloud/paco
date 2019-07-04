@@ -7,6 +7,7 @@ from functools import partial
 from aim.models import load_project_from_yaml
 from aim.models import references
 from copy import deepcopy
+from aim.config import ConfigProcessor
 
 
 class AccountContext(object):
@@ -111,10 +112,12 @@ class AimContext(object):
 
         return account_ctx
 
-    def init_project(self, project_folder):
-        self.project = load_project_from_yaml(self, project_folder)
-        self.config_folder = project_folder # config_folder can be phased out?
-        self.project_folder = project_folder
+    def init_project(self):
+        print("Project: %s" % (self.project_relative_folder))
+        self.project_folder = os.path.join(self.config_folder, self.project_relative_folder)
+        # Config Processor Init
+        self.config_processor = ConfigProcessor(self)
+        self.project = load_project_from_yaml(self, self.project_folder, None) #self.config_processor.load_yaml)
         self.build_folder = os.path.join(os.getcwd(), "build", self.project.name)
         self.master_account = AccountContext(aim_ctx=self,
                                              name='master',

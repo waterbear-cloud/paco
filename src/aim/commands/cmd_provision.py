@@ -15,7 +15,8 @@ def provision_command(aim_ctx, controller_type, component_name=None, config_name
         print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')
         sys.exit()
     aim_ctx.log("Provisioning Configuration: %s.%s", controller_type, component_name )
-    aim_ctx.init_project(aim_ctx.home)
+    aim_ctx.init_project()
+    #aim_ctx.config_processor.apply()
     config_arg = None
     if controller_type == "NetEnv":
         config_arg = {
