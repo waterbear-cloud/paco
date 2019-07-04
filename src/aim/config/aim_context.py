@@ -80,12 +80,12 @@ class AccountContext(object):
 # ----------------------------------------------------------------------------------
 class AimContext(object):
 
-    def __init__(self, config_folder=None, project_relative_folder=None):
-        self.config_folder = config_folder
-        self.project_relative_folder = project_relative_folder
-        self.project_folder = None
-        if project_relative_folder:
-            self.project_folder = os.path.join(config_folder, project_relative_folder)
+    def __init__(self, config_folder=None):
+        self.home = None # Full path to an AIM Project
+        self.project_folder = None # Directory name of AIM Project only
+        if config_folder: # Duplicate of project_folder
+            self.config_folder = config_folder
+            self.project_folder = config_folder
         self.verbose = False
         self.aim_path = os.getcwd()
         self.build_folder = None

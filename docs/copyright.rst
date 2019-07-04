@@ -5,7 +5,6 @@ Copyright, Trademarks, and Attributions
 
 by Kevin Lindsay and Kevin Teague
 
-.. |copy|   unicode:: U+000A9 .. COPYRIGHT SIGN
 
 Copyright |copy| 2019, Waterbear Cloud.
 

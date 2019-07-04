@@ -1,28 +1,36 @@
 import click
-import aim.models
-from aim.commands.cli import pass_context
+import os
+import os.path
+from aim.commands.helpers import pass_aim_context
+from cookiecutter.main import cookiecutter
+from jinja2.ext import Extension
 
 
-@click.command('init', short_help='Initializes a Waterbear Cloud component.')
-@click.argument('controller_type', required=True, type=click.STRING)
-@click.argument('component_name', required=False, type=click.STRING)
-@click.argument('init_arg_1', required=False, type=click.STRING)
-@click.argument('init_arg_2', required=False, type=click.STRING)
-@pass_context
-def cli(aim_ctx, controller_type, component_name=None, init_arg_1=None, init_arg_2=None):
-    """Initializes a Waterbear Cloud component."""
-
-    config_arg = None
-    config_arg = {
-        'name': component_name
-    }
-
-    if controller_type != 'Project':
-        aim_ctx.init_project()
+def env_override(value, key):
+    env_value = os.getenv(key, value)
+    if env_value:
+        return env_value
     else:
-        if init_arg_1 == None:
-            print("Error: missing project path argument: aim init Project <project name> <project_relative_path>")
-        config_arg['folder'] = init_arg_1
+        return value
 
-    controller = aim_ctx.get_controller(controller_type, config_arg)
-    controller.init_command(config_arg)
+class EnvOverrideExtension(Extension):
+    def __init__(self, environment):
+        super(EnvOverrideExtension, self).__init__(environment)
+        environment.filters['env_override'] = env_override
+
+@click.command('init', short_help='Initializes AIM Project files', help="""
+Initializes AIM Project files. The types of resources possible are:
+
+ - project: Create the skeleton configuration directory and files
+        for an empty or complete AIM Project.
+
+""")
+@click.argument('config_type', default='project', type=click.STRING)
+@pass_aim_context
+def init_command(aim_ctx, config_type='project', region=None, keypair_name=None):
+    """Initializes an AIM Project"""
+    if config_type == 'project':
+        print("\nAIM Project initialization")
+        print("--------------------------\n")
+        print("About to create a new AIM Project directory at {}\n".format(os.getcwd()))
+        cookiecutter(os.path.dirname(__file__) + os.sep + 'aim-cookiecutter' + os.sep)

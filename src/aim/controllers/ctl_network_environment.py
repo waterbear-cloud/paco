@@ -21,20 +21,16 @@ class SubNetEnvContext():
         self.subenv_id = subenv_id
         self.region = region
         self.config = config
-
         self.network_stack_grp = None
-
         self.application_stack_grps = {}
         self.iam_stack_grps = {}
-
-        #print("Init SubNetEnv: stack_grps = []")
         self.stack_grps = []
         subenv_account_ref = self.config.network.aws_account
         self.account_ctx = aim_ctx.get_account_context(account_ref=subenv_account_ref)
         self.config_ref_prefix = '.'.join([self.netenv_id, 'subenv', self.subenv_id, self.region])
 
         # Network Stack Group
-        self.aim_ctx.log("Sub Environment: %s" % (self.subenv_id))
+        self.aim_ctx.log("Environment: %s" % (self.subenv_id))
         self.init_done = False
         self.resource_yaml_filename = "{}-{}-{}.yaml".format(self.netenv_id,
                                                              self.subenv_id,
@@ -44,13 +40,11 @@ class SubNetEnvContext():
                                                'NetworkEnvironments')
         self.resource_yaml = os.path.join(self.resource_yaml_path, self.resource_yaml_filename)
 
-        #print("YP: " + self.yaml_path)
-
     def init(self):
         if self.init_done:
             return
         self.init_done = True
-        print("Sub Env Init: Starting")
+        print("Environment Init: Starting")
         # Network Stack: VPC, Subnets, Etc
         self.network_stack_grp = NetworkStackGroup(self.aim_ctx,
                                                    self.account_ctx,
@@ -60,7 +54,6 @@ class SubNetEnvContext():
 
         # IAM Stack
         for iam_group_id in self.iam_ids():
-            #print("IAM Group Name: " + iam_group_id)
             iam_roles_dict = self.iam_roles_dict(iam_group_id)
             iam_stack_grp = IAMStackGroup(self.aim_ctx,
                                           self.account_ctx,
@@ -83,9 +76,7 @@ class SubNetEnvContext():
             self.stack_grps.append(application_stack_grp)
             application_stack_grp.init()
 
-        #print("Stack Groups: %d" % len(self.stack_grps))
-
-        print("Sub Env Init: Complete")
+        print("Environment Init: Complete")
 
     def get_aws_name(self):
         aws_name = '-'.join([self.netenv_ctx.get_aws_name(),
@@ -287,19 +278,19 @@ class NetEnvContext():
     def validate(self):
         for subenv_id in self.sub_envs.keys():
             for region in self.sub_envs[subenv_id].keys():
-                print("Validating Sub Environment: %s.%s" % (subenv_id, region))
+                print("Validating Environment: %s.%s" % (subenv_id, region))
                 self.sub_envs[subenv_id][region].validate()
 
     def provision(self):
         for subenv_id in self.sub_envs.keys():
             for region in self.sub_envs[subenv_id].keys():
-                #print("Provisioning Sub Environment: " + subenv_id)
-                self.sub_envs[subenv_id][region].provision()
+                env_region = self.aim_ctx.project['ne'][self.netenv_id][subenv_id][region]
+                if env_region.is_enabled():
+                    self.sub_envs[subenv_id][region].provision()
 
     def delete(self):
         for subenv_id in self.sub_envs.keys():
             for region in self.sub_envs[subenv_id].keys():
-                #print("Provisioning Sub Environment: " + subenv_id)
                 self.sub_envs[subenv_id][region].delete()
 
 class NetEnvController(Controller):
@@ -369,7 +360,6 @@ class NetEnvController(Controller):
         return netenv_ctx.get_subenv_ctx(subenv_id, region)
 
     def get_network_stack_grp(self, netenv_id, subenv_id, region):
-        # print("Get network stack group: " + netenv_id + "." + subenv_id)
         netenv_ctx = self.net_envs[netenv_id]
         subenv_ctx =  self.get_subenv_ctx(netenv_id, subenv_id, region)
         return subenv_ctx.network_stack_grp
@@ -388,7 +378,6 @@ class NetEnvController(Controller):
         subenv_id = ref_dict['subenv_id']
         subenv_region = ref_dict['subenv_region']
         netenv_component = ref_dict['netenv_component']
-        #print(ref_dict)
         stack=None
         if netenv_component == 'network':
             network_grp = self.get_network_stack_grp(netenv_id, subenv_id, subenv_region)
@@ -399,7 +388,6 @@ class NetEnvController(Controller):
             # Get application Group
             app_id = ref_parts[5]
             app_grp = self.get_application_stack_grp(netenv_id, subenv_id, subenv_region, app_id)
-            #print("AppGrp: " + repr(app_grp))
             # If none, we are probably referencing ourselves when we are not yet finished initializing
             if app_grp == None:
                 raise StackException(AimErrorCode.Unknown)
@@ -419,20 +407,16 @@ class NetEnvController(Controller):
 
     def get_value_from_ref(self, ref_dict): #, app_stack_grp=None):
         # "applications.app1.deployments.cpbd.s3.buckets.deployment_artifacts.arn"
-        #print("NNNNN: " + netenv_ref)
         ref_parts = ref_dict['ref_parts']
         last_ref_part = ref_parts[len(ref_parts)-1]
         netenv_component = ref_dict['netenv_component']
         netenv_id = ref_dict['netenv_id']
         subenv_id = ref_dict['subenv_id']
         subenv_region = ref_dict['subenv_region']
-        #print("Value from ref: " + netenv_ref)
 
         # netenv.ref wbsites.subenv.prod.applications.sites.resources.alb.dns.ssl_certificate.arn
         netenv_ctx = self.net_envs[netenv_id]
 
-        #print("ctl_network_environment: get_value_from_ref: " + ref_dict['raw'])
-        #print("ctl_network_environment: get_value_from_ref: component: " + netenv_component)
         if netenv_component == 'network':
             network_grp = self.get_network_stack_grp(netenv_id, subenv_id, subenv_region)
             if network_grp == None:

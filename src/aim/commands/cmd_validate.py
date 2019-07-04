@@ -1,24 +1,32 @@
 import click
 import sys
-from aim.commands.cli import pass_context
 from aim.core.exception import StackException
-
+from aim.commands.helpers import pass_aim_context, controller_args, aim_home_option, init_aim_home_option
 
 @click.command('validate', short_help='Validate an AIM project')
-@click.argument('controller_type', required=True, type=click.STRING)
-@click.argument('component_name', required=False, type=click.STRING)
-@click.argument('config_name', required=False, type=click.STRING)
-@click.argument('config_region', required=False, type=click.STRING)
-@pass_context
-def cli(aim_ctx, controller_type, component_name=None, config_name=None, config_region=None):
+@controller_args
+@aim_home_option
+@pass_aim_context
+def validate_command(aim_ctx, controller_type, component_name=None, config_name=None, config_region=None, home='.'):
     """Validates a Config CloudFormation"""
-    aim_ctx.init_project()
+
+    init_aim_home_option(aim_ctx, home)
+    if not aim_ctx.home:
+        print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')
+        sys.exit()
+
+    aim_ctx.init_project(aim_ctx.home)
     config_arg = None
     if controller_type == "NetEnv":
         config_arg = {
             'netenv_id': component_name,
             'subenv_id': config_name,
             'region' : config_region
+        }
+    elif controller_type == "EC2":
+        config_arg = {
+            'service': component_name,
+            'id': config_name
         }
     else:
         config_arg = {
