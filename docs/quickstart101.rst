@@ -43,12 +43,20 @@ Try running ``aim --help`` to confirm that's it's properly installed.
 
 .. _Installation: ./install.html
 
-Create an AIM Administration IAM User
--------------------------------------
+Create an AIM Administration User
+---------------------------------
 
-You will need to have an IAM User with the ability to switch to a role that
-delegates Administrator access. You can create this User and Role by installing
-a CloudFormation template.
+You will create an new AWS IAM User that only has permissions to switch to a
+role that can delegate administrator access to AIM. These steps will involve
+installing a CloudFormation template to create the IAM User and IAM Role,
+then setting up the new User account with MFA and creating an API key.
+
+First, to create the user and role, follow the steps below to create a CloudFormation
+stack from our AIMInitialization.yaml_ template. It is possible to use AIM with an existing
+IAM User account, but it is highly recommended to use a dedicated user account.
+By using the CloudFormation template, you can simply delete the CloudFormation stack
+when you are finished and it will remove all aim access that you need for these
+quickstarts.
 
   1. Download the AIMInitialization.yaml_ CloudFormation template.
 
@@ -78,7 +86,33 @@ a CloudFormation template.
 
 .. _AIMInitialization.yaml: ./_static/templates/AIMInitialization.yaml
 
-Next you will need to
+Next you will need to set-up the new user account and create an API key. Follow these steps:
+
+  1. In the AWS Console, go to the Identity and Access Management (IAM) Service, click on "Users"
+     and click on the User name you supplied earlier. Then click on the "Security credentials" tab.
+
+     .. image:: ./images/quickstart101-user-start.png
+
+  #. Set-up multi-factor authentication (MFA). As this account has full administrator access, it
+     is critical to keep this secure. The delegate role is configured so that it can only be
+     used by users that have MFA set-up. Where it says, "Assigned MFA device" click on "Manage".
+     Then setup an MFA device. If you don't know which one to use here, choose "Virtual MFA device"
+     and you can use either Authy_ or `Google Authenticator`_ on your computer or phone as a virtual
+     MFA device.
+
+  #. Create an AWS Access Key. While still on the "Security credentials" tab, click on "Create access key".
+     You will be given an "Access key ID" and "Secret access key". Save these somewhere safe and secure.
+     You will need these credentials later when you set-up the AIM project.
+
+Now you are ready to create an AIM project. Note that when you are finished and wish to clean-up all AWS
+resources for this quickstart, you will first need to return to this user and manually delete the
+Assigned MFA Device and Access key. Then you can go to the CloudFormation service and delete the
+AIMInitialization stack. If you try and delete the stack without doing this first, you will get the
+error message "DELETE_FAILED: Cannot delete entity, must delete MFA device first.".
+
+.. _Authy: https://authy.com/
+
+.. _`Google Authenticator`: https://en.wikipedia.org/wiki/Google_Authenticator
 
 
 Create an AIM Project
