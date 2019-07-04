@@ -43,14 +43,43 @@ Try running ``aim --help`` to confirm that's it's properly installed.
 
 .. _Installation: ./install.html
 
-Create an AIM Administration User
----------------------------------
+Create an AIM Administration IAM User
+-------------------------------------
 
-Maybe create an AWS Account?
+You will need to have an IAM User with the ability to switch to a role that
+delegates Administrator access. You can create this User and Role by installing
+a CloudFormation template.
 
-Install a CloudFormation template.
+  1. Download the AIMInitialization.yaml_ CloudFormation template.
 
-Create access keys.
+  #. Access your AWS Console, visit the CloudFormation Service
+     and click on the "Create stack" button. Choose "Upload a template file"
+     and then "Choose file" and choose the AIMInitialization.yaml file.
+     Then click "Next".
+
+     .. image:: ./images/quickstart101-create-stack-init.png
+
+  #. Enter "AIMInitialization" as the Stack name and enter
+     the name of a new IAM User. Then click "Next".
+
+     .. image:: ./images/quickstart101-stack-init-details.png
+
+  #. On the "Configure stack options" screen you can leave everything
+     default and click "Next". On the "Review AIMInitialization" you
+     can also leave all the defaults click
+     "I acknowledge that AWS CloudFormation might create IAM resources with custom names."
+     to confirm that this stack can create an IAM User.
+     Finally click "Create stack".
+
+  #. Wait a couple minutes for the stack to finish creating and then click on the "Outputs"
+     tab. Save the "SigninUrl" somewhere convenient.
+
+     .. image:: ./images/quickstart101-stack-outputs.png
+
+.. _AIMInitialization.yaml: ./_static/templates/AIMInitialization.yaml
+
+Next you will need to
+
 
 Create an AIM Project
 ---------------------
