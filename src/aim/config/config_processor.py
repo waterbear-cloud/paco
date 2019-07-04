@@ -15,7 +15,7 @@ class ConfigProcessor(object):
     def __init__( self, aim_ctx):
         # The relative path to the Configuration Folder
         self.aim_ctx = aim_ctx
-        self.applied_folder = os.path.join(self.aim_ctx.config_folder, self.aim_ctx.project_relative_folder.rstrip('/')+"_Applied")
+        self.applied_folder = os.path.join(self.aim_ctx.home.rstrip('/')+"_Applied")
 
     # Receives each YAML file loaded by the ModelLoader
     def load_yaml(self, sub_folder, filename):

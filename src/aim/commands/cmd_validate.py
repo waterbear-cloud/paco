@@ -15,7 +15,7 @@ def validate_command(aim_ctx, controller_type, component_name=None, config_name=
         print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')
         sys.exit()
 
-    aim_ctx.init_project(aim_ctx.home)
+    aim_ctx.init_project()
     config_arg = None
     if controller_type == "NetEnv":
         config_arg = {

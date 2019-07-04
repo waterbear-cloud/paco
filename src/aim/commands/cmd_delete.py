@@ -33,7 +33,7 @@ def delete_command(aim_ctx, controller_type, component_name=None, config_name=No
 
     aim_ctx.log("Deleting: %s.%s", controller_type, component_name )
 
-    aim_ctx.init_project(aim_ctx.home)
+    aim_ctx.init_project()
     if controller_type == "NetEnv":
         config_arg = {
             'netenv_id': component_name,
