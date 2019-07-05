@@ -48,7 +48,7 @@ class EC2Controller(Controller):
             self.keypair_id = init_config['id']
             self.keypair_config = self.config.keypairs[self.keypair_id]
             aws_account_ref = self.keypair_config.account
-            self.keypair_account_ctx = self.aim_ctx.get_account_context (account_ref=aws_account_ref)
+            self.keypair_account_ctx = self.aim_ctx.get_account_context(account_ref=aws_account_ref)
             self.ec2_client = self.keypair_account_ctx.get_aws_client('ec2')
             try:
                 self.keypair_info = self.ec2_client.describe_key_pairs(

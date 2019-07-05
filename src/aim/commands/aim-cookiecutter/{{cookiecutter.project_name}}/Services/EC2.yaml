@@ -1,0 +1,6 @@
+keypairs:
+  aimkeypair:
+    name: "aimkeypair"
+    region: "{{cookiecutter.aws_default_region}}"
+    account: config.ref accounts.master
+
