@@ -1,13 +1,14 @@
 import aim.models
 import click
 import sys
-from aim.commands.helpers import controller_args, aim_home_option, init_aim_home_option, pass_aim_context
+from aim.commands.helpers import controller_args, aim_home_option, init_aim_home_option, pass_aim_context, handle_exceptions
 from aim.core.exception import StackException
 
 @click.command(name='provision', short_help='Provision an AIM project or a specific environment.')
 @controller_args
 @aim_home_option
 @pass_aim_context
+@handle_exceptions
 def provision_command(aim_ctx, controller_type, component_name=None, config_name=None, config_region=None, home='.'):
     """Provision AWS Resources"""
     init_aim_home_option(aim_ctx, home)

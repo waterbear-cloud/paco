@@ -4,7 +4,9 @@ Changelog for aim
 1.0.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Added
+
+- CLI reports validation errors from AIM project configuration files
 
 
 1.0.0 (2019-07-06)
