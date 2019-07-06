@@ -62,7 +62,7 @@ class ALB(CFTemplate):
             # TODO: Better name for self.get_stack_outputs_key_from_ref?
             # print("ALB: SG_REF: " + sg_ref)
             sg_output_key = self.get_stack_outputs_key_from_ref(sg_ref)
-            sg_stack = self.aim_ctx.get_ref(sg_ref, 'stack')
+            sg_stack = self.aim_ctx.get_ref(sg_ref)
             sg_output_param.add_stack_output(sg_stack, sg_output_key)
         self.set_parameter(sg_output_param)
 

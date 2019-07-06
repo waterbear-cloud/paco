@@ -247,8 +247,6 @@ class CFTemplate():
                     #print("Sub ref: " + sub_ref)
                     sub_value = self.aim_ctx.get_ref(sub_ref)
                     #print("Sub Value: %s" % (sub_value))
-                    #if sub_value.startswith("service.ref"):
-                    #    sub_value = self.aim_ctx.get_service_ref_value(sub_value)
                     # Replace the ${}
                     sub_var = self.body[rep_1_idx:rep_1_idx+(rep_2_idx-rep_1_idx)]
                     #print("Sub var: %s" % (sub_var))
@@ -369,10 +367,8 @@ class CFTemplate():
     def get_stack_outputs_key_from_ref(self, aim_ref, stack=None):
         #print("get_stack_outputs_key_from_ref: Aim ref: " + aim_ref)
         if stack == None:
-            stack = self.aim_ctx.get_ref( aim_ref, 'stack' )
-        #if type(stack) == str:
-        #    print("get_stack_outputs_key_from_ref: str: " + stack)
-        output_key = stack.get_outputs_key_from_ref( aim_ref )
+            stack = self.aim_ctx.get_ref(aim_ref)
+        output_key = stack.get_outputs_key_from_ref(aim_ref)
         if output_key == None:
             raise StackException(AimErrorCode.Unknown)
         return output_key

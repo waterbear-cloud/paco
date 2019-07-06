@@ -122,6 +122,11 @@ class AimContext(object):
         # Set Default AWS Region
         os.environ['AWS_DEFAULT_REGION'] = self.project['credentials'].aws_default_region
 
+        # Initialize Service Controllers so they can initiaize their
+        # resolve_ref_obj's to allow reference lookups
+        self.get_controller('Route53')
+        self.get_controller('CodeCommit')
+
     def get_controller(self, controller_type, config_arg=None):
         #print("Creating controller_type: " + controller_type)
         controller = None
@@ -151,43 +156,8 @@ class AimContext(object):
     def get_stack_filename(self, stack_group_type, stack_type):
         return os.path.join(self.stacks_folder, stack_group_type+"/"+stack_type+".yml")
 
-    def get_service_ref_value(self, service_ref, output_type="value"):
-        # print(service_ref)
-        ref_parts = service_ref.split(' ')
-        # print(ref_parts)
-        if ref_parts[0] != 'service.ref':
-            raise StackException(AimErrorCode.Unknown)
-        service_parts = ref_parts[1].split('.')
-        controller = None
-        if service_parts[0] == "codecommit":
-            config_name = service_parts[1]
-            init_config = {'name': config_name}
-            controller = self.get_controller('CodeCommit', init_config)
-        elif service_parts[0] == "route53":
-            config_name = service_parts[1]
-            controller = self.get_controller('Route53')
-        elif service_parts[0] == "acm":
-            config_type = service_parts[1]
-            if config_type == "domain":
-                config_name = None
-            elif config_type == "config":
-                config_name = service_parts[2]
-            else:
-                raise StackException(AimErrorCode.Unknown)
-            controller = self.get_controller(
-                'ACM', config_name=config_name, config_type=config_type)
-
-        return controller.get_service_ref_value(service_parts)
-
-    def get_ref(self, aim_ref, output_type="value", account_ctx=None):
-        ref = references.Reference(aim_ref)
-        if ref.type == "service":
-            # XXX: Port to Model Reference lookup
-            return self.get_service_ref_value(aim_ref, output_type)
-        elif self.aim_ref.is_ref(aim_ref) == True:
-            return references.resolve_ref(aim_ref, self.project, account_ctx=account_ctx)
-        else:
-            raise StackException(AimErrorCode.Unknown)
+    def get_ref(self, aim_ref, account_ctx=None):
+        return references.resolve_ref(aim_ref, self.project, account_ctx=account_ctx)
 
     def normalize_name(self,
                        name,

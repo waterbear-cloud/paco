@@ -39,7 +39,6 @@ class CodePipeBuild(CFTemplate):
         codecommit_role_arn_ref = self.subenv_ctx.gen_ref(app_id=app_id, grp_id=grp_id, res_id=res_id, attribute='codecommit_role.arn')
         codecommit_role_arn = self.aim_ctx.get_ref(codecommit_role_arn_ref)
         self.set_parameter('CodeCommitRoleArn', codecommit_role_arn)
-        #codecommit_repo_arn = self.aim_ctx.get_ref("netenv.ref this.subenv.{0}.{1}.applications.{1}.deployments.cpbd.codecommit.arn".format(self.subenv_ctx.subenv_id, self.subenv_ctx.region, app_id))
         codecommit_repo_arn_ref = self.subenv_ctx.gen_ref(app_id=app_id, grp_id=grp_id, res_id=res_id, attribute='codecommit.arn')
         codecommit_repo_arn = self.aim_ctx.get_ref(codecommit_repo_arn_ref)
         self.set_parameter('CodeCommitRepositoryArn', codecommit_repo_arn)
@@ -51,7 +50,6 @@ class CodePipeBuild(CFTemplate):
         codedeploy_application_name = self.aim_ctx.get_ref(app_name_ref)
         self.set_parameter('CodeDeployApplicationName', codedeploy_application_name)
 
-        #codedeploy_account_id = self.aim_ctx.get_ref("netenv.ref this.subenv.{0}.network.aws_account".format(subenv_id))
         codedeploy_account_id_ref = self.subenv_ctx.gen_ref(attribute='network.aws_account')
         codedeploy_account_id = self.aim_ctx.get_ref(codedeploy_account_id_ref)
         self.set_parameter('CodeDeployAccountId', codedeploy_account_id)
