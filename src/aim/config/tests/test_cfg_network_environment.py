@@ -11,7 +11,7 @@ class TestNetEnvConfig():
         # change cwd to the fixtures dir
         path = cwd_to_fixtures()
         self.aim_ctx = aim.config.aim_context.AimContext()
-        self.aim_ctx.init_project(self.fixture_name)
+        self.aim_ctx.init_project()
 
 class TestNetEnvConfigDogFoodOne(TestNetEnvConfig):
 

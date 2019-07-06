@@ -1,17 +1,18 @@
 import click
 import sys
 import aim.models
-from aim.commands.cli import pass_context
+from aim.commands.helpers import pass_aim_context, aim_home_option, init_aim_home_option
 
 @click.command('describe', short_help='Describe an AIM project')
-@pass_context
-def cli(ctx):
+@aim_home_option
+@pass_aim_context
+def describe_command(ctx, home='.'):
     """Describe an AIM project"""
-    try:
-        project = aim.models.load_project_from_yaml(ctx, ctx.home)
-    except AttributeError:
+    init_aim_home_option(ctx, home)
+    if not ctx.home:
         print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')
         sys.exit()
+    project = aim.models.load_project_from_yaml(ctx, ctx.home)
 
     print('Project: {} - {}'.format(project.name, project.title))
     print('Location: {}'.format(ctx.home))

@@ -12,7 +12,6 @@ with open('version.txt') as f:
 docs_extras = [
     'Sphinx >= 1.3.5',
     'sphinx_rtd_theme',
-    'repoze.sphinx.autointerface',
 ]
 
 setup(
@@ -31,7 +30,15 @@ setup(
         "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
     ],
     keywords=['AWS','Waterbear','Cloud','Infrastructure-as-Code'],
-    install_requires=['Setuptools', 'click', 'boto3', 'tldextract','aim.models'],
+    install_requires=[
+        'aim.models',
+        'boto3',
+        'click',
+        'cookiecutter',
+        'Setuptools',
+        'tldextract',
+        'pexpect',
+    ],
     packages=[
         'aim.adapters',
         'aim.api',
@@ -43,13 +50,16 @@ setup(
         'aim.core',
         'aim.stack_group',
         'aim.tests',
+        'aim.doc',
     ],
     include_package_data=True,
     zip_safe=False,
     package_dir={'': 'src'},
     entry_points={
         'console_scripts': [
-            'aim = aim.commands.cli:cli'
+            'aim = aim.commands.cli:cli',
+            'aim_doc = aim.doc.docschema:aim_schema_generate',
+            'aim_ftest = aim.tests.functional:main',
         ]
     },
     extras_require={

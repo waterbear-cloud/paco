@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: Creates a local Admin IAM user for AIM
+
+Parameters:
+
+  AdminIAMUserName1:
+    Type: String
+    Default: 'you@example.com'
+    Description: IAM user name of the AIM Administrator
+
+Resources:
+
+  DelegateIAMRole:
+    Type: AWS::IAM::Role
+    DependsOn: AdminIAMUser1
+    Properties:
+      RoleName: !Sub 'AIM-Admin-Delegate-Role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:user/${AdminIAMUserName1}'
+            Action: sts:AssumeRole
+            Condition:
+              Bool:
+                aws:MultiFactorAuthPresent: true
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AdministratorAccess'
+
+  AdminIAMUser1:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Ref AdminIAMUserName1
+
+  AdminIAMUser1Policy:
+    Type: AWS::IAM::Policy
+    DependsOn:
+      - AdminIAMUser1
+      - DelegateIAMRole
+    Properties:
+      PolicyName: 'AIM-Admin-Assume-Role-Policy'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Resource:
+              - !GetAtt DelegateIAMRole.Arn
+      Users:
+        - !Ref AdminIAMUser1
+
+Outputs:
+
+  DelegateIAMRoleName:
+    Value: !Ref DelegateIAMRole
+
+  DelegateIAMRoleArn:
+    Value: !GetAtt DelegateIAMRole.Arn
+
+  SigninUrl:
+    Value: !Sub 'https://signin.aws.amazon.com/switchrole?account=${AWS::AccountId}&roleName=${DelegateIAMRole}'

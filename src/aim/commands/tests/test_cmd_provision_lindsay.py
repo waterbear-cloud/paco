@@ -6,7 +6,7 @@ def test_cmd():
     """
     project_folder = '/Users/klindsay/bitbucket/waterbear/aim/fixtures/waterbear-networks/'
     aim_ctx = aim.config.aim_context.AimContext(config_folder=project_folder)
-    aim_ctx.init_project(project_folder)
+    aim_ctx.init_project()
     config_arg = {
         'netenv_id': 'aimdemo',
         'subenv_id': 'dev',

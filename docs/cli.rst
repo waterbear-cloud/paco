@@ -1,8 +1,3 @@
-.. _quickstart:
-
-Quickstart
-==========
-
 AIM Configuration Directory
 ---------------------------
 
@@ -115,27 +110,3 @@ update an application and environment in only a single region, if you have a mul
 .. code-block:: bash
 
    $ aim provision NetEnv my-aim-project dev
-
-Inspect your AIM environment in the AWS Console
------------------------------------------------
-
-Login to the AWS Console, switch to the account you have deployed into
-and go to the CloudFormation service. You should see these CloudFormation stacks:
-
-.. code-block:: text
-
-   some-stacks
-
-Now go to the EC2 service and you should see an EC2 instance running in an autoscaling group.
-
-Congratulations, now you have a fully working AWS environment!
-
-Update your AIM environment
----------------------------
-
-Make some changes ... test it out
-
-Delete your AIM environment
----------------------------
-
-Done with the Quickstart. Clean-up by deleting everything.

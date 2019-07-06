@@ -18,15 +18,21 @@ CloudFormation stacks and provisions and manages those stacks in your AWS accoun
    :caption: Introduction
 
    install
-   quickstart
-
-Documentation
--------------
+   quickstart101
+   quickstart102
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 3
+   :caption: AIM CLI
 
-   install
+   cli
+
+.. toctree::
+   :maxdepth: 3
+   :caption: AIM Configuration
+
+   aim-config
+
 
 Support and Reporting Bugs
 --------------------------

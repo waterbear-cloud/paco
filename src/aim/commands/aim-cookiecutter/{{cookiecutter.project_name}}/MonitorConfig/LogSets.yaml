@@ -1,0 +1,24 @@
+log_sets:
+  amazon_linux:
+    linux:
+      audit:
+        path: "/var/log/audit/audit.log"
+        log_group_name: "audit.log"
+        log_stream_name: "{instance_id}"
+      secure:
+        path: "/var/log/secure"
+        log_group_name: "secure"
+        log_stream_name: "{instance_id}"
+      messages:
+        path: "/var/log/messages"
+        log_group_name: "messages"
+        log_stream_name: "{instance_id}"
+      yum:
+        path: "/var/log/yum.log"
+        log_group_name: "yum.log"
+        log_stream_name: "{instance_id}"
+
+log_groups:
+  linux:
+    log_group_name: "audit.log"
+    expire_events_after: "Never"

@@ -247,8 +247,6 @@ class CFTemplate():
                     #print("Sub ref: " + sub_ref)
                     sub_value = self.aim_ctx.get_ref(sub_ref)
                     #print("Sub Value: %s" % (sub_value))
-                    #if sub_value.startswith("service.ref"):
-                    #    sub_value = self.aim_ctx.get_service_ref_value(sub_value)
                     # Replace the ${}
                     sub_var = self.body[rep_1_idx:rep_1_idx+(rep_2_idx-rep_1_idx)]
                     #print("Sub var: %s" % (sub_var))
@@ -331,49 +329,22 @@ class CFTemplate():
             param_entry = param_key
         elif isinstance(param_value, list):
             param_entry = Parameter(param_key, self.list_to_string(param_value))
-        elif isinstance(param_value, str) and param_value.startswith("netenv.ref"):
-            #print("Type: Reference: %s" % param_value)
-            ref_dict = self.aim_ctx.parse_ref(param_value)
-            if ref_dict['ref'].find('services.acm') != -1:
-                param_entry = ServiceValueParam(self.aim_ctx, param_key, param_value)
+        elif isinstance(param_value, str) and self.aim_ctx.aim_ref.is_ref(param_value):
+            ref_value = self.aim_ctx.get_ref(param_value, account_ctx=self.account_ctx)
+            if ref_value == None:
+                print("ERROR: Unable to locate value for ref: " + param_value)
+                raise StackException(AimErrorCode.Unknown)
+            if isinstance(ref_value, Stack):
+                stack_output_key = self.get_stack_outputs_key_from_ref(param_value, ref_value)
+                param_entry = StackOutputParam(param_key, ref_value, stack_output_key)
             else:
-                ref_value = self.aim_ctx.get_ref(param_value)
-                if ref_value == None:
-                    print("ERROR: Unable to locate value for ref: " + param_value)
-                    raise StackException(AimErrorCode.Unknown)
-                #print("cftemplates: set_parameter: param_value: " + param_value)
-                if isinstance(ref_value, Stack):
-                    #print("Its a stack!!!!!!!")
-                    stack_output_key = self.get_stack_outputs_key_from_ref(param_value, ref_value)
-                    #print(stack_output_key)
-                    param_entry = StackOutputParam(param_key, ref_value, stack_output_key)
-                else:
-                    #print("value: " + ref_value)
-                    param_entry = Parameter(param_key, ref_value)
-        elif isinstance(param_value, str) and param_value.startswith("service.ref"):
-            # print("set_parameter: " + param_key + " " + param_value)
-            service_value = self.aim_ctx.get_service_ref_value(param_value)
-            #print("service value: " + service_value)
-            if type(service_value) == Stack:
-                stack_output_key = self.get_stack_outputs_key_from_ref(param_value, service_value)
-                param_entry = StackOutputParam(param_key, service_value, stack_output_key)
-            else:
-                param_entry = Parameter(param_key, service_value)
-        elif isinstance(param_value, str) and param_value.startswith("config.ref"):
-            # print("set_parameter: " + param_key + " " + param_value)
-            config_value = self.aim_ctx.get_ref(param_value)
-            #print("config value: " + config_value)
-            if type(config_value) == Stack:
-                stack_output_key = self.get_stack_outputs_key_from_ref(param_value, config_value)
-                param_entry = StackOutputParam(param_key, config_value, stack_output_key)
-            else:
-                param_entry = Parameter(param_key, config_value)
-        else:
-            param_entry = Parameter(param_key, param_value)
+                param_entry = Parameter(param_key, ref_value)
 
         if param_entry == None:
-            #print("NOOOOOOOOOOOOOOOO")
-            raise StackException(AimErrorCode.Unknown)
+            param_entry = Parameter(param_key, param_value)
+            if param_entry == None:
+                #print("NOOOOOOOOOOOOOOOO")
+                raise StackException(AimErrorCode.Unknown)
         # Append the parameter to our list
         self.parameters.append(param_entry)
 
@@ -396,28 +367,12 @@ class CFTemplate():
     def get_stack_outputs_key_from_ref(self, aim_ref, stack=None):
         #print("get_stack_outputs_key_from_ref: Aim ref: " + aim_ref)
         if stack == None:
-            stack = self.aim_ctx.get_ref( aim_ref, 'stack' )
-        #if type(stack) == str:
-        #    print("get_stack_outputs_key_from_ref: str: " + stack)
-        output_key = stack.get_outputs_key_from_ref( aim_ref )
+            stack = self.aim_ctx.get_ref(aim_ref)
+        output_key = stack.get_outputs_key_from_ref(aim_ref)
         if output_key == None:
             raise StackException(AimErrorCode.Unknown)
         return output_key
 
-#    def get_stack_from_ref(self, aim_ref):
-#        return self.aim_ctx.get_ref_value(aim_ref)
-#        ref_dict = self.aim_ctx.parse_ref(aim_ref)
-#        stack = None
-
-#        if ref_dict['type'] == 'netenv.ref':
-#            netenv_ctl = self.aim_ctx.get_controller('NetEnv')
-#            stack = netenv_ctl.get_stack_from_ref(aim_ref)
-#            if stack == None:
-#                print("Unable to find stack for ref: " + aim_ref)
-#                raise StackException(AimErrorCode.Unknown)
-#            return stack
-#        else:
-#            raise StackException(AimErrorCode.Unknown)
 
     # TODO: Put in a common place
     def list_to_string(self, list_to_convert):
@@ -510,17 +465,3 @@ class CFTemplate():
         name = name.replace('_', '')
         name = name.replace('.', '')
         return name
-    # IAM Role Name: <Project><sep><Env><sep><Service><sep><ServiceName><sep><ResourceName>
-    #  <sep> == Separator character
-    # ie: proj-env-IAMRole-websites-rds
-#    def gen_normalized_name(self, name1=None, name2=None, name3=None):
-#        if name1 != None:
-#            res_name += "-" + name1
-#        if name2 != None:
-#            res_name += "-" + name2
-#        if name3 != None:
-#            res_name += "-" + name3
-
-#        res_name = self.aim_ctx.normalize_name(res_name, '-', False)
-
-#        return res_name
