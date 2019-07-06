@@ -114,7 +114,7 @@ class AimContext(object):
         self.project_folder = self.home
         # Config Processor Init
         self.config_processor = ConfigProcessor(self)
-        self.project = load_project_from_yaml(self, self.project_folder, None) #self.config_processor.load_yaml)
+        self.project = load_project_from_yaml(self.aim_ref, self.project_folder, None) #self.config_processor.load_yaml)
         self.build_folder = os.path.join(os.getcwd(), "build", self.project.name)
         self.master_account = AccountContext(aim_ctx=self,
                                              name='master',
