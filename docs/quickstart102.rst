@@ -350,8 +350,8 @@ and logging to your instances, so that you can use the AWS Console
 to view everything you need to know about your instance and you
 won't need to directly SSH to them to debug them.
 
-Clean-up
---------
+Clean-up and next steps
+-----------------------
 
 When you are finished, remember to tear down all of your infrastructure
 otherwise you will run up your AWS bill.
@@ -396,3 +396,7 @@ otherwise you will run up your AWS bill.
           Waiting: NE-mynet-dev-App-myapp-ASG-bastion-instance
           Done:    NE-mynet-dev-App-myapp-ASG-bastion-instance
           Waiting: NE-mynet-dev-App-myapp-ASG-site-web
+
+Future quickstarts are yet to be written. They will show you how
+to add a CI/CD, monitoring, alerting and logging so that you can
+rapidly deploy fully working, managed environments.
