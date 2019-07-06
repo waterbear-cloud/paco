@@ -90,22 +90,4 @@ Resources:
         super().validate()
 
     def get_outputs_key_from_ref(self, aim_ref):
-        # ref_dict = self.aim_ctx.parse_ref(aim_ref)
-        #if location_parts[0] != 'iam':
-        #    raise StackException(AimErrorCode.Unknown)
-
-        #iam_group_name = location_parts[1]
-        #iam_type = location_parts[2]
-        #role_name = location_parts[3]
-
-        #stack = self.get_stack_from_ref(aim_ref)
-        #role_config = stack.grp_ctx.config.get_role_config(role_name)
-        #key = self.get_cf_resource_name_prefix( stack.grp_ctx.name, role_name)
-
-        #if 'instance_profile' in role_config and role_config['instance_profile'] == True:
-        #    key += "InstanceProfile"
-        #else:
-        #    key += "Role"
-
-        #return key
         return None

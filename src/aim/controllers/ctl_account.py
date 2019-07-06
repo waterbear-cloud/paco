@@ -192,7 +192,7 @@ class AccountController(Controller):
         self.init_org_accounts(org_client)
 
     def get_value_from_ref(self, aim_ref):
-        ref_dict = self.aim_ctx.parse_ref(aim_ref)
+        ref_dict = self.aim_ctx.aim_ref.parse_ref(aim_ref)
         ref_parts = ref_dict['ref_parts']
         config_ref = ref_dict['ref']
 

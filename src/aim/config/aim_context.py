@@ -91,10 +91,11 @@ class AimContext(object):
         self.logger = aim.core.log.get_aim_logger()
         self.project = None
         self.master_account = None
+        self.aim_ref = references.AimReference()
 
     def get_account_context(self, account_ref=None, account_name=None):
         if account_ref != None:
-            ref_dict = self.parse_ref(account_ref)
+            ref_dict = self.aim_ref.parse_ref(account_ref)
             account_name = ref_dict['ref_parts'][1]
         elif account_name == None:
             raise StackException(AimErrorCode.Unknown)
@@ -147,95 +148,8 @@ class AimContext(object):
         if self.verbose:
             self.log(msg, *args)
 
-#    def get_aws_name(self):
-#        return '-'.join([ self.aws_name,
-#                          self.controller.aws_name ])
-#        return self.controller.aws_name
-
     def get_stack_filename(self, stack_group_type, stack_type):
         return os.path.join(self.stacks_folder, stack_group_type+"/"+stack_type+".yml")
-
-    def is_ref(self, aim_ref):
-        # duplicate: moved to aim.models.references.AimReference
-        ref_types = ["netenv.ref", "service.ref", "config.ref"]
-        for ref_type in ref_types:
-            if aim_ref.startswith(ref_type):
-                return True
-
-        return False
-
-    def parse_netenv_ref(self, aim_ref, ref_parts):
-        # duplicate: moved to aim.models.references.AimReference
-        ref_dict = {}
-#        ref_dict['subenv_component'] = ""
-        ref_dict['subenv_id'] = ""
-        ref_dict['netenv_component'] = ""
-        ref_dict['subenv_component'] = ""
-        if ref_parts[0] == 'this':
-            ref_dict['netenv_id'] = self.this_netenv_id
-        else:
-            ref_dict['netenv_id'] = ref_parts[0]
-
-        if ref_parts[1] == 'subenv':
-            ref_dict['subenv_component'] = ref_parts[1]
-            ref_dict['subenv_id'] = ref_parts[2]
-            ref_dict['subenv_region'] = ref_parts[3]
-            ref_dict['netenv_component'] = ref_parts[4]
-        else:
-            ref_dict['netenv_component'] = ref_parts[1]
-        return ref_dict
-
-    def parse_ref(self, aim_ref):
-        # duplicate: moved to aim.models.references.AimReference
-        ref_parts = aim_ref.split(' ')
-        if len(ref_parts) != 2:
-            raise StackException(AimErrorCode.Unknown)
-        ref_type = ref_parts[0]
-        config_ref = ref_parts[1]
-        location_parts = ref_parts[1].split('.')
-        ref_dict = {}
-        if ref_parts[0] == 'netenv.ref':
-            ref_dict = self.parse_netenv_ref(aim_ref, location_parts)
-        elif ref_parts[0] == 'service.ref':
-            # print(aim_ref)
-            pass
-        elif ref_parts[0] == 'config.ref':
-            # print(aim_ref)
-            #raise StackException(AimErrorCode.Unknown)
-            pass
-        else:
-            print(ref_parts[0])
-            raise StackException(AimErrorCode.Unknown)
-
-        # pprint(repr(location_parts))
-        ref_dict['type'] = ref_type
-        ref_dict['ref'] = config_ref
-        ref_dict['ref_parts'] = location_parts
-        ref_dict['raw'] = aim_ref
-
-        return ref_dict
-
-    def get_config_ref_value(self, config_ref, output_type):
-        ref_dict = self.parse_ref(config_ref)
-        if ref_dict['type'] != 'config.ref':
-            raise StackException(AimErrorCode.Unknown)
-
-        # Only config item is accounts at the moment
-        account_ctx = self.get_account_context(config_ref)
-        return account_ctx.get_id()
-
-    def get_netenv_ref_value(self, netenv_ref, output_type):
-        ref_dict = self.parse_ref(netenv_ref)
-        if ref_dict['type'] != 'netenv.ref':
-            raise StackException(AimErrorCode.Unknown)
-        controller = self.get_controller('NetEnv')
-
-        if output_type == 'value':
-            return controller.get_value_from_ref(ref_dict)
-        elif output_type == 'stack':
-            return controller.get_stack_from_ref(ref_dict)
-        else:
-            raise StackException(AimErrorCode.Unknown)
 
     def get_service_ref_value(self, service_ref, output_type="value"):
         # print(service_ref)
@@ -265,15 +179,13 @@ class AimContext(object):
 
         return controller.get_service_ref_value(service_parts)
 
-    def get_ref(self, aim_ref, output_type="value"):
-        ref_dict = self.parse_ref(aim_ref)
-        if ref_dict['type'] == "service.ref":
+    def get_ref(self, aim_ref, output_type="value", account_ctx=None):
+        ref = references.Reference(aim_ref)
+        if ref.type == "service":
             # XXX: Port to Model Reference lookup
             return self.get_service_ref_value(aim_ref, output_type)
-        elif ref_dict['type'] == "netenv.ref":
-            return references.resolve_ref(aim_ref, self.project)
-        elif ref_dict['type'] == "config.ref":
-            return references.resolve_ref(aim_ref, self.project)
+        elif self.aim_ref.is_ref(aim_ref) == True:
+            return references.resolve_ref(aim_ref, self.project, account_ctx=account_ctx)
         else:
             raise StackException(AimErrorCode.Unknown)
 

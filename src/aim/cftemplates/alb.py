@@ -469,7 +469,7 @@ Outputs:
     def get_outputs_key_from_ref(self, aim_ref):
         # There is only one output key
         # netenv.ref wbsites.applications.sites.resources.alb.target_groups.app.arn
-        ref_dict = self.aim_ctx.parse_ref(aim_ref)
+        ref_dict = self.aim_ctx.aim_ref.parse_ref(aim_ref)
         last_idx = len(ref_dict['ref_parts'])-1
         key = None
         #print(aim_ref)

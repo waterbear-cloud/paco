@@ -150,19 +150,6 @@ class NetworkStackGroup(StackGroup):
                 sg_id = ref.parts[-3]
                 return self.get_security_group_stack(sg_id)
 
-    def OLD_get_stack_from_ref(self, aim_ref):
-        #print("!!!!!!!!!!!!!!!--------------------")
-        ref_dict =  self.aim_ctx.parse_ref(aim_ref)
-        ref_parts = ref_dict['ref_parts']
-        resource_name = ref_parts[4]
-        if aim_ref.find('network.vpc.segments') != -1:
-            segment_id = ref_parts[7]
-            return self.get_segment_stack(segment_id)
-        elif aim_ref.find('network.vpc.security_groups') != -1:
-            sg_id = ref_parts[7]
-            return self.get_security_group_stack(sg_id)
-
-        return None
 
     def validate(self):
         # Generate Stacks

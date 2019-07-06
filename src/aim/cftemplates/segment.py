@@ -416,7 +416,7 @@ Outputs:
         super().validate()
 
     def get_outputs_key_from_ref(self, aim_ref):
-        ref_dict = self.aim_ctx.parse_ref(aim_ref)
+        ref_dict = self.aim_ctx.aim_ref.parse_ref(aim_ref)
         ref_parts = ref_dict['ref_parts']
 
         az_idx = len(ref_parts)-2
