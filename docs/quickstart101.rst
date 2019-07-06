@@ -269,7 +269,7 @@ this file will describe your network and looks like this:
                               name: ANY
                               protocol: "-1"
                         ingress:
-                            - cidr_ip: 0.0.0.0/32
+                            - cidr_ip: 0.0.0.0/0
                               from_port: 80
                               name: HTTP
                               protocol: tcp
@@ -346,7 +346,7 @@ section. There is only one application in this quickstart and it is named ``myap
                     instance_iam_role:
                     enabled: true
                     instance_ami: 'ami-0cc293023f983ed53' # latest Amazon Linux 2, June 2019
-                    instance_key_pair: mykeypair
+                    instance_key_pair: aimkeypair
                     instance_monitoring: false
                     instance_type: t2.nano
                     max_instances: 2
@@ -433,9 +433,7 @@ provisioned.
             eu-central-1:
                 enabled: false
 
-
 .. _`AIM Configuration`: ./aim-config.html
-
 
 
 Provision an EC2 keypair

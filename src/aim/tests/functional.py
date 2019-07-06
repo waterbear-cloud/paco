@@ -3,6 +3,7 @@ Functional test suite for AIM
 """
 
 import os
+import shutil
 import sys
 import subprocess
 import pexpect
@@ -10,6 +11,7 @@ import pexpect
 def init_test_dir():
     subprocess.call(["mkdir","aim_ftest"])
     os.chdir('aim_ftest')
+    shutil.rmtree('tproj')
 
 def test_cmd_init():
     print("Testing 'aim init project'")
@@ -32,17 +34,31 @@ def test_cmd_init():
     child.expect('aws_default_region .*: ')
     child.sendline('us-west-2')
     child.expect('master_account_id .*: ')
-    child.sendline(os.environ['master_account_id'])
+    child.sendline(os.environ['AIM_MASTER_ACCOUNT_ID'])
     child.expect('master_admin_iam_username .*: ')
-    child.sendline(os.environ['master_admin_iam_username'])
+    child.sendline(os.environ['AIM_MASTER_ADMIN_IAM_USERNAME'])
     child.expect('aws_access_key_id .*: ')
-    child.sendline(os.environ['aws_access_key_id'])
+    child.sendline(os.environ['AIM_AWS_ACCESS_KEY_ID'])
     child.expect('aws_secret_access_key .*: ')
-    child.sendline(os.environ['aws_secret_access_key'])
+    child.sendline(os.environ['AIM_AWS_SECRET_ACCESS_KEY'])
+    child.interact()
+
+def test_cmd_provision_keypair():
+    print("Testing 'aim provision EC2 keypair'")
+    child = pexpect.spawn('aim provision EC2 keypair aimkeypair --home tproj')
+    child.logfile = sys.stdout.buffer
+    child.interact()
+
+def test_cmd_provision_netenv():
+    print("Testing 'aim provsion NetEnv tnet'")
+    child = pexpect.spawn('aim provision NetEnv tnet --home tproj')
+    child.logfile = sys.stdout.buffer
     child.interact()
 
 def main():
     print("Starting AIM functional tests")
     init_test_dir()
     test_cmd_init()
+    test_cmd_provision_keypair()
+    test_cmd_provision_netenv()
 

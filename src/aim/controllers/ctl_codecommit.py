@@ -16,8 +16,9 @@ class CodeCommitController(Controller):
         super().__init__(aim_ctx,
                          "Service",
                          "CodeCommit")
-
-        #self.aim_ctx.log("CodeCommit Service: Configuration: %s" % (name))
+        if not 'codecommit' in self.aim_ctx.project:
+            self.init_done = True
+            return
         self.config = None
         self.name = None
         self.stack_grps = []

@@ -9,7 +9,10 @@ class Route53Controller(Controller):
         super().__init__(aim_ctx,
                          "Service",
                          "Route53")
-
+        if not 'route53' in self.aim_ctx.project:
+            self.init_done = True
+            return
+        import pdb; pdb.set_trace();
         self.config = self.aim_ctx.project['route53']
         if self.config != None:
             self.config.resolve_ref_obj = self

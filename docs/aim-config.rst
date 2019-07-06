@@ -189,6 +189,8 @@ your AIM Configuration.
 
  * ``config.ref``: Config reference
 
+ * ``function.ref``: Function reference
+
 References are in the format:
 
 ``type.ref name.seperated.by.dots``
@@ -306,6 +308,18 @@ to control which account and environment should be deployed to:
         dev:
             network:
                 aws_account: config.ref accounts.dev
+
+function.ref
+------------
+
+A reference dynamically resolved at runtime. Currently can only look-up AMI IDs.
+Can be either ``aws.ec2.ami.latest.amazon-linux-2`` or ``aws.ec2.ami.latest.amazon-linux``.
+
+.. code-block:: yaml
+
+    web:
+        type: ASG
+        instance_ami: function.ref aws.ec2.ami.latest.amazon-linux-2
 
 aim.sub
 -------
@@ -1146,6 +1160,10 @@ ResourceGroup
 --------------
 
 
+
+|bars| Container where the keys are the ``name`` field.
+
+
 .. _ResourceGroup:
 
 .. list-table::
@@ -1266,8 +1284,8 @@ Resource
 Environments
 ============
 
-Environments define how the real AWS resources will be provisioned.
-As environments copy the defaults from ``network`` and ``applications`` config,
+Environments define how actual AWS resources should be provisioned.
+As Environments copy all of the defaults from ``network`` and ``applications`` config,
 they can define complex cloud deployments very succinctly.
 
 The top level environments are simply a name and a title. They are logical
@@ -1288,8 +1306,8 @@ groups of actual environments.
 
 
 Environments contain EnvironmentRegions. The name of an EnvironmentRegion must match
-a valid AWS region name, or the special ``default`` name, which is used to override
-network and application config for a whole environment, regardless of region.
+a valid AWS region name. The special ``default`` name is also available, which can be used to
+override config for a whole environment, regardless of region.
 
 The following example enables the applications named ``marketing-app`` and
 ``sales-app`` into all dev environments by default. In ``us-west-2`` this is

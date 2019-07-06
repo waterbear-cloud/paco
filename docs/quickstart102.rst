@@ -41,8 +41,8 @@ at the YAML location ``applications:  myapp: groups``:
         health_check_type: EC2
         instance_iam_role:
           enabled: true
-        instance_ami: 'ami-0cc293023f983ed53' # latest Amazon Linux 2, June 2019
-        instance_key_pair: mykeypair
+        instance_ami: function.ref aws.ec2.ami.latest.amazon-linux-2
+        instance_key_pair: aimkeypair
         instance_monitoring: false
         instance_type: t2.micro
         max_instances: 2
@@ -147,7 +147,7 @@ Your final network configuration should look like this:
                 name: ANY
                 protocol: "-1"
             ingress:
-              - cidr_ip: 0.0.0.0/32
+              - cidr_ip: 0.0.0.0/0
                 from_port: 80
                 name: HTTP
                 protocol: tcp
@@ -282,7 +282,7 @@ a newly launched instance in the bastion autoscaling group using UserData comman
 
 .. code-block:: bash
 
-  $ ssh -i ~/path/to/mykeypair.pem ec2-user@3.122.229.38
+  $ ssh -i ~/path/to/aimkeypair.pem ec2-user@3.122.229.38
 
         __|  __|_  )
         _|  (     /   Amazon Linux 2 AMI
@@ -297,11 +297,39 @@ of the web server:
 
 .. image:: ./images/quickstart102-private-ip.png
 
-From the bastion instance, SSH to the web server:
+Exit the bastion and copy your ``aimkeypair.pem`` file to the bastion so that it
+can be used to connect to the private web servers.
 
 .. code-block:: bash
 
-  [ec2-user@ip-10-20-2-46 ~]$ ssh -i mykeypair.pem ec2-user@10.20.4.193
+  $ scp -i ~/path/to/aimkeypair.pem ~/path/to/aimkeypair.pem ec2-user@3.122.229.38
+
+
+.. Attention:: Copying the public key to a bastion has security risks! If your bastion
+  server was compromised, then an intruder would have access to all of your private servers.
+  A more secure way to manage connections is to set-up a ``ProxyCommand`` in your ~/.ssh/config
+  file. For example, with this the following configuration:
+
+  .. code-block:: text
+
+    Host aimbastion
+    HostName 34.219.60.67
+    User ec2-user
+    IdentityFile ~/path/to/aimkeypair.pem
+
+    Host 10.20.*
+      IdentityFile  ~/path/to/aimkeypair.pem
+      User ec2-user
+      ProxyCommand ssh -W %h:%p  ec2-user@aimbastion
+
+  You would be able run ``ssh 10.20.4.25`` and connect directly and securely to an instance in the
+  private subnet at IP address 10.20.4.25.
+
+Now from the bastion instance, SSH to the web server:
+
+.. code-block:: bash
+
+  [ec2-user@ip-10-20-2-46 ~]$ ssh -i aimkeypair.pem ec2-user@10.20.4.193
 
         __|  __|_  )
         _|  (     /   Amazon Linux 2 AMI
