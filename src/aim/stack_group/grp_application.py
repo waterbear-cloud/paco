@@ -40,7 +40,7 @@ class LaunchBundle():
         self.bundle_files = []
         self.package_path = None
         self.cache_id = ""
-        self.s3_context_id = None
+        self.s3_key = None
 
     def set_launch_script(self, launch_script):
         self.add_file("launch.sh", launch_script)
@@ -80,6 +80,17 @@ class LaunchBundle():
         self.package_filename = lb_tar_filename
         self.package_path = os.path.join(bundles_path, lb_tar_filename)
 
+        # EC2 Manager Bucket Reference
+        self.s3_bucket_ref = '.'.join([self.manager.config_ref, 'groups', self.group_id,
+                               'resources', self.resource_id, self.manager.id, 'bucket'])
+
+        instance_iam_role_arn_ref = self.manager.subenv_ctx.gen_ref(app_id=self.app_id,
+                                                            grp_id=self.group_id,
+                                                            res_id=self.resource_id,
+                                                            attribute='instance_iam_role.arn')
+        self.instance_iam_role_arn = self.aim_ctx.get_ref(instance_iam_role_arn_ref)
+
+
     def get_cache_id(self):
         return self.cache_id
 
@@ -97,9 +108,21 @@ class EC2LaunchManager():
         self.subenv_id = self.subenv_ctx.subenv_id
         self.cloudwatch_agent = False
         self.cloudwatch_agent_config = None
-        self.config_ref = str.join('.', [self.subenv_ctx.netenv_id, self.subenv_id])
-        self.launch_bundles = {}
+        self.app_id = app_id
         self.id = 'ec2lm'
+        self.config_ref = str.join('.',[self.subenv_ctx.netenv_id,
+                                        self.subenv_id,
+                                        'applications',
+                                         self.app_id])
+        self.launch_bundles = {}
+        # cache_id['.'.join[app_id, grp_id, res_id]
+        self.cache_id = {}
+
+    def get_cache_id(self, app_id, grp_id, res_id):
+        cache_context = '.'.join([app_id, grp_id, res_id])
+        if cache_context not in self.cache_id:
+            return ''
+        return self.cache_id[cache_context]
 
     def bucket_id(self, resource_id):
         return '-'.join([resource_id, self.id])
@@ -115,46 +138,49 @@ class EC2LaunchManager():
     def stack_hook_cache_id(self, hook, bundle):
         return bundle.get_cache_id()
 
+    def add_bundle_to_s3_bucket(self, bundle):
+        cache_context = '.'.join([bundle.app_id, bundle.group_id, bundle.resource_id])
+        if cache_context not in self.cache_id:
+            self.cache_id[cache_context] = ''
+        self.cache_id[cache_context] += bundle.cache_id
+
+        stack_hooks = StackHooks(self.aim_ctx)
+        stack_hooks.add(name='EC2LaunchManager',
+                        stack_action='create',
+                        stack_timing='post',
+                        hook_method=self.stack_hook,
+                        cache_method=self.stack_hook_cache_id,
+                        hook_arg=bundle)
+        stack_hooks.add('EC2LaunchManager', 'update', 'post',
+                        self.stack_hook, self.stack_hook_cache_id, bundle)
+
+        s3_ctl = self.aim_ctx.get_controller('S3')
+        s3_ctl.add_stack_hooks( resource_ref=bundle.s3_bucket_ref,
+                                stack_hooks=stack_hooks )
+
     def init_bundle_s3_bucket(self, bundle):
-        instance_iam_role_arn_ref = self.subenv_ctx.gen_ref(app_id=bundle.app_id,
-                                                  grp_id=bundle.group_id,
-                                                  res_id=bundle.resource_id,
-                                                  attribute='instance_iam_role.arn')
-        role_arn_aim_sub = "aim.sub '${%s}'" % (instance_iam_role_arn_ref)
-
-#        instance_role_arn_ref = str.join('.', [])
-
         bucket_config_dict = {
             'bucket_name': 'lb',
             'deletion_policy': 'delete',
-            'policy': [
-                {
-                    'aws': [ role_arn_aim_sub ],
-                    'effect': 'Allow',
-                    'action': [
-                        's3:Get*',
-                        's3:List*'
-                    ],
-                    'resource_suffix': [
-                        '/*',
-                        ''
-                    ]
-                }
-            ]
+            'policy': [ {
+                'aws': [ "%s" % (bundle.instance_iam_role_arn) ],
+                'effect': 'Allow',
+                'action': [
+                    's3:Get*',
+                    's3:List*'
+                ],
+                'resource_suffix': [
+                    '/*',
+                    ''
+                ]
+            } ]
         }
         bucket_config = models.resources.S3Bucket(bundle.resource_id, None)
         bucket_config.update(bucket_config_dict)
         bucket_config.resolve_ref_obj = self
-        bundle.s3_bucket_ref = '.'.join([self.config_ref, 'applications', bundle.app_id, 'resources', bundle.resource_id, self.id, 'bucket'])
         bucket_name_prefix = '-'.join([self.parent.get_aws_name(), bundle.group_id])
         bucket_name_suffix = self.id
         bucket_region = self.subenv_ctx.region
-
-        stack_hooks = StackHooks(self.aim_ctx)
-        stack_hooks.add('EC2LaunchManager', 'create', 'post',
-                        self.stack_hook, self.stack_hook_cache_id, bundle)
-        stack_hooks.add('EC2LaunchManager', 'update', 'post',
-                        self.stack_hook, self.stack_hook_cache_id, bundle)
 
         s3_ctl = self.aim_ctx.get_controller('S3')
         #bucket_group_name = '-'.join([self.subenv_ctx.netenv_id, self.subenv_id, bundle.app_id, bundle.group_id, bundle.resource_id, self.id])
@@ -170,7 +196,7 @@ class EC2LaunchManager():
                             bucket_name_prefix=bucket_name_prefix,
                             bucket_name_suffix=bucket_name_suffix,
                             bucket_config=bucket_config,
-                            stack_hooks=stack_hooks)
+                            stack_hooks=None)
 
 
     def get_s3_bucket_name(self, app_id, grp_id, bucket_id):
@@ -184,14 +210,16 @@ class EC2LaunchManager():
     def user_data_script(self, app_id, grp_id, resource_id):
         script = """#!/bin/bash
 
-# EC2 Launch Manager
-"""
+# EC2 Launch Manager: %s
+""" % (self.get_cache_id(app_id, grp_id, resource_id))
         s3_bucket = self.get_s3_bucket_name(app_id, grp_id, self.bucket_id(resource_id))
         if s3_bucket != None:
             script += """
+# Update System
+yum update -y
 # Launch Bundles
 EC2_MANAGER_FOLDER='/opt/aim/EC2Manager/'
-mdkir -p ${EC2_MANAGER_FOLDER}
+mkdir -p ${EC2_MANAGER_FOLDER}
 aws s3 sync s3://%s/ ${EC2_MANAGER_FOLDER}
 
 cd ${EC2_MANAGER_FOLDER}/LaunchBundles/
@@ -210,7 +238,6 @@ do
     cd ..
     echo "${BUNDLE_FOLDER}: Done"
 done
-
             """ % (s3_bucket)
         else:
             script += """
@@ -222,18 +249,16 @@ echo "No Launch bundles to load"
 
     def add_bundle(self, bundle):
         bundle.build()
-        # Bundle s3_context_id is a unique ID that we can use to group an
-        # application's bundles together. The S3 bucket will only need to
-        # be created once, so we initialize it here when we we init a
-        # group of bundles
-        if bundle.s3_context_id not in self.launch_bundles:
+        if bundle.s3_bucket_ref not in self.launch_bundles:
             self.init_bundle_s3_bucket(bundle)
-            self.launch_bundles[bundle.s3_context_id] = []
+            self.launch_bundles[bundle.s3_bucket_ref] = []
             # Initializes the CloudFormation for this S3 Context ID
         # Add the bundle to the S3 Context ID bucket
-        self.launch_bundles[bundle.s3_context_id].append(bundle)
+        self.add_bundle_to_s3_bucket(bundle)
+        self.launch_bundles[bundle.s3_bucket_ref].append(bundle)
 
     def lb_add_cloudwatch_agent(self,
+                                instance_iam_role_ref,
                                 monitoring_config,
                                 app_id,
                                 group_id,
@@ -375,20 +400,8 @@ cd ${{LB_DIR}}
         agent_config = agent_config_template.format(agent_config_table)
 
         # Create instance managed policy for the agent
-        iam_ctl = self.aim_ctx.get_controller('IAM')
-        iam_config_ref_prefix = self.subenv_ctx.gen_ref(app_id=app_id)
-        iam_ctl.init_context(self.account_ctx,
-                             self.parent.aws_region,
-                             self.parent.iam_context_id,
-                             iam_config_ref_prefix)
-        instance_role_name_ref = self.parent.gen_resource_ref(grp_id=group_id,
-                                                                res_id=resource_id,
-                                                                attribute="instance_iam_role.name")
-        instance_role_name = self.aim_ctx.get_ref('netenv.ref '+instance_role_name_ref)
         policy_config_yaml = """
 name: 'CloudWatchAgent'
-roles:
-  - %s
 statement:
   - effect: Allow
     action:
@@ -404,18 +417,20 @@ statement:
       - "ec2:DescribeTags"
     resource:
       - '*'
-""" % (instance_role_name)
-        policy_config_dict = yaml.load(policy_config_yaml)
+"""
+
+
         policy_ref = self.parent.gen_resource_ref(grp_id=group_id,
                                                   res_id=resource_id,
                                                   attribute=self.id+".cloudwatchagent.policy")
-        policy_id = '-'.join([group_id, resource_id, 'cloudwatchagent-policy'])
-        iam_ctl.add_managed_policy( self.parent.iam_context_id,
-                                    self.parent,
-                                    res_config,
-                                    policy_id,
-                                    policy_config_dict,
-                                    policy_ref)
+        policy_id = '-'.join([resource_id, 'cloudwatchagent'])
+        iam_ctl = self.aim_ctx.get_controller('IAM')
+        iam_ctl.add_managed_policy( role_ref=instance_iam_role_ref,
+                                    parent_config=res_config,
+                                    group_id=group_id,
+                                    policy_id=policy_id,
+                                    policy_ref=policy_ref,
+                                    policy_config_yaml=policy_config_yaml )
 
         # Create the Launch Bundle and configure it
         cw_lb = LaunchBundle(self.aim_ctx, "CloudWatchAgent", self, app_id, group_id, resource_id, self.bucket_id(resource_id))
@@ -424,6 +439,66 @@ statement:
 
         # Save Configuration
         self.add_bundle(cw_lb)
+
+    def lb_add_ssm_agent(self,
+                        instance_iam_role_ref,
+                        app_id,
+                        group_id,
+                        resource_id,
+                        res_config):
+
+        # Create the SSM agent launch scripts and configuration
+        # Only Amazon Linux is supported
+        # Launch script
+        launch_script = """#!/bin/bash
+# Install the agent
+yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm
+"""
+
+        # Create instance managed policy for the agent
+        policy_config_yaml = """
+name: 'SSMAgent'
+statement:
+  - effect: Allow
+    action:
+      - ssmmessages:CreateControlChannel
+      - ssmmessages:CreateDataChannel
+      - ssmmessages:OpenControlChannel
+      - ssmmessages:OpenDataChannel
+      - ec2messages:AcknowledgeMessage
+      - ec2messages:DeleteMessage
+      - ec2messages:FailMessage
+      - ec2messages:GetEndpoint
+      - ec2messages:GetMessages
+      - ec2messages:SendReply
+      - ssm:UpdateInstanceInformation
+      - ssm:ListInstanceAssociations
+    resource:
+      - '*'
+  - effect: Allow
+    action:
+      - s3:GetEncryptionConfiguration
+    resource:
+      - '*'
+"""
+        policy_ref = self.parent.gen_resource_ref(grp_id=group_id,
+                                                  res_id=resource_id,
+                                                  attribute=self.id+".ssmagent.policy")
+        policy_id = '-'.join([resource_id, 'ssmagent-policy'])
+        iam_ctl = self.aim_ctx.get_controller('IAM')
+        iam_ctl.add_managed_policy( role_ref=instance_iam_role_ref,
+                                    parent_config=res_config,
+                                    group_id=group_id,
+                                    policy_id=policy_id,
+                                    policy_ref=policy_ref,
+                                    policy_config_yaml=policy_config_yaml )
+
+        # Create the Launch Bundle and configure it
+        ssm_lb = LaunchBundle(self.aim_ctx, "SSMAgent", self, app_id, group_id, resource_id, self.bucket_id(resource_id))
+        ssm_lb.set_launch_script(launch_script)
+
+        # Save Configuration
+        self.add_bundle(ssm_lb)
 
     def validate(self):
         pass
@@ -471,8 +546,8 @@ class ApplicationStackGroup(StackGroup):
         #self.config = ApplicationStackGroupConfig(aim_ctx, self, self.netenv_config, self.app_id, self.subenv_id)
         self.stack_list = []
 
-    def gen_iam_role_id(self, grp_id, res_id, role_id):
-        return '-'.join([grp_id, res_id, role_id])
+    def gen_iam_role_id(self, res_id, role_id):
+        return '-'.join([res_id, role_id])
 
     def gen_iam_context_id(self, aws_region, iam_id=None):
         iam_context_id = '-'.join([self.get_aws_name(), vocabulary.aws_regions[aws_region]['short_name']])
@@ -604,46 +679,60 @@ class ApplicationStackGroup(StackGroup):
         asg_config_ref = self.gen_resource_ref(grp_id, res_id)
         # Create instance role
         role_profile_arn = None
-        if res_config.instance_iam_role.enabled == True:
-            iam_ctl = self.aim_ctx.get_controller('IAM')
-            iam_config_ref_prefix = self.subenv_ctx.gen_ref()
-            iam_ctl.init_context(self.account_ctx,
-                                    self.aws_region,
-                                    self.iam_context_id,
-                                    iam_config_ref_prefix)
-            #policy_config = models.iam.IAM('codecommit', res_config.instance_iam_role)
-            #policy_config.add_roles(role_config_dict)
-            # The ID to give this role is: group.resource.instance_iam_role
-            instance_iam_role_ref = self.subenv_ctx.gen_ref(app_id=self.app_id,
-                                                            grp_id=grp_id,
-                                                            res_id=res_id,
-                                                            attribute='instance_iam_role')
-            instance_iam_role_id = self.gen_iam_role_id(grp_id, res_id, 'instance_iam_role')
-            # If no assume policy has been added, force one here since we know its
-            # an EC2 instance using it.
+        if res_config.instance_iam_role.enabled == False:
+            role_config_yaml = """
+instance_profile: false
+path: /
+role_name: %s""" % ("ASGInstance")
+            role_config_dict = yaml.load(role_config_yaml)
+            role_config = models.iam.Role()
+            role_config.apply_config(role_config_dict)
+
+        else:
             role_config = res_config.instance_iam_role
-            # Set defaults if assume role policy was not explicitly configured
-            if not hasattr(role_config, 'assume_role_policy') or role_config.assume_role_policy == None:
-                policy_dict = { 'effect': 'Allow',
-                                'service': ['ec2.amazonaws.com'] }
 
-                role_config.set_assume_role_policy(policy_dict)
-            # Always turn on instance profiles for ASG instances
-            role_config.instance_profile = True
+        # The ID to give this role is: group.resource.instance_iam_role
+        instance_iam_role_ref = self.subenv_ctx.gen_ref(app_id=self.app_id,
+                                                        grp_id=grp_id,
+                                                        res_id=res_id,
+                                                        attribute='instance_iam_role')
+        instance_iam_role_id = self.gen_iam_role_id(res_id, 'instance_iam_role')
+        # If no assume policy has been added, force one here since we know its
+        # an EC2 instance using it.
+        # Set defaults if assume role policy was not explicitly configured
+        if not hasattr(role_config, 'assume_role_policy') or role_config.assume_role_policy == None:
+            policy_dict = { 'effect': 'Allow',
+                            'service': ['ec2.amazonaws.com'] }
 
-            iam_ctl.add_role(self.iam_context_id,
-                                self,
-                                instance_iam_role_id,
-                                instance_iam_role_ref,
-                                res_config.instance_iam_role)
-            role_profile_arn = iam_ctl.role_profile_arn(self.iam_context_id, instance_iam_role_id)
+            role_config.set_assume_role_policy(policy_dict)
+        # Always turn on instance profiles for ASG instances
+        role_config.instance_profile = True
+        iam_ctl = self.aim_ctx.get_controller('IAM')
+        iam_ctl.add_role(   aim_ctx=self.aim_ctx,
+                            account_ctx=self.account_ctx,
+                            region=self.aws_region,
+                            group_id=grp_id,
+                            role_id=instance_iam_role_id,
+                            role_ref=instance_iam_role_ref,
+                            role_config=role_config,
+                            stack_group=self,
+                            template_params=None)
+
+        role_profile_arn = iam_ctl.role_profile_arn(instance_iam_role_ref)
 
         if res_config.monitoring != None:
-            self.ec2_launch_manager.lb_add_cloudwatch_agent(res_config.monitoring,
+            self.ec2_launch_manager.lb_add_cloudwatch_agent(instance_iam_role_ref,
+                                                            res_config.monitoring,
                                                             self.app_id,
                                                             grp_id,
                                                             res_id,
                                                             res_config)
+        if res_id == 'webapptest':
+            self.ec2_launch_manager.lb_add_ssm_agent(instance_iam_role_ref,
+                                                     self.app_id,
+                                                     grp_id,
+                                                     res_id,
+                                                     res_config)
         aws_name = '-'.join([grp_id, res_id])
         asg_template = aim.cftemplates.ASG(self.aim_ctx,
                                             self.account_ctx,
@@ -654,7 +743,8 @@ class ApplicationStackGroup(StackGroup):
                                             res_config,
                                             asg_config_ref,
                                             role_profile_arn,
-                                            self.ec2_launch_manager.user_data_script(self.app_id, grp_id, res_id))
+                                            self.ec2_launch_manager.user_data_script(self.app_id, grp_id, res_id),
+                                            self.ec2_launch_manager.get_cache_id(self.app_id, grp_id, res_id))
         asg_stack = Stack(self.aim_ctx,
                             self.account_ctx,
                             self,
@@ -700,18 +790,19 @@ class ApplicationStackGroup(StackGroup):
             print("ApplicationStackGroup: Init: CodePipeBuildDeploy: %s *disabled*" % (res_id))
         else:
             print("ApplicationStackGroup: Init: CodePipeBuildDeploy: %s" % (res_id))
-            # Tools account
             tools_account_ctx = self.aim_ctx.get_account_context(res_config.tools_account)
             # XXX: Fix Hardcoded!!!
             data_account_ctx = self.aim_ctx.get_account_context("config.ref accounts.data")
 
             # -----------------
-            # S3 Artifacts Bucket:  PRE
-            artifacts_bucket_ref = res_config.artifacts_bucket
+            # S3 Artifacts Bucket:
             s3_ctl = self.aim_ctx.get_controller('S3')
-            s3_artifacts_bucket_arn = s3_ctl.get_bucket_arn(artifacts_bucket_ref)
-            s3_artifacts_bucket_name = s3_ctl.get_bucket_name(artifacts_bucket_ref)
 
+            s3_artifacts_bucket_ref = res_config.artifacts_bucket
+            s3_artifacts_bucket_arn = s3_ctl.get_bucket_arn(s3_artifacts_bucket_ref)
+            s3_artifacts_bucket_name = s3_ctl.get_bucket_name(s3_artifacts_bucket_ref)
+
+            # S3 Artifacts Bucket:  POST
             codebuild_role_ref = self.subenv_ctx.gen_ref(app_id=self.app_id,
                                                          grp_id=grp_id,
                                                          res_id=res_id,
@@ -728,20 +819,6 @@ class ApplicationStackGroup(StackGroup):
                                                           grp_id=grp_id,
                                                           res_id=res_id,
                                                           attribute='codecommit_role.arn')
-
-            cpbd_s3_bucket_policy = {
-                'aws': [
-                    "aim.sub '${{{0}}}'".format(codebuild_role_ref),
-                    "aim.sub '${{{0}}}'".format(codepipeline_role_ref),
-                    "aim.sub '${{{0}}}'".format(codedeploy_tools_delegate_role_ref),
-                    "aim.sub '${{{0}}}'".format(codecommit_role_ref)
-                ],
-                'action': [ 's3:*' ],
-                'effect': 'Allow',
-                'resource_suffix': [ '/*', '' ]
-            }
-
-            s3_ctl.add_bucket_policy(artifacts_bucket_ref, cpbd_s3_bucket_policy)
 
             # ----------------
             # KMS Key
@@ -778,6 +855,8 @@ class ApplicationStackGroup(StackGroup):
 
             self.cpbd_kms_stack = kms_stack_pre
             self.stack_list.append(kms_stack_pre)
+            self.add_stack_order(kms_stack_pre)
+
 
             # -------------------------------------------
             # CodeCommit Delegate Role
@@ -834,17 +913,12 @@ policies:
             codecommit_iam_role_config.apply_config(role_config_dict)
 
             iam_ctl = self.aim_ctx.get_controller('IAM')
-            iam_config_ref_prefix = self.subenv_ctx.gen_ref()
-            iam_ctl.init_context(data_account_ctx,
-                                 self.aws_region,
-                                 self.cpbd_iam_context_id,
-                                 iam_config_ref_prefix)
             # The ID to give this role is: group.resource.instance_iam_role
             codecommit_iam_role_ref = self.subenv_ctx.gen_ref(app_id=self.app_id,
                                                               grp_id=grp_id,
                                                               res_id=res_id,
-                                                              attribute='codecommit.role')
-            codecommit_iam_role_id = self.gen_iam_role_id(grp_id, res_id, 'codecommit_role')
+                                                              attribute='codecommit_role')
+            codecommit_iam_role_id = self.gen_iam_role_id(res_id, 'codecommit_role')
             # IAM Roles Parameters
             iam_role_params = [
                 {
@@ -854,13 +928,18 @@ policies:
                     'description': 'CPBD KMS Key Arn'
                 }
             ]
-            iam_ctl.add_role(self.cpbd_iam_context_id,
-                             self,
-                             codecommit_iam_role_id,
-                             codecommit_iam_role_ref,
-                             codecommit_iam_role_config,
-                             iam_role_params)
+            iam_ctl.add_role(aim_ctx=self.aim_ctx,
+                             account_ctx=data_account_ctx,
+                             region=self.aws_region,
+                             group_id=grp_id,
+                             role_id=codecommit_iam_role_id,
+                             role_ref=codecommit_iam_role_ref,
+                             role_config=codecommit_iam_role_config,
+                             stack_group=self,
+                             template_params=iam_role_params)
 
+
+            #self.stack_list.append(role_stack)
             # ----------------------------------------------------------
             # Code Deploy
             codedeploy_conf_ref = '.'.join(["applications", self.app_id, "groups", grp_id, "resources", res_id, "deploy"])
@@ -885,6 +964,7 @@ policies:
 
             self.stack_list.append(codedeploy_stack)
             self.cpbd_codedeploy_stack = codedeploy_stack
+            self.add_stack_order(codedeploy_stack)
 
             # PipeBuild
             codepipebuild_conf_ref = '.'.join(["applications", self.app_id, "resources", res_id, "pipebuild"])
@@ -908,6 +988,9 @@ policies:
                                                 codepipebuild_template,
                                                 aws_region=self.aws_region)
             self.stack_list.append(self.cpbd_codepipebuild_stack)
+            self.add_stack_order(self.cpbd_codepipebuild_stack)
+
+
 
             # Add CodeBuild Role ARN to KMS Key principal now that the role is created
             codebuild_arn_ref = self.subenv_ctx.gen_ref(app_id=self.app_id,
@@ -932,19 +1015,30 @@ policies:
                                 None,
                                 kms_template,
                                 aws_region=self.aws_region)
+
             self.stack_list.append(kms_stack_post)
-
-
-            # TODO: Make this run in parallel
-            self.add_stack_order(kms_stack_pre)
-
-            iam_ctl.move_stack_orders(self.cpbd_iam_context_id, self)
-
-            self.add_stack_order(codedeploy_stack)
-
-            self.add_stack_order(self.cpbd_codepipebuild_stack)
-
             self.add_stack_order(kms_stack_post)
+
+            # Get the ASG Instance Role ARN
+            if res_config.asg_name[-5:] != '.name':
+                print("Invalid ASG Name reference: %s" % (res_config.asg_name))
+                raise StackException(AimErrorCode.Unknown)
+
+            asg_instance_role_ref = res_config.asg_name[:-5]+'.instance_iam_role.arn'
+            cpbd_s3_bucket_policy = {
+                'aws': [
+                    "aim.sub '${{{0}}}'".format(codebuild_role_ref),
+                    "aim.sub '${{{0}}}'".format(codepipeline_role_ref),
+                    "aim.sub '${{{0}}}'".format(codedeploy_tools_delegate_role_ref),
+                    "aim.sub '${{{0}}}'".format(codecommit_role_ref),
+                    "aim.sub '${{{0}}}'".format(asg_instance_role_ref)
+                ],
+                'action': [ 's3:*' ],
+                'effect': 'Allow',
+                'resource_suffix': [ '/*', '' ]
+            }
+            s3_ctl.add_bucket_policy(s3_artifacts_bucket_ref, cpbd_s3_bucket_policy)
+
 
     def init(self):
         print("ApplicationStackGroup: Init")
@@ -969,49 +1063,25 @@ policies:
         print("ApplicationStackGroup: Init: Completed")
 
     def validate(self):
-        # IAM
-        iam_ctl = self.aim_ctx.get_controller('IAM')
-        iam_ctl.validate(self.iam_context_id)
-
-        # App Group Validation
-        self.ec2_launch_manager.validate()
-
         super().validate()
 
 
     def provision(self):
-        # self.validate()
-        # Provision Registered Certificates
-        # IAM
-        iam_ctl = self.aim_ctx.get_controller('IAM')
-        iam_ctl.provision(self.iam_context_id)
-
         # Provision any SSL Cerificates
         acm_ctl = self.aim_ctx.get_controller('ACM')
         acm_ctl.provision()
-
-
-        self.ec2_launch_manager.provision()
 
         # Provison Application Group
         super().provision()
 
 
     def delete(self):
-
-
         super().delete()
-
-        self.ec2_launch_manager.delete()
-
-         # IAM
-        iam_ctl = self.aim_ctx.get_controller('IAM')
-        iam_ctl.delete(self.iam_context_id)
 
     def get_stack_from_ref(self, ref):
         for stack in self.stack_list:
             #print("grp_application: get stack : " + ref.raw + " contains " + stack.template.config_ref)
-            if ref.raw.find(stack.template.config_ref) != -1:
+            if stack.template.config_ref and stack.template.config_ref != '' and ref.raw.find(stack.template.config_ref) != -1:
                 return stack
         return None
 
@@ -1028,11 +1098,8 @@ policies:
     def resolve_ref(self, ref):
         if isinstance(ref.resource, models.resources.CodePipeBuildDeploy):
             if ref.resource_ref == 'codecommit_role.arn':
-                # TODO: Get IAM Controller and lookup role
-                [app_id, grp_id, res_id] = self.get_app_grp_res(ref)
-                role_id = self.gen_iam_role_id(grp_id, res_id, 'codecommit_role')
-                iam_ctl = self.aim_ctx.get_controller('IAM')
-                return iam_ctl.role_arn(self.cpbd_iam_context_id, role_id)
+                iam_ctl = self.aim_ctx.get_controller("IAM")
+                return iam_ctl.role_arn(ref.raw[:-4])
             elif ref.resource_ref == 'codecommit.arn':
                 codecommit_ref = ref.resource.codecommit_repository
                 return self.aim_ctx.get_ref(codecommit_ref+".arn")
@@ -1053,5 +1120,17 @@ policies:
         elif isinstance(ref.resource, models.resources.TargetGroup):
             return self.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.resources.ASG):
-            return self.get_stack_from_ref(ref)
+            if ref.resource_ref.startswith('instance_id'):
+                asg_stack = self.get_stack_from_ref(ref)
+                asg_outputs_key = asg_stack.template.get_outputs_key_from_ref(ref)
+                asg_name = asg_stack.get_outputs_value(asg_outputs_key)
+                asg_client = self.account_ctx.get_aws_client('autoscaling')
+                asg_response = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+                instance_id = asg_response['AutoScalingGroups'][0]['Instances'][0]['InstanceId']
+                ssm_client = self.account_ctx.get_aws_client('ssm')
+                response = ssm_client.start_session(Target=instance_id)
+                breakpoint()
+
+            else:
+                return self.get_stack_from_ref(ref)
         return None

@@ -18,10 +18,12 @@ class ASG(CFTemplate):
                  asg_config,
                  asg_config_ref,
                  role_profile_arn,
-                 ec2_manager_user_data_script):
+                 ec2_manager_user_data_script,
+                 ec2_manager_cache_id ):
 
         #aim_ctx.log("ASG CF Template init")
         self.subenv_ctx = subenv_ctx
+        self.ec2_manager_cache_id = ec2_manager_cache_id
         segment_stack = self.subenv_ctx.get_segment_stack(asg_config.segment)
 
         # Super Init:
@@ -113,6 +115,8 @@ class ASG(CFTemplate):
         template_fmt = """
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'ASG: Auto Scaling Group and Launch Configuration'
+
+# EC2 Manager Cache ID: %s
 
 Parameters:
   LCEBSOptimized:
@@ -323,7 +327,7 @@ Resources:
 Outputs:
   ASGName:
     Value: !Ref ASG
-"""
+""" % self.ec2_manager_cache_id
         self.register_stack_output_config(asg_config_ref, 'ASGName')
 
         asg_table = {
@@ -341,6 +345,6 @@ Outputs:
         #self.aim_ctx.log("Validating ASG Template")
         super().validate()
 
-    def get_outputs_key_from_ref(self, aim_ref):
+    def get_outputs_key_from_ref(self, ref):
         # There is only one output key
         return "ASGName"

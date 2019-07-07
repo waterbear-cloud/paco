@@ -60,6 +60,15 @@ class StackHooks():
         self.hooks[stack_action][stack_timing].append(hook)
         print("Adding hook: %s: %s: %s" % (name, stack_action, stack_timing))
 
+    def merge(self, new_hooks):
+        if new_hooks == None:
+            return
+        for stack_action in self.hooks.keys():
+            for hook_timing in self.hooks[stack_action].keys():
+                for new_hook_item in new_hooks.hooks[stack_action][hook_timing]:
+                    self.hooks[stack_action][hook_timing].append(new_hook_item)
+
+
     def run(self, stack_action, stack_timing, stack):
         for hook in self.hooks[stack_action][stack_timing]:
             action_name = self.aim_ctx.str_spc("Hook:", stack.max_action_name_size)
@@ -74,7 +83,7 @@ class StackHooks():
             for timing in self.hooks[action].keys():
                 for hook in self.hooks[action][timing]:
                     if hook['cache_method'] != None:
-                        cache_id = hook['cache_method'](hook, hook['arg'])
+                        cache_id += hook['cache_method'](hook, hook['arg'])
                         break
         return cache_id
 
@@ -118,6 +127,12 @@ class Stack():
         else:
             self.hooks = hooks
 
+    def set_template(self, template):
+        self.template = template
+        self.template.stack = self
+
+    def add_hooks(self, hooks):
+        self.hooks.merge(hooks)
 
     def set_termination_protection(self, protection_enabled):
         self.termination_protection = protection_enabled

@@ -11,19 +11,20 @@ class IAMRoles(CFTemplate):
     def __init__(self,
                  aim_ctx,
                  account_ctx,
-                 iam_context_id,
-                 roles_by_order):
+                 template_name,
+                 role_ref,
+                 role_id,
+                 role_config,
+                 template_params):
         #aim_ctx.log("IAMRoles CF Template init")
-        aws_name = "Roles"
-
+        aws_name = '-'.join([template_name, "Role"])
         super().__init__(aim_ctx,
                          account_ctx,
                          config_ref="",
                          aws_name=aws_name,
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])
 
-        self.roles_by_order = roles_by_order
-        self.iam_context_id = iam_context_id
+        self.role_ref = role_ref
 
         # Define the Template
         template_fmt = """
@@ -107,62 +108,57 @@ Outputs:
      Type: {0[type]:s}
      Description: {0[description]:s}
 """
-        roles_yaml = ""
         iam_role_table.clear()
-        for role_context in self.roles_by_order:
-            if role_context['template_params']:
-                for param_table in role_context['template_params']:
-                    self.set_parameter(param_table['key'], param_table['value'])
-                    parameters_yaml += parameter_fmt.format(param_table)
+        if template_params:
+            for param_table in template_params:
+                self.set_parameter(param_table['key'], param_table['value'])
+                parameters_yaml += parameter_fmt.format(param_table)
 
-            role_config = role_context['config']
-            role_id = role_context['id']
+        # Role
+        role_path_param_name = self.get_cf_resource_name_prefix(role_id) + "RolePath"
+        iam_role_table['role_path_param_name'] = role_path_param_name
+        iam_role_table['role_name'] = self.gen_iam_role_name("Role", role_id)
+        iam_role_table['cf_resource_name_prefix'] = self.get_cf_resource_name_prefix(role_id)
 
-            # Role
-            role_path_param_name = self.get_cf_resource_name_prefix(role_id) + "RolePath"
-            iam_role_table['role_path_param_name'] = role_path_param_name
-            iam_role_table['role_name'] = self.gen_iam_role_name("Role", role_id)
-            iam_role_table['cf_resource_name_prefix'] = self.get_cf_resource_name_prefix(role_id)
-
-            # Assume Role Principal
-            principal_yaml = ""
-            if role_config.assume_role_policy != None:
-                if len(role_config.assume_role_policy.service) > 0:
-                    principal_yaml += """
+        # Assume Role Principal
+        principal_yaml = ""
+        if role_config.assume_role_policy != None:
+            if len(role_config.assume_role_policy.service) > 0:
+                principal_yaml += """
               Service:"""
-                    for service_item in role_config.assume_role_policy.service:
-                        principal_yaml += """
-                - """ + service_item
-                elif role_config.assume_role_policy.aws != '':
+                for service_item in role_config.assume_role_policy.service:
                     principal_yaml += """
+                - """ + service_item
+            elif role_config.assume_role_policy.aws != '':
+                principal_yaml += """
               AWS:"""
-                    for aws_item in role_config.assume_role_policy.aws:
-                        principal_yaml += """
+                for aws_item in role_config.assume_role_policy.aws:
+                    principal_yaml += """
                 - """ + aws_item
-            else:
-                pass
-            iam_role_table['assume_role_principal'] = principal_yaml
+        else:
+            pass
+        iam_role_table['assume_role_principal'] = principal_yaml
 
-            if role_config.policies:
-                iam_role_table['inline_policies'] = self.gen_role_policies(role_config.policies)
-            else:
-                iam_role_table['inline_policies'] = ""
+        if role_config.policies:
+            iam_role_table['inline_policies'] = self.gen_role_policies(role_config.policies)
+        else:
+            iam_role_table['inline_policies'] = ""
 
-            # Instance Profile
-            if role_config.instance_profile == True:
-                iam_role_table['profile_name'] = self.gen_iam_role_name("Profile", role_id)
-                iam_role_table['instance_profile'] = iam_profile_fmt.format(iam_role_table)
-            else:
-                iam_role_table['instance_profile'] = ""
+        # Instance Profile
+        if role_config.instance_profile == True:
+            iam_role_table['profile_name'] = self.gen_iam_role_name("Profile", role_id)
+            iam_role_table['instance_profile'] = iam_profile_fmt.format(iam_role_table)
+        else:
+            iam_role_table['instance_profile'] = ""
 
-            parameters_yaml += iam_role_params_fmt.format(iam_role_table)
-            resources_yaml += iam_role_fmt.format(iam_role_table)
-            outputs_yaml += iam_role_outputs_fmt.format(iam_role_table)
+        parameters_yaml += iam_role_params_fmt.format(iam_role_table)
+        resources_yaml += iam_role_fmt.format(iam_role_table)
+        outputs_yaml += iam_role_outputs_fmt.format(iam_role_table)
 
-            if role_config.instance_profile == True:
-                outputs_yaml += iam_profile_outputs_fmt.format(iam_role_table)
-            # Initialize Parameters
-            self.set_parameter(role_path_param_name, role_config.path)
+        if role_config.instance_profile == True:
+            outputs_yaml += iam_profile_outputs_fmt.format(iam_role_table)
+        # Initialize Parameters
+        self.set_parameter(role_path_param_name, role_config.path)
 
         template_table['parameters_yaml'] = parameters_yaml
         template_table['resources_yaml'] = resources_yaml
@@ -175,7 +171,7 @@ Outputs:
 
     # Generate a name valid in CloudFormation
     def gen_iam_role_name(self, role_type, role_id):
-        iam_context_hash = self.aim_ctx.md5sum(str_data=self.iam_context_id)[:8].upper()
+        iam_context_hash = self.aim_ctx.md5sum(str_data=self.role_ref)[:8].upper()
         role_name = '-'.join([iam_context_hash, role_type[0], role_id])
         role_name = self.aim_ctx.normalize_name(role_name, '-', False)
         return role_name

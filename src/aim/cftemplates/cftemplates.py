@@ -250,7 +250,7 @@ class CFTemplate():
                     # Replace the ${}
                     sub_var = self.body[rep_1_idx:rep_1_idx+(rep_2_idx-rep_1_idx)]
                     #print("Sub var: %s" % (sub_var))
-                    self.body = self.body.replace(sub_var, sub_value)
+                    self.body = self.body.replace(sub_var, sub_value, 1)
                 else:
                     #print("break 3")
                     break

@@ -4,6 +4,7 @@ from aim.config.aim_context import AimContext, AccountContext
 
 pass_aim_context = click.make_pass_decorator(AimContext, ensure=True)
 
+
 def controller_args(func):
     """
     decorator to add controller args
