@@ -3,7 +3,7 @@ import os
 import sys
 from aim.config.aim_context import AimContext, AccountContext
 from aim.core.exception import AimException, StackException
-from aim.models.exceptions import InvalidAimProjectFile
+from aim.models.exceptions import InvalidAimProjectFile, UnusedAimProjectField, InvalidAimReference
 from boto3.exceptions import Boto3Error
 from botocore.exceptions import BotoCoreError, ClientError
 from functools import wraps
@@ -46,12 +46,12 @@ def handle_exceptions(func):
     def decorated(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except (InvalidAimProjectFile, AimException, StackException, BotoCoreError,
+        except (InvalidAimReference, UnusedAimProjectField, InvalidAimProjectFile, AimException, StackException, BotoCoreError,
             ClientError, Boto3Error) as error:
             #import pdb; pdb.set_trace();
             click.echo("\nERROR!\n")
             error_name = error.__class__.__name__
-            if error_name == 'InvalidAimProjectFile':
+            if error_name in ('InvalidAimProjectFile', 'UnusedAimProjectField', 'InvalidAimReference'):
                 click.echo("Invalid AIM project configuration files at {}".format(args[0].home))
             click.echo(error)
             sys.exit(1)
