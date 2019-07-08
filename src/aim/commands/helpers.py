@@ -1,6 +1,12 @@
 import click
 import os
+import sys
 from aim.config.aim_context import AimContext, AccountContext
+from aim.core.exception import AimException, StackException
+from aim.models.exceptions import InvalidAimProjectFile, UnusedAimProjectField, InvalidAimReference
+from boto3.exceptions import Boto3Error
+from botocore.exceptions import BotoCoreError, ClientError
+from functools import wraps
 
 pass_aim_context = click.make_pass_decorator(AimContext, ensure=True)
 
@@ -32,3 +38,23 @@ def init_aim_home_option(ctx, home):
         home = os.environ.get('AIM_HOME')
     if home is not None:
         ctx.home = home
+
+def handle_exceptions(func):
+    """
+    Catches exceptions and displays errors in a human readable format
+    """
+    @wraps(func)
+    def decorated(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except (InvalidAimReference, UnusedAimProjectField, InvalidAimProjectFile, AimException, StackException, BotoCoreError,
+            ClientError, Boto3Error) as error:
+            #import pdb; pdb.set_trace();
+            click.echo("\nERROR!\n")
+            error_name = error.__class__.__name__
+            if error_name in ('InvalidAimProjectFile', 'UnusedAimProjectField', 'InvalidAimReference'):
+                click.echo("Invalid AIM project configuration files at {}".format(args[0].home))
+            click.echo(error)
+            sys.exit(1)
+
+    return decorated

@@ -3,7 +3,6 @@ network:
   title: "{{cookiecutter.network_environment_title}}"
   availability_zones: 2
   enabled: true
-  region: {{cookiecutter.aws_default_region}}
   vpc:
     enable_dns_hostnames: true
     enable_dns_support: true

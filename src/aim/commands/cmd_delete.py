@@ -1,7 +1,7 @@
 import aim.models
 import click
 import sys
-from aim.commands.helpers import pass_aim_context, controller_args, aim_home_option, init_aim_home_option
+from aim.commands.helpers import pass_aim_context, controller_args, aim_home_option, init_aim_home_option, handle_exceptions
 from aim.core.exception import StackException
 
 
@@ -9,6 +9,7 @@ from aim.core.exception import StackException
 @controller_args
 @aim_home_option
 @pass_aim_context
+@handle_exceptions
 def delete_command(aim_ctx, controller_type, component_name=None, config_name=None, config_region=None, home='.'):
     """Deletes provisioned AWS Resources"""
     init_aim_home_option(aim_ctx, home)

@@ -243,7 +243,6 @@ this file will describe your network and looks like this:
         title: "My AIM Network"
         availability_zones: 2
         enabled: true
-        region: eu-central-1
         vpc:
             enable_dns_hostnames: true
             enable_dns_support: true
