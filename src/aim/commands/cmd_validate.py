@@ -1,12 +1,13 @@
 import click
 import sys
 from aim.core.exception import StackException
-from aim.commands.helpers import pass_aim_context, controller_args, aim_home_option, init_aim_home_option
+from aim.commands.helpers import pass_aim_context, controller_args, aim_home_option, init_aim_home_option, handle_exceptions
 
 @click.command('validate', short_help='Validate an AIM project')
 @controller_args
 @aim_home_option
 @pass_aim_context
+@handle_exceptions
 def validate_command(aim_ctx, controller_type, component_name=None, config_name=None, config_region=None, home='.'):
     """Validates a Config CloudFormation"""
 

@@ -6,7 +6,7 @@ Changelog for aim
 
 ### Added
 
-- CLI reports validation errors from AIM project configuration files
+- CLI reports human readable validation errors from AIM project configuration files
 
 
 1.0.0 (2019-07-06)
