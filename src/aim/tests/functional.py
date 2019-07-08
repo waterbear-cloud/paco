@@ -2,11 +2,17 @@
 Functional test suite for AIM
 """
 
+import aim.models
+import boto3
 import os
+import pexpect
+import requests
 import shutil
 import sys
 import subprocess
-import pexpect
+from aim.models.references import AimReference
+from aim.config.aim_context import AimContext
+
 
 def init_test_dir():
     subprocess.call(["mkdir","aim_ftest"])
@@ -55,8 +61,22 @@ def test_cmd_provision_netenv():
     child.logfile = sys.stdout.buffer
     child.interact()
 
+def test_web_server_responds():
+    project = aim.models.load_project_from_yaml(AimReference(), 'tproj')
+    web_asg = project['ne']['tnet']['dev']['us-west-2'].applications['tapp'].groups['site'].resources['alb']
+    aim_ctx = AimContext('tproj')
+    aim_ctx.init_project()
+    account = aim_ctx.get_account_context(account_name='master')
+    client = account.get_aws_client('elbv2')
+    response = client.describe_load_balancers(Names=[web_asg.resource_name])
+    dns_name = response['LoadBalancers'][0]['DNSName']
+    response = requests.get('http://' + dns_name)
+    assert response.text, '<html><body><h1>Hello world!</h1></body></html>\n'
+
 def main():
     print("Starting AIM functional tests")
+    test_web_server_responds()
+    sys.exit()
     init_test_dir()
     test_cmd_init()
     test_cmd_provision_keypair()
