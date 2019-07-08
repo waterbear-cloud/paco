@@ -59,7 +59,6 @@ setup(
         'console_scripts': [
             'aim = aim.commands.cli:cli',
             'aim_doc = aim.doc.docschema:aim_schema_generate',
-            'aim_ftest = aim.tests.functional:main',
         ]
     },
     extras_require={

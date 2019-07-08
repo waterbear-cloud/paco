@@ -1,9 +1,10 @@
 """
-Functional test suite for AIM
+Functional test suite for AIM for the cookiecutter generated "aim init project" AIM projects
 """
 
 import aim.models
 import boto3
+import click
 import os
 import pexpect
 import requests
@@ -11,10 +12,42 @@ import shutil
 import sys
 import subprocess
 from aim.models.references import AimReference
+from aim.commands.helpers import pass_aim_context, handle_exceptions
 from aim.config.aim_context import AimContext
 
+starting_template_mapping = {
+    'simple-web-app': '2',
+}
+
+@click.command('ftest', short_help='Funcitonal testing of an AIM project', help="""
+Tests an AIM project by first creating a project with 'aim init project',
+provisions an environment, then does real-world functional testing on the environment,
+then deletes all the AWS resources.
+
+STARTING_TEMPLATE must be the name of a aim init starting_template, e.g. 'simple-web-app'""")
+@click.argument('starting_template', default='')
+@pass_aim_context
+@handle_exceptions
+def ftest_command(ctx, starting_template):
+    """Functional testing of an AIM project"""
+    print("Starting AIM functional tests")
+    template_number = starting_template_mapping[starting_template]
+    test_cookiecutter_template(starting_template, template_number, ctx.verbose)
+
+
+def test_cookiecutter_template(starting_template, template_number, verbose):
+    init_test_dir()
+    test_cmd_init(verbose)
+    test_cmd_provision_keypair(verbose)
+    test_cmd_provision_netenv(verbose)
+    fname = starting_template.replace('-','_')
+    function = getattr(aim.test.functional, 'test_provisioned_{}'.format(fname))
+    function(verbose)
+    test_delete_netenv(verbose)
 
 def init_test_dir():
+    """Create a tmpdir for tests to run in"""
+    # ToDo: make a real tmpdir ...
     subprocess.call(["mkdir","aim_ftest"])
     os.chdir('aim_ftest')
     try:
@@ -22,10 +55,11 @@ def init_test_dir():
     except FileNotFoundError:
         pass
 
-def test_cmd_init():
+def test_cmd_init(verbose):
     print("Testing 'aim init project'")
     child = pexpect.spawn('aim init project')
-    child.logfile = sys.stdout.buffer
+    if verbose:
+        child.logfile = sys.stdout.buffer
     child.expect('.*Choose.*')
     child.sendline('2')
     child.expect('project_name .*: ')
@@ -52,19 +86,32 @@ def test_cmd_init():
     child.sendline(os.environ['AIM_AWS_SECRET_ACCESS_KEY'])
     child.interact()
 
-def test_cmd_provision_keypair():
+def test_cmd_provision_keypair(verbose):
     print("Testing 'aim provision EC2 keypair'")
     child = pexpect.spawn('aim provision EC2 keypair aimkeypair --home tproj')
-    child.logfile = sys.stdout.buffer
+    if verbose:
+        child.logfile = sys.stdout.buffer
     child.interact()
 
-def test_cmd_provision_netenv():
+def test_cmd_provision_netenv(verbose):
     print("Testing 'aim provsion NetEnv tnet'")
     child = pexpect.spawn('aim provision NetEnv tnet --home tproj')
-    child.logfile = sys.stdout.buffer
+    if verbose:
+        child.logfile = sys.stdout.buffer
     child.interact()
 
-def test_web_server_responds():
+def test_delete_netenv(verbose):
+    print("Deleting 'aim delete NetEnv tnet --home tproj'")
+    child = pexpect.spawn('aim delete NetEnv tnet --home tproj')
+    if verbose:
+        child.logfile = sys.stdout.buffer
+    child.expect('.*Proceed with deletion.*')
+    child.sendline('y')
+    child.interact()
+
+# Tests for simple-web-app
+
+def test_web_server_responds(verbose):
     project = aim.models.load_project_from_yaml(AimReference(), 'tproj')
     web_asg = project['ne']['tnet']['dev']['us-west-2'].applications['tapp'].groups['site'].resources['alb']
     aim_ctx = AimContext('tproj')
@@ -76,20 +123,7 @@ def test_web_server_responds():
     response = requests.get('http://' + dns_name)
     assert response.text, '<html><body><h1>Hello world!</h1></body></html>\n'
 
-def test_delete_netenv():
-    print("Deleting 'aim delete NetEnv tnet --home tproj'")
-    child = pexpect.spawn('aim delete NetEnv tnet --home tproj')
-    child.logfile = sys.stdout.buffer
-    child.expect('.*Proceed with deletion.*')
-    child.sendline('y')
-    child.interact()
+def test_provisioned_simple_web_app(verbose):
+    test_web_server_responds(verbose)
 
-def main():
-    print("Starting AIM functional tests")
-    init_test_dir()
-    test_cmd_init()
-    test_cmd_provision_keypair()
-    test_cmd_provision_netenv()
-    test_web_server_responds()
-    test_delete_netenv()
 
