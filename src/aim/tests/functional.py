@@ -17,7 +17,10 @@ from aim.config.aim_context import AimContext
 def init_test_dir():
     subprocess.call(["mkdir","aim_ftest"])
     os.chdir('aim_ftest')
-    shutil.rmtree('tproj')
+    try:
+        shutil.rmtree('tproj')
+    except FileNotFoundError:
+        pass
 
 def test_cmd_init():
     print("Testing 'aim init project'")
@@ -73,12 +76,20 @@ def test_web_server_responds():
     response = requests.get('http://' + dns_name)
     assert response.text, '<html><body><h1>Hello world!</h1></body></html>\n'
 
+def test_delete_netenv():
+    print("Deleting 'aim delete NetEnv tnet --home tproj'")
+    child = pexpect.spawn('aim delete NetEnv tnet --home tproj')
+    child.logfile = sys.stdout.buffer
+    child.expect('.*Proceed with deletion.*')
+    child.sendline('y')
+    child.interact()
+
 def main():
     print("Starting AIM functional tests")
-    test_web_server_responds()
-    sys.exit()
     init_test_dir()
     test_cmd_init()
     test_cmd_provision_keypair()
     test_cmd_provision_netenv()
+    test_web_server_responds()
+    test_delete_netenv()
 
