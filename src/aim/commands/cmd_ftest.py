@@ -41,7 +41,7 @@ def test_cookiecutter_template(starting_template, template_number, verbose):
     test_cmd_provision_keypair(verbose)
     test_cmd_provision_netenv(verbose)
     fname = starting_template.replace('-','_')
-    function = getattr(aim.test.functional, 'test_provisioned_{}'.format(fname))
+    function = getattr(aim.commands.cmd_ftest, 'test_provisioned_{}'.format(fname))
     function(verbose)
     test_delete_netenv(verbose)
 
