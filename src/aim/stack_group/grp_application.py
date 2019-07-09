@@ -832,7 +832,7 @@ role_name: %s""" % ("ASGInstance")
                         # Sub-Environment account
                         "aim.sub 'arn:aws:iam::${%s}:root'" % (self.aim_ctx.get_ref(aws_account_ref)),
                         # CodeCommit Account
-                        "aim.sub 'arn:aws:iam::${config.ref accounts.data}:root'",
+                        "aim.sub 'arn:aws:iam::${%s}:root'" % (res_config.data_account),
                         # Tools Account
                     ]
                 }
