@@ -4,7 +4,6 @@ Functional test suite for AIM for the cookiecutter generated "aim init project" 
 
 import click
 from aim.commands.helpers import pass_aim_context, handle_exceptions
-from aim.config.aim_context import AimContext
 from aim.commands.cookiecutter_test import test_cookiecutter_template, starting_template_mapping
 
 @click.command('ftest', short_help='Functional testing of an AIM project', help="""
@@ -14,11 +13,12 @@ then deletes all the AWS resources.
 
 STARTING_TEMPLATE must be the name of a aim init starting_template, e.g. 'simple-web-app'""")
 @click.argument('starting_template', default='')
+@click.option('-c','--check-only', is_flag=True, default=False, help='Only check an already provisioned environment')
 @pass_aim_context
 @handle_exceptions
-def ftest_command(ctx, starting_template):
+def ftest_command(ctx, starting_template, check_only=False):
     """Functional testing of an AIM project"""
     print("Starting AIM functional tests")
     template_number = starting_template_mapping[starting_template]
-    test_cookiecutter_template(starting_template, template_number, ctx.verbose)
+    test_cookiecutter_template(starting_template, template_number, ctx.verbose, check_only)
 
