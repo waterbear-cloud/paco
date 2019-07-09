@@ -200,7 +200,7 @@ network:
               name: ANY
               protocol: "-1"
           ingress:
-            - cidr_ip: 0.0.0.0/32
+            - cidr_ip: 0.0.0.0/0
               from_port: 80
               name: HTTP
               protocol: tcp
@@ -299,6 +299,43 @@ applications:
               - Default
             update_policy_max_batch_size: 1
             update_policy_min_instances_in_service: 0
+            monitoring:
+              enabled: true
+              collection_interval: 60
+              asg_metrics:
+                - GroupMinSize
+                - GroupMaxSize
+                - GroupDesiredCapacity
+                - GroupInServiceInstances
+                - GroupPendingInstances
+                - GroupStandbyInstances
+                - GroupTerminatingInstances
+                - GroupTotalInstances
+              metrics:
+                - name: swap
+                  measurements:
+                    - used_percent
+                - name: cpu
+                  measurements:
+                    - usage_user
+                    - usage_system
+                - name: disk
+                  measurements:
+                    - free
+                  collection_interval: 300
+                - name: diskio
+                  measurements:
+                    - iops_in_progress
+                - name: netstat
+                  measurements:
+                    - tcp_established
+                    - tcp_close_wait
+                    - tcp_listen
+                    - udp_socket
+                - name: processes
+                  measurements:
+                    - total
+                    - zombies
             user_data_script: |
               #!/bin/bash
               yum update -y
@@ -397,6 +434,14 @@ environments:
                   deployment_environment: "dev"
                   deployment_branch_name: "dev"
                   deploy_config_value: 0
+            site:
+              resources:
+                alb:
+                  monitoring:
+                    alarm_sets:
+                      instance-health:
+                      response-latency:
+                      response-health:
       network:
         aws_account: config.ref accounts.master
         availability_zones: 2
