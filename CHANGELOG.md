@@ -8,6 +8,10 @@ Changelog for aim
 
 - CLI reports human readable validation errors from AIM project configuration files
 
+- "aim ftest" command added to run functional tests on the "aim init project"
+  templates. This command will be expanded in the future so you can test your
+  own aim projects.
+
 
 1.0.0 (2019-07-06)
 ------------------
