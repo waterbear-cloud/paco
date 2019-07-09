@@ -9,6 +9,7 @@ from aim import models
 import aim.cftemplates
 from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks
 import copy
+import botocore
 
 class S3Context():
     def __init__(self, aim_ctx, account_ctx, region, controller, stack_group, resource_ref):
@@ -25,27 +26,35 @@ class S3Context():
             'ref': resource_ref,
             'bucket_name_prefix': None,
             'bucket_name_suffix': None,
-            'stack_hooks': None,
-            'bucket_policy_config': []
+            'stack': None
         }
+
+    def add_stack_hooks(self, stack_hooks):
+        self.bucket_context['stack'].add_hooks(stack_hooks)
 
     def add_stack(  self,
                     bucket_policy_only=False,
-                    stack_hooks=None):
+                    stack_hooks=None,
+                    new_stack=True):
+
         s3_template = aim.cftemplates.S3(self.aim_ctx,
                                          self.account_ctx,
                                          self.bucket_context,
                                          bucket_policy_only,
                                          self.resource_ref)
-        #s3_template.set_template_file_id(self.aim_ctx.md5sum(str_data=resource_ref))
 
         s3_stack = Stack(self.aim_ctx,
-                         self.account_ctx,
-                         self.stack_group,
-                         self.bucket_context,
-                         s3_template,
-                         aws_region=self.region,
-                         hooks=stack_hooks)
+                        self.account_ctx,
+                        self.stack_group,
+                        self.bucket_context,
+                        s3_template,
+                        aws_region=self.region,
+                        hooks=stack_hooks)
+
+        if bucket_policy_only == False:
+            if self.bucket_context['stack'] != None:
+                raise StackException(AimErrorCode.Unknown)
+            self.bucket_context['stack'] = s3_stack
 
         self.stack_group.stack_list.append(s3_stack)
         self.stack_group.add_stack_order(s3_stack)
@@ -74,7 +83,8 @@ class S3Context():
         self.bucket_context['ref'] = self.resource_ref
         self.bucket_context['bucket_name_prefix'] = bucket_name_prefix
         self.bucket_context['bucket_name_suffix'] = bucket_name_suffix
-        self.bucket_context['stack_hooks'] = stack_hooks
+
+        bucket_config.resolve_ref_obj = self
 
         # S3 Delete on Stack Delete hook
         if stack_hooks == None:
@@ -87,10 +97,16 @@ class S3Context():
                         stack_hooks=stack_hooks)
 
 
-    def add_bucket_policy(self, policy_dict):
+    def add_bucket_policy(self, policy_dict, stack_hooks=None, new_stack=True):
         bucket_config = self.bucket_context['config']
+        # If this is a new stack, mark previous policies as processed so they
+        # are not written twice.
+        if new_stack == True:
+            for policy in bucket_config.policy:
+                policy.processed = True
         bucket_config.add_policy(policy_dict)
-        self.add_stack(bucket_policy_only=True)
+
+        self.add_stack(bucket_policy_only=True, stack_hooks=stack_hooks)
 
     def get_bucket_arn(self):
         return 'arn:aws:s3:::'+self.get_bucket_name()
@@ -120,23 +136,23 @@ class S3Context():
     def stack_hook_post_delete(self, hook, hook_arg):
         # Empty the S3 Bucket if enabled
         buckets = hook_arg
-        for bucket_context in buckets:
-            s3_config = bucket_context['config']
-            s3_resource = self.account_ctx.get_aws_resource('s3', self.region)
-            deletion_policy = s3_config.deletion_policy
-            bucket_name = self.get_bucket_name()
-            if deletion_policy == "delete":
-                print("Deleting S3 Bucket: %s" % (bucket_name))
-                bucket = s3_resource.Bucket(bucket_name)
-                try:
-                    bucket.objects.all().delete()
-                    bucket.delete()
-                except botocore.exceptions.ClientError as e:
-                    if e.response['Error']['Code'] != 'NoSuchBucket':
-                        print("%s: %s" % (e.response['Error']['Code'], e.response['Error']['Message']))
-                        raise StackException(AimErrorCode.Unknown)
-            else:
-                print("Retaining S3 Bucket: %s" % (bucket_name))
+        bucket_context = hook_arg
+        s3_config = bucket_context['config']
+        s3_resource = self.account_ctx.get_aws_resource('s3', self.region)
+        deletion_policy = s3_config.deletion_policy
+        bucket_name = self.get_bucket_name()
+        if deletion_policy == "delete":
+            print("Deleting S3 Bucket: %s" % (bucket_name))
+            bucket = s3_resource.Bucket(bucket_name)
+            try:
+                bucket.objects.all().delete()
+                bucket.delete()
+            except botocore.exceptions.ClientError as e:
+                if e.response['Error']['Code'] != 'NoSuchBucket':
+                    print("%s: %s" % (e.response['Error']['Code'], e.response['Error']['Message']))
+                    raise StackException(AimErrorCode.Unknown)
+        else:
+            print("Retaining S3 Bucket: %s" % (bucket_name))
 
     def empty_bucket(self):
         if self.bucket_context == None:
@@ -165,6 +181,14 @@ class S3Context():
                     for item in response['Contents']:
                         s3_client.delete_object(Bucket=bucket_name, Key=item['Key'])
 
+    def resolve_ref(self, ref):
+        if ref.last_part == 'arn':
+            return self.get_bucket_arn()
+        elif ref.last_part == 'name':
+            return self.get_bucket_name()
+        else:
+            return self.bucket_context['config']
+
 class S3Controller(Controller):
     def __init__(self, aim_ctx):
         super().__init__(aim_ctx,
@@ -186,6 +210,9 @@ class S3Controller(Controller):
 
     def add_bucket_policy(self, resource_ref, *args, **kwargs):
         return self.contexts[resource_ref].add_bucket_policy(*args, **kwargs)
+
+    def add_stack_hooks(self, resource_ref, *args, **kwargs):
+        return self.contexts[resource_ref].add_stack_hooks(*args, **kwargs)
 
     def get_bucket_arn(self, resource_ref, *args, **kwargs):
         return self.contexts[resource_ref].get_bucket_arn(*args, **kwargs)

@@ -60,6 +60,15 @@ class StackHooks():
         self.hooks[stack_action][stack_timing].append(hook)
         print("Adding hook: %s: %s: %s" % (name, stack_action, stack_timing))
 
+    def merge(self, new_hooks):
+        if new_hooks == None:
+            return
+        for stack_action in self.hooks.keys():
+            for hook_timing in self.hooks[stack_action].keys():
+                for new_hook_item in new_hooks.hooks[stack_action][hook_timing]:
+                    self.hooks[stack_action][hook_timing].append(new_hook_item)
+
+
     def run(self, stack_action, stack_timing, stack):
         for hook in self.hooks[stack_action][stack_timing]:
             action_name = self.aim_ctx.str_spc("Hook:", stack.max_action_name_size)
@@ -74,7 +83,7 @@ class StackHooks():
             for timing in self.hooks[action].keys():
                 for hook in self.hooks[action][timing]:
                     if hook['cache_method'] != None:
-                        cache_id = hook['cache_method'](hook, hook['arg'])
+                        cache_id += hook['cache_method'](hook, hook['arg'])
                         break
         return cache_id
 
@@ -82,7 +91,8 @@ class Stack():
     def __init__(self, aim_ctx, account_ctx, grp_ctx, stack_config, template,
                  stack_suffix=None,
                  aws_region=None,
-                 hooks=None):
+                 hooks=None,
+                 do_not_cache=False):
         self.aim_ctx = aim_ctx
         self.account_ctx = account_ctx
         self.grp_ctx = grp_ctx
@@ -105,6 +115,7 @@ class Stack():
         self.max_action_name_size = 8
         self.output_config_dict = None
         self.action = None
+        self.do_not_cache = do_not_cache
 
         self.cache_filename = self.template.get_yaml_path() + ".cache"
         self.output_filename = self.template.get_yaml_path() + ".output"
@@ -116,6 +127,12 @@ class Stack():
         else:
             self.hooks = hooks
 
+    def set_template(self, template):
+        self.template = template
+        self.template.stack = self
+
+    def add_hooks(self, hooks):
+        self.hooks.merge(hooks)
 
     def set_termination_protection(self, protection_enabled):
         self.termination_protection = protection_enabled
@@ -247,6 +264,8 @@ class Stack():
         return new_cache_id
 
     def is_stack_cached(self):
+        if self.do_not_cache == True:
+            return False
         try:
             new_cache_id = self.gen_cache_id()
         except AimException as e:
@@ -267,9 +286,13 @@ class Stack():
         if cache_id == new_cache_id:
             self.cached = True
             # Load Stack Outputs
-            with open(self.output_filename, "r") as output_fd:
-                self.output_config_dict = yaml.load(output_fd)
+            try:
+                with open(self.output_filename, "r") as output_fd:
+                    self.output_config_dict = yaml.load(output_fd)
+            except FileNotFoundError:
+                pass
             return True
+
 
         return False
 

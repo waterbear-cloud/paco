@@ -3,7 +3,6 @@ network:
   title: "{{cookiecutter.network_environment_title}}"
   availability_zones: 2
   enabled: true
-  region: {{cookiecutter.aws_default_region}}
   vpc:
     enable_dns_hostnames: true
     enable_dns_support: true
@@ -29,7 +28,7 @@ network:
               name: ANY
               protocol: "-1"
           ingress:
-            - cidr_ip: 0.0.0.0/32
+            - cidr_ip: 0.0.0.0/0
               from_port: 80
               name: HTTP
               protocol: tcp
@@ -266,7 +265,8 @@ applications:
                 health_check_path: /
                 connection_drain_timeout: 300
             listeners:
-              - port: 80
+              http:
+                port: 80
                 protocol: HTTP
                 target_group: {{cookiecutter.application_name}}
             scheme: internet-facing
@@ -284,8 +284,8 @@ applications:
             health_check_type: ELB
             instance_iam_role:
               enabled: true
-            instance_ami: 'ami-0cc293023f983ed53' # latest Amazon Linux 2, June 2019
-            instance_key_pair: EC2KEYPAIRNAME-XXX-TODO
+            instance_ami: function.ref aws.ec2.ami.latest.amazon-linux-2
+            instance_key_pair: service.ref ec2.keypairs.aimkeypair
             instance_monitoring: false
             instance_type: t2.nano
             max_instances: 2

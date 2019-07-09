@@ -1,44 +1,42 @@
 import click
 import os
 import time
+import aim
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.controllers.controllers import Controller
 from aim.stack_group import IAMStackGroup
-import aim.models
+from aim.cftemplates import IAMRoles, IAMManagedPolicies
+from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup
+from aim.core.yaml import YAML
 
+yaml=YAML()
+yaml.default_flow_sytle = False
 
-class IAMContext():
-    def __init__(self, aim_ctx, account_ctx, aws_region, controller, context_id, config_ref_prefix):
+class RoleContext():
+    def __init__(self, aim_ctx, account_ctx, region, group_id, role_id, role_ref, role_config, stack_group, template_params):
         self.aim_ctx = aim_ctx
         self.account_ctx = account_ctx
-        self.aws_region = aws_region
-        self.controller = controller
-        self.context_id = context_id
-        self.managed_policies = {}
-        self.roles = {}
-        self.roles_by_order = []
-        self.policies_by_order = []
-        self.config_ref_prefix = config_ref_prefix
-        self.stack_group = None
+        self.region = region
+
+        self.group_id = group_id
+        self.role_id = role_id
+        self.role_ref = role_ref
+        self.role_config = role_config
+        self.stack_group = stack_group
+        self.role_template = None
+        self.role_stack = None
+        self.template_params = template_params
+
+        self.policy_context = {}
+
+        self.init_role()
 
     def aws_name(self):
-        return self.context_id
+        return self.role_ref
 
     def get_aws_name(self):
         return self.aws_name()
-
-    def update_stack_group(self):
-        self.stack_group = IAMStackGroup(self.aim_ctx,
-                                        self.account_ctx,
-                                        self.aws_region,
-                                        "IAM",
-                                        self.context_id,
-                                        self.roles_by_order,
-                                        self.policies_by_order,
-                                        self.config_ref_prefix,
-                                        self)
-        self.stack_group.init()
 
     def get_role(self, role_id=None, role_ref=None):
         role_by_id = None
@@ -64,59 +62,93 @@ class IAMContext():
         return role_by_ref
 
     def add_managed_policy(self,
-                           resolve_ref_obj,
                            parent_config,
+                           group_id,
                            policy_id,
-                           policy_config_dict,
                            policy_ref,
+                           policy_config_yaml=None,
                            template_params=None):
 
+        if policy_ref in self.policy_context.keys():
+            print("Managed policy already exists: %s" % (policy_ref) )
+            raise StackException(AimErrorCode.Unknown)
+
+        policy_config_dict = yaml.load(policy_config_yaml)
+        policy_config_dict['roles'] = [self.role_name]
         policy_config = aim.models.iam.ManagedPolicy(policy_id, parent_config)
         aim.models.loader.apply_attributes_from_config(policy_config, policy_config_dict)
-        policy_config.resolve_ref_obj = resolve_ref_obj
-        managed_policy = {
+        policy_config.resolve_ref_obj = self
+        policy_context = {
             'id': policy_id,
             'config': policy_config,
             'ref': policy_ref,
             'template_params': template_params
         }
-        self.policies_by_order.append(managed_policy)
-        self.update_stack_group()
+
+        template_name = '-'.join([self.group_id, policy_id])
+        policy_context['template'] = IAMManagedPolicies(self.aim_ctx,
+                                                        self.account_ctx,
+                                                        policy_context,
+                                                        template_name)
+
+        policy_context['stack'] = Stack(aim_ctx=self.aim_ctx,
+                                        account_ctx=self.account_ctx,
+                                        grp_ctx=self.stack_group,
+                                        stack_config=self.policy_context,
+                                        template=policy_context['template'],
+                                        aws_region=self.region)
+
+        self.policy_context['name'] = policy_context['template'].gen_policy_name(policy_id)
+        self.policy_context['arn'] = "arn:aws:iam::{0}:policy/{1}".format(self.account_ctx.get_id(), self.policy_context['name'])
+
+        self.policy_context[policy_ref] = policy_context
+        self.stack_group.add_stack_order(policy_context['stack'])
+
+    def init_role(self):
+
+        self.role_config.resolve_ref_obj = self
+        template_name = '-'.join([self.group_id, self.role_id])
+        self.role_template = IAMRoles(self.aim_ctx,
+                                      self.account_ctx,
+                                      template_name,
+                                      self.role_ref,
+                                      self.role_id,
+                                      self.role_config,
+                                      self.template_params)
+
+        self.role_stack = Stack(aim_ctx=self.aim_ctx,
+                                account_ctx=self.account_ctx,
+                                grp_ctx=self.stack_group,
+                                stack_config=self.role_config,
+                                template=self.role_template,
+                                aws_region=self.region)
+
+        self.role_name = self.role_template.gen_iam_role_name("Role", self.role_id)
+        self.role_arn = "arn:aws:iam::{0}:role/{1}".format(self.account_ctx.get_id(), self.role_name)
+        role_profile_name = self.role_template.gen_iam_role_name("Profile", self.role_id)
+        self.role_profile_arn = "arn:aws:iam::{0}:instance-profile/{1}".format(self.account_ctx.get_id(), role_profile_name)
+
+        self.stack_group.stack_list.append(self.role_stack)
+        self.stack_group.add_stack_order(self.role_stack)
 
 
-    def add_role(self, resolve_ref_obj, role_id, role_ref, role_config, template_params=None):
-        if role_ref in self.roles.keys():
-            # Role ID already exists
-            raise StackException(AimErrorCode.Unknown)
-
-        role = {
-            'id': role_id,
-            'config': role_config,
-            'ref': role_ref,
-            'template_params': template_params
-        }
-        self.roles[role_ref] = role
-        self.roles_by_order.append(role)
-        role_config.resolve_ref_obj = resolve_ref_obj
-        self.update_stack_group()
-
-    def role_arn(self, role_id):
-        return self.stack_group.role_arn(role_id)
-
-    def role_profile_arn(self, role_id):
-        return self.stack_group.role_profile_arn(role_id)
-
-    def move_stack_orders(self, new_stack_group):
-        self.stack_group.move_stack_orders(new_stack_group)
-
-    def validate(self):
-        self.stack_group.validate()
-
-    def provision(self):
-        self.stack_group.provision()
-
-    def delete(self):
-        self.stack_group.delete()
+    def resolve_ref(self, ref):
+        if ref.raw.startswith(self.role_ref):
+            if ref.resource_ref == 'profile.arn':
+                return self.role_profile_arn
+            elif ref.resource_ref == 'arn':
+                return self.role_arn
+            elif ref.resource_ref == 'name':
+                return self.role_name
+        else:
+            for policy_ref in self.policy_context.keys():
+                if ref.raw.startswith(policy_ref) == False:
+                    continue
+                if ref.resource_ref == 'arn':
+                    return self.policy_context[policy_ref]['arn']
+                elif ref.resource_ref == 'name':
+                    return self.policy_context[policy_ref]['name']
+        return None
 
 
 class IAMController(Controller):
@@ -125,56 +157,38 @@ class IAMController(Controller):
                          "Service",
                          "IAM")
 
-        self.contexts = {}
-        self.contexts_by_order = []
+        self.role_context = {}
         #self.aim_ctx.log("IAM Service: Configuration: %s" % (name))
 
     def init(self, init_config):
         pass
 
-    def init_context(self, account_ctx, aws_region, context_id, config_ref_prefix):
-        if context_id not in self.contexts.keys():
-            self.contexts[context_id] = IAMContext(self.aim_ctx,
-                                                   account_ctx,
-                                                   aws_region,
-                                                   self,
-                                                   context_id,
-                                                   config_ref_prefix)
-            self.contexts_by_order.append(self.contexts[context_id])
+    def add_managed_policy(self, role_ref, *args, **kwargs):
+        return self.role_context[role_ref].add_managed_policy(*args, **kwargs)
 
-    def add_managed_policy(self, context_id, *args, **kwargs):
-        return self.contexts[context_id].add_managed_policy(*args, **kwargs)
+    def add_role(self, aim_ctx, account_ctx, region, group_id, role_id, role_ref, role_config, stack_group, template_params):
+        if role_ref not in self.role_context.keys():
+            self.role_context[role_ref] = RoleContext(aim_ctx=self.aim_ctx,
+                                                      account_ctx=account_ctx,
+                                                      region=region,
+                                                      group_id=group_id,
+                                                      role_id=role_id,
+                                                      role_ref=role_ref,
+                                                      role_config=role_config,
+                                                      stack_group=stack_group,
+                                                      template_params=template_params)
 
-    def add_role(self, context_id, *args, **kwargs):
-        return self.contexts[context_id].add_role(*args, **kwargs)
+        else:
+            print("Role already exists: %s" % (role_ref))
+            raise StackException(AimErrorCode.Unknown)
 
-    def role_arn(self, context_id, *args, **kwargs):
-        return self.contexts[context_id].role_arn(*args, **kwargs)
+    def role_arn(self, role_ref):
+        return self.role_context[role_ref].role_arn
 
-    def role_profile_arn(self, context_id, *args, **kwargs):
-        return self.contexts[context_id].role_profile_arn(*args, **kwargs)
+    def role_profile_arn(self, role_ref):
+        return self.role_context[role_ref].role_profile_arn
 
-    def move_stack_orders(self, context_id, *args, **kwargs):
-        return self.contexts[context_id].move_stack_orders(*args, **kwargs)
-
-    def validate(self, context_id):
-        return self.contexts[context_id].validate()
-
-    def provision(self, context_id):
-        return self.contexts[context_id].provision()
-
-    def delete(self, context_id):
-        return self.contexts[context_id].delete()
-
-    def get_config(self, config_id):
-        for config in self.config_list:
-            if config.name == config_id:
-                return config
-        return None
 
     def get_value_from_ref(self, aim_ref):
-        ref_dict = self.aim_ctx.parse_ref(aim_ref)
-        ref_parts = ref_dict['ref_parts']
-        config_ref = ref_dict['ref']
 
         raise StackException(AimErrorCode.Unknown)

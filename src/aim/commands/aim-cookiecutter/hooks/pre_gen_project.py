@@ -18,3 +18,4 @@ if aws_region not in aim.models.vocabulary.aws_regions:
     print('AWS Region name must be one of:')
     for name in aim.models.vocabulary.aws_regions.keys():
         print('  ' + name)
+

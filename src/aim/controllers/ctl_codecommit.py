@@ -16,8 +16,9 @@ class CodeCommitController(Controller):
         super().__init__(aim_ctx,
                          "Service",
                          "CodeCommit")
-
-        #self.aim_ctx.log("CodeCommit Service: Configuration: %s" % (name))
+        if not 'codecommit' in self.aim_ctx.project:
+            self.init_done = True
+            return
         self.config = None
         self.name = None
         self.stack_grps = []
@@ -28,9 +29,13 @@ class CodeCommitController(Controller):
             return
         self.init_done = True
 
-        self.name = init_config['name']
+        if init_config:
+            self.name = init_config['name']
         self.config = self.aim_ctx.project['codecommit']
-        #self.config.load()
+        # Sets the CodeCommit reference resolver object to forward all
+        # all service.ref codecommit.* calls to self.resolve_ref()
+        if self.config != None:
+            self.config.resolve_ref_obj = self
         self.init_stack_groups()
 
     def init_stack_groups(self):
@@ -112,20 +117,20 @@ policies:
         for stack_grp in self.stack_grps:
             stack_grp.provision()
 
-    def get_service_ref_value(self, service_parts):
+    def resolve_ref(self, ref):
         # codecommit.example.app1.name
-        group_id = service_parts[1]
-        repo_id = service_parts[2]
+        group_id = ref.parts[1]
+        repo_id = ref.parts[2]
         repo_config = self.stack_grps[0].config.repository_groups[group_id][repo_id]
-        if service_parts[3] == "name":
+        if ref.last_part == "name":
             return repo_config.name
-        if service_parts[3] == "arn":
+        if ref.last_part == "arn":
             account_ref = repo_config.account
             account_ctx = self.aim_ctx.get_account_context(account_ref)
             aws_region = repo_config.region
             repo_name =  repo_config.name
             return "arn:aws:codecommit:{0}:{1}:{2}".format(aws_region, account_ctx.get_id(), repo_name)
-        elif service_parts[3] == "account_id":
+        elif ref.last_part == "account_id":
             account_ref = repo_config.account
             account_ctx = self.aim_ctx.get_account_context(account_ref)
             return account_ctx.get_id()

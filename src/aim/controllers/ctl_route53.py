@@ -9,8 +9,12 @@ class Route53Controller(Controller):
         super().__init__(aim_ctx,
                          "Service",
                          "Route53")
-
+        if not 'route53' in self.aim_ctx.project:
+            self.init_done = True
+            return
         self.config = self.aim_ctx.project['route53']
+        if self.config != None:
+            self.config.resolve_ref_obj = self
 
         #self.aim_ctx.log("Route53 Service: Configuration: %s" % (name))
 
@@ -51,9 +55,9 @@ class Route53Controller(Controller):
                 return stack_grp.get_stack(zone_id)
         return None
 
-    def get_service_ref_value(self, service_parts):
+    def resolve_ref(self, ref):
         # service.route53.example.app1.name
-        if service_parts[2] == "id":
-            return self.get_stack(zone_id=service_parts[1])
+        if ref.last_part == "id":
+            return self.get_stack(zone_id=ref.parts[1])
 
         return None

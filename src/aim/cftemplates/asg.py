@@ -18,10 +18,12 @@ class ASG(CFTemplate):
                  asg_config,
                  asg_config_ref,
                  role_profile_arn,
-                 ec2_manager_user_data_script):
+                 ec2_manager_user_data_script,
+                 ec2_manager_cache_id ):
 
         #aim_ctx.log("ASG CF Template init")
         self.subenv_ctx = subenv_ctx
+        self.ec2_manager_cache_id = ec2_manager_cache_id
         segment_stack = self.subenv_ctx.get_segment_stack(asg_config.segment)
 
         # Super Init:
@@ -48,7 +50,7 @@ class ASG(CFTemplate):
         for sg_ref in asg_config.security_groups:
             # TODO: Better name for self.get_stack_outputs_key_from_ref?
             sg_output_key = self.get_stack_outputs_key_from_ref(sg_ref)
-            sg_stack = self.aim_ctx.get_ref(sg_ref, 'stack')
+            sg_stack = self.aim_ctx.get_ref(sg_ref)
             sg_output_param.add_stack_output(sg_stack, sg_output_key)
         self.set_parameter(sg_output_param)
 
@@ -76,7 +78,7 @@ class ASG(CFTemplate):
         if asg_config.load_balancers != None and len(asg_config.load_balancers) > 0:
             lb_param = StackOutputParam('ASGLoadBalancerNames')
             for load_balancer in asg_config.load_balancers:
-                elb_stack = self.aim_ctx.get_ref(load_balancer, 'stack')
+                elb_stack = self.aim_ctx.get_ref(load_balancer)
                 elb_output_key = self.get_stack_outputs_key_from_ref(load_balancer)
                 lb_param.add_stack_output(elb_stack, elb_output_key)
             self.set_parameter(lb_param)
@@ -85,7 +87,7 @@ class ASG(CFTemplate):
         if asg_config.target_groups != None and len(asg_config.target_groups) > 0:
             lb_param = StackOutputParam('TargetGroupArns')
             for target_group_arn in asg_config.target_groups:
-                alb_stack = self.aim_ctx.get_ref(target_group_arn, 'stack')
+                alb_stack = self.aim_ctx.get_ref(target_group_arn)
                 alb_output_key = self.get_stack_outputs_key_from_ref(target_group_arn)
                 lb_param.add_stack_output(alb_stack, alb_output_key)
             self.set_parameter(lb_param)
@@ -97,7 +99,7 @@ class ASG(CFTemplate):
             self.set_parameter('UserDataScript', user_data_64.decode('ascii'))
 
         enable_metrics_collection = False
-        if asg_config.monitoring != None and asg_config.monitoring.enabled == True:
+        if asg_config.monitoring != None and asg_config.monitoring.enabled == True and len(asg_config.monitoring.asg_metrics) > 0:
             enable_metrics_collection = True
             self.set_parameter('MetricsCollectionList', asg_config.monitoring.asg_metrics)
         self.set_parameter('EnableMetricsCollection', enable_metrics_collection)
@@ -113,6 +115,8 @@ class ASG(CFTemplate):
         template_fmt = """
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'ASG: Auto Scaling Group and Launch Configuration'
+
+# EC2 Manager Cache ID: %s
 
 Parameters:
   LCEBSOptimized:
@@ -323,7 +327,7 @@ Resources:
 Outputs:
   ASGName:
     Value: !Ref ASG
-"""
+""" % self.ec2_manager_cache_id
         self.register_stack_output_config(asg_config_ref, 'ASGName')
 
         asg_table = {
@@ -341,6 +345,6 @@ Outputs:
         #self.aim_ctx.log("Validating ASG Template")
         super().validate()
 
-    def get_outputs_key_from_ref(self, aim_ref):
+    def get_outputs_key_from_ref(self, ref):
         # There is only one output key
         return "ASGName"

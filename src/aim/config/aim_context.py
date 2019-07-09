@@ -7,6 +7,7 @@ from functools import partial
 from aim.models import load_project_from_yaml
 from aim.models import references
 from copy import deepcopy
+from aim.config import ConfigProcessor
 
 
 class AccountContext(object):
@@ -79,12 +80,8 @@ class AccountContext(object):
 # ----------------------------------------------------------------------------------
 class AimContext(object):
 
-    def __init__(self, config_folder=None):
-        self.home = None # Full path to an AIM Project
-        self.project_folder = None # Directory name of AIM Project only
-        if config_folder: # Duplicate of project_folder
-            self.config_folder = config_folder
-            self.project_folder = config_folder
+    def __init__(self, home=None):
+        self.home = home
         self.verbose = False
         self.aim_path = os.getcwd()
         self.build_folder = None
@@ -94,10 +91,11 @@ class AimContext(object):
         self.logger = aim.core.log.get_aim_logger()
         self.project = None
         self.master_account = None
+        self.aim_ref = references.AimReference()
 
     def get_account_context(self, account_ref=None, account_name=None):
         if account_ref != None:
-            ref_dict = self.parse_ref(account_ref)
+            ref_dict = self.aim_ref.parse_ref(account_ref)
             account_name = ref_dict['ref_parts'][1]
         elif account_name == None:
             raise StackException(AimErrorCode.Unknown)
@@ -111,16 +109,23 @@ class AimContext(object):
 
         return account_ctx
 
-    def init_project(self, project_folder):
-        self.project = load_project_from_yaml(self, project_folder)
-        self.config_folder = project_folder # config_folder can be phased out?
-        self.project_folder = project_folder
+    def init_project(self):
+        print("Project: %s" % (self.home))
+        self.project_folder = self.home
+        # Config Processor Init
+        self.config_processor = ConfigProcessor(self)
+        self.project = load_project_from_yaml(self.aim_ref, self.project_folder, None) #self.config_processor.load_yaml)
         self.build_folder = os.path.join(os.getcwd(), "build", self.project.name)
         self.master_account = AccountContext(aim_ctx=self,
                                              name='master',
                                              mfa_account=None)
         # Set Default AWS Region
         os.environ['AWS_DEFAULT_REGION'] = self.project['credentials'].aws_default_region
+
+        # Initialize Service Controllers so they can initiaize their
+        # resolve_ref_obj's to allow reference lookups
+        self.get_controller('Route53')
+        self.get_controller('CodeCommit')
 
     def get_controller(self, controller_type, config_arg=None):
         #print("Creating controller_type: " + controller_type)
@@ -148,135 +153,11 @@ class AimContext(object):
         if self.verbose:
             self.log(msg, *args)
 
-#    def get_aws_name(self):
-#        return '-'.join([ self.aws_name,
-#                          self.controller.aws_name ])
-#        return self.controller.aws_name
-
     def get_stack_filename(self, stack_group_type, stack_type):
         return os.path.join(self.stacks_folder, stack_group_type+"/"+stack_type+".yml")
 
-    def is_ref(self, aim_ref):
-        # duplicate: moved to aim.models.references.AimReference
-        ref_types = ["netenv.ref", "service.ref", "config.ref"]
-        for ref_type in ref_types:
-            if aim_ref.startswith(ref_type):
-                return True
-
-        return False
-
-    def parse_netenv_ref(self, aim_ref, ref_parts):
-        # duplicate: moved to aim.models.references.AimReference
-        ref_dict = {}
-#        ref_dict['subenv_component'] = ""
-        ref_dict['subenv_id'] = ""
-        ref_dict['netenv_component'] = ""
-        ref_dict['subenv_component'] = ""
-        if ref_parts[0] == 'this':
-            ref_dict['netenv_id'] = self.this_netenv_id
-        else:
-            ref_dict['netenv_id'] = ref_parts[0]
-
-        if ref_parts[1] == 'subenv':
-            ref_dict['subenv_component'] = ref_parts[1]
-            ref_dict['subenv_id'] = ref_parts[2]
-            ref_dict['subenv_region'] = ref_parts[3]
-            ref_dict['netenv_component'] = ref_parts[4]
-        else:
-            ref_dict['netenv_component'] = ref_parts[1]
-        return ref_dict
-
-    def parse_ref(self, aim_ref):
-        # duplicate: moved to aim.models.references.AimReference
-        ref_parts = aim_ref.split(' ')
-        if len(ref_parts) != 2:
-            raise StackException(AimErrorCode.Unknown)
-        ref_type = ref_parts[0]
-        config_ref = ref_parts[1]
-        location_parts = ref_parts[1].split('.')
-        ref_dict = {}
-        if ref_parts[0] == 'netenv.ref':
-            ref_dict = self.parse_netenv_ref(aim_ref, location_parts)
-        elif ref_parts[0] == 'service.ref':
-            # print(aim_ref)
-            pass
-        elif ref_parts[0] == 'config.ref':
-            # print(aim_ref)
-            #raise StackException(AimErrorCode.Unknown)
-            pass
-        else:
-            print(ref_parts[0])
-            raise StackException(AimErrorCode.Unknown)
-
-        # pprint(repr(location_parts))
-        ref_dict['type'] = ref_type
-        ref_dict['ref'] = config_ref
-        ref_dict['ref_parts'] = location_parts
-        ref_dict['raw'] = aim_ref
-
-        return ref_dict
-
-    def get_config_ref_value(self, config_ref, output_type):
-        ref_dict = self.parse_ref(config_ref)
-        if ref_dict['type'] != 'config.ref':
-            raise StackException(AimErrorCode.Unknown)
-
-        # Only config item is accounts at the moment
-        account_ctx = self.get_account_context(config_ref)
-        return account_ctx.get_id()
-
-    def get_netenv_ref_value(self, netenv_ref, output_type):
-        ref_dict = self.parse_ref(netenv_ref)
-        if ref_dict['type'] != 'netenv.ref':
-            raise StackException(AimErrorCode.Unknown)
-        controller = self.get_controller('NetEnv')
-
-        if output_type == 'value':
-            return controller.get_value_from_ref(ref_dict)
-        elif output_type == 'stack':
-            return controller.get_stack_from_ref(ref_dict)
-        else:
-            raise StackException(AimErrorCode.Unknown)
-
-    def get_service_ref_value(self, service_ref, output_type="value"):
-        # print(service_ref)
-        ref_parts = service_ref.split(' ')
-        # print(ref_parts)
-        if ref_parts[0] != 'service.ref':
-            raise StackException(AimErrorCode.Unknown)
-        service_parts = ref_parts[1].split('.')
-        controller = None
-        if service_parts[0] == "codecommit":
-            config_name = service_parts[1]
-            init_config = {'name': config_name}
-            controller = self.get_controller('CodeCommit', init_config)
-        elif service_parts[0] == "route53":
-            config_name = service_parts[1]
-            controller = self.get_controller('Route53')
-        elif service_parts[0] == "acm":
-            config_type = service_parts[1]
-            if config_type == "domain":
-                config_name = None
-            elif config_type == "config":
-                config_name = service_parts[2]
-            else:
-                raise StackException(AimErrorCode.Unknown)
-            controller = self.get_controller(
-                'ACM', config_name=config_name, config_type=config_type)
-
-        return controller.get_service_ref_value(service_parts)
-
-    def get_ref(self, aim_ref, output_type="value"):
-        ref_dict = self.parse_ref(aim_ref)
-        if ref_dict['type'] == "service.ref":
-            # XXX: Port to Model Reference lookup
-            return self.get_service_ref_value(aim_ref, output_type)
-        elif ref_dict['type'] == "netenv.ref":
-            return references.resolve_ref(aim_ref, self.project)
-        elif ref_dict['type'] == "config.ref":
-            return references.resolve_ref(aim_ref, self.project)
-        else:
-            raise StackException(AimErrorCode.Unknown)
+    def get_ref(self, aim_ref, account_ctx=None):
+        return references.resolve_ref(aim_ref, self.project, account_ctx=account_ctx)
 
     def normalize_name(self,
                        name,

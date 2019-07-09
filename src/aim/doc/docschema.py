@@ -200,6 +200,8 @@ your AIM Configuration.
 
  * ``config.ref``: Config reference
 
+ * ``function.ref``: Function reference
+
 References are in the format:
 
 ``type.ref name.seperated.by.dots``
@@ -317,6 +319,18 @@ to control which account and environment should be deployed to:
         dev:
             network:
                 aws_account: config.ref accounts.dev
+
+function.ref
+------------
+
+A reference dynamically resolved at runtime. Currently can only look-up AMI IDs.
+Can be either ``aws.ec2.ami.latest.amazon-linux-2`` or ``aws.ec2.ami.latest.amazon-linux``.
+
+.. code-block:: yaml
+
+    web:
+        type: ASG
+        instance_ami: function.ref aws.ec2.ami.latest.amazon-linux-2
 
 aim.sub
 -------

@@ -39,7 +39,6 @@ class CodePipeBuild(CFTemplate):
         codecommit_role_arn_ref = self.subenv_ctx.gen_ref(app_id=app_id, grp_id=grp_id, res_id=res_id, attribute='codecommit_role.arn')
         codecommit_role_arn = self.aim_ctx.get_ref(codecommit_role_arn_ref)
         self.set_parameter('CodeCommitRoleArn', codecommit_role_arn)
-        #codecommit_repo_arn = self.aim_ctx.get_ref("netenv.ref this.subenv.{0}.{1}.applications.{1}.deployments.cpbd.codecommit.arn".format(self.subenv_ctx.subenv_id, self.subenv_ctx.region, app_id))
         codecommit_repo_arn_ref = self.subenv_ctx.gen_ref(app_id=app_id, grp_id=grp_id, res_id=res_id, attribute='codecommit.arn')
         codecommit_repo_arn = self.aim_ctx.get_ref(codecommit_repo_arn_ref)
         self.set_parameter('CodeCommitRepositoryArn', codecommit_repo_arn)
@@ -51,7 +50,6 @@ class CodePipeBuild(CFTemplate):
         codedeploy_application_name = self.aim_ctx.get_ref(app_name_ref)
         self.set_parameter('CodeDeployApplicationName', codedeploy_application_name)
 
-        #codedeploy_account_id = self.aim_ctx.get_ref("netenv.ref this.subenv.{0}.network.aws_account".format(subenv_id))
         codedeploy_account_id_ref = self.subenv_ctx.gen_ref(attribute='network.aws_account')
         codedeploy_account_id = self.aim_ctx.get_ref(codedeploy_account_id_ref)
         self.set_parameter('CodeDeployAccountId', codedeploy_account_id)
@@ -431,22 +429,4 @@ Resources:
         return "arn:aws:iam::{0}:role/".format(self.account_ctx.get_id()) + self.ResourceName + "-CodePipeline-Service"
 
     def get_outputs_key_from_ref(self, aim_ref):
-        #ref_dict = self.aim_ctx.parse_ref(aim_ref)
-        #if location_parts[0] != 'iam':
-        #    raise StackException(AimErrorCode.Unknown)
-
-        #iam_group_name = location_parts[1]
-        #iam_type = location_parts[2]
-        #role_name = location_parts[3]
-
-        #stack = self.get_stack_from_ref(aim_ref)
-        #role_config = stack.grp_ctx.config.get_role_config(role_name)
-        #key = self.get_cf_resource_name_prefix( stack.grp_ctx.name, role_name)
-
-        #if 'instance_profile' in role_config and role_config['instance_profile'] == True:
-        #    key += "InstanceProfile"
-        #else:
-        #    key += "Role"
-
-        #return key
         return None

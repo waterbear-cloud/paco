@@ -30,7 +30,7 @@ class CodeCommitStackGroup(StackGroup):
     def init(self):
         # CodeCommit Cross-Account Delegate Rol
 
-        self.aim_ctx.log("StackGroup: CodeCommit: init")
+        #self.aim_ctx.log("StackGroup: CodeCommit: init")
         # CodeCommit Repository
         codecommit_template = aim.cftemplates.CodeCommit(self.aim_ctx,
                                                          self.account_ctx,

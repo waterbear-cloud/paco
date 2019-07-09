@@ -46,11 +46,77 @@ Try running ``aim --help`` to confirm that's it's properly installed.
 Create an AIM Administration User
 ---------------------------------
 
-Maybe create an AWS Account?
+You will create an new AWS IAM User that only has permissions to switch to a
+role that can delegate administrator access to AIM. These steps will involve
+installing a CloudFormation template to create the IAM User and IAM Role,
+then setting up the new User account with MFA and creating an API key.
 
-Install a CloudFormation template.
+First, to create the user and role, follow the steps below to create a CloudFormation
+stack from our AIMInitialization.yaml_ template. It is possible to use AIM with an existing
+IAM User account, but it is highly recommended to use a dedicated user account.
+By using the CloudFormation template, you can simply delete the CloudFormation stack
+when you are finished and it will remove all aim access that you need for these
+quickstarts.
 
-Create access keys.
+  1. Download the AIMInitialization.yaml_ CloudFormation template.
+
+  #. Access your AWS Console, visit the CloudFormation Service
+     and click on the "Create stack" button. Choose "Upload a template file"
+     and then "Choose file" and choose the AIMInitialization.yaml file.
+     Then click "Next".
+
+     .. image:: ./images/quickstart101-create-stack-init.png
+
+  #. Enter "AIMInitialization" as the Stack name and enter
+     the name of a new IAM User. Then click "Next".
+
+     .. image:: ./images/quickstart101-stack-init-details.png
+
+  #. On the "Configure stack options" screen you can leave everything
+     default and click "Next". On the "Review AIMInitialization" you
+     can also leave all the defaults click
+     "I acknowledge that AWS CloudFormation might create IAM resources with custom names."
+     to confirm that this stack can create an IAM User.
+     Finally click "Create stack".
+
+  #. Wait a couple minutes for the stack to finish create. Take note on the "Outputs"
+     tab that there is a "SigninUrl" field. These is an optional URL you can use if
+     you want to use the same user that you use the aws cli with to login to and switch
+     to the AIM Administrator role. For this quickstart, it's not necessary, but is
+     useful when you have a multi-account set-up and watch to easily switch between accounts.
+
+     .. image:: ./images/quickstart101-stack-outputs.png
+
+.. _AIMInitialization.yaml: ./_static/templates/AIMInitialization.yaml
+
+Next you will need to set-up the new user account and create an API key. Follow these steps:
+
+  1. In the AWS Console, go to the Identity and Access Management (IAM) Service, click on "Users"
+     and click on the User name you supplied earlier. Then click on the "Security credentials" tab.
+
+     .. image:: ./images/quickstart101-user-start.png
+
+  #. Set-up multi-factor authentication (MFA). As this account has full administrator access, it
+     is critical to keep this secure. The delegate role is configured so that it can only be
+     used by users that have MFA set-up. Where it says, "Assigned MFA device" click on "Manage".
+     Then setup an MFA device. If you don't know which one to use here, choose "Virtual MFA device"
+     and you can use either Authy_ or `Google Authenticator`_ on your computer or phone as a virtual
+     MFA device.
+
+  #. Create an AWS Access Key. While still on the "Security credentials" tab, click on "Create access key".
+     You will be given an "Access key ID" and "Secret access key". Save these somewhere safe and secure.
+     You will need these credentials later when you set-up the AIM project.
+
+Now you are ready to create an AIM project. Note that when you are finished and wish to clean-up all AWS
+resources for this quickstart, you will first need to return to this user and manually delete the
+Assigned MFA Device and Access key. Then you can go to the CloudFormation service and delete the
+AIMInitialization stack. If you try and delete the stack without doing this first, you will get the
+error message "DELETE_FAILED: Cannot delete entity, must delete MFA device first.".
+
+.. _Authy: https://authy.com/
+
+.. _`Google Authenticator`: https://en.wikipedia.org/wiki/Google_Authenticator
+
 
 Create an AIM Project
 ---------------------
@@ -91,7 +157,7 @@ to help you get started quickly.
     AIM Project initialization
     --------------------------
 
-    About to create a new AIM Project directory at /Users/kteague/water/temparoo
+    About to create a new AIM Project directory at /Users/username/projects/myproj
 
     Select starting_template:
     1 - empty
@@ -159,21 +225,6 @@ also ensure that your files are in the correct format.
     Network Environments
     - basic_network - Basic Network
 
-
-Create an EC2 keypair
----------------------
-
-You will need to generate an EC2 SSH keypair and an SSH PEM file. This
-keypair will be used when you initiallize an AIM project with
-the starting template.
-
-Run ``aim init keypair <keypair-name>`` to generate a keypair.
-
-.. code-block:: text
-
-    $ aim init keypair <keypair-name>
-
-
 Review the AIM project configuration
 ------------------------------------
 
@@ -192,7 +243,6 @@ this file will describe your network and looks like this:
         title: "My AIM Network"
         availability_zones: 2
         enabled: true
-        region: eu-central-1
         vpc:
             enable_dns_hostnames: true
             enable_dns_support: true
@@ -218,7 +268,7 @@ this file will describe your network and looks like this:
                               name: ANY
                               protocol: "-1"
                         ingress:
-                            - cidr_ip: 0.0.0.0/32
+                            - cidr_ip: 0.0.0.0/0
                               from_port: 80
                               name: HTTP
                               protocol: tcp
@@ -295,7 +345,7 @@ section. There is only one application in this quickstart and it is named ``myap
                     instance_iam_role:
                     enabled: true
                     instance_ami: 'ami-0cc293023f983ed53' # latest Amazon Linux 2, June 2019
-                    instance_key_pair: mykeypair
+                    instance_key_pair: aimkeypair
                     instance_monitoring: false
                     instance_type: t2.nano
                     max_instances: 2
@@ -382,8 +432,65 @@ provisioned.
             eu-central-1:
                 enabled: false
 
-
 .. _`AIM Configuration`: ./aim-config.html
+
+
+Provision an EC2 keypair
+------------------------
+
+Before you can provision your environment, you first need to create
+an EC2 keypair. The EC2 instances you later launch will be configured
+to use this keypair for SSH access.
+
+The ``aim provision`` command is used to create AWS resources. The provision
+command takes the name of a controller and a component. This combination
+of controller and component will map to different sections of an AIM project
+and provision AWS resources to support that configuration.
+
+The EC2 controller and keypair component maps to the ``keypairs:`` configuration
+in the file ``<aim-project>/Services/EC2.yaml``. The ``simple-web-app`` starting template
+you used will has created configuration for a keypair named ``aimkeypair``. Run the
+command ``aim provision EC2 keypair aimkeypair --home myproj`` to create a keypair.
+
+.. code-block:: bash
+
+    $ aim provision EC2 keypair aimkeypair --home myproj
+    Provisioning Configuration: EC2.keypair
+    Project: /Users/username/projects/myproj/
+    EC2 Service: keypair: flimflam: Key pair created successfully.
+                        flimflam: Account: master
+                        flimflam: Region:  us-west-2
+                        flimflam: Fingerprint: a6:3b:12:c6:34:ec:31:00:36:2b:e3:2c:f9:b2:11:d4:21:bb:48:6b
+                        flimflam: Key:
+    -----BEGIN RSA PRIVATE KEY-----
+    MIIEpQIBAAACKQEAt51MPT8LE+Ba7l52ySl2s9VgPcJ4KzxO4pZYk7LcGEotuqsInha81paXJcbz
+    vCsohv9LaKuABIG0abjVzlJUOatkipSaABrqVmaICVOqx3qZ1q5ebf7oSowjhOx4uJViIF5kSx5a
+    rnyNPqmZzzXTDhBFWA5av7tKQHRzdWnSsWTXxl5dHr+7Ae+wf0F2dFHRxeO59/CEwrpQdp/OGugE
+    LJ3QxaGVZ7FNCqEgup09KWFpbJe/oUNbGOL67s2RMn+Wcvo7CQIEXsrNfI0Zyba/6D3Tue9yx3Y/
+    Qni9a199maGxOXNb4CyFqDm0c1hcIqlSBASIxsPzlpv7vGH9XcHEpQIDAQABAoIBAQCtRI5xLVCy
+    zQCB+Dp30dzmDvDm1uC3TA3U3LNxjVMMyNMmV8emBybkCO9RAtF2O/PekIMEnvILTqqFKZr5O8+n
+    LAmQjHJWrw97wP2Wb5G09AjAAYOyoN1rm5rZEJ1K8gzLJsfV6yr/hSF0hG9UjiJAHzKQydrxGzgS
+    YtGhdt8P7dIMa5BnOYouuxDqMGpmjAkEeZue03bJaX9IZkWyAQw8TpHnGb87AriFJMAWyzG9GsgE
+    pIsPGaQmf7M1xzDCQsv4WNvd7xN1ym12bFf0G99SyTzx97SPL5riGz3mxvSkC3CGQhaP4bqa6lft
+    eg3d/XXnYDi1Fmd/qoBNXUZ90VLxAoGBAPDd0yveT1psm4E6BOsQTdf0d3lDA1F8dhn4TdNgvf04
+    3Lt+YFi8jqmStIstxDvnQBGXPP5jZy4CCakLWf6fRDoIB11IgGsZ6Rzsllpbuh01BNNjqtz5/Q6K
+    0G9GLmX6rPx+HIlusrr4QMWg91012z0IY5UgfzsnhhQjhUaK7nmrAoGBAMMmnLlDLfVJp5I28Q4a
+    KF8mTcT8MfEKKRacoZBkVXLvvFJnHQxuuXLnrxmZt06/XwhkOrd9lo3AyDqoSkRVY+9WraPUvXdF
+    t94os7ZFdEBaNKXRnun8rdGm7N78BoqJP4+31ar6V1uZN9L9J/C8HIAGjE3I4L3440VlxlyamIrv
+    AoGAIyds86EdmcfyJjkukJQvmE4wxbz3FgSBRCcOTMR41iVfaen269yRQcSMnyeN1WRZ4HdfSo19
+    eKSJfmeOue/KyGF1nBHpFDiS4krRYtyyXCLp0mRggqHlwiKWazcl/HJKnwtU5OYIJeunoHBuyebb
+    WZwI1LIKf7q0AepxQCt0xMMCgYEAkcxQPO1e8ao0or2ffPy3+taANdKBcWc46WbeIiWD3ZoUpa/Z
+    +QbkUF+d5097rz60vm07nQkcKQ3FymUfD0yInDCzC/qODwUsaLMaCOx8/PMn8FbbFk+sgTzoLXQ3
+    YttFfJdI8DOWfp3LIjv20hmIZXH+8sJIfkXrblaqS1dI7ksChZEA2AGNLYuTyhgsrKI7fajTMpMZ
+    sFW54VnZtbHSxa3xk9AjjqesbK2S6xApHbsNZG6XUEjJIeBFGHUR0DO/FXAYYlnQ6u23MfkxvkN/
+    CPKnto8xA1SYWgC8Q8e1MpYeK2M69dG3KwQfLsGrPtZnDg/aj50JqnjwauA2DGw3Yk90Rcw=
+    -----END RSA PRIVATE KEY-----
+
+Copy the whole section from ``-----BEGIN RSA PRIVATE KEY-----`` to ``-----END RSA PRIVATE KEY-----``
+and put this in a new file named ``aimkeypair.pem``. Run ``chmod 0400 aimkeypair.pem`` to give
+this file private permissions. If this is for a real-world environent, you need to keep
+a copy of this file somewhere safe, as if you lose it you will not be able to SSH to your
+EC2 instances.
 
 
 Provision an environment
@@ -404,7 +511,7 @@ You should see the following output on the CLI:
 
 .. code-block:: text
 
-    $ aim provision --home myproj NetEnv mynet
+    $ aim provision NetEnv mynet --home myproj
     Provisioning Configuration: NetEnv.mynet
     MFA Token: master: 123456
     Network Environment

@@ -11,20 +11,17 @@ class IAMManagedPolicies(CFTemplate):
     def __init__(self,
                  aim_ctx,
                  account_ctx,
-                 iam_context_id,
-                 policies_by_order):
+                 policy_context,
+                 template_name):
         #aim_ctx.log("IAMManagedPolicies CF Template init")
-        aws_name = "Policy"
+        aws_name = '-'.join([template_name, "Policy"])
 
         super().__init__(aim_ctx,
                          account_ctx,
                          config_ref="",
                          aws_name=aws_name,
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])
-
-        self.policies_by_order = policies_by_order
-        self.iam_context_id = iam_context_id
-
+        self.policy_context = policy_context
         # Define the Template
         template_fmt = """
 AWSTemplateFormatVersion: '2010-09-09'
@@ -88,33 +85,31 @@ Outputs:
      Type: {0[type]:s}
      Description: {0[description]:s}
 """
-        managed_policies_yaml = ""
         policy_table.clear()
-        for policy_context in self.policies_by_order:
-            if policy_context['template_params']:
-                for param_table in policy_context['template_params']:
-                    self.set_parameter(param_table['key'], param_table['value'])
-                    parameters_yaml += parameter_fmt.format(param_table)
+        if policy_context['template_params']:
+            for param_table in policy_context['template_params']:
+                self.set_parameter(param_table['key'], param_table['value'])
+                parameters_yaml += parameter_fmt.format(param_table)
 
-            policy_config = policy_context['config']
-            policy_id = policy_context['id']
-            # Name
-            policy_table['name'] = self.gen_policy_name(policy_id)
-            policy_table['cf_resource_name_prefix'] = self.get_cf_resource_name_prefix(policy_id)
+        policy_config = policy_context['config']
+        policy_id = policy_context['id']
+        # Name
+        policy_table['name'] = self.gen_policy_name(policy_id)
+        policy_table['cf_resource_name_prefix'] = self.get_cf_resource_name_prefix(policy_id)
 
-            # Roles
-            policy_table['roles'] = ""
-            for role in policy_config.roles:
-                policy_table['roles'] += role_fmt % (role)
-            # Path
-            policy_table['path'] = policy_config.path
-            # Statement
-            policy_table['statement'] = self.gen_statement_yaml(policy_config.statement)
-            # Initialize Parameters
-            # Resources
-            resources_yaml += policy_fmt.format(policy_table)
-            # Outputs
-            outputs_yaml += policy_outputs_fmt.format(policy_table)
+        # Roles
+        policy_table['roles'] = ""
+        for role in policy_config.roles:
+            policy_table['roles'] += role_fmt % (role)
+        # Path
+        policy_table['path'] = policy_config.path
+        # Statement
+        policy_table['statement'] = self.gen_statement_yaml(policy_config.statement)
+        # Initialize Parameters
+        # Resources
+        resources_yaml += policy_fmt.format(policy_table)
+        # Outputs
+        outputs_yaml += policy_outputs_fmt.format(policy_table)
 
         template_table['parameters_yaml'] = ""
         if parameters_yaml != "":
@@ -131,7 +126,8 @@ Outputs:
 
     # Generate a name valid in CloudFormation
     def gen_policy_name(self, policy_id):
-        policy_name = '-'.join([self.iam_context_id, policy_id])
+        policy_context_hash = self.aim_ctx.md5sum(str_data=self.policy_context['ref'])[:8].upper()
+        policy_name = '-'.join([policy_context_hash, policy_id])
         policy_name = self.aim_ctx.normalize_name(policy_name, '-', False)
         return policy_name
 
@@ -143,9 +139,9 @@ Outputs:
     # be consolidated in cftemplates.py...
     def gen_statement_yaml(self, statements):
         statement_fmt = """
-              - Effect: {0[effect]:s}
-                Action:{0[action_list]:s}
-                Resource:{0[resource_list]:s}
+          - Effect: {0[effect]:s}
+            Action:{0[action_list]:s}
+            Resource:{0[resource_list]:s}
 """
         statement_table = {
             'effect': None,
@@ -154,9 +150,9 @@ Outputs:
         }
 
         quoted_list_fmt = """
-                  - '{0}'"""
+              - '{0}'"""
         unquoted_list_fmt = """
-                  - {0}"""
+              - {0}"""
         statement_yaml = ""
         for statement in statements:
             statement_table['effect'] = ""

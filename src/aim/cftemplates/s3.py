@@ -121,7 +121,7 @@ Outputs:
 
         # Bucket Policy
         if len(bucket_config.policy) > 0:
-            if not bucket_policy_only:
+            if bucket_policy_only == False:
                 s3_policy_table['cf_policy_depends_on'] = s3_policy_depends_on_fmt.format(s3_bucket_table)
 
             s3_policy_table['cf_resource_name_prefix'] = s3_bucket_table['cf_resource_name_prefix']
@@ -129,10 +129,8 @@ Outputs:
             s3_policy_table['policy_statements'] = ""
             # Statement
             for policy_statement in bucket_config.policy:
-                if policy_statement.written_to_template == True:
+                if policy_statement.processed == True:
                     continue
-                else:
-                    policy_statement.written_to_template = True
                 s3_policy_statement_table['action_list'] = ""
                 s3_policy_statement_table['principal'] = ""
                 s3_policy_statement_table['effect'] = ""
@@ -164,6 +162,7 @@ Outputs:
         template_table['parameters_yaml'] = parameters_yaml
         template_table['resources_yaml'] = resources_yaml
         template_table['outputs_yaml'] = outputs_yaml
+
         self.set_template(template_fmt.format(template_table))
 
     def validate(self):
@@ -172,7 +171,7 @@ Outputs:
 
 
     def get_outputs_key_from_ref(self, aim_ref):
-        ref_dict = self.aim_ctx.parse_ref(aim_ref)
+        ref_dict = self.aim_ctx.aim_ref.parse_ref(aim_ref)
         ref_parts = ref_dict['ref_parts']
         last_idx = len(ref_parts)-1
         output_key = None
@@ -183,5 +182,5 @@ Outputs:
 
     def delete(self):
         s3_ctl = self.aim_ctx.get_controller('S3')
-        s3_ctl.empty_bucket(self.s3_context_id, self.bucket_context['ref'])
+        s3_ctl.empty_bucket(self.bucket_context['ref'])
         super().delete()

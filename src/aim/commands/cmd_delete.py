@@ -1,7 +1,7 @@
 import aim.models
 import click
 import sys
-from aim.commands.helpers import pass_aim_context, controller_args, aim_home_option, init_aim_home_option
+from aim.commands.helpers import pass_aim_context, controller_args, aim_home_option, init_aim_home_option, handle_exceptions
 from aim.core.exception import StackException
 
 
@@ -9,6 +9,7 @@ from aim.core.exception import StackException
 @controller_args
 @aim_home_option
 @pass_aim_context
+@handle_exceptions
 def delete_command(aim_ctx, controller_type, component_name=None, config_name=None, config_region=None, home='.'):
     """Deletes provisioned AWS Resources"""
     init_aim_home_option(aim_ctx, home)
@@ -33,12 +34,17 @@ def delete_command(aim_ctx, controller_type, component_name=None, config_name=No
 
     aim_ctx.log("Deleting: %s.%s", controller_type, component_name )
 
-    aim_ctx.init_project(aim_ctx.home)
+    aim_ctx.init_project()
     if controller_type == "NetEnv":
         config_arg = {
             'netenv_id': component_name,
             'subenv_id': config_name,
             'region': config_region
+        }
+    elif controller_type == "EC2":
+        config_arg = {
+            'service': component_name,
+            'id': config_name
         }
     else:
         config_arg = component_name

@@ -6,7 +6,7 @@ def test_cmd_provision():
     """
     project_folder = '/Users/kteague/water/temparoo/myproj/'
     aim_ctx = aim.config.aim_context.AimContext(config_folder=project_folder)
-    aim_ctx.init_project(project_folder)
+    aim_ctx.init_project()
     config_arg = {
         'netenv_id': 'mynet',
         'subenv_id': None,
