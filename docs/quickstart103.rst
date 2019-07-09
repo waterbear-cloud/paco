@@ -14,3 +14,8 @@ will generate everything you will have at the end of this quickstart.
 Add a CI/CD pipeline
 --------------------
 
+Add monitoring
+--------------
+
+Add logging
+-----------
