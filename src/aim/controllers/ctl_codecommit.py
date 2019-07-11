@@ -33,7 +33,7 @@ class CodeCommitController(Controller):
             self.name = init_config['name']
         self.config = self.aim_ctx.project['codecommit']
         # Sets the CodeCommit reference resolver object to forward all
-        # all service.ref codecommit.* calls to self.resolve_ref()
+        # all resource.ref codecommit.* calls to self.resolve_ref()
         if self.config != None:
             self.config.resolve_ref_obj = self
         self.init_stack_groups()

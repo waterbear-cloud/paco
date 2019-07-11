@@ -7,7 +7,7 @@ AIM Configuration Overview
 AIM configuration is intended to be a complete declarative description of an Infrastructure-as-Code
 cloud project. These files semantically describe cloud resources and logical groupings of those
 resources. The contents of these files describe accounts, networks, environments, applications,
-services, and monitoring configuration.
+resources, services, and monitoring configuration.
 
 The AIM configuration files are parsed into a Python object model by the library
 ``aim.models``. This object model is used by AIM Orchestration to provision
@@ -33,7 +33,7 @@ files each with a different format. This directories are:
 
   * ``MonitorConfig/``: These contain alarm and log source information.
 
-  * ``Services/``: These contain global or shared resources, such as
+  * ``Resources/``: These contain global or shared resources, such as
     S3 Buckets, IAM Users, EC2 Keypairs.
 
 Also at the top level is a ``project.yaml`` file. Currently this file just
@@ -185,7 +185,7 @@ your AIM Configuration.
 
  * ``netenv.ref``: NetworkEnvironment reference
 
- * ``service.ref``: Service reference
+ * ``resource.ref``: Resource reference
 
  * ``config.ref``: Config reference
 
@@ -266,10 +266,10 @@ and configured with the ACM cert:
                                 - netenv.ref my-aim-example.applications.app.groups.site.resources.cert.arn
 
 
-service.ref
+resource.ref
 -----------
 
-If you need to refer to a global resource created in the Services directory, use a ``service.ref``.
+If you need to refer to a global resource created in the Resources directory, use a ``resource.ref``.
 
 In the example below, the ``hosted_zone_id`` of a Route53 record is looked up.
 
@@ -283,9 +283,9 @@ In the example below, the ``hosted_zone_id`` of a Route53 record is looked up.
                 site:
                     alb:
                         dns:
-                        - hosted_zone_id: service.ref route53.example.id
+                        - hosted_zone_id: resource.ref route53.example.id
 
-    # Services/Route53.yaml
+    # Resources/Route53.yaml
 
     hosted_zones:
     example:
@@ -366,20 +366,20 @@ Account
     * - admin_delegate_role_name
       - String
       - .. fa:: check
-      - 
-      - 
+      -
+      -
       - Administrator delegate IAM Role name for the account
     * - admin_iam_users
       - Container of AdminIAMUser_ AIM schemas
       - .. fa:: times
       - None
-      - 
+      -
       - Admin IAM Users
     * - is_master
       - Boolean
       - .. fa:: check
       - False
-      - 
+      -
       - Boolean indicating if this a Master account
     * - organization_account_ids
       - List of Strings
@@ -402,8 +402,8 @@ Account
     * - title
       - String
       - .. fa:: times
-      - 
-      - 
+      -
+      -
       - Title
 
 
@@ -433,8 +433,8 @@ AdminIAMUser
     * - username
       - String
       - .. fa:: check
-      - 
-      - 
+      -
+      -
       - IAM Username
 
 
@@ -577,13 +577,13 @@ Network
       - Int
       - .. fa:: check
       - 0
-      - 
+      -
       - Availability Zones
     * - aws_account
       - TextReference
       - .. fa:: check
       - None
-      - 
+      -
       - AWS Account Reference
     * - enabled
       - Boolean
@@ -594,14 +594,14 @@ Network
     * - title
       - String
       - .. fa:: times
-      - 
-      - 
+      -
+      -
       - Title
     * - vpc
       - VPC_ AIM schema
       - .. fa:: times
       - None
-      - 
+      -
       - VPC
 
 
@@ -625,38 +625,38 @@ VPC
     * - cidr
       - String
       - .. fa:: check
-      - 
-      - 
+      -
+      -
       - CIDR
     * - enable_dns_hostnames
       - Boolean
       - .. fa:: check
       - False
-      - 
+      -
       - Enable DNS Hostnames
     * - enable_dns_support
       - Boolean
       - .. fa:: check
       - False
-      - 
+      -
       - Enable DNS Support
     * - enable_internet_gateway
       - Boolean
       - .. fa:: check
       - False
-      - 
+      -
       - Internet Gateway
     * - nat_gateway
       - Container of NATGateway_ AIM schemas
       - .. fa:: check
       - {}
-      - 
+      -
       - NAT Gateway
     * - private_hosted_zone
       - PrivateHostedZone_ AIM schema
       - .. fa:: check
       - None
-      - 
+      -
       - Private hosted zone
     * - security_groups
       - Dict
@@ -668,13 +668,13 @@ VPC
       - Container of Segment_ AIM schemas
       - .. fa:: times
       - None
-      - 
+      -
       - Segments
     * - vpn_gateway
       - Container of VPNGateway_ AIM schemas
       - .. fa:: check
       - {}
-      - 
+      -
       - VPN Gateway
 
 
@@ -703,13 +703,13 @@ NATGateway
       - Int
       - .. fa:: check
       - None
-      - 
+      -
       - Availability Zone
     * - default_route_segments
       - List of Strings
       - .. fa:: check
       - []
-      - 
+      -
       - Default Route Segments
     * - enabled
       - Boolean
@@ -721,7 +721,7 @@ NATGateway
       - String
       - .. fa:: check
       - public
-      - 
+      -
       - Segment
 
 
@@ -781,7 +781,7 @@ PrivateHostedZone
       - String
       - .. fa:: check
       - None
-      - 
+      -
       - Hosted zone name
 
 
@@ -805,38 +805,38 @@ Segment
     * - az1_cidr
       - String
       - .. fa:: check
-      - 
-      - 
+      -
+      -
       - Availability Zone 1 CIDR
     * - az2_cidr
       - String
       - .. fa:: check
-      - 
-      - 
+      -
+      -
       - Availability Zone 2 CIDR
     * - az3_cidr
       - String
       - .. fa:: check
-      - 
-      - 
+      -
+      -
       - Availability Zone 3 CIDR
     * - az4_cidr
       - String
       - .. fa:: check
-      - 
-      - 
+      -
+      -
       - Availability Zone 4 CIDR
     * - az5_cidr
       - String
       - .. fa:: check
-      - 
-      - 
+      -
+      -
       - Availability Zone 5 CIDR
     * - az6_cidr
       - String
       - .. fa:: check
-      - 
-      - 
+      -
+      -
       - Availability Zone 6 CIDR
     * - enabled
       - Boolean
@@ -848,7 +848,7 @@ Segment
       - Boolean
       - .. fa:: check
       - False
-      - 
+      -
       - Internet Access
 
 
@@ -878,13 +878,13 @@ SecurityGroup
     * - group_description
       - String
       - .. fa:: check
-      - 
+      -
       - Up to 255 characters in length
       - Group description
     * - group_name
       - String
       - .. fa:: check
-      - 
+      -
       - Up to 255 characters in length. Cannot start with sg-.
       - Group name
     * - ingress
@@ -915,19 +915,19 @@ EgressRule
     * - cidr_ip
       - String
       - .. fa:: check
-      - 
+      -
       - A valid CIDR v4 block or an empty string
       - CIDR IP
     * - cidr_ip_v6
       - String
       - .. fa:: check
-      - 
+      -
       - A valid CIDR v6 block or an empty string
       - CIDR IP v6
     * - description
       - String
       - .. fa:: check
-      - 
+      -
       - Max 255 characters. Allowed characters are a-z, A-Z, 0-9, spaces, and ._-:/()#,@[]+=;{}!$*.
       - Description
     * - from_port
@@ -939,8 +939,8 @@ EgressRule
     * - name
       - String
       - .. fa:: check
-      - 
-      - 
+      -
+      -
       - Name
     * - protocol
       - String
@@ -982,19 +982,19 @@ IngressRule
     * - cidr_ip
       - String
       - .. fa:: check
-      - 
+      -
       - A valid CIDR v4 block or an empty string
       - CIDR IP
     * - cidr_ip_v6
       - String
       - .. fa:: check
-      - 
+      -
       - A valid CIDR v6 block or an empty string
       - CIDR IP v6
     * - description
       - String
       - .. fa:: check
-      - 
+      -
       - Max 255 characters. Allowed characters are a-z, A-Z, 0-9, spaces, and ._-:/()#,@[]+=;{}!$*.
       - Description
     * - from_port
@@ -1006,8 +1006,8 @@ IngressRule
     * - name
       - String
       - .. fa:: check
-      - 
-      - 
+      -
+      -
       - Name
     * - protocol
       - String
@@ -1110,19 +1110,19 @@ Application
       - Container of ResourceGroups_ AIM schemas
       - .. fa:: check
       - None
-      - 
-      - 
+      -
+      -
     * - managed_updates
       - Boolean
       - .. fa:: check
       - False
-      - 
+      -
       - Managed Updates
     * - title
       - String
       - .. fa:: times
-      - 
-      - 
+      -
+      -
       - Title
 
 
@@ -1150,8 +1150,8 @@ ResourceGroups
     * - title
       - String
       - .. fa:: times
-      - 
-      - 
+      -
+      -
       - Title
 
 
@@ -1180,25 +1180,25 @@ ResourceGroup
       - Int
       - .. fa:: check
       - None
-      - 
+      -
       - The order in which the group will be deployed
     * - resources
       - Container of Resources_ AIM schemas
       - .. fa:: check
       - None
-      - 
-      - 
+      -
+      -
     * - title
       - String
       - .. fa:: check
-      - 
-      - 
+      -
+      -
       - Title
     * - type
       - String
       - .. fa:: check
       - None
-      - 
+      -
       - Type
 
 
@@ -1226,8 +1226,8 @@ Resources
     * - title
       - String
       - .. fa:: times
-      - 
-      - 
+      -
+      -
       - Title
 
 
@@ -1258,19 +1258,19 @@ Resource
       - Int
       - .. fa:: times
       - 0
-      - 
+      -
       - The order in which the resource will be deployed
     * - resource_name
       - String
       - .. fa:: check
       - None
-      - 
+      -
       - AWS Resource Name
     * - title
       - String
       - .. fa:: times
-      - 
-      - 
+      -
+      -
       - Title
     * - type
       - String
@@ -1356,8 +1356,8 @@ Environment
     * - title
       - String
       - .. fa:: times
-      - 
-      - 
+      -
+      -
       - Title
 
 
@@ -1385,8 +1385,8 @@ EnvironmentDefault
     * - title
       - String
       - .. fa:: times
-      - 
-      - 
+      -
+      -
       - Title
 
 
@@ -1420,10 +1420,14 @@ EnvironmentRegion
     * - title
       - String
       - .. fa:: times
-      - 
-      - 
+      -
+      -
       - Title
 
+Resources
+=========
+
+Resources need to be documented.
 
 Services
 ========
@@ -1503,31 +1507,31 @@ CloudWatchAlarm
       - String
       - .. fa:: check
       - None
-      - 
+      -
       - Evaluate low sample count percentile
     * - evaluation_periods
       - Int
       - .. fa:: check
       - None
-      - 
+      -
       - Evaluation periods
     * - extended_statistic
       - String
       - .. fa:: check
       - None
-      - 
+      -
       - Extended statistic
     * - metric_name
       - String
       - .. fa:: check
       - None
-      - 
+      -
       - Metric name
     * - name
       - String
       - .. fa:: check
-      - 
-      - 
+      -
+      -
       - Name
     * - period
       - Int
@@ -1545,19 +1549,19 @@ CloudWatchAlarm
       - String
       - .. fa:: check
       - None
-      - 
+      -
       - Statistic
     * - threshold
       - Float
       - .. fa:: check
       - None
-      - 
+      -
       - Threshold
     * - treat_missing_data
       - String
       - .. fa:: check
       - None
-      - 
+      -
       - Treat missing data
 
 
@@ -1582,43 +1586,43 @@ CWAgentLogSource
       - String
       - .. fa:: check
       - utf-8
-      - 
+      -
       - Encoding
     * - log_group_name
       - String
       - .. fa:: check
-      - 
+      -
       - CloudWatch Log Group name
       - Log group name
     * - log_stream_name
       - String
       - .. fa:: check
-      - 
+      -
       - CloudWatch Log Stream name
       - Log stream name
     * - multi_line_start_pattern
       - String
       - .. fa:: check
-      - 
-      - 
+      -
+      -
       - Multi-line start pattern
     * - name
       - String
       - .. fa:: check
-      - 
-      - 
+      -
+      -
       - Name
     * - path
       - String
       - .. fa:: check
-      - 
+      -
       - Must be a valid filesystem path expression. Wildcard * is allowed.
       - Path
     * - timestamp_format
       - String
       - .. fa:: check
-      - 
-      - 
+      -
+      -
       - Timestamp format
     * - timezone
       - String

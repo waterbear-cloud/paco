@@ -3,12 +3,14 @@ import os
 import aim.config.aws_credentials
 import aim.core.log
 import aim.controllers
+import pkg_resources
 from functools import partial
 from aim.models import load_project_from_yaml
 from aim.models import references
 from copy import deepcopy
 from aim.config import ConfigProcessor
-
+from aim.core.exception import StackException
+from aim.core.exception import AimErrorCode
 
 class AccountContext(object):
 
@@ -87,6 +89,7 @@ class AimContext(object):
         self.build_folder = None
         self.aws_name = "AIM"
         self.controllers = {}
+        self.services = {}
         self.accounts = {}
         self.logger = aim.core.log.get_aim_logger()
         self.project = None
@@ -122,6 +125,17 @@ class AimContext(object):
         # Set Default AWS Region
         os.environ['AWS_DEFAULT_REGION'] = self.project['credentials'].aws_default_region
 
+        # Load the Service Plugins
+        service_plugins = {
+            entry_point.name: entry_point.load()
+            for entry_point
+            in pkg_resources.iter_entry_points('aim.services')
+        }
+        for plugin_name, plugin_module in service_plugins.items():
+            service = plugin_module.instantiate_class(self, self.project[plugin_name.lower()])
+            #service = plugin_func(config, self.project, read_file_path=services_dir + fname)
+            self.services[plugin_name.lower()] = service
+
         # Initialize Service Controllers so they can initiaize their
         # resolve_ref_obj's to allow reference lookups
         self.get_controller('Route53')
@@ -130,14 +144,23 @@ class AimContext(object):
     def get_controller(self, controller_type, config_arg=None):
         #print("Creating controller_type: " + controller_type)
         controller = None
-        if controller_type in self.controllers:
-            #print("Returning cached controller: " + controller_type)
-            controller = self.controllers[controller_type]
+        if controller_type != 'Service':
+            if controller_type in self.controllers:
+                #print("Returning cached controller: " + controller_type)
+                controller = self.controllers[controller_type]
 
-        if controller == None:
-            controller = aim.controllers.klass[controller_type](self)
-            self.controllers[controller_type] = controller
-            controller.init(config_arg)
+            if controller == None:
+                controller = aim.controllers.klass[controller_type](self)
+                self.controllers[controller_type] = controller
+                controller.init(config_arg)
+        else:
+            service_name = config_arg['name']
+            if service_name not in self.services:
+                print("Could not find Service: %s" % (service_name))
+                raise StackException(AimErrorCode.Unknown)
+
+            controller = self.services[service_name]
+            controller.init()
 
         return controller
 
