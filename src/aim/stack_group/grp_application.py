@@ -1,4 +1,5 @@
 import aim.cftemplates
+import json
 import os
 import pathlib
 import tarfile
@@ -334,70 +335,66 @@ cd ${{LB_DIR}}
 
         # Agent Configuration file
         # /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
-        agent_config_template = """
-{{
-"agent": {{
-    "metrics_collection_interval": {0[collection_interval]:d},
-    "region": "{0[aws_region]:s}",
-    "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
-}},
 
-"metrics": {{
-    "metrics_collected": {{
-{0[metrics_json]:s}
-    }},
-    "append_dimensions": {{
-        "ImageId": "${{aws:ImageId}}",
-        "InstanceId": "${{aws:InstanceId}}",
-        "InstanceType": "${{aws:InstanceType}}",
-        "AutoScalingGroupName": "${{aws:AutoScalingGroupName}}"
-        }},
-        "aggregation_dimensions" : [["AutoScalingGroupName"], ["InstanceId", "InstanceType"],[]]
-    }}
-}}
-"""
-        agent_config_table ={
-            'collection_interval': 60,
-            'aws_region': self.subenv_ctx.region,
-            'metrics_json': ""
+        agent_config = {
+            "agent": {
+                "metrics_collection_interval": 60,
+                "region": self.subenv_ctx.region,
+                "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
+            }
         }
 
-        metrics_json_template = """
-        "{0[name]:s}": {{
-            "measurement": {0[measurement_array_json]:s},
-            "collection_interval": {0[collection_interval]:d}
-        }}"""
+        # if there is metrics, add to the cwagent config
+        if monitoring_config.metrics:
+            agent_config["metrics"] = {
+                "metrics_collected": {},
+                "append_dimensions": {
+                    "ImageId": "${aws:ImageId}",
+                    "InstanceId": "${aws:InstanceId}",
+                    "InstanceType": "${aws:InstanceType}",
+                    "AutoScalingGroupName": "${aws:AutoScalingGroupName}"
+                },
+                "aggregation_dimensions" : [["AutoScalingGroupName"], ["InstanceId", "InstanceType"],[]]
+            }
+            collected = agent_config['metrics']['metrics_collected']
+            for metric in monitoring_config.metrics:
+                if metric.collection_interval:
+                    interval = metric.collection_interval
+                else:
+                    interval = monitoring_config.collection_interval
+                collected[metric.name] = {
+                    "measurement": metric.measurements,
+                    "collection_interval": interval
+                }
 
-        metrics_json_table = {
-            'name': None,
-            'measurement_array_json': "[]",
-            'collection_interval': None
-        }
+        # if there is logging, add to the cwagent config
+        if monitoring_config.log_sets:
+            agent_config["logs"] = {
+                "logs_collected": {
+                    "files": {
+                        "collect_list": []
+                    }
+                }
+            }
+            collect = agent_config['logs']['logs_collected']['files']['collect_list']
+            for log_set_name in monitoring_config.log_sets.keys():
+                for log_cat_name in monitoring_config.log_sets[log_set_name].keys():
+                    for log_source in monitoring_config.log_sets[log_set_name][log_cat_name].values():
+                        collect_item = {
+                            "file_path": log_source.path,
+                            "log_group_name": log_source.log_group_name,
+                            "log_stream_name": log_source.log_stream_name,
+                            "encoding": log_source.encoding,
+                            "timezone": log_source.timezone
+                        }
+                        if log_source.multi_line_start_pattern:
+                            collect_item["multi_line_start_pattern"] = log_source.multi_line_start_pattern
+                        if log_source.timestamp_format:
+                            collect_item["timestamp_format"] = log_source.timestamp_format
+                        collect.append(collect_item)
 
-        # Metrics config
-        metrics_json = ""
-        for metric_config in monitoring_config.metrics:
-            metrics_json_table['name'] = metric_config.name
-            if metric_config.collection_interval:
-                metrics_json_table['collection_interval'] = metric_config.collection_interval
-            else:
-                metrics_json_table['collection_interval'] = monitoring_config.collection_interval
-            metrics_json_table['measurement_array_json'] = "["
-            for measurement in metric_config.measurements:
-                if measurement != metric_config.measurements[0]:
-                    metrics_json_table['measurement_array_json'] += ', '
-                metrics_json_table['measurement_array_json'] += '"{0}"'.format(measurement)
-            metrics_json_table['measurement_array_json'] += "]"
-            if metric_config != monitoring_config.metrics[0]:
-                metrics_json += ', '
-            metrics_json += metrics_json_template.format(metrics_json_table)
-
-        # Agent Config
-        if monitoring_config.collection_interval:
-            agent_config_table['collection_interval'] = monitoring_config.collection_interval
-        agent_config_table['metrics_json'] = metrics_json
-
-        agent_config = agent_config_template.format(agent_config_table)
+        # Convert CW Agent data structure to JSON string
+        agent_config = json.dumps(agent_config)
 
         # Create instance managed policy for the agent
         policy_config_yaml = """
