@@ -33,6 +33,7 @@ class LaunchBundle():
                                          'EC2LaunchManager',
                                          self.manager.subenv_ctx.netenv_id,
                                          self.manager.account_ctx.get_name(),
+                                         self.manager.subenv_id,
                                          self.manager.subenv_ctx.region,
                                          self.app_id,
                                          self.group_id,
@@ -382,7 +383,7 @@ cd ${{LB_DIR}}
                     for log_source in monitoring_config.log_sets[log_set_name][log_cat_name].values():
                         collect_item = {
                             "file_path": log_source.path,
-                            "log_group_name": log_source.log_group_name,
+                            "log_group_name": self.subenv_id + '-' + log_source.log_group_name,
                             "log_stream_name": log_source.log_stream_name,
                             "encoding": log_source.encoding,
                             "timezone": log_source.timezone
