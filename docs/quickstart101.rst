@@ -448,7 +448,7 @@ of controller and component will map to different sections of an AIM project
 and provision AWS resources to support that configuration.
 
 The EC2 controller and keypair component maps to the ``keypairs:`` configuration
-in the file ``<aim-project>/Services/EC2.yaml``. The ``simple-web-app`` starting template
+in the file ``<aim-project>/Resources/EC2.yaml``. The ``simple-web-app`` starting template
 you used will has created configuration for a keypair named ``aimkeypair``. Run the
 command ``aim provision EC2 keypair aimkeypair --home myproj`` to create a keypair.
 
@@ -585,7 +585,7 @@ Now visit the EC2 service in the AWS Console and you should see an instance runn
 
     .. image:: ./images/simple-ec2-one.png
 
-Then click on **Load Balancers** in the EC2 Services and you should see an application load balancer
+Then click on **Load Balancers** in the EC2 Resources and you should see an application load balancer
 running:
 
     .. image:: ./images/simple-alb-one.png

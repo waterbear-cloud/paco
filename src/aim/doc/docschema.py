@@ -18,7 +18,7 @@ AIM Configuration Overview
 AIM configuration is intended to be a complete declarative description of an Infrastructure-as-Code
 cloud project. These files semantically describe cloud resources and logical groupings of those
 resources. The contents of these files describe accounts, networks, environments, applications,
-services, and monitoring configuration.
+resources, services, and monitoring configuration.
 
 The AIM configuration files are parsed into a Python object model by the library
 ``aim.models``. This object model is used by AIM Orchestration to provision
@@ -44,7 +44,7 @@ files each with a different format. This directories are:
 
   * ``MonitorConfig/``: These contain alarm and log source information.
 
-  * ``Services/``: These contain global or shared resources, such as
+  * ``Resources/``: These contain global or shared resources, such as
     S3 Buckets, IAM Users, EC2 Keypairs.
 
 Also at the top level is a ``project.yaml`` file. Currently this file just
@@ -196,7 +196,7 @@ your AIM Configuration.
 
  * ``netenv.ref``: NetworkEnvironment reference
 
- * ``service.ref``: Service reference
+ * ``resource.ref``: Resource reference
 
  * ``config.ref``: Config reference
 
@@ -277,10 +277,10 @@ and configured with the ACM cert:
                                 - netenv.ref my-aim-example.applications.app.groups.site.resources.cert.arn
 
 
-service.ref
+resource.ref
 -----------
 
-If you need to refer to a global resource created in the Services directory, use a ``service.ref``.
+If you need to refer to a global resource created in the Resources directory, use a ``resource.ref``.
 
 In the example below, the ``hosted_zone_id`` of a Route53 record is looked up.
 
@@ -294,9 +294,9 @@ In the example below, the ``hosted_zone_id`` of a Route53 record is looked up.
                 site:
                     alb:
                         dns:
-                        - hosted_zone_id: service.ref route53.example.id
+                        - hosted_zone_id: resource.ref route53.example.id
 
-    # Services/Route53.yaml
+    # Resources/Route53.yaml
 
     hosted_zones:
     example:
@@ -602,6 +602,11 @@ overridden and only the ``sales-app`` would be deployed there.
 {environmentdefault}
 
 {environmentregion}
+
+Resources
+=========
+
+Resources need to be documented.
 
 Services
 ========

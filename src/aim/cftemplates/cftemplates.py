@@ -237,6 +237,8 @@ class CFTemplate():
                         next_ref_idx -= len("config")
                     elif self.body[next_ref_idx-len("service"):].startswith("service"):
                         next_ref_idx -= len("service")
+                    elif self.body[next_ref_idx-len("resource"):].startswith("resource"):
+                        next_ref_idx -= len("resource")
                     else:
                         print("ERROR: unable to parse reference: " + self.body[next_ref_idx-10:next_ref_idx+64])
                         raise StackException(AimErrorCode.Unknown)

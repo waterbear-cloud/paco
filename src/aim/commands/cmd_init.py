@@ -48,9 +48,9 @@ def init_command(aim_ctx, config_type='project', region=None, keypair_name=None,
         cookiecutter(os.path.dirname(__file__) + os.sep + 'aim-cookiecutter' + os.sep)
     elif config_type == 'keypair':
         # ToDo: expand this command to be able to insert a new keypair into an existing EC2.yaml file
-        base_dir = home + os.sep + 'Services' + os.sep
+        base_dir = home + os.sep + 'Resources' + os.sep
         if os.path.isfile(base_dir + os.sep + 'EC2.yaml') or os.path.isfile(base_dir + os.sep + 'EC2.yml'):
-            print("\n{}Services/EC2.yaml file already exists. Exiting.".format(base_dir))
+            print("\n{}Resources/EC2.yaml file already exists. Exiting.".format(base_dir))
             sys.exit()
         init_aim_home_option(aim_ctx, home)
         print("\nAIM EC2 keypair initialization")

@@ -99,7 +99,7 @@ applications:
             instance_iam_role:
               enabled: true
             instance_ami: function.ref aws.ec2.ami.latest.amazon-linux-2
-            instance_key_pair: service.ref ec2.keypairs.aimkeypair
+            instance_key_pair: resource.ref ec2.keypairs.aimkeypair
             instance_monitoring: false
             instance_type: t2.nano
             max_instances: 2

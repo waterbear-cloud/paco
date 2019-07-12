@@ -264,7 +264,7 @@ class Stack():
         return new_cache_id
 
     def is_stack_cached(self):
-        if self.do_not_cache == True:
+        if self.aim_ctx.nocache or self.do_not_cache:
             return False
         try:
             new_cache_id = self.gen_cache_id()
@@ -446,6 +446,9 @@ class Stack():
         self.delete_stack()
         try:
             os.remove(self.cache_filename)
+        except FileNotFoundError:
+            pass
+        try:
             os.remove(self.output_filename)
         except FileNotFoundError:
             pass
