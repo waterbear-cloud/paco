@@ -6,6 +6,8 @@ Changelog for aim
 
 ### Added
 
+- Added --nocache to cli to force updates to stacks.
+
 - CLI reports human readable validation errors from AIM project configuration files
 
 - "aim ftest" command added to run functional tests on the "aim init project"

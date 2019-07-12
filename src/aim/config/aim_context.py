@@ -85,6 +85,7 @@ class AimContext(object):
     def __init__(self, home=None):
         self.home = home
         self.verbose = False
+        self.nocache = False
         self.aim_path = os.getcwd()
         self.build_folder = None
         self.aws_name = "AIM"
@@ -96,10 +97,15 @@ class AimContext(object):
         self.master_account = None
         self.aim_ref = references.AimReference()
 
-    def get_account_context(self, account_ref=None, account_name=None):
+    def get_account_context(self, account_ref=None, account_name=None, netenv_ref=None):
         if account_ref != None:
             ref_dict = self.aim_ref.parse_ref(account_ref)
             account_name = ref_dict['ref_parts'][1]
+        elif netenv_ref != None:
+            account_ref = netenv_ref.split(' ')[1]
+            account_ref = 'netenv.ref '+'.'.join(account_ref.split('.', 4)[:-1])+".network.aws_account"
+            account_ref = self.get_ref(account_ref)
+            return self.get_account_context(account_ref=account_ref)
         elif account_name == None:
             raise StackException(AimErrorCode.Unknown)
 
@@ -133,7 +139,6 @@ class AimContext(object):
         }
         for plugin_name, plugin_module in service_plugins.items():
             service = plugin_module.instantiate_class(self, self.project[plugin_name.lower()])
-            #service = plugin_func(config, self.project, read_file_path=services_dir + fname)
             self.services[plugin_name.lower()] = service
 
         # Initialize Service Controllers so they can initiaize their
@@ -152,16 +157,15 @@ class AimContext(object):
             if controller == None:
                 controller = aim.controllers.klass[controller_type](self)
                 self.controllers[controller_type] = controller
-                controller.init(config_arg)
         else:
             service_name = config_arg['name']
-            if service_name not in self.services:
+            if service_name.lower() not in self.services:
                 print("Could not find Service: %s" % (service_name))
                 raise StackException(AimErrorCode.Unknown)
 
-            controller = self.services[service_name]
-            controller.init()
+            controller = self.services[service_name.lower()]
 
+        controller.init(config_arg)
         return controller
 
     def log(self, msg, *args):
