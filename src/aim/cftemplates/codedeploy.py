@@ -189,10 +189,11 @@ Resources:
       Path: /
 
   CodeDeployServicePolicy:
-    Type: AWS::IAM::ManagedPolicy
+    Type: AWS::IAM::Policy
     DependsOn:
       - CodeDeployServiceRole
     Properties:
+      PolicyName: CodeDeployService
       PolicyDocument:
         Version: 2012-10-17
         Statement:

@@ -11,6 +11,7 @@ from copy import deepcopy
 from aim.config import ConfigProcessor
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
+from aim.models import vocabulary
 
 class AccountContext(object):
 
@@ -34,6 +35,9 @@ class AccountContext(object):
 
     def get_name(self):
         return self.name
+
+    def gen_ref(self):
+        return 'config.ref account.%s' % (self.get_name())
 
     def get_temporary_credentials(self):
         return self.aws_session.get_temporary_credentials()
@@ -118,6 +122,15 @@ class AimContext(object):
 
         return account_ctx
 
+    def get_region_from_ref(self, netenv_ref):
+        region = netenv_ref.split(' ')[1]
+        # aimdemo.subenv.dev.us-west-2.applications
+        region = region.split('.')[3]
+        if region not in vocabulary.aws_regions.keys():
+            return None
+        return region
+
+
     def init_project(self):
         print("Project: %s" % (self.home))
         self.project_folder = self.home
@@ -137,6 +150,7 @@ class AimContext(object):
             for entry_point
             in pkg_resources.iter_entry_points('aim.services')
         }
+        self.project['services'] = self
         for plugin_name, plugin_module in service_plugins.items():
             try:
                 service = plugin_module.instantiate_class(self, self.project[plugin_name.lower()])

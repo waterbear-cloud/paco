@@ -56,7 +56,6 @@ class S3Context():
                 raise StackException(AimErrorCode.Unknown)
             self.bucket_context['stack'] = s3_stack
 
-        self.stack_group.stack_list.append(s3_stack)
         self.stack_group.add_stack_order(s3_stack)
 
     def add_bucket( self,
