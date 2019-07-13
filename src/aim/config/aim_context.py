@@ -150,15 +150,14 @@ class AimContext(object):
             for entry_point
             in pkg_resources.iter_entry_points('aim.services')
         }
-        self.project['services'] = self
         for plugin_name, plugin_module in service_plugins.items():
             try:
                 service = plugin_module.instantiate_class(self, self.project[plugin_name.lower()])
                 self.services[plugin_name.lower()] = service
+                print("Initialized Service Plugin: %s" % (plugin_name))
             except KeyError:
                 # ignore if no config files for a registered service
                 pass
-
         # Initialize Service Controllers so they can initiaize their
         # resolve_ref_obj's to allow reference lookups
         self.get_controller('Route53')

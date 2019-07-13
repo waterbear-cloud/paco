@@ -129,6 +129,8 @@ class RoleContext():
         self.role_profile_arn = "arn:aws:iam::{0}:instance-profile/{1}".format(self.account_ctx.get_id(), role_profile_name)
         self.stack_group.add_stack_order(self.role_stack)
 
+    def get_role_arn(self):
+        return self.role_arn
 
     def resolve_ref(self, ref):
         if ref.raw.startswith(self.role_ref):

@@ -85,6 +85,8 @@ class ApplicationEngine():
                     self.init_ec2_resource(grp_id, res_id, res_config)
                 elif res_config.type == 'CodePipeBuildDeploy':
                     self.init_cpbd_resource(grp_id, res_id, res_config)
+                elif res_config.type == 'Lambda':
+                    self.init_lambda_resource(grp_id, res_id, res_config)
         print("ApplicationEngine: Init: %s: Completed" % (self.app_id))
 
     def gen_resource_ref(self, grp_id, res_id, attribute=None):
@@ -120,12 +122,72 @@ class ApplicationEngine():
                             aws_region=self.aws_region)
         self.stack_group.add_stack_order(alarms_stack)
 
+    def init_lambda_resource(self, grp_id, res_id, res_config):
+        if res_config.enabled == False:
+            print("ApplicationEngine: Init: Lambda: %s *disabled*" % (res_id))
+        else:
+            print("ApplicationEngine: Init: Lambda: %s" % (res_id))
+
+        lambda_config_ref = self.gen_resource_ref(grp_id, res_id)
+        # Create instance role
+        if res_config.iam_role.enabled == False:
+            role_config_yaml = """
+instance_profile: false
+path: /
+role_name: %s""" % ("LambdaFunction")
+            role_config_dict = yaml.load(role_config_yaml)
+            role_config = models.iam.Role()
+            role_config.apply_config(role_config_dict)
+        else:
+            role_config = res_config.iam_role
+
+        # The ID to give this role is: group.resource.iam_role
+        iam_role_ref = self.gen_ref(grp_id=grp_id,
+                                             res_id=res_id,
+                                             attribute='iam_role')
+        iam_role_id = self.gen_iam_role_id(res_id, 'iam_role')
+        # If no assume policy has been added, force one here since we know its
+        # a Lambda function using it.
+        # Set defaults if assume role policy was not explicitly configured
+        if not hasattr(role_config, 'assume_role_policy') or role_config.assume_role_policy == None:
+            policy_dict = { 'effect': 'Allow',
+                            'aws': ["aim.sub 'arn:aws:iam::${config.ref accounts.%s}:root'" % (self.account_ctx.get_name())],
+                            'service': ['lambda.amazonaws.com'] }
+
+            role_config.set_assume_role_policy(policy_dict)
+        # Always turn off instance profiles for Lambda functions
+        role_config.instance_profile = False
+        iam_ctl = self.aim_ctx.get_controller('IAM')
+        iam_ctl.add_role(   aim_ctx=self.aim_ctx,
+                            account_ctx=self.account_ctx,
+                            region=self.aws_region,
+                            group_id=grp_id,
+                            role_id=iam_role_id,
+                            role_ref=iam_role_ref,
+                            role_config=role_config,
+                            stack_group=self.stack_group,
+                            template_params=None)
+
+        aws_name = '-'.join([grp_id, res_id])
+        asg_template = aim.cftemplates.Lambda(self.aim_ctx,
+                                            self.account_ctx,
+                                            aws_name,
+                                            res_config,
+                                            lambda_config_ref)
+        asg_stack = Stack(self.aim_ctx,
+                            self.account_ctx,
+                            self.stack_group,
+                            res_config,
+                            asg_template,
+                            aws_region=self.aws_region)
+        self.stack_group.add_stack_order(asg_stack)
+
     def init_acm_resource(self, grp_id, res_id, res_config):
         # print(cert_config)
         if res_config.enabled == False:
-            print("ApplicationStackGroup: Init: ACM: %s *disabled*" % (res_id))
+            print("ApplicationEngine: Init: ACM: %s *disabled*" % (res_id))
         else:
-            print("ApplicationStackGroup: Init: ACM: %s" % (res_id))
+            print("ApplicationEngine: Init: ACM: %s" % (res_id))
             # print("Adding cert?????")
             acm_ctl = self.aim_ctx.get_controller('ACM')
             self.gen_resource_ref(grp_id, res_id)
@@ -137,9 +199,9 @@ class ApplicationEngine():
 
     def init_s3bucket_resource(self, grp_id, res_id, res_config):
         if res_config.enabled == False:
-            print("ApplicationStackGroup: Init: S3: %s *disabled*" % (res_id))
+            print("ApplicationEngine: Init: S3: %s *disabled*" % (res_id))
         else:
-            print("ApplicationStackGroup: Init: S3: %s" % (res_id))
+            print("ApplicationEngine: Init: S3: %s" % (res_id))
             s3_config_ref = "netenv.ref "+self.gen_resource_ref(grp_id, res_id)
             # Generate s3 bucket name for application deployment
             bucket_name_prefix = '-'.join([self.get_aws_name(), grp_id])
@@ -157,9 +219,9 @@ class ApplicationEngine():
 
     def init_lbclassic_resource(self, grp_id, res_id, res_config):
         if res_config.enabled == False:
-            print("ApplicationStackGroup: Init: LBClassic: %s *disabled*" % (res_id))
+            print("ApplicationEngine: Init: LBClassic: %s *disabled*" % (res_id))
         else:
-            print("ApplicationStackGroup: Init: LBClassic: %s" % (res_id))
+            print("ApplicationEngine: Init: LBClassic: %s" % (res_id))
             elb_config = res_config[res_id]
             elb_config_ref = self.gen_resource_ref(grp_id, res_id)
             aws_name = '-'.join([grp_id, res_id])
@@ -182,9 +244,9 @@ class ApplicationEngine():
 
     def init_lbapplication_resource(self, grp_id, res_id, res_config):
         if res_config.enabled == False:
-            print("ApplicationStackGroup: Init: LBApplication: %s *disabled*" % (res_id))
+            print("ApplicationEngine: Init: LBApplication: %s *disabled*" % (res_id))
         else:
-            print("ApplicationStackGroup: Init: LBApplication: %s" % (res_id))
+            print("ApplicationEngine: Init: LBApplication: %s" % (res_id))
         alb_config_ref = self.gen_resource_ref(grp_id, res_id)
         # resolve_ref object for TargetGroups
         for target_group in res_config.target_groups.values():
@@ -214,9 +276,9 @@ class ApplicationEngine():
 
     def init_asg_resource(self, grp_id, res_id, res_config):
         if res_config.enabled == False:
-            print("ApplicationStackGroup: Init: ASG: %s *disabled*" % (res_id))
+            print("ApplicationEngine: Init: ASG: %s *disabled*" % (res_id))
         else:
-            print("ApplicationStackGroup: Init: ASG: " + res_id)
+            print("ApplicationEngine: Init: ASG: " + res_id)
         asg_config_ref = self.gen_resource_ref(grp_id, res_id)
         # Create instance role
         role_profile_arn = None
@@ -300,9 +362,9 @@ role_name: %s""" % ("ASGInstance")
 
     def init_ec2_resource(self, grp_id, res_id, res_config):
         if res_config.enabled == False:
-            print("ApplicationStackGroup: Init: EC2: %s *disabled*" % (res_id))
+            print("ApplicationEngine: Init: EC2: %s *disabled*" % (res_id))
         else:
-            print("ApplicationStackGroup: Init: EC2 Instance")
+            print("ApplicationEngine: Init: EC2 Instance")
             #print("TODO: Refactor with new design.")
             #raise StackException(AimErrorCode.Unknown)
             ec2_config_ref = self.gen_resource_ref(grp_id, res_id)
@@ -326,9 +388,9 @@ role_name: %s""" % ("ASGInstance")
 
     def init_cpbd_resource(self, grp_id, res_id, res_config):
         if res_config.enabled == False:
-            print("ApplicationStackGroup: Init: CodePipeBuildDeploy: %s *disabled*" % (res_id))
+            print("ApplicationEngine: Init: CodePipeBuildDeploy: %s *disabled*" % (res_id))
         else:
-            print("ApplicationStackGroup: Init: CodePipeBuildDeploy: %s" % (res_id))
+            print("ApplicationEngine: Init: CodePipeBuildDeploy: %s" % (res_id))
             tools_account_ctx = self.aim_ctx.get_account_context(res_config.tools_account)
             # XXX: Fix Hardcoded!!!
             data_account_ctx = self.aim_ctx.get_account_context("config.ref accounts.data")
