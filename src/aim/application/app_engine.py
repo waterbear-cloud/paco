@@ -654,7 +654,7 @@ policies:
         raise StackException(AimErrorCode.Unknown)
 
     def resolve_ref(self, ref):
-        if isinstance(ref.resource, models.resources.CodePipeBuildDeploy):
+        if isinstance(ref.resource, models.applications.CodePipeBuildDeploy):
             if ref.resource_ref == 'codecommit_role.arn':
                 iam_ctl = self.aim_ctx.get_controller("IAM")
                 return iam_ctl.role_arn(ref.raw[:-4])
@@ -675,9 +675,9 @@ policies:
                 return self.cpbd_codedeploy_stack.template.get_application_name()
             elif ref.resource_ref == 'deploy.deployment_group_name':
                 return self.cpbd_codedeploy_stack
-        elif isinstance(ref.resource, models.resources.TargetGroup):
+        elif isinstance(ref.resource, models.applications.TargetGroup):
             return self.get_stack_from_ref(ref)
-        elif isinstance(ref.resource, models.resources.ASG):
+        elif isinstance(ref.resource, models.applications.ASG):
             if ref.resource_ref.startswith('instance_id'):
                 asg_stack = self.get_stack_from_ref(ref)
                 asg_outputs_key = asg_stack.template.get_outputs_key_from_ref(ref)
@@ -690,7 +690,7 @@ policies:
                 breakpoint()
             else:
                 return self.get_stack_from_ref(ref)
-        elif isinstance(ref.resource, models.resources.Lambda):
+        elif isinstance(ref.resource, models.applications.Lambda):
             pass
         breakpoint()
         return None

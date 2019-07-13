@@ -173,7 +173,7 @@ class EC2LaunchManager():
                 ]
             } ]
         }
-        bucket_config = models.resources.S3Bucket(bundle.resource_id, None)
+        bucket_config = models.applications.S3Bucket(bundle.resource_id, None)
         bucket_config.update(bucket_config_dict)
         bucket_config.resolve_ref_obj = self
         bucket_name_prefix = '-'.join([self.parent.get_aws_name(), bundle.group_id])

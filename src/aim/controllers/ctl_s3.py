@@ -1,7 +1,7 @@
 import os
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
-from aim.stack_group import S3StackGroup
+from aim.stack_group import StackGroup
 from aim.controllers.controllers import Controller
 from botocore.exceptions import ClientError
 from aim.models import vocabulary
@@ -10,6 +10,24 @@ import aim.cftemplates
 from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks
 import copy
 import botocore
+
+class S3StackGroup(StackGroup):
+    def __init__(self,
+                 aim_ctx,
+                 account_ctx,
+                 region,
+                 group_name,
+                 controller,
+                 resource_ref,
+                 stack_hooks=None):
+        #print("S3 Group Name: " + group_name)
+        aws_name = group_name
+        super().__init__(aim_ctx,
+                         account_ctx,
+                         group_name,
+                         aws_name,
+                         controller)
+        self.stack_hooks = stack_hooks
 
 class S3Context():
     def __init__(self, aim_ctx, account_ctx, region, controller, stack_group, resource_ref):
@@ -115,7 +133,7 @@ class S3Context():
                                 self.bucket_context['config'].name,
                                 self.bucket_context['config'].bucket_name,
                                 self.bucket_context['bucket_name_suffix']])
-        return bucket_name.replace('_', '').lower()
+        return bucket_name.replace('_', '-').lower()
 
     def get_region(self):
         return self.region
@@ -191,14 +209,60 @@ class S3Context():
 class S3Controller(Controller):
     def __init__(self, aim_ctx):
         super().__init__(aim_ctx,
-                         "Service",
-                         "S3")
+                         "S3",
+                         "Resource")
 
         #self.aim_ctx.log("S3 Service: Configuration: %s" % (name))
         self.contexts = {}
 
+    def init_bucket_environments(self, s3_env_map):
+        for env_id, env_config in s3_env_map.items():
+            # Each bucket gets its own stack
+            for bucket_id, bucket_config in env_config['buckets']:
+                resource_ref = 's3.buckets.{0}.{1}.{2}'.format(env_config['account_ctx'].get_name(), env_config['region'], bucket_id)
+                env_stack_group = S3StackGroup( self.aim_ctx,
+                                                env_config['account_ctx'],
+                                                env_config['region'],
+                                                'bucket',
+                                                self,
+                                                resource_ref,
+                                                stack_hooks=None)
+                self.init_context(  env_config['account_ctx'],
+                                    env_config['region'],
+                                    resource_ref,
+                                    env_stack_group)
+                self.add_bucket(resource_ref,
+                                env_config['region'],
+                                bucket_id,
+                                None,
+                                'aim-s3',
+                                None,
+                                bucket_config,
+                                None)
+
+
+    def init_s3_resource(self, init_config):
+        s3_env_map = {}
+        for bucket_id in self.aim_ctx.project['s3'].buckets.keys():
+            bucket_config = self.aim_ctx.project['s3'].buckets[bucket_id]
+            account_ctx = self.aim_ctx.get_account_context(account_ref=bucket_config.account)
+            region = bucket_config.region
+            s3_env_id = '-'.join([account_ctx.get_name(), region])
+            if s3_env_id not in s3_env_map.keys():
+                s3_env_config = {
+                    'id': s3_env_id,
+                    'account_ctx': account_ctx,
+                    'region': region,
+                    'buckets': [] # Array of [[bucket_id, bucket_config],...]
+                }
+                s3_env_map[s3_env_id] = s3_env_config
+            s3_env_map[s3_env_id]['buckets'].append([bucket_id, bucket_config])
+
+        self.init_bucket_environments(s3_env_map)
+
     def init(self, init_config):
-        pass
+        if init_config != None:
+            self.init_s3_resource(init_config)
 
     def init_context(self, account_ctx, region, resource_ref, stack_group):
         if resource_ref not in self.contexts.keys():
@@ -225,18 +289,26 @@ class S3Controller(Controller):
     def get_region(self, resource_ref, *args, **kwargs):
         return self.contexts[resource_ref].empty_bucket(*args, **kwargs)
 
-    def validate(self):
-
-        if resource_ref in self.contexts:
+    def validate(self, resource_ref=None):
+        if resource_ref != None and resource_ref in self.contexts:
             return self.contexts[resource_ref].validate()
+        elif resource_ref == None:
+            for s3_context in self.contexts.values():
+                s3_context.validate()
 
-    def provision(self, resource_ref):
-        if resource_ref in self.contexts:
+    def provision(self, resource_ref=None):
+        if resource_ref != None and resource_ref in self.contexts:
             return self.contexts[resource_ref].provision()
+        elif resource_ref == None:
+            for s3_context in self.contexts.values():
+                s3_context.provision()
 
-    def delete(self, resource_ref):
-        if resource_ref in self.contexts:
+    def delete(self, resource_ref=None):
+        if resource_ref != None and resource_ref in self.contexts:
             return self.contexts[resource_ref].delete()
+        elif resource_ref == None:
+            for s3_context in self.contexts.values():
+                s3_context.delete()
 
     def get_stack_from_ref(self, resource_ref, *args, **kwargs):
         return self.contexts[resource_ref].get_stack_from_ref(*args, **kwargs)
