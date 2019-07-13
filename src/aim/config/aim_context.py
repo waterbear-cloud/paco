@@ -162,6 +162,7 @@ class AimContext(object):
         # resolve_ref_obj's to allow reference lookups
         self.get_controller('Route53')
         self.get_controller('CodeCommit')
+        self.get_controller('S3').init({'name': 'buckets'})
 
     def get_controller(self, controller_type, config_arg=None):
         #print("Creating controller_type: " + controller_type)

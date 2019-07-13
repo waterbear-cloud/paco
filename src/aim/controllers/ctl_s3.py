@@ -214,6 +214,7 @@ class S3Controller(Controller):
 
         #self.aim_ctx.log("S3 Service: Configuration: %s" % (name))
         self.contexts = {}
+        self.init_s3_resource_done = False
 
     def init_bucket_environments(self, s3_env_map):
         for env_id, env_config in s3_env_map.items():
@@ -242,6 +243,9 @@ class S3Controller(Controller):
 
 
     def init_s3_resource(self, init_config):
+        if self.init_s3_resource_done == True:
+            return
+        self.init_s3_resource_done = True
         s3_env_map = {}
         for bucket_id in self.aim_ctx.project['s3'].buckets.keys():
             bucket_config = self.aim_ctx.project['s3'].buckets[bucket_id]

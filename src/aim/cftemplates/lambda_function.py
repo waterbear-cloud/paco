@@ -23,6 +23,8 @@ class Lambda(CFTemplate):
         self.set_parameter('MemorySize', lambda_config.memory_size)
         self.set_parameter('ReservedConcurrentExecutions', lambda_config.reserved_concurrent_executions)
         self.set_parameter('Timeout', lambda_config.timeout)
+        self.set_parameter('CodeS3Bucket', lambda_config.code.s3_bucket + ".name")
+        self.set_parameter('CodeS3Key', lambda_config.code.s3_key)
 
         # Define the Template
         template_fmt = """
