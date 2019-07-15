@@ -4,15 +4,14 @@ def test_cmd_provision():
     """
     Funcitonal test just to help debug AIM CLI
     """
-    project_folder = '/Users/kteague/water/temparoo/myproj/'
-    aim_ctx = aim.config.aim_context.AimContext(config_folder=project_folder)
+    project_folder = '/Users/kteague/water/temparoo/aproj/'
+    aim_ctx = aim.config.aim_context.AimContext(home=project_folder)
     aim_ctx.init_project()
     config_arg = {
-        'netenv_id': 'mynet',
+        'netenv_id': 'anet',
         'subenv_id': None,
         'region' : None
     }
     controller = aim_ctx.get_controller('NetEnv', config_arg)
     controller.provision()
-
 
