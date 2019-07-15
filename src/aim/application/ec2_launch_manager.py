@@ -18,6 +18,8 @@ import pathlib
 import tarfile
 from aim.stack_group import StackHooks
 from aim import models
+from aim.models import schemas
+from aim.models.locations import get_parent_by_interface
 from aim.core.yaml import YAML
 
 yaml=YAML()
@@ -130,7 +132,6 @@ class EC2LaunchManager():
         self,
         aim_ctx,
         app_engine,
-        env_id,
         app_id,
         account_ctx,
         aws_region,
@@ -139,7 +140,6 @@ class EC2LaunchManager():
     ):
         self.aim_ctx = aim_ctx
         self.app_engine = app_engine
-        self.env_id = env_id
         self.app_id = app_id
         self.account_ctx = account_ctx
         self.aws_region = aws_region
@@ -306,13 +306,9 @@ echo "No Launch bundles to load"
     def lb_add_cloudwatch_agent(
         self,
         instance_iam_role_ref,
-        monitoring_config,
-        app_id,
-        group_id,
-        resource_id,
-        res_config
+        resource
     ):
-        """Creates a launch bundle to install and = configure a CloudWatch Agent:
+        """Creates a launch bundle to install and configure a CloudWatch Agent:
 
          - Adds a launch script to install the agent
 
@@ -321,8 +317,10 @@ echo "No Launch bundles to load"
          - Adds an IAM Policy to the instance IAM role that will allow the agent
            to do what it needs to do (e.g. send metrics and logs to CloudWatch)
         """
-        if monitoring_config == None or monitoring_config.enabled == False:
-            return
+        monitoring = resource.monitoring
+        env_name = get_parent_by_interface(resource, schemas.IEnvironment).name
+        app_name = get_parent_by_interface(resource, schemas.IApplication).name
+        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
 
         # Create the CloudWatch agent launch scripts and configuration
         cw_agent_object = {
@@ -398,7 +396,7 @@ cd ${{LB_DIR}}
         }
 
         # if there is metrics, add to the cwagent config
-        if monitoring_config.metrics:
+        if monitoring.metrics:
             agent_config["metrics"] = {
                 "metrics_collected": {},
                 "append_dimensions": {
@@ -410,18 +408,18 @@ cd ${{LB_DIR}}
                 "aggregation_dimensions" : [["AutoScalingGroupName"], ["InstanceId", "InstanceType"],[]]
             }
             collected = agent_config['metrics']['metrics_collected']
-            for metric in monitoring_config.metrics:
+            for metric in monitoring.metrics:
                 if metric.collection_interval:
                     interval = metric.collection_interval
                 else:
-                    interval = monitoring_config.collection_interval
+                    interval = monitoring.collection_interval
                 collected[metric.name] = {
                     "measurement": metric.measurements,
                     "collection_interval": interval
                 }
 
         # if there is logging, add to the cwagent config
-        if monitoring_config.log_sets:
+        if monitoring.log_sets:
             agent_config["logs"] = {
                 "logs_collected": {
                     "files": {
@@ -430,12 +428,15 @@ cd ${{LB_DIR}}
                 }
             }
             collect = agent_config['logs']['logs_collected']['files']['collect_list']
-            for log_set_name in monitoring_config.log_sets.keys():
-                for log_cat_name in monitoring_config.log_sets[log_set_name].keys():
-                    for log_source in monitoring_config.log_sets[log_set_name][log_cat_name].values():
+            for log_set_name in monitoring.log_sets.keys():
+                for log_cat_name in monitoring.log_sets[log_set_name].keys():
+                    for log_source in monitoring.log_sets[log_set_name][log_cat_name].values():
+                        prefixed_log_group_name = '-'.join([
+                            env_name, app_name, group_name, resource.name, log_source.log_group_name
+                        ])
                         collect_item = {
                             "file_path": log_source.path,
-                            "log_group_name": self.env_id + '-' + self.app_id + '-' + log_source.log_group_name,
+                            "log_group_name": prefixed_log_group_name,
                             "log_stream_name": log_source.log_stream_name,
                             "encoding": log_source.encoding,
                             "timezone": log_source.timezone
@@ -469,16 +470,16 @@ statement:
       - '*'
 """
         policy_ref = self.app_engine.gen_resource_ref(
-            grp_id=group_id,
-            res_id=resource_id,
+            grp_id=group_name,
+            res_id=resource.name,
             attribute=self.id+".cloudwatchagent.policy"
         )
-        policy_id = '-'.join([resource_id, 'cloudwatchagent'])
+        policy_id = '-'.join([resource.name, 'cloudwatchagent'])
         iam_ctl = self.aim_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
             role_ref=instance_iam_role_ref,
-            parent_config=res_config,
-            group_id=group_id,
+            parent_config=resource,
+            group_id=group_name,
             policy_id=policy_id,
             policy_ref=policy_ref,
             policy_config_yaml=policy_config_yaml
@@ -489,10 +490,10 @@ statement:
             self.aim_ctx,
             "CloudWatchAgent",
             self,
-            app_id,
-            group_id,
-            resource_id,
-            self.bucket_id(resource_id)
+            app_name,
+            group_name,
+            resource.name,
+            self.bucket_id(resource.name)
         )
         cw_lb.set_launch_script(launch_script)
         cw_lb.add_file('amazon-cloudwatch-agent.json', agent_config)

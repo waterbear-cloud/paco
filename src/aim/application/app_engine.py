@@ -63,7 +63,6 @@ class ApplicationEngine():
         self.ec2_launch_manager = EC2LaunchManager(
             self.aim_ctx,
             self,
-            self.subenv_ctx.subenv_id,
             self.app_id,
             self.account_ctx,
             self.aws_region,
@@ -326,13 +325,8 @@ role_name: %s""" % ("ASGInstance")
 
         role_profile_arn = iam_ctl.role_profile_arn(instance_iam_role_ref)
 
-        if res_config.monitoring != None:
-            self.ec2_launch_manager.lb_add_cloudwatch_agent(instance_iam_role_ref,
-                                                            res_config.monitoring,
-                                                            self.app_id,
-                                                            grp_id,
-                                                            res_id,
-                                                            res_config)
+        if res_config.monitoring != None and res_config.monitoring.enabled != False:
+            self.ec2_launch_manager.lb_add_cloudwatch_agent(instance_iam_role_ref, res_config)
         if res_id == 'webapptest':
             self.ec2_launch_manager.lb_add_ssm_agent(instance_iam_role_ref,
                                                      self.app_id,
