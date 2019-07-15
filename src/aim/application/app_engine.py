@@ -60,13 +60,16 @@ class ApplicationEngine():
 
     def init(self):
         print("ApplicationEngine: Init: %s" % (self.app_id) )
-        self.ec2_launch_manager = EC2LaunchManager(self.aim_ctx,
-                                                    self,
-                                                    self.app_id,
-                                                    self.account_ctx,
-                                                    self.aws_region,
-                                                    self.config_ref_prefix,
-                                                    self.stack_group)
+        self.ec2_launch_manager = EC2LaunchManager(
+            self.aim_ctx,
+            self,
+            self.subenv_ctx.subenv_id,
+            self.app_id,
+            self.account_ctx,
+            self.aws_region,
+            self.config_ref_prefix,
+            self.stack_group
+        )
         # Resource Groups
         for grp_id, grp_config in self.config.groups_ordered():
             for res_id, res_config in grp_config.resources_ordered():
