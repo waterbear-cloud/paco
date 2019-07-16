@@ -134,7 +134,6 @@ class Parameter():
         elif type(value) == str:
             normalized_value = value
         else:
-            breakpoint()
             print("Error: Parameter: Type Error")
             print(type(value))
             raise AimErrorException(AimErrorCode.Unknown)
