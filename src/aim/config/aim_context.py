@@ -11,6 +11,7 @@ from copy import deepcopy
 from aim.config import ConfigProcessor
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
+from aim.models import vocabulary
 
 class AccountContext(object):
 
@@ -34,6 +35,9 @@ class AccountContext(object):
 
     def get_name(self):
         return self.name
+
+    def gen_ref(self):
+        return 'config.ref account.%s' % (self.get_name())
 
     def get_temporary_credentials(self):
         return self.aws_session.get_temporary_credentials()
@@ -118,6 +122,15 @@ class AimContext(object):
 
         return account_ctx
 
+    def get_region_from_ref(self, netenv_ref):
+        region = netenv_ref.split(' ')[1]
+        # aimdemo.subenv.dev.us-west-2.applications
+        region = region.split('.')[3]
+        if region not in vocabulary.aws_regions.keys():
+            return None
+        return region
+
+
     def init_project(self):
         print("Project: %s" % (self.home))
         self.project_folder = self.home
@@ -138,13 +151,18 @@ class AimContext(object):
             in pkg_resources.iter_entry_points('aim.services')
         }
         for plugin_name, plugin_module in service_plugins.items():
-            service = plugin_module.instantiate_class(self, self.project[plugin_name.lower()])
-            self.services[plugin_name.lower()] = service
-
+            try:
+                service = plugin_module.instantiate_class(self, self.project[plugin_name.lower()])
+                self.services[plugin_name.lower()] = service
+                print("Initialized Service Plugin: %s" % (plugin_name))
+            except KeyError:
+                # ignore if no config files for a registered service
+                pass
         # Initialize Service Controllers so they can initiaize their
         # resolve_ref_obj's to allow reference lookups
         self.get_controller('Route53')
         self.get_controller('CodeCommit')
+        self.get_controller('S3').init({'name': 'buckets'})
 
     def get_controller(self, controller_type, config_arg=None):
         #print("Creating controller_type: " + controller_type)

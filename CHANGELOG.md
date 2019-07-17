@@ -14,6 +14,8 @@ Changelog for aim
   templates. This command will be expanded in the future so you can test your
   own aim projects.
 
+- Resources/S3.yaml is now functional: eg. aim validate S3
+
 
 1.0.0 (2019-07-06)
 ------------------

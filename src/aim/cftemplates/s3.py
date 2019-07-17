@@ -13,8 +13,10 @@ class S3(CFTemplate):
                 bucket_context,
                 bucket_policy_only,
                 config_ref):
-
-        aws_name = '-'.join(['S3', bucket_context['group_id'], bucket_context['id']])
+        aws_name = 'S3'
+        if bucket_context['group_id'] != None:
+            aws_name = '-'.join([aws_name, bucket_context['group_id']])
+        aws_name = '-'.join([aws_name, bucket_context['id']])
         if bucket_policy_only == True:
             aws_name += '-policy'
 

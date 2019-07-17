@@ -16,39 +16,62 @@ class Lambda(CFTemplate):
                          aws_name=aws_name,
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])
 
+        self.set_parameter('FunctionDescription', lambda_config.description)
+        self.set_parameter('Handler', lambda_config.handler)
+        self.set_parameter('Runtime', lambda_config.runtime)
+        self.set_parameter('RoleArn', lambda_config.iam_role.get_arn())
+        self.set_parameter('MemorySize', lambda_config.memory_size)
+        self.set_parameter('ReservedConcurrentExecutions', lambda_config.reserved_concurrent_executions)
+        self.set_parameter('Timeout', lambda_config.timeout)
+        self.set_parameter('CodeS3Bucket', lambda_config.code.s3_bucket + ".name")
+        self.set_parameter('CodeS3Key', lambda_config.code.s3_key)
+
         # Define the Template
         template_fmt = """
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Lambda Function'
 
 Parameters:
-  FunctionHandler:
+  FunctionDescription:
+    Description: "A description of the Lamdba Function."
+    Type: String
+
+  Handler:
     Description: "The name of the function to call upon execution."
     Type: String
 
-  # https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html
   Runtime:
     Description: "The name of the runtime language."
+    Type: String
+
+  RoleArn:
+    Description: "The execution role for the Lambda Function."
+    Type: String
+
+  MemorySize:
+    Description: "The amount of memory that your function has access to. Increasing the function's memory also increases its CPU allocation. The default value is 128 MB. The value must be a multiple of 64 MB."
+    Type: Number
+
+  ReservedConcurrentExecutions:
+    Description: "The number of simultaneous executions to reserve for the function."
+    Type: Number
+    Default: 0
+
+  Timeout:
+    Description: "The amount of time that Lambda allows a function to run before stopping it. "
+    Type: Number
+
+  CodeS3Bucket:
+    Description: "An Amazon S3 bucket in the same AWS Region as your function. The bucket can be in a different AWS account."
+    Type: String
+
+  CodeS3Key:
+    Description: "The Amazon S3 key of the deployment package."
     Type: String
 
 {0[parameters]:s}
 
 Resources:
-  LambdaRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: {0[role_name]:s}
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action: sts:AssumeRole
-
   Function:
     Type: AWS::Lambda::Function
     Properties:
@@ -58,17 +81,14 @@ Resources:
       # FunctionName: # We will allow CloudFormation to choose the name as it will
       #                 already be based on the stack name.
       Code:
-        ZipFile: !Sub |
-          # Placeholder Function
-          import logger
-          logger = logging.getLogger()
-          logger.setLevel(logging.DEBUG)
-          def lambda_handler(event, context):
-              logger.error("Lambda source placeholder.")
-      Handler: !Ref FunctionHandler
-      Role: !GetAtt LambdaRole.Arn
+        S3Bucket: !Ref CodeS3Bucket
+        S3Key: !Ref CodeS3Key
+      Handler: !Ref Handler
+      Role: !Ref RoleArn
       Runtime: !Ref Runtime
-{0[environment]:s}
+      MemorySize: !Ref MemorySize
+      ReservedConcurrentExecutions: !Ref ReservedConcurrentExecutions
+      Timeout: !Ref Timeout{0[environment]:s}
 
   #Permission:
   #  Type: AWS::Lambda::Permission
@@ -98,7 +118,7 @@ Outputs:
         vars_header = """
         Variables:"""
         var_fmt = """
-          {0[key]:s}: !Ref EnvVar{0[value]:s}
+          {0[key]:s}: !Ref EnvVar{0[key]:s}
 """
         var_param_fmt = """
   EnvVar{0[key]:s}:
@@ -111,18 +131,18 @@ Outputs:
         }
 
         parameters_yaml = ""
-        outputs_yaml = ""
         env_yaml = ""
         env_config = lambda_config.environment
         if env_config != None:
             if env_config.variables != None:
                 if len(env_config.variables) > 0:
                     env_yaml += vars_header
-                for env in env_config.variabels:
+                for env in env_config.variables:
                     var_table['key'] = env.key
                     var_table['value'] = env.value
                     parameters_yaml += var_param_fmt.format(var_table)
                     env_yaml += var_fmt.format(var_table)
+                    self.set_parameter('EnvVar%s' %(env.key), env.value)
 
         if env_yaml != "":
           template_table['environment'] = env_header + env_yaml

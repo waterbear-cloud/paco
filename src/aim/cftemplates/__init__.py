@@ -16,5 +16,5 @@ from aim.cftemplates.ec2 import EC2
 from aim.cftemplates.nat_gateway import NATGateway
 from aim.cftemplates.kms import KMS
 from aim.cftemplates.cw_alarms import CWAlarms
-from aim.cftemplates.aws_lambda import Lambda
+from aim.cftemplates.lambda_function import Lambda
 from aim.cftemplates.account import Account

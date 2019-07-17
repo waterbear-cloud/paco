@@ -247,6 +247,11 @@ class CFTemplate():
                     sub_ref_idx = next_ref_idx
                     sub_ref = self.body[sub_ref_idx:sub_ref_idx+(rep_2_idx-sub_ref_idx-1)]
                     #print("Sub ref: " + sub_ref)
+                    if sub_ref.find('<account>') != -1:
+                        sub_ref = sub_ref.replace('<account>', self.account_ctx.get_name())
+                    if sub_ref.find('<region>') != -1:
+                        sub_ref = sub_ref.replace('<region>', self.stack.aws_region)
+
                     sub_value = self.aim_ctx.get_ref(sub_ref)
                     #print("Sub Value: %s" % (sub_value))
                     # Replace the ${}

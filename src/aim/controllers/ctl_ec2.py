@@ -68,7 +68,7 @@ class EC2Controller(Controller):
             if self.keypair_info == None:
                 self.print_ec2("Key pair has NOT been provisioned.")
             else:
-                self.print_ec2("Key pair has been provisioned.")
+                self.print_ec2("Key pair has been previously provisioned.")
                 self.print_ec2("Fingerprint: %s" % (self.keypair_info['KeyFingerprint']), sub_entry=True)
 
 
