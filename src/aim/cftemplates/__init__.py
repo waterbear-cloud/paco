@@ -17,4 +17,6 @@ from aim.cftemplates.nat_gateway import NATGateway
 from aim.cftemplates.kms import KMS
 from aim.cftemplates.cw_alarms import CWAlarms
 from aim.cftemplates.lambda_function import Lambda
+from aim.cftemplates.lambda_permission import LambdaPermission
 from aim.cftemplates.account import Account
+from aim.cftemplates.cw_event_rule import CWEventRule

@@ -153,11 +153,13 @@ class CFTemplate():
     def __init__(self,
                  aim_ctx,
                  account_ctx,
+                 aws_region,
                  config_ref,
                  aws_name,
                  iam_capabilities=[] ):
         self.aim_ctx = aim_ctx
         self.account_ctx = account_ctx
+        self.aws_region = aws_region
         self.build_folder = os.path.join(aim_ctx.build_folder, "templates")
         self.yaml_path = None
         self.parameters = []
@@ -250,7 +252,7 @@ class CFTemplate():
                     if sub_ref.find('<account>') != -1:
                         sub_ref = sub_ref.replace('<account>', self.account_ctx.get_name())
                     if sub_ref.find('<region>') != -1:
-                        sub_ref = sub_ref.replace('<region>', self.stack.aws_region)
+                        sub_ref = sub_ref.replace('<region>', self.aws_region)
 
                     sub_value = self.aim_ctx.get_ref(sub_ref)
                     #print("Sub Value: %s" % (sub_value))
@@ -337,6 +339,8 @@ class CFTemplate():
         elif isinstance(param_value, list):
             param_entry = Parameter(param_key, self.list_to_string(param_value))
         elif isinstance(param_value, str) and self.aim_ctx.aim_ref.is_ref(param_value):
+            param_value.replace("<account>", self.account_ctx.get_name())
+            param_value.replace("<region>", self.aws_region)
             ref_value = self.aim_ctx.get_ref(param_value, account_ctx=self.account_ctx)
             if ref_value == None:
                 print("ERROR: Unable to locate value for ref: " + param_value)

@@ -23,6 +23,7 @@ class Sts(object):
                     admin_creds=None,
                     mfa_account=None
                 ):
+        self.sts_token_expiry_seconds = 3500 # Limited to 1 hour until we use
         self.temp_creds_path = temporary_credentials_path
         self.credentails = None
         self.mfa_arn = mfa_arn
@@ -54,7 +55,7 @@ class Sts(object):
                     aws_session_token=credentials['SessionToken']
                 )
                 _ = client.get_caller_identity()['Account']
-        except (IOError, ClientError): 
+        except (IOError, ClientError):
             response = None
             if self.admin_creds != None:
                 session = boto3.Session(aws_access_key_id=self.admin_creds.aws_access_key_id,
@@ -62,7 +63,7 @@ class Sts(object):
                                         region_name=self.admin_creds.aws_default_region)
                 token_code = input('MFA Token: {0}: '.format(self.account_ctx.get_name()))
                 response = session.client('sts').assume_role(
-                    DurationSeconds=2700,
+                    DurationSeconds=self.sts_token_expiry_seconds,
                     RoleArn=self.role_arn,
                     RoleSessionName='aim-multiaccount-session',
                     SerialNumber=self.mfa_arn,
@@ -73,7 +74,7 @@ class Sts(object):
                                         aws_secret_access_key=mfa_creds['SecretAccessKey'],
                                         aws_session_token=mfa_creds['SessionToken'])
                 response = session.client('sts').assume_role(
-                    DurationSeconds=2700,
+                    DurationSeconds=self.sts_token_expiry_seconds,
                     RoleArn=self.role_arn,
                     RoleSessionName='aim-multiaccount-session')
             credentials = response['Credentials']
@@ -83,7 +84,7 @@ class Sts(object):
                     'SecretAccessKey': credentials['SecretAccessKey'],
                     'SessionToken': credentials['SessionToken']}))
                 os.chmod(self.temp_creds_path, 0o600)
-        self.credentials = credentials 
+        self.credentials = credentials
         return boto3.Session(
             aws_access_key_id=credentials['AccessKeyId'],
             aws_secret_access_key=credentials['SecretAccessKey'],

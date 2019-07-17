@@ -25,6 +25,7 @@ class NetworkStackGroup(StackGroup):
         vpc_config_ref = '.'.join([self.config_ref_prefix, "network.vpc"])
         vpc_template = aim.cftemplates.VPC(self.aim_ctx,
                                            self.account_ctx,
+                                           self.region,
                                            vpc_config,
                                            vpc_config_ref)
         self.vpc_stack = Stack(aim_ctx=self.aim_ctx,
@@ -47,6 +48,7 @@ class NetworkStackGroup(StackGroup):
             segment_config_ref = '.'.join([self.config_ref_prefix, "network.vpc.segments", segment_id])
             segment_template = aim.cftemplates.Segment(self.aim_ctx,
                                                        self.account_ctx,
+                                                       self.region,
                                                        self.subenv_ctx,
                                                        segment_id,
                                                        segment_config,
@@ -75,6 +77,7 @@ class NetworkStackGroup(StackGroup):
             sg_group_config_ref = '.'.join([self.config_ref_prefix, "network.vpc.security_groups", sg_id])
             sg_template = aim.cftemplates.SecurityGroups( aim_ctx=self.aim_ctx,
                                                           account_ctx=self.account_ctx,
+                                                          aws_region=self.region,
                                                           subenv_ctx=self.subenv_ctx,
                                                           security_groups_config=sg_config[sg_id],
                                                           sg_group_id=sg_id,
@@ -105,6 +108,7 @@ class NetworkStackGroup(StackGroup):
             nat_config_ref = '.'.join([self.config_ref_prefix, "network.vpc.nat_gateway", nat_id])
             nat_template = aim.cftemplates.NATGateway( aim_ctx=self.aim_ctx,
                                                        account_ctx=self.account_ctx,
+                                                       aws_region=self.region,
                                                        subenv_ctx=self.subenv_ctx,
                                                        nat_id=nat_id,
                                                        config_ref=nat_config_ref)

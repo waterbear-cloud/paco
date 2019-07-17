@@ -11,6 +11,7 @@ class IAMManagedPolicies(CFTemplate):
     def __init__(self,
                  aim_ctx,
                  account_ctx,
+                 aws_region,
                  policy_context,
                  template_name):
         #aim_ctx.log("IAMManagedPolicies CF Template init")
@@ -18,6 +19,7 @@ class IAMManagedPolicies(CFTemplate):
 
         super().__init__(aim_ctx,
                          account_ctx,
+                         aws_region,
                          config_ref="",
                          aws_name=aws_name,
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])
@@ -159,6 +161,8 @@ Outputs:
             statement_table['action_list'] = ""
             statement_table['resource_list'] = ""
             statement_table['effect'] = statement.effect
+            statement_table['principal'] = ""
+            statement_table['condition'] = ""
             for action in statement.action:
                 statement_table['action_list'] += quoted_list_fmt.format(action)
             for resource in statement.resource:

@@ -21,7 +21,7 @@ from aim.commands.helpers import pass_aim_context
     '-n', '--nocache',
     is_flag=True,
     default=False,
-    help='Disables the CloudFormation stack cache.'
+    help='Disables the AIM CloudFormation stack cache.'
 )
 
 @pass_aim_context

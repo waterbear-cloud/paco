@@ -19,6 +19,14 @@ Changelog for aim
 
 - Resources/S3.yaml is now functional: eg. aim validate S3
 
+- Added Region to cftemplates so we can do inline replace of <account> and <region>.
+
+- Added LambdaPermission and CWEventRule cftemplates.
+
+- Added CloudWatchController and LambdaController.
+
+
+
 
 1.0.0 (2019-07-06)
 ------------------

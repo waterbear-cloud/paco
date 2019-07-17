@@ -34,6 +34,7 @@ class CodeCommitStackGroup(StackGroup):
         # CodeCommit Repository
         codecommit_template = aim.cftemplates.CodeCommit(self.aim_ctx,
                                                          self.account_ctx,
+                                                         self.aws_region,
                                                          self.config,
                                                          self.repo_list)
         codecommit_stack = Stack(aim_ctx=self.aim_ctx,

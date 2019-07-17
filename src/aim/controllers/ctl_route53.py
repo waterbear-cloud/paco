@@ -25,6 +25,7 @@ class Route53Controller(Controller):
     def init(self, init_config):
         if self.init_done:
             return
+        self.config.resolv_ref_obj = self
         self.init_done = True
         self.init_stack_groups()
 
@@ -56,7 +57,7 @@ class Route53Controller(Controller):
         return None
 
     def resolve_ref(self, ref):
-        # service.route53.example.app1.name
+        # route53.example.id
         if ref.last_part == "id":
             return self.get_stack(zone_id=ref.parts[1])
 

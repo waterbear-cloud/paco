@@ -10,6 +10,7 @@ class CodeCommit(CFTemplate):
     def __init__(self,
                  aim_ctx,
                  account_ctx,
+                 aws_region,
                  codecommit_config,
                  repo_list):
         #aim_ctx.log("CodeCommit CF Template init")
@@ -18,6 +19,7 @@ class CodeCommit(CFTemplate):
 
         super().__init__(aim_ctx,
                          account_ctx,
+                         aws_region,
                          config_ref=None,
                          aws_name=aws_name,
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])

@@ -129,6 +129,7 @@ class ApplicationEngine():
         alarms_template = aim.cftemplates.CWAlarms(
             self.aim_ctx,
             self.account_ctx,
+            self.aws_region,
             res_config.monitoring.alarm_sets,
             res_config.type,
             res_config_ref,
@@ -150,8 +151,8 @@ class ApplicationEngine():
         else:
             print("ApplicationEngine: Init: Lambda: %s" % (res_id))
 
-        lambda_config_ref = self.gen_resource_ref(grp_id, res_id)
-        # Create instance role
+        lambda_config_ref = self.gen_ref(grp_id, res_id)
+        # Create function execution role
         if res_config.iam_role.enabled == False:
             role_config_yaml = """
 instance_profile: false
@@ -162,6 +163,20 @@ role_name: %s""" % ("LambdaFunction")
             role_config.apply_config(role_config_dict)
         else:
             role_config = res_config.iam_role
+
+        # Add CloudWatch Logs permissions
+        cw_logs_policy = """
+name: CloudWatchLogs
+statement:
+  - effect: Allow
+    action:
+      - logs:CreateLogGroup
+      - logs:CreateLogStream
+      - logs:PutLogEvents
+    resource:
+      - '*'
+"""
+        role_config.add_policy(yaml.load(cw_logs_policy))
 
         # The ID to give this role is: group.resource.iam_role
         iam_role_ref = self.gen_ref(
@@ -192,23 +207,26 @@ role_name: %s""" % ("LambdaFunction")
             stack_group=self.stack_group,
             template_params=None
         )
+
+
         aws_name = '-'.join([grp_id, res_id])
-        asg_template = aim.cftemplates.Lambda(
+        lambda_template = aim.cftemplates.Lambda(
             self.aim_ctx,
             self.account_ctx,
+            self.aws_region,
             aws_name,
             res_config,
             lambda_config_ref
         )
-        asg_stack = Stack(
+        lambda_stack = Stack(
             self.aim_ctx,
             self.account_ctx,
             self.stack_group,
             res_config,
-            asg_template,
+            lambda_template,
             aws_region=self.aws_region
         )
-        self.stack_group.add_stack_order(asg_stack)
+        self.stack_group.add_stack_order(lambda_stack)
 
     def init_acm_resource(self, grp_id, res_id, res_config):
         if res_config.enabled == False:
@@ -216,7 +234,6 @@ role_name: %s""" % ("LambdaFunction")
         else:
             print("ApplicationEngine: Init: ACM: %s" % (res_id))
             acm_ctl = self.aim_ctx.get_controller('ACM')
-            self.gen_resource_ref(grp_id, res_id)
             cert_group_id = self.gen_resource_ref(grp_id, res_id)
             acm_ctl.add_certificate_config(
                 self.account_ctx,
@@ -258,6 +275,7 @@ role_name: %s""" % ("LambdaFunction")
             elb_template = aim.cftemplates.ELB(
                 self.aim_ctx,
                 self.account_ctx,
+                self.aws_region,
                 self.subenv_ctx,
                 self.app_id,
                 res_id,
@@ -287,6 +305,7 @@ role_name: %s""" % ("LambdaFunction")
         alb_template = aim.cftemplates.ALB(
             self.aim_ctx,
             self.account_ctx,
+            self.aws_region,
             self.subenv_ctx,
             aws_name,
             self.app_id,
@@ -373,6 +392,7 @@ role_name: %s""" % ("ASGInstance")
         asg_template = aim.cftemplates.ASG(
             self.aim_ctx,
             self.account_ctx,
+            self.aws_region,
             self.subenv_ctx,
             aws_name,
             self.app_id,
@@ -407,6 +427,7 @@ role_name: %s""" % ("ASGInstance")
             ec2_template = aim.cftemplates.EC2(
                 self.aim_ctx,
                 self.account_ctx,
+                self.aws_region,
                 self.subenv_id,
                 aws_name,
                 self.app_id,
@@ -489,6 +510,7 @@ role_name: %s""" % ("ASGInstance")
             kms_template = aim.cftemplates.KMS(
                 self.aim_ctx,
                 tools_account_ctx,
+                self.aws_region,
                 aws_name,
                 kms_conf_ref,
                 kms_config_dict
@@ -592,6 +614,7 @@ policies:
             codedeploy_template = aim.cftemplates.CodeDeploy(
                 self.aim_ctx,
                 self.account_ctx,
+                self.aws_region,
                 self.subenv_ctx,
                 aws_name,
                 self.app_id,
@@ -618,6 +641,7 @@ policies:
             codepipebuild_template = aim.cftemplates.CodePipeBuild(
                 self.aim_ctx,
                 tools_account_ctx,
+                self.aws_region,
                 self.subenv_ctx,
                 aws_name,
                 self.app_id,
@@ -651,6 +675,7 @@ policies:
             kms_template = aim.cftemplates.KMS(
                 self.aim_ctx,
                 tools_account_ctx,
+                self.aws_region,
                 aws_name,
                 kms_conf_ref,
                 kms_config_dict
@@ -732,5 +757,7 @@ policies:
             else:
                 return self.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.Lambda):
-            pass
+            lambda_stack = self.get_stack_from_ref(ref)
+            return lambda_stack
+
         return None

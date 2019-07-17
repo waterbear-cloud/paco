@@ -10,6 +10,7 @@ class CodePipeBuild(CFTemplate):
     def __init__(self,
                  aim_ctx,
                  account_ctx,
+                 aws_region,
                  subenv_ctx,
                  aws_name,
                  app_id,
@@ -23,6 +24,7 @@ class CodePipeBuild(CFTemplate):
         #aim_ctx.log("S3 CF Template init")
         super().__init__(aim_ctx,
                          account_ctx,
+                         aws_region,
                          config_ref=cpbd_config_ref,
                          aws_name='-'.join(["CPBD-PipeBuild", aws_name]),
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])

@@ -1,5 +1,4 @@
 import os
-from aim.stack_group import Route53StackGroup
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.controllers.controllers import Controller

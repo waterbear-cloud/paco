@@ -10,6 +10,7 @@ class SecurityGroups(CFTemplate):
     def __init__(self,
                  aim_ctx,
                  account_ctx,
+                 aws_region,
                  subenv_ctx,
                  security_groups_config,
                  sg_group_id,
@@ -21,6 +22,7 @@ class SecurityGroups(CFTemplate):
 
         super().__init__(aim_ctx,
                          account_ctx,
+                         aws_region,
                          config_ref=sg_group_config_ref,
                          aws_name='-'.join(["SecurityGroups", sg_group_id]))
 

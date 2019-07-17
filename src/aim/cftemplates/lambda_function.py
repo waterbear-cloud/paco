@@ -6,13 +6,14 @@ from io import StringIO
 from enum import Enum
 
 class Lambda(CFTemplate):
-    def __init__(self, aim_ctx, account_ctx, aws_name, lambda_config, lambda_config_ref):
+    def __init__(self, aim_ctx, account_ctx, aws_region, aws_name, lambda_config, lambda_config_ref):
         #aim_ctx.log("Lambda CF Template init")
         aws_name += '-Lambda'
 
         super().__init__(aim_ctx,
                          account_ctx,
-                         config_ref=None,
+                         aws_region,
+                         config_ref=lambda_config_ref,
                          aws_name=aws_name,
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])
 
@@ -71,6 +72,9 @@ Parameters:
 
 {0[parameters]:s}
 
+Conditions:
+  ReservedConcurrentExecutionsIsEnabled: !Not [!Equals [!Ref ReservedConcurrentExecutions, 0]]
+
 Resources:
   Function:
     Type: AWS::Lambda::Function
@@ -87,7 +91,11 @@ Resources:
       Role: !Ref RoleArn
       Runtime: !Ref Runtime
       MemorySize: !Ref MemorySize
-      ReservedConcurrentExecutions: !Ref ReservedConcurrentExecutions
+      ReservedConcurrentExecutions:
+        !If
+          - ReservedConcurrentExecutionsIsEnabled
+          - !Ref ReservedConcurrentExecutions
+          - !Ref AWS::NoValue
       Timeout: !Ref Timeout{0[environment]:s}
 
   #Permission:
@@ -118,14 +126,15 @@ Outputs:
         vars_header = """
         Variables:"""
         var_fmt = """
-          {0[key]:s}: !Ref EnvVar{0[key]:s}
+          {0[key]:s}: !Ref EnvVar{0[param_key]:s}
 """
         var_param_fmt = """
-  EnvVar{0[key]:s}:
+  EnvVar{0[param_key]:s}:
     Description: 'An environment variable: {0[key]:s} = {0[value]:s}.'
     Type: String
 """
         var_table = {
+          'param_key': '',
           'key': '',
           'value': ''
         }
@@ -138,11 +147,12 @@ Outputs:
                 if len(env_config.variables) > 0:
                     env_yaml += vars_header
                 for env in env_config.variables:
+                    var_table['param_key'] = env.key.replace('_','')
                     var_table['key'] = env.key
                     var_table['value'] = env.value
                     parameters_yaml += var_param_fmt.format(var_table)
                     env_yaml += var_fmt.format(var_table)
-                    self.set_parameter('EnvVar%s' %(env.key), env.value)
+                    self.set_parameter('EnvVar%s' % (var_table['param_key']), env.value)
 
         if env_yaml != "":
           template_table['environment'] = env_header + env_yaml
@@ -152,4 +162,8 @@ Outputs:
         self.set_template(template_fmt.format(template_table))
 
     def get_outputs_key_from_ref(self, ref):
-       pass
+        if ref[-3:] == 'arn':
+          return 'FunctionArn'
+        if ref[-4:] == 'name':
+          return 'FunctionName'
+

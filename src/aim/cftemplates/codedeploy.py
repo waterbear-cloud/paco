@@ -10,6 +10,7 @@ class CodeDeploy(CFTemplate):
     def __init__(self,
                  aim_ctx,
                  account_ctx,
+                 aws_region,
                  subenv_ctx,
                  aws_name,
                  app_id,
@@ -23,6 +24,7 @@ class CodeDeploy(CFTemplate):
         self.subenv_ctx = subenv_ctx
         super().__init__(aim_ctx,
                          account_ctx,
+                         aws_region,
                          config_ref=cpbd_config_ref,
                          aws_name='-'.join(["CPBD-Deploy", aws_name]),
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])

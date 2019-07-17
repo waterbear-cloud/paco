@@ -11,6 +11,7 @@ class IAMRoles(CFTemplate):
     def __init__(self,
                  aim_ctx,
                  account_ctx,
+                 aws_region,
                  template_name,
                  role_ref,
                  role_id,
@@ -20,6 +21,7 @@ class IAMRoles(CFTemplate):
         aws_name = '-'.join([template_name, "Role"])
         super().__init__(aim_ctx,
                          account_ctx,
+                         aws_region,
                          config_ref="",
                          aws_name=aws_name,
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])

@@ -10,6 +10,7 @@ class NATGateway(CFTemplate):
     def __init__(self,
                  aim_ctx,
                  account_ctx,
+                 aws_region,
                  subenv_ctx,
                  nat_id,
                  config_ref):
@@ -19,6 +20,7 @@ class NATGateway(CFTemplate):
 
         super().__init__(aim_ctx,
                          account_ctx,
+                         aws_region,
                          config_ref=config_ref,
                          aws_name=aws_name,
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])

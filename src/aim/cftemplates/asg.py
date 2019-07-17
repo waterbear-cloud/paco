@@ -11,6 +11,7 @@ class ASG(CFTemplate):
     def __init__(self,
                  aim_ctx,
                  account_ctx,
+                 aws_region,
                  subenv_ctx,
                  aws_name,
                  app_id,
@@ -30,6 +31,7 @@ class ASG(CFTemplate):
         aws_name='-'.join(["ASG", aws_name])
         super().__init__(aim_ctx,
                          account_ctx,
+                         aws_region,
                          config_ref=asg_config_ref,
                          aws_name=aws_name)
 

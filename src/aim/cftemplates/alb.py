@@ -9,6 +9,7 @@ from pprint import pprint
 class ALB(CFTemplate):
     def __init__(self, aim_ctx,
                  account_ctx,
+                 aws_region,
                  subenv_ctx,
                  aws_name,
                  app_id,
@@ -22,6 +23,7 @@ class ALB(CFTemplate):
 
         super().__init__(aim_ctx=aim_ctx,
                          account_ctx=account_ctx,
+                         aws_region=aws_region,
                          config_ref=alb_config_ref,
                          aws_name='-'.join([ "ALB", aws_name]))
 

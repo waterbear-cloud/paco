@@ -12,6 +12,7 @@ class CWAlarms(CFTemplate):
     def __init__(self,
                  aim_ctx,
                  account_ctx,
+                 aws_region,
                  sets_config,
                  res_type,
                  res_config_ref,
@@ -22,6 +23,7 @@ class CWAlarms(CFTemplate):
         aws_name='-'.join([aws_name, 'Alarms'])
         super().__init__(aim_ctx,
                          account_ctx,
+                         aws_region,
                          config_ref=res_config_ref,
                          aws_name=aws_name)
 

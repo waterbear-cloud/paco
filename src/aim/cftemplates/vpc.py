@@ -8,13 +8,15 @@ from enum import Enum
 class VPC(CFTemplate):
     def __init__(self,
                  aim_ctx,
-                 account_ctx,                 
+                 account_ctx,
+                 aws_region,
                  vpc_config,
                  vpc_config_ref):
         #aim_ctx.log("VPC CF Template init")
 
         super().__init__(aim_ctx=aim_ctx,
                          account_ctx=account_ctx,
+                         aws_region=aws_region,
                          config_ref=vpc_config_ref,
                          aws_name='-'.join(["VPC"]))
 

@@ -10,6 +10,7 @@ class S3(CFTemplate):
     def __init__(self,
                 aim_ctx,
                 account_ctx,
+                aws_region,
                 bucket_context,
                 bucket_policy_only,
                 config_ref):
@@ -22,6 +23,7 @@ class S3(CFTemplate):
 
         super().__init__(aim_ctx,
                          account_ctx,
+                         aws_region,
                          config_ref=config_ref,
                          aws_name=aws_name,
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])

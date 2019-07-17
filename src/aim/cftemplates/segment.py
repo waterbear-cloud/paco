@@ -9,6 +9,7 @@ class Segment(CFTemplate):
     def __init__(self,
                  aim_ctx,
                  account_ctx,
+                 aws_region,
                  subenv_ctx,
                  segment_id,
                  segment_config,
@@ -19,6 +20,7 @@ class Segment(CFTemplate):
         # Super
         super().__init__(aim_ctx,
                          account_ctx,
+                         aws_region,
                          config_ref=segment_config_ref,
                          aws_name='-'.join(["Segments", segment_id]))
 

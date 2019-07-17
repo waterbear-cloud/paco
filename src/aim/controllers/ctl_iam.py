@@ -88,6 +88,7 @@ class RoleContext():
         template_name = '-'.join([self.group_id, policy_id])
         policy_context['template'] = IAMManagedPolicies(self.aim_ctx,
                                                         self.account_ctx,
+                                                        self.region,
                                                         policy_context,
                                                         template_name)
 
@@ -110,6 +111,7 @@ class RoleContext():
         template_name = '-'.join([self.group_id, self.role_id])
         self.role_template = IAMRoles(self.aim_ctx,
                                       self.account_ctx,
+                                      self.region,
                                       template_name,
                                       self.role_ref,
                                       self.role_id,

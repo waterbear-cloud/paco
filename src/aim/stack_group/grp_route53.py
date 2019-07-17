@@ -18,6 +18,7 @@ class Route53StackGroup(StackGroup):
         self.stack_list = []
         route53_template = aim.cftemplates.Route53(self.aim_ctx,
                                                    self.account_ctx,
+                                                   self.aim_ctx.project['credentials'].aws_default_region,
                                                    route53_config)
 
         route53_stack = Stack(self.aim_ctx,

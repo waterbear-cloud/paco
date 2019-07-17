@@ -10,6 +10,7 @@ class EC2(CFTemplate):
     def __init__(self,
                  aim_ctx,
                  account_ctx,
+                 aws_region,
                  subenv_id,
                  aws_name,
                  app_id,
@@ -21,6 +22,7 @@ class EC2(CFTemplate):
         aws_name = '-'.join(["EC2", aws_name])
         super().__init__(aim_ctx,
                          account_ctx,
+                         aws_region,
                          config_ref=ec2_config_ref,
                          aws_name=aws_name)
 

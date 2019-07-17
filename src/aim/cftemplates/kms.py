@@ -10,6 +10,7 @@ class KMS(CFTemplate):
     def __init__(self,
                  aim_ctx,
                  account_ctx,
+                 aws_region,
                  aws_name,
                  kms_config_ref,
                  kms_config_dict):
@@ -17,6 +18,7 @@ class KMS(CFTemplate):
         #aim_ctx.log("S3 CF Template init")
         super().__init__(aim_ctx,
                          account_ctx,
+                         aws_region,
                          config_ref=kms_config_ref,
                          aws_name='-'.join(["KMS", aws_name]),
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])

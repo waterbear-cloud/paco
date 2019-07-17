@@ -7,11 +7,12 @@ from enum import Enum
 
 
 class Route53(CFTemplate):
-    def __init__(self, aim_ctx, account_ctx, route53_config):
+    def __init__(self, aim_ctx, account_ctx, aws_region, route53_config):
         #aim_ctx.log("Route53 CF Template init")
 
         super().__init__(aim_ctx,
                          account_ctx,
+                         aws_region,
                          config_ref=None,
                          aws_name="HostedZones",
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])

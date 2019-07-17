@@ -57,6 +57,7 @@ class S3Context():
 
         s3_template = aim.cftemplates.S3(self.aim_ctx,
                                          self.account_ctx,
+                                         self.region,
                                          self.bucket_context,
                                          bucket_policy_only,
                                          self.resource_ref)
