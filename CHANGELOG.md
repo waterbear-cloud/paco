@@ -6,6 +6,9 @@ Changelog for aim
 
 ### Added
 
+- Logging functionality added to monitoring. Logs will be ingested by a configured
+  CloudWatch Agent and sent to a CloudWatch Log Group.
+
 - Added --nocache to cli to force updates to stacks.
 
 - CLI reports human readable validation errors from AIM project configuration files
