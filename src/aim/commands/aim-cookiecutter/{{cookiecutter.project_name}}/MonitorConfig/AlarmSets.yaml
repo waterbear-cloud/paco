@@ -5,6 +5,7 @@ ASG:
     # GroupPendingInstances metric
     # Purpose: detect new instances trying to launch and getting 'stuck'
     GroupPendingInstances-Low:
+      classification: health
       severity: low
       metric_name: "GroupPendingInstances"
       period: 60
@@ -14,6 +15,7 @@ ASG:
       statistic: Maximum
       treat_missing_data: notBreaching
     GroupPendingInstances-Critical:
+      classification: health
       severity: critical
       metric_name: "GroupPendingInstances"
       period: 60
@@ -25,6 +27,7 @@ ASG:
     # GroupInServiceInstances metric
     # Purpose: detect when the number of instances in-service is too low
     GroupInServiceInstances-Critical:
+      classification: health
       severity: critical
       metric_name: "GroupInServiceInstances"
       period: 60
@@ -35,6 +38,7 @@ ASG:
       treat_missing_data: breaching
   instance-health-core:
     StatusCheck-Critical:
+      classification: health
       severity: critical
       metric_name: "StatusCheckFailed"
       period: 60
@@ -44,6 +48,7 @@ ASG:
       comparison_operator: GreaterThanThreshold
       treat_missing_data: breaching
     CPUTotal-Low:
+      classification: performance
       severity: low
       metric_name: "CPUUtilization"
       period: 60
@@ -53,6 +58,7 @@ ASG:
       treat_missing_data: breaching
       comparison_operator: GreaterThanThreshold
     CPUTotal-Critical:
+      classification: performance
       severity: critical
       metric_name: "CPUUtilization"
       period: 60
@@ -63,6 +69,7 @@ ASG:
       comparison_operator: GreaterThanThreshold
   instance-health-cwagent:
     SwapPercent-Low:
+      classification: performance
       severity: low
       metric_name: "swap_used_percent"
       period: 60
@@ -72,6 +79,7 @@ ASG:
       comparison_operator: GreaterThanThreshold
       treat_missing_data: breaching
     SwapPercent-Critical:
+      classification: performance
       severity: low
       metric_name: "swap_used_percent"
       period: 60
@@ -81,6 +89,7 @@ ASG:
       comparison_operator: GreaterThanThreshold
       treat_missing_data: breaching
     DiskSpace-Low:
+      classification: health
       severity: low
       metric_name: "disk_used_percent"
       period: 300
@@ -90,6 +99,7 @@ ASG:
       comparison_operator: GreaterThanThreshold
       treat_missing_data: breaching
     DiskSpace-Critical:
+      classification: health
       severity: low
       metric_name: "disk_used_percent"
       period: 300
@@ -103,6 +113,7 @@ ASG:
 LBApplication:
   instance-health:
     HealthyHostCount-Critical:
+      classification: health
       severity: critical
       metric_name: "HealthyHostCount"
       period: 60
@@ -112,6 +123,7 @@ LBApplication:
       comparison_operator: LessThanOrEqualToThreshold
       treat_missing_data: breaching
     UnHealthyHostCount-Critical:
+      classification: health
       severity: critical
       metric_name: "UnHealthyHostCount"
       period: 60
@@ -133,6 +145,7 @@ LBApplication:
       treat_missing_data: notBreaching
   response-health:
     HTTPCode_Target_4XX_Count-Low:
+      classification: performance
       severity: low
       metric_name: "HTTPCode_Target_4XX_Count"
       period: 60
@@ -142,6 +155,7 @@ LBApplication:
       comparison_operator: GreaterThanOrEqualToThreshold
       treat_missing_data: notBreaching
     HTTPCode_Target_5XX_Count-Low:
+      classification: performance
       severity: low
       metric_name: "HTTPCode_Target_5XX_Count"
       period: 60
@@ -151,6 +165,7 @@ LBApplication:
       comparison_operator: GreaterThanOrEqualToThreshold
       treat_missing_data: notBreaching
     TargetConnectionErrorCount-Low:
+      classification: health
       severity: low
       metric_name: "TargetConnectionErrorCount"
       period: 60
