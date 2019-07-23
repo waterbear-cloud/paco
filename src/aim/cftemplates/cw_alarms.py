@@ -1,33 +1,38 @@
-import os
+"""
+CloudFormation template for CloudWatch Alarms
+"""
+
+import json
 from aim.cftemplates.cftemplates import CFTemplate
-from aim.cftemplates.cftemplates import Parameter
-from aim.cftemplates.cftemplates import StackOutputParam
-from io import StringIO
-from enum import Enum
-import base64
+from aim.models import schemas
 from aim.models import vocabulary
+from aim.models.locations import get_parent_by_interface
 
 
 class CWAlarms(CFTemplate):
-    def __init__(self,
-                 aim_ctx,
-                 account_ctx,
-                 aws_region,
-                 sets_config,
-                 res_type,
-                 res_config_ref,
-                 aws_name):
-
-        #aim_ctx.log("CLoudWatch Alarms CF Template init")
-        # Super Init:
+    """
+    CloudFormation template for CloudWatch Alarms
+    """
+    def __init__(
+        self,
+        aim_ctx,
+        account_ctx,
+        aws_region,
+        alarm_sets,
+        res_type,
+        res_config_ref,
+        resource,
+        aws_name
+    ):
         aws_name='-'.join([aws_name, 'Alarms'])
-        super().__init__(aim_ctx,
-                         account_ctx,
-                         aws_region,
-                         config_ref=res_config_ref,
-                         aws_name=aws_name)
-
-        self.sets_config = sets_config
+        super().__init__(
+            aim_ctx,
+            account_ctx,
+            aws_region,
+            config_ref=res_config_ref,
+            aws_name=aws_name
+        )
+        self.alarm_sets = alarm_sets
         self.dimension = vocabulary.cloudwatch[res_type]['dimension']
         self.namespace = vocabulary.cloudwatch[res_type]['namespace']
         # Initialize Parameters
@@ -54,7 +59,6 @@ Outputs:
 
 {0[outputs]:s}
 """
-
         template_table = {
           'alarms': None,
           'outputs': None,
@@ -103,7 +107,6 @@ Outputs:
         - Name: %s
           Value: !Ref AlarmResource"""
 
-
         alarm_table = {
             'id': None,
             'description': None,
@@ -123,35 +126,55 @@ Outputs:
 
         alarms_yaml = ""
         outputs_yaml = ""
-        for alarm_set_id in sets_config.keys():
-            alarm_set = sets_config[alarm_set_id]
+        for alarm_set_id in alarm_sets.keys():
+            alarm_set = alarm_sets[alarm_set_id]
             for alarm_id in alarm_set.keys():
-                alarm_conf = alarm_set[alarm_id]
+                env = get_parent_by_interface(resource, schemas.IEnvironment)
+                envreg = get_parent_by_interface(resource, schemas.IEnvironmentRegion)
+                app = get_parent_by_interface(resource, schemas.IApplication)
+                group = get_parent_by_interface(resource, schemas.IResourceGroup)
+                alarm = alarm_set[alarm_id]
+                description = {
+                    "env_name": env.name,
+                    "env_title": env.title,
+                    "envreg_name": envreg.name,
+                    "envreg_title": envreg.title,
+                    "app_name": app.name,
+                    "app_title": app.title,
+                    "resource_group_name": group.name,
+                    "resource_group_title": group.title,
+                    "resource_name": resource.name,
+                    "resource_title": resource.title,
+                    "alarm_name": alarm.name,
+                    "classification": alarm.classification,
+                    "severity": alarm.severity,
+                    "topic_arns": ["XXX"]
+                }
                 normalized_set_id = self.normalize_resource_name(alarm_set_id)
                 normalized_id = self.normalize_resource_name(alarm_id)
                 alarm_table['id'] = normalized_set_id+normalized_id
-                alarm_table['description'] = 'Part of alarm set ' + alarm_set_id
+                alarm_table['description'] = json.dumps(description)
                 alarm_table['name'] = alarm_id
-                alarm_table['comparison_operator'] = alarm_conf.comparison_operator
-                alarm_table['evaluation_periods'] = alarm_conf.evaluation_periods
-                alarm_table['metric_name'] = alarm_conf.metric_name
+                alarm_table['comparison_operator'] = alarm.comparison_operator
+                alarm_table['evaluation_periods'] = alarm.evaluation_periods
+                alarm_table['metric_name'] = alarm.metric_name
                 alarm_table['namespace'] = self.namespace
                 alarm_table['dimensions'] = dimensions_fmt % (self.dimension)
-                alarm_table['evaluation_periods'] = alarm_conf.evaluation_periods
-                alarm_table['metric_name'] = alarm_conf.metric_name
-                alarm_table['period'] = alarm_conf.period
-                alarm_table['threshold'] = alarm_conf.threshold
-                alarm_table['treat_missing_data'] = alarm_conf.treat_missing_data
-                if alarm_conf.extended_statistic == None:
-                    alarm_table['statistic'] = alarm_conf.statistic
+                alarm_table['evaluation_periods'] = alarm.evaluation_periods
+                alarm_table['metric_name'] = alarm.metric_name
+                alarm_table['period'] = alarm.period
+                alarm_table['threshold'] = alarm.threshold
+                alarm_table['treat_missing_data'] = alarm.treat_missing_data
+                if alarm.extended_statistic == None:
+                    alarm_table['statistic'] = alarm.statistic
                     alarm_table['extended_statistic'] = "!Ref AWS::NoValue"
                 else:
                     alarm_table['statistic'] = '!Ref AWS::NoValue'
-                    alarm_table['extended_statistic'] = alarm_conf.extended_statistic
-                if alarm_conf.evaluate_low_sample_count_percentile == None:
+                    alarm_table['extended_statistic'] = alarm.extended_statistic
+                if alarm.evaluate_low_sample_count_percentile == None:
                     alarm_table['evaluate_low_sample_count_percentile'] = "!Ref AWS::NoValue"
                 else:
-                    alarm_table['evaluate_low_sample_count_percentile'] = alarm_conf.evaluate_low_sample_count_percentile
+                    alarm_table['evaluate_low_sample_count_percentile'] = alarm.evaluate_low_sample_count_percentile
 
                 alarms_yaml += alarm_fmt.format(alarm_table)
                 outputs_yaml += output_fmt.format(alarm_table)
@@ -164,7 +187,6 @@ Outputs:
         self.set_template(template_fmt.format(template_table))
 
     def validate(self):
-        #self.aim_ctx.log("Validating ASG Template")
         super().validate()
 
     def get_outputs_key_from_ref(self, aim_ref):
