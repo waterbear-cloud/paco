@@ -8,9 +8,6 @@ env
 .venv
 .pytest_cache
 
-# AIM Administrator Credentials
-.credentials.yaml
-
 # AIM Resources
 Resources/
 aim_ftest
