@@ -25,7 +25,10 @@ Changelog for aim
 
 - Added CloudWatchController and LambdaController.
 
+### Fixed
 
+ - cookiecutter generated .credentials file was not in git repo as, the cookiecutter
+   .gitignore file was causing it to be ignored.
 
 
 1.0.0 (2019-07-06)
