@@ -32,7 +32,7 @@ class ApplicationEngine():
         config_ref_prefix,
         stack_group,
         ref_type,
-        stack_tags,
+        stack_tags=StackTags(),
         subenv_ctx=None
     ):
         self.aim_ctx = aim_ctx

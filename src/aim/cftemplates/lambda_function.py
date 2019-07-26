@@ -144,7 +144,7 @@ Resources:
     Type: AWS::Lambda::Function
     DependsOn:
       - SQSExecutionPolicy
-      - LambdaSDBCacheDomain
+{0[sdb_dependency]:s}
     Properties:
       # Important: If you specify a name, you cannot perform updates that require
       # replacement of this resource. You can perform updates that require no or
@@ -265,10 +265,15 @@ Outputs:
         self.register_stack_output_config(lambda_config_ref+'.arn', 'FunctionArn')
         self.register_stack_output_config(lambda_config_ref+'.invoke_policy.arn', 'InvokePolicyArn')
 
+        if lambda_config.sdb_cache:
+          sdb_dependency = "      - LambdaSDBCacheDomain\n"
+        else:
+          sdb_dependency = ""
         template_table = {
             'parameters': "",
             'environment': "",
-            'outputs': ""
+            'outputs': "",
+            'sdb_dependency': sdb_dependency
         }
 
         env_header = """
