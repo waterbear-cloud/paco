@@ -45,7 +45,6 @@ def handle_exceptions(func):
     """
     @wraps(func)
     def decorated(*args, **kwargs):
-        #return func(*args, **kwargs)
         try:
             return func(*args, **kwargs)
         except (InvalidAimReference, UnusedAimProjectField, InvalidAimProjectFile, AimException, StackException, BotoCoreError,
