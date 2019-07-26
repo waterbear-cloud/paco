@@ -20,6 +20,7 @@ class RoleContext():
         self.region = region
 
         self.group_id = group_id
+        self.role_name = None
         self.role_id = role_id
         self.role_ref = role_ref
         self.role_config = role_config
