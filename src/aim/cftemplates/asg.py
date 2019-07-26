@@ -15,6 +15,7 @@ class ASG(CFTemplate):
                  subenv_ctx,
                  aws_name,
                  app_id,
+                 grp_id,
                  asg_id,
                  asg_config,
                  asg_config_ref,
@@ -56,7 +57,7 @@ class ASG(CFTemplate):
             sg_output_param.add_stack_output(sg_stack, sg_output_key)
         self.set_parameter(sg_output_param)
 
-        asg_name = aim_ctx.normalized_join([self.subenv_ctx.netenv_id, self.subenv_ctx.subenv_id, app_id, asg_id], '', True)
+        asg_name = aim_ctx.normalized_join([self.subenv_ctx.netenv_id, self.subenv_ctx.subenv_id, app_id, grp_id, asg_id], '', True)
         self.set_parameter('ASGName', asg_name)
 
         self.set_parameter('ASGDesiredCapacity', asg_config.desired_capacity)

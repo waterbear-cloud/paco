@@ -7,6 +7,8 @@ from aim.core.exception import AimException, AimErrorCode
 from botocore.exceptions import ClientError
 from enum import Enum
 from aim.core.yaml import YAML
+from aim.config import aim_context
+from copy import deepcopy
 
 yaml=YAML(typ="safe", pure=True)
 yaml.default_flow_sytle = False
@@ -21,6 +23,31 @@ StackOrder = Enum('StackOrder', 'PROVISION WAIT')
 #    def __init__(self):
 #        self.PROVISION = 0
 #        self.WAIT = 1
+
+
+class StackTags():
+    def __init__(self, stack_tags=None):
+        if stack_tags != None:
+            self.tags = deepcopy(stack_tags.tags)
+        else:
+            self.tags = {}
+
+    def add_tag(self, key, value):
+        self.tags[key] = value
+
+    def cf_list(self):
+        tag_list = []
+        for key, value in self.tags.items():
+            tag_dict = {
+                'Key': key,
+                'Value': value
+            }
+            tag_list.append(tag_dict)
+        return tag_list
+
+    def gen_cache_id(self):
+        return aim_context.md5sum(str_data=yaml.dump(self.tags))
+
 
 class StackOrderItem():
     def __init__(self, order, stack):
@@ -92,7 +119,8 @@ class Stack():
                  stack_suffix=None,
                  aws_region=None,
                  hooks=None,
-                 do_not_cache=False):
+                 do_not_cache=False,
+                 stack_tags=None):
         self.aim_ctx = aim_ctx
         self.account_ctx = account_ctx
         self.grp_ctx = grp_ctx
@@ -116,6 +144,10 @@ class Stack():
         self.output_config_dict = None
         self.action = None
         self.do_not_cache = do_not_cache
+
+        self.tags = StackTags(stack_tags)
+        self.tags.add_tag('AIM-Stack', 'true')
+        self.tags.add_tag('AIM-Stack-Name', self.get_name())
 
         self.cache_filename = self.template.get_yaml_path() + ".cache"
         self.output_filename = self.template.get_yaml_path() + ".output"
@@ -260,6 +292,7 @@ class Stack():
             new_cache_id += "TPEnabled"
         # Hooks
         new_cache_id += self.hooks.gen_cache_id()
+        new_cache_id += self.tags.gen_cache_id()
 
         return new_cache_id
 
@@ -331,7 +364,7 @@ class Stack():
             Parameters=stack_parameters,
             DisableRollback=True,
             Capabilities=self.template.capabilities,
-            # Tags=[],
+            Tags=self.tags.cf_list()
             # EnableTerminationProtection=False
         )
         self.stack_id = response['StackId']
@@ -351,7 +384,7 @@ class Stack():
                 Parameters=stack_parameters,
                 Capabilities=self.template.capabilities,
                 UsePreviousTemplate=False,
-                # Tags=[],
+                Tags=self.tags.cf_list()
             )
             #pprint(repr(response))
         except ClientError as e:

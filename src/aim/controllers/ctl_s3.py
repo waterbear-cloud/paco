@@ -7,7 +7,7 @@ from botocore.exceptions import ClientError
 from aim.models import vocabulary
 from aim import models
 import aim.cftemplates
-from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks
+from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks, StackTags
 import copy
 import botocore
 
@@ -30,13 +30,14 @@ class S3StackGroup(StackGroup):
         self.stack_hooks = stack_hooks
 
 class S3Context():
-    def __init__(self, aim_ctx, account_ctx, region, controller, stack_group, resource_ref):
+    def __init__(self, aim_ctx, account_ctx, region, controller, stack_group, resource_ref, stack_tags):
         self.aim_ctx = aim_ctx
         self.stack_group = stack_group
         self.controller = controller
         self.region = region
         self.account_ctx = account_ctx
         self.resource_ref = resource_ref
+        self.stack_tags = stack_tags
         self.bucket_context = {
             'id': None,
             'group_id': None,
@@ -53,7 +54,8 @@ class S3Context():
     def add_stack(  self,
                     bucket_policy_only=False,
                     stack_hooks=None,
-                    new_stack=True):
+                    new_stack=True,
+                    stack_tags=None):
 
         s3_template = aim.cftemplates.S3(self.aim_ctx,
                                          self.account_ctx,
@@ -68,7 +70,8 @@ class S3Context():
                         self.bucket_context,
                         s3_template,
                         aws_region=self.region,
-                        hooks=stack_hooks)
+                        hooks=stack_hooks,
+                        stack_tags=stack_tags)
 
         if bucket_policy_only == False:
             if self.bucket_context['stack'] != None:
@@ -108,11 +111,13 @@ class S3Context():
         if stack_hooks == None:
             stack_hooks = StackHooks(self.aim_ctx)
 
+
         stack_hooks.add('S3StackGroup', 'delete', 'post',
                         self.stack_hook_post_delete, None, self.bucket_context)
 
         self.add_stack(bucket_policy_only=False,
-                        stack_hooks=stack_hooks)
+                        stack_hooks=stack_hooks,
+                        stack_tags=self.stack_tags)
 
 
     def add_bucket_policy(self, policy_dict, stack_hooks=None, new_stack=True):
@@ -124,7 +129,9 @@ class S3Context():
                 policy.processed = True
         bucket_config.add_policy(policy_dict)
 
-        self.add_stack(bucket_policy_only=True, stack_hooks=stack_hooks)
+        self.add_stack( bucket_policy_only=True,
+                        stack_hooks=stack_hooks,
+                        stack_tags=self.stack_tags)
 
     def get_bucket_arn(self):
         return 'arn:aws:s3:::'+self.get_bucket_name()
@@ -217,7 +224,7 @@ class S3Controller(Controller):
         self.contexts = {}
         self.init_s3_resource_done = False
 
-    def init_bucket_environments(self, s3_env_map):
+    def init_bucket_environments(self, s3_env_map, stack_tags):
         for env_id, env_config in s3_env_map.items():
             # Each bucket gets its own stack
             for bucket_id, bucket_config in env_config['buckets']:
@@ -232,7 +239,8 @@ class S3Controller(Controller):
                 self.init_context(  env_config['account_ctx'],
                                     env_config['region'],
                                     resource_ref,
-                                    env_stack_group)
+                                    env_stack_group,
+                                    stack_tags )
                 self.add_bucket(resource_ref,
                                 env_config['region'],
                                 bucket_id,
@@ -243,7 +251,7 @@ class S3Controller(Controller):
                                 None)
 
 
-    def init_s3_resource(self, init_config):
+    def init_s3_resource(self, init_config, stack_tags):
         if self.init_s3_resource_done == True:
             return
         self.init_s3_resource_done = True
@@ -263,15 +271,15 @@ class S3Controller(Controller):
                 s3_env_map[s3_env_id] = s3_env_config
             s3_env_map[s3_env_id]['buckets'].append([bucket_id, bucket_config])
 
-        self.init_bucket_environments(s3_env_map)
+        self.init_bucket_environments(s3_env_map, stack_tags)
 
     def init(self, init_config):
         if init_config != None:
-            self.init_s3_resource(init_config)
+            self.init_s3_resource(init_config, stack_tags=None)
 
-    def init_context(self, account_ctx, region, resource_ref, stack_group):
+    def init_context(self, account_ctx, region, resource_ref, stack_group, stack_tags):
         if resource_ref not in self.contexts.keys():
-            self.contexts[resource_ref] = S3Context(self.aim_ctx, account_ctx, region, self, stack_group, resource_ref)
+            self.contexts[resource_ref] = S3Context(self.aim_ctx, account_ctx, region, self, stack_group, resource_ref, stack_tags)
 
     def add_bucket(self, resource_ref, *args, **kwargs):
         return self.contexts[resource_ref].add_bucket(*args, **kwargs)

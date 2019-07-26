@@ -2,7 +2,7 @@ import click
 import os
 import pathlib
 from aim.stack_group import NetworkStackGroup
-from aim.stack_group import ApplicationStackGroup
+from aim.stack_group import ApplicationStackGroup, StackTags
 from aim.stack_group import IAMStackGroup
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
@@ -39,6 +39,9 @@ class SubNetEnvContext():
                                                'Resources',
                                                'NetworkEnvironments')
         self.resource_yaml = os.path.join(self.resource_yaml_path, self.resource_yaml_filename)
+        self.stack_tags = StackTags()
+        self.stack_tags.add_tag('AIM-Network-Environment-Name', self.netenv_id)
+        self.stack_tags.add_tag('AIM-Environment-Name', self.subenv_id)
 
     def init(self):
         if self.init_done:
@@ -48,30 +51,33 @@ class SubNetEnvContext():
         # Network Stack: VPC, Subnets, Etc
         self.network_stack_grp = NetworkStackGroup(self.aim_ctx,
                                                    self.account_ctx,
-                                                   self)
+                                                   self,
+                                                   StackTags(self.stack_tags))
         self.stack_grps.append(self.network_stack_grp)
         self.network_stack_grp.init()
 
         # IAM Stack
-        for iam_group_id in self.iam_ids():
-            iam_roles_dict = self.iam_roles_dict(iam_group_id)
-            iam_stack_grp = IAMStackGroup(self.aim_ctx,
-                                          self.account_ctx,
-                                          self.get_aws_name(),
-                                          iam_roles_dict,
-                                          iam_group_id,
-                                          self.config_ref_prefix,
-                                          self)
-            self.iam_stack_grps[iam_group_id] = iam_stack_grp
-            self.stack_grps.append(iam_stack_grp)
-            iam_stack_grp.init()
+        # XXX: This may come back later.
+        #for iam_group_id in self.iam_ids():
+        #    iam_roles_dict = self.iam_roles_dict(iam_group_id)
+        #    iam_stack_grp = IAMStackGroup(self.aim_ctx,
+        #                                  self.account_ctx,
+        #                                  self.get_aws_name(),
+        #                                  iam_roles_dict,
+        #                                  iam_group_id,
+        #                                  self.config_ref_prefix,
+        #                                  self)
+        #    self.iam_stack_grps[iam_group_id] = iam_stack_grp
+        #    self.stack_grps.append(iam_stack_grp)
+        #    iam_stack_grp.init()
 
         # Application Engine Stacks
         for app_id in self.application_ids():
             application_stack_grp = ApplicationStackGroup(self.aim_ctx,
                                                           self.account_ctx,
                                                           self,
-                                                          app_id)
+                                                          app_id,
+                                                          StackTags(self.stack_tags))
             self.application_stack_grps[app_id] = application_stack_grp
             self.stack_grps.append(application_stack_grp)
             application_stack_grp.init()

@@ -1,4 +1,4 @@
-import aim.config.aim_context
+from aim.config import aim_context
 
 def test_create_aim_context():
     aim_ctx = aim.config.aim_context.AimContext()

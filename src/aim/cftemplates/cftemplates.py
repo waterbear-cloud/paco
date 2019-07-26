@@ -10,7 +10,7 @@ from aim.stack_group import Stack
 import pathlib
 import random
 import string
-
+from aim.config import aim_context
 
 # Used to call a Service to get an answer
 class ServiceValueParam():
@@ -360,13 +360,13 @@ class CFTemplate():
         self.parameters.append(param_entry)
 
     def gen_cache_id(self):
-        template_md5 = self.aim_ctx.md5sum(self.get_yaml_path())
+        template_md5 = aim_context.md5sum(self.get_yaml_path())
         outputs_str = ""
         for param_entry in self.parameters:
             param_value = param_entry.gen_parameter_value()
             outputs_str += param_value
 
-        outputs_md5 = self.aim_ctx.md5sum(str_data=outputs_str)
+        outputs_md5 = aim_context.md5sum(str_data=outputs_str)
 
         return template_md5+outputs_md5
 

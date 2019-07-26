@@ -237,20 +237,6 @@ class AimContext(object):
 
         return normalized_str
 
-    def md5sum(self, filename=None, str_data=None):
-        d = hashlib.md5()
-        if filename != None:
-            with open(filename, mode='rb') as f:
-                for buf in iter(partial(f.read, 128), b''):
-                    d.update(buf)
-        elif str_data != None:
-            d.update(bytearray(str_data, 'utf-8'))
-        else:
-            print("cli: md5sum: Filename or String data expected")
-            raise StackException(AimErrorCode.Unknown)
-
-        return d.hexdigest()
-
     def str_spc(self, str_data, size):
         new_str = str_data
         str_len = len(str_data)
@@ -324,3 +310,17 @@ class AimContext(object):
 
             try_again = False
         return value
+
+def md5sum(filename=None, str_data=None):
+    d = hashlib.md5()
+    if filename != None:
+        with open(filename, mode='rb') as f:
+            for buf in iter(partial(f.read, 128), b''):
+                d.update(buf)
+    elif str_data != None:
+        d.update(bytearray(str_data, 'utf-8'))
+    else:
+        print("cli: md5sum: Filename or String data expected")
+        raise StackException(AimErrorCode.Unknown)
+
+    return d.hexdigest()

@@ -3,6 +3,7 @@ import botocore
 from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
+from aim.config import aim_context
 
 
 class S3StackGroup(StackGroup):
@@ -35,7 +36,7 @@ class S3StackGroup(StackGroup):
                                          self.buckets,
                                          self.resource_ref,
                                          None)
-        s3_template.set_template_file_id(self.aim_ctx.md5sum(str_data=resource_ref))
+        s3_template.set_template_file_id(aim_context.md5sum(str_data=resource_ref))
 
         # S3 Delete on Stack Delete hook
         if self.stack_hooks == None:

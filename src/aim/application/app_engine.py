@@ -10,7 +10,7 @@ from aim.application.ec2_launch_manager import EC2LaunchManager
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.core.yaml import YAML
-from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks
+from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks, StackTags
 
 yaml=YAML()
 yaml.default_flow_sytle = False
@@ -32,6 +32,7 @@ class ApplicationEngine():
         config_ref_prefix,
         stack_group,
         ref_type,
+        stack_tags,
         subenv_ctx=None
     ):
         self.aim_ctx = aim_ctx
@@ -48,6 +49,8 @@ class ApplicationEngine():
         self.cpbd_codecommit_role_template = None
         self.cpbd_kms_stack = None
         self.cpbd_codedeploy_stack = None
+        self.stack_tags = stack_tags
+        self.stack_tags.add_tag( 'AIM-Application-Name', self.app_id )
 
     def gen_ref(
         self,
@@ -81,28 +84,32 @@ class ApplicationEngine():
             self.account_ctx,
             self.aws_region,
             self.config_ref_prefix,
-            self.stack_group
+            self.stack_group,
+            self.stack_tags
         )
         # Resource Groups
         for grp_id, grp_config in self.config.groups_ordered():
             for res_id, res_config in grp_config.resources_ordered():
+                res_stack_tags = StackTags(self.stack_tags)
+                res_stack_tags.add_tag('AIM-Application-Group-Name', grp_id)
+                res_stack_tags.add_tag('AIM-Application-Resource-Name', res_id)
                 res_config.resolve_ref_obj = self
                 if res_config.type == 'ACM':
-                    self.init_acm_resource(grp_id, res_id, res_config)
+                    self.init_acm_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
                 elif res_config.type == 'S3Bucket':
-                    self.init_s3bucket_resource(grp_id, res_id, res_config)
+                    self.init_s3bucket_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
                 elif res_config.type == 'LBClassic':
-                    self.init_lbclassic_resource(grp_id, res_id, res_config)
+                    self.init_lbclassic_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
                 elif res_config.type == 'LBApplication':
-                    self.init_lbapplication_resource(grp_id, res_id, res_config)
+                    self.init_lbapplication_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
                 elif res_config.type == 'ASG':
-                    self.init_asg_resource(grp_id, res_id, res_config)
+                    self.init_asg_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
                 elif res_config.type == 'EC2':
-                    self.init_ec2_resource(grp_id, res_id, res_config)
+                    self.init_ec2_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
                 elif res_config.type == 'CodePipeBuildDeploy':
-                    self.init_cpbd_resource(grp_id, res_id, res_config)
+                    self.init_cpbd_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
                 elif res_config.type == 'Lambda':
-                    self.init_lambda_resource(grp_id, res_id, res_config)
+                    self.init_lambda_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
         print("ApplicationEngine: Init: %s: Completed" % (self.app_id))
 
     def gen_resource_ref(self, grp_id, res_id, attribute=None):
@@ -125,7 +132,7 @@ class ApplicationEngine():
     def gen_iam_role_id(self, res_id, role_id):
         return '-'.join([res_id, role_id])
 
-    def init_alarms(self, aws_name, res_config_ref, res_config):
+    def init_alarms(self, aws_name, res_config_ref, res_config, res_stack_tags):
         alarms_template = aim.cftemplates.CWAlarms(
             self.aim_ctx,
             self.account_ctx,
@@ -142,11 +149,12 @@ class ApplicationEngine():
             self.stack_group,
             res_config,
             alarms_template,
-            aws_region=self.aws_region
+            aws_region=self.aws_region,
+            stack_tags=res_stack_tags
         )
         self.stack_group.add_stack_order(alarms_stack)
 
-    def init_lambda_resource(self, grp_id, res_id, res_config):
+    def init_lambda_resource(self, grp_id, res_id, res_config, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: Lambda: %s *disabled*" % (res_id))
         else:
@@ -206,7 +214,8 @@ statement:
             role_ref=iam_role_ref,
             role_config=role_config,
             stack_group=self.stack_group,
-            template_params=None
+            template_params=None,
+            stack_tags=res_stack_tags
         )
 
 
@@ -225,11 +234,12 @@ statement:
             self.stack_group,
             res_config,
             lambda_template,
-            aws_region=self.aws_region
+            aws_region=self.aws_region,
+            stack_tags=res_stack_tags
         )
         self.stack_group.add_stack_order(lambda_stack)
 
-    def init_acm_resource(self, grp_id, res_id, res_config):
+    def init_acm_resource(self, grp_id, res_id, res_config, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: ACM: %s *disabled*" % (res_id))
         else:
@@ -243,7 +253,7 @@ statement:
                 res_config
             )
 
-    def init_s3bucket_resource(self, grp_id, res_id, res_config):
+    def init_s3bucket_resource(self, grp_id, res_id, res_config, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: S3: %s *disabled*" % (res_id))
         else:
@@ -254,7 +264,7 @@ statement:
             #print("Application depoloyment bucket name: %s" % new_name)
             s3_ctl = self.aim_ctx.get_controller('S3')
             account_ctx = self.aim_ctx.get_account_context(account_ref=res_config.account)
-            s3_ctl.init_context(account_ctx, self.aws_region, s3_config_ref, self.stack_group)
+            s3_ctl.init_context(account_ctx, self.aws_region, s3_config_ref, self.stack_group, res_stack_tags)
             s3_ctl.add_bucket(
                 resource_ref=s3_config_ref,
                 region=self.aws_region,
@@ -265,7 +275,7 @@ statement:
                 bucket_config=res_config
             )
 
-    def init_lbclassic_resource(self, grp_id, res_id, res_config):
+    def init_lbclassic_resource(self, grp_id, res_id, res_config, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: LBClassic: %s *disabled*" % (res_id))
         else:
@@ -288,12 +298,13 @@ statement:
                 self.aim_ctx, self.account_ctx, self.stack_group,
                 res_config[res_id],
                 elb_template,
-                aws_region=self.aws_region
+                aws_region=self.aws_region,
+                stack_tags=res_stack_tags
             )
             self.stack_group.add_stack_order(elb_stack)
 
 
-    def init_lbapplication_resource(self, grp_id, res_id, res_config):
+    def init_lbapplication_resource(self, grp_id, res_id, res_config, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: LBApplication: %s *disabled*" % (res_id))
         else:
@@ -320,15 +331,16 @@ statement:
             self.stack_group,
             res_config,
             alb_template,
-            aws_region=self.aws_region
+            aws_region=self.aws_region,
+            stack_tags=res_stack_tags
         )
         self.stack_group.add_stack_order(alb_stack)
         # add alarms if there is monitoring configuration
         if hasattr(res_config, 'monitoring') and len(res_config.monitoring.alarm_sets.values()) > 0:
             aws_name = '-'.join(['ALB', grp_id, res_id])
-            self.init_alarms(aws_name, alb_config_ref, res_config)
+            self.init_alarms(aws_name, alb_config_ref, res_config, StackTags(res_stack_tags))
 
-    def init_asg_resource(self, grp_id, res_id, res_config):
+    def init_asg_resource(self, grp_id, res_id, res_config, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: ASG: %s *disabled*" % (res_id))
         else:
@@ -375,7 +387,8 @@ role_name: %s""" % ("ASGInstance")
             role_ref=instance_iam_role_ref,
             role_config=role_config,
             stack_group=self.stack_group,
-            template_params=None
+            template_params=None,
+            stack_tags=res_stack_tags
         )
         role_profile_arn = iam_ctl.role_profile_arn(instance_iam_role_ref)
 
@@ -397,6 +410,7 @@ role_name: %s""" % ("ASGInstance")
             self.subenv_ctx,
             aws_name,
             self.app_id,
+            grp_id,
             res_id,
             res_config,
             asg_config_ref,
@@ -410,15 +424,16 @@ role_name: %s""" % ("ASGInstance")
             self.stack_group,
             res_config,
             asg_template,
-            aws_region=self.aws_region
+            aws_region=self.aws_region,
+            stack_tags=res_stack_tags
         )
         self.stack_group.add_stack_order(asg_stack)
 
         if res_config.monitoring and len(res_config.monitoring.alarm_sets.values()) > 0:
             aws_name = '-'.join(['ASG', grp_id, res_id])
-            self.init_alarms(aws_name, asg_config_ref, res_config)
+            self.init_alarms(aws_name, asg_config_ref, res_config, StackTags(res_stack_tags))
 
-    def init_ec2_resource(self, grp_id, res_id, res_config):
+    def init_ec2_resource(self, grp_id, res_id, res_config, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: EC2: %s *disabled*" % (res_id))
         else:
@@ -442,11 +457,12 @@ role_name: %s""" % ("ASGInstance")
                 self.stack_group,
                 resources_config[res_id],
                 ec2_template,
-                aws_region=self.aws_region
+                aws_region=self.aws_region,
+                stack_tags=res_stack_tags
             )
             self.stack_group.add_stack_order(ec2_stack)
 
-    def init_cpbd_resource(self, grp_id, res_id, res_config):
+    def init_cpbd_resource(self, grp_id, res_id, res_config, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: CodePipeBuildDeploy: %s *disabled*" % (res_id))
         else:
@@ -522,7 +538,8 @@ role_name: %s""" % ("ASGInstance")
                 self.stack_group,
                 None,
                 kms_template,
-                aws_region=self.aws_region
+                aws_region=self.aws_region,
+                stack_tags=res_stack_tags
             )
             self.cpbd_kms_stack = kms_stack_pre
             self.stack_group.add_stack_order(kms_stack_pre)
@@ -605,7 +622,8 @@ policies:
                 role_ref=codecommit_iam_role_ref,
                 role_config=codecommit_iam_role_config,
                 stack_group=self.stack_group,
-                template_params=iam_role_params
+                template_params=iam_role_params,
+                stack_tags=res_stack_tags
             )
 
             # ----------------------------------------------------------
@@ -631,7 +649,8 @@ policies:
                 self.stack_group,
                 None,
                 codedeploy_template,
-                aws_region=self.aws_region
+                aws_region=self.aws_region,
+                stack_tags=res_stack_tags
             )
             self.cpbd_codedeploy_stack = codedeploy_stack
             self.stack_group.add_stack_order(codedeploy_stack)
@@ -659,7 +678,8 @@ policies:
                 self.stack_group,
                 None,
                 codepipebuild_template,
-                aws_region=self.aws_region
+                aws_region=self.aws_region,
+                stack_tags=res_stack_tags
             )
             self.stack_group.add_stack_order(self.cpbd_codepipebuild_stack)
 
@@ -690,7 +710,8 @@ policies:
                                 self.stack_group,
                                 None,
                                 kms_template,
-                                aws_region=self.aws_region)
+                                aws_region=self.aws_region,
+                                stack_tags=res_stack_tags)
             self.stack_group.add_stack_order(kms_stack_post)
 
             # Get the ASG Instance Role ARN

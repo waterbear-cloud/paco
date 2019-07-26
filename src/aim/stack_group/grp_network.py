@@ -1,11 +1,11 @@
-from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup
+from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackTags
 from aim import models
 from aim.models import schemas
 from pprint import pprint
 import aim.cftemplates
 
 class NetworkStackGroup(StackGroup):
-    def __init__(self, aim_ctx, account_ctx, subenv_ctx):
+    def __init__(self, aim_ctx, account_ctx, subenv_ctx, stack_tags):
 
         super().__init__(aim_ctx,
                          account_ctx,
@@ -16,6 +16,7 @@ class NetworkStackGroup(StackGroup):
         self.subenv_ctx = subenv_ctx
         self.config_ref_prefix = self.subenv_ctx.config_ref_prefix
         self.region = self.subenv_ctx.region
+        self.stack_tags = stack_tags
 
     def init(self):
         # Network Stack Templates
@@ -33,7 +34,8 @@ class NetworkStackGroup(StackGroup):
                                grp_ctx=self,
                                stack_config=vpc_config,
                                template=vpc_template,
-                               aws_region=self.region)
+                               aws_region=self.region,
+                               stack_tags=StackTags(self.stack_tags))
 
         self.add_stack_order(self.vpc_stack)
 
@@ -58,7 +60,8 @@ class NetworkStackGroup(StackGroup):
                                   self,
                                   segment_config,
                                   segment_template,
-                                  aws_region=self.region)
+                                  aws_region=self.region,
+                                  stack_tags=StackTags(self.stack_tags))
             self.segment_dict[segment_id] = segment_stack
             self.segment_list.append(segment_stack)
             self.add_stack_order(segment_stack, [StackOrder.PROVISION])
@@ -87,7 +90,8 @@ class NetworkStackGroup(StackGroup):
                              self,
                              None, #self.netenv_config,
                              sg_template,
-                             aws_region=self.region)
+                             aws_region=self.region,
+                             stack_tags=StackTags(self.stack_tags))
             self.sg_list.append(sg_stack)
             self.add_stack_order(sg_stack, [StackOrder.PROVISION])
             self.sg_dict[sg_id] = sg_stack
@@ -117,7 +121,8 @@ class NetworkStackGroup(StackGroup):
                               self,
                               None, #self.netenv_config,
                               nat_template,
-                              aws_region=self.region)
+                              aws_region=self.region,
+                              stack_tags=StackTags(self.stack_tags))
             self.nat_list.append(nat_stack)
             self.add_stack_order(nat_stack, [StackOrder.PROVISION])
 

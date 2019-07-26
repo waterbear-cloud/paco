@@ -7,14 +7,14 @@ from aim.core.exception import AimErrorCode
 from aim.controllers.controllers import Controller
 from aim.stack_group import IAMStackGroup
 from aim.cftemplates import IAMRoles, IAMManagedPolicies
-from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup
+from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackTags
 from aim.core.yaml import YAML
 
 yaml=YAML()
 yaml.default_flow_sytle = False
 
 class RoleContext():
-    def __init__(self, aim_ctx, account_ctx, region, group_id, role_id, role_ref, role_config, stack_group, template_params):
+    def __init__(self, aim_ctx, account_ctx, region, group_id, role_id, role_ref, role_config, stack_group, template_params, stack_tags):
         self.aim_ctx = aim_ctx
         self.account_ctx = account_ctx
         self.region = region
@@ -25,6 +25,7 @@ class RoleContext():
         self.role_ref = role_ref
         self.role_config = role_config
         self.stack_group = stack_group
+        self.stack_tags = stack_tags
         self.role_template = None
         self.role_stack = None
         self.template_params = template_params
@@ -93,12 +94,16 @@ class RoleContext():
                                                         policy_context,
                                                         template_name)
 
+        policy_stack_tags = StackTags(self.stack_tags)
+        policy_stack_tags.add_tag('AIM-IAM-Resource-Type', 'ManagedPolicy')
+
         policy_context['stack'] = Stack(aim_ctx=self.aim_ctx,
                                         account_ctx=self.account_ctx,
                                         grp_ctx=self.stack_group,
                                         stack_config=self.policy_context,
                                         template=policy_context['template'],
-                                        aws_region=self.region)
+                                        aws_region=self.region,
+                                        stack_tags=policy_stack_tags)
 
         self.policy_context['name'] = policy_context['template'].gen_policy_name(policy_id)
         self.policy_context['arn'] = "arn:aws:iam::{0}:policy/{1}".format(self.account_ctx.get_id(), self.policy_context['name'])
@@ -119,12 +124,15 @@ class RoleContext():
                                       self.role_config,
                                       self.template_params)
 
+        role_stack_tags = StackTags(self.stack_tags)
+        role_stack_tags.add_tag('AIM-IAM-Resource-Type', 'Role')
         self.role_stack = Stack(aim_ctx=self.aim_ctx,
                                 account_ctx=self.account_ctx,
                                 grp_ctx=self.stack_group,
                                 stack_config=self.role_config,
                                 template=self.role_template,
-                                aws_region=self.region)
+                                aws_region=self.region,
+                                stack_tags=role_stack_tags)
 
         self.role_name = self.role_template.gen_iam_role_name("Role", self.role_id)
         self.role_arn = "arn:aws:iam::{0}:role/{1}".format(self.account_ctx.get_id(), self.role_name)
@@ -169,7 +177,7 @@ class IAMController(Controller):
     def add_managed_policy(self, role_ref, *args, **kwargs):
         return self.role_context[role_ref].add_managed_policy(*args, **kwargs)
 
-    def add_role(self, aim_ctx, account_ctx, region, group_id, role_id, role_ref, role_config, stack_group, template_params):
+    def add_role(self, aim_ctx, account_ctx, region, group_id, role_id, role_ref, role_config, stack_group, template_params, stack_tags):
         if role_ref not in self.role_context.keys():
             self.role_context[role_ref] = RoleContext(aim_ctx=self.aim_ctx,
                                                       account_ctx=account_ctx,
@@ -179,7 +187,8 @@ class IAMController(Controller):
                                                       role_ref=role_ref,
                                                       role_config=role_config,
                                                       stack_group=stack_group,
-                                                      template_params=template_params)
+                                                      template_params=template_params,
+                                                      stack_tags=stack_tags)
 
         else:
             print("Role already exists: %s" % (role_ref))

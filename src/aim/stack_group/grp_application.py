@@ -1,4 +1,4 @@
-from aim.stack_group import StackGroup
+from aim.stack_group import StackGroup, StackTags
 from aim.core.yaml import YAML
 from aim.application.app_engine import ApplicationEngine
 
@@ -10,7 +10,8 @@ class ApplicationStackGroup(StackGroup):
                  aim_ctx,
                  account_ctx,
                  subenv_ctx,
-                 app_id):
+                 app_id,
+                 stack_tags):
         aws_name = '-'.join(['App', app_id])
         super().__init__(aim_ctx,
                          account_ctx,
@@ -24,6 +25,7 @@ class ApplicationStackGroup(StackGroup):
         self.config_ref_prefix = self.subenv_ctx.config_ref_prefix
         self.aws_region = self.subenv_ctx.region
         self.subenv_id = self.subenv_ctx.subenv_id
+        self.stack_tags = stack_tags
 
     def init(self):
                # Old config_ref
@@ -39,7 +41,8 @@ class ApplicationStackGroup(StackGroup):
                                              self.config_ref_prefix,
                                              self,
                                              'netenv.ref',
-                                             self.subenv_ctx)
+                                             stack_tags=self.stack_tags,
+                                             subenv_ctx=self.subenv_ctx)
         self.app_engine.init()
 
     def validate(self):
@@ -56,13 +59,4 @@ class ApplicationStackGroup(StackGroup):
     def delete(self):
         super().delete()
 
-    def OLD_get_app_grp_res(self, ref):
-        app_idx = ref.parts.index('applications')
-        grp_idx = ref.parts.index('groups')
-        res_idx = ref.parts.index('resources')
-
-        app_id = ref.parts[app_idx+1]
-        grp_id = ref.parts[grp_idx+1]
-        res_id = ref.parts[res_idx+1]
-        return [app_id, grp_id, res_id]
 

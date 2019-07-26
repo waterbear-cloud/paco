@@ -3,6 +3,7 @@ from aim.stack_group.stack_group import StackEnum
 from aim.stack_group.stack_group import StackGroup
 from aim.stack_group.stack_group import StackHooks
 from aim.stack_group.stack_group import StackOrder
+from aim.stack_group.stack_group import StackTags
 from aim.stack_group.grp_network import NetworkStackGroup
 from aim.stack_group.grp_application import ApplicationStackGroup
 from aim.stack_group.grp_iam import IAMStackGroup

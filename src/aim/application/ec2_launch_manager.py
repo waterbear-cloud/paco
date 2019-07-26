@@ -16,11 +16,12 @@ import json
 import os
 import pathlib
 import tarfile
-from aim.stack_group import StackHooks
+from aim.stack_group import StackHooks, StackTags
 from aim import models
 from aim.models import schemas
 from aim.models.locations import get_parent_by_interface
 from aim.core.yaml import YAML
+from aim.config import aim_context
 
 yaml=YAML()
 yaml.default_flow_sytle = False
@@ -98,9 +99,9 @@ class LaunchBundle():
             file_path = os.path.join(bundle_folder, bundle_file['name'])
             with open(file_path, "w") as output_fd:
                 output_fd.write(bundle_file['contents'])
-            contents_md5 += self.aim_ctx.md5sum(str_data=bundle_file['contents'])
+            contents_md5 += aim_context.md5sum(str_data=bundle_file['contents'])
 
-        self.cache_id = self.aim_ctx.md5sum(str_data=contents_md5)
+        self.cache_id = aim_context.md5sum(str_data=contents_md5)
 
         lb_tar_filename = str.join('.', [bundle_folder, 'tgz'])
         lb_tar = tarfile.open(lb_tar_filename, "w:gz")
@@ -136,7 +137,8 @@ class EC2LaunchManager():
         account_ctx,
         aws_region,
         config_ref,
-        stack_group
+        stack_group,
+        stack_tags
     ):
         self.aim_ctx = aim_ctx
         self.app_engine = app_engine
@@ -150,6 +152,7 @@ class EC2LaunchManager():
         self.id = 'ec2lm'
         self.launch_bundles = {}
         self.cache_id = {}
+        self.stack_tags = stack_tags
         self.build_path = os.path.join(
             self.aim_ctx.build_folder,
             'EC2LaunchManager',
@@ -231,7 +234,8 @@ class EC2LaunchManager():
             self.account_ctx,
             self.aws_region,
             bundle.s3_bucket_ref,
-            self.stack_group
+            self.stack_group,
+            StackTags(self.stack_tags)
         )
         s3_ctl.add_bucket(
             bundle.s3_bucket_ref,
