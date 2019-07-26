@@ -4,7 +4,6 @@ from aim.controllers.ctl_codecommit import CodeCommitController
 from aim.controllers.ctl_route53 import Route53Controller
 from aim.controllers.ctl_acm import ACMController
 from aim.controllers.ctl_iam import IAMController
-from aim.controllers.ctl_governance import GovernanceController
 from aim.controllers.ctl_account import AccountController
 from aim.controllers.ctl_project import ProjectController
 from aim.controllers.ctl_ec2 import EC2Controller
@@ -18,7 +17,6 @@ klass = {
     'Route53': Route53Controller,
     'ACM': ACMController,
     'IAM': IAMController,
-    'Governance': GovernanceController,
     'Account': AccountController,
     'Project': ProjectController,
     'EC2': EC2Controller,

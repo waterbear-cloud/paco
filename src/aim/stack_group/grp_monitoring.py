@@ -26,7 +26,7 @@ class MonitoringStackGroup(StackGroup):
 
     def init(self):
         # Monitoring
-        self.aim_ctx.log("StackGroup: Governance: Monitoring: init")
+        self.aim_ctx.log("StackGroup: Monitoring: init")
         # Lambda Monitoring Service
         # Monitoring Repository
         for [res_id, res_config] in self.config.resources.items():
