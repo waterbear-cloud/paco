@@ -133,6 +133,7 @@ class ApplicationEngine():
             res_config.monitoring.alarm_sets,
             res_config.type,
             res_config_ref,
+            res_config,
             aws_name
         )
         alarms_stack = Stack(
