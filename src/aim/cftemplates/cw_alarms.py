@@ -148,7 +148,7 @@ Outputs:
                     "alarm_name": alarm.name,
                     "classification": alarm.classification,
                     "severity": alarm.severity,
-                    "topic_arns": ["XXX"]
+                    "topic_arns": alarm.notification_groups
                 }
                 normalized_set_id = self.normalize_resource_name(alarm_set_id)
                 normalized_id = self.normalize_resource_name(alarm_id)

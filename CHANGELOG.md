@@ -4,7 +4,10 @@ Changelog for aim
 1.1.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Added
+
+- CloudWatch Alarm descriptions are JSON with metadata about the environment,
+  region, application, resource group and resource that the alarm is for.
 
 
 1.1.0 (2019-07-24)
