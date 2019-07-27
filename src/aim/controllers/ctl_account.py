@@ -20,7 +20,7 @@ class AccountController(Controller):
         self.master_stack_group = None
         self.org_stack_group_list = []
         self.init_done = False
-        self.init_accounts_cache_id = "20190612"
+        self.init_accounts_cache_id = "20190613"
         self.master_account_ctx = None
         self.master_account_config = None
 
@@ -47,7 +47,7 @@ class AccountController(Controller):
     def init(self, controller_args):
         # Get the master account config
         self.master_account_config = None
-        for account_id in self.aim_ctx.project['accounts']:
+        for account_id in self.aim_ctx.project['accounts'].keys():
             account_config = self.aim_ctx.project['accounts'][account_id]
             if account_config.is_master == True:
                 self.master_account_config = account_config
@@ -81,7 +81,7 @@ class AccountController(Controller):
             # Config Check
             config_exists = False
             account_config = None
-            if org_account_id in self.aim_ctx.project['accounts']:
+            if org_account_id in self.aim_ctx.project['accounts'].keys():
                 config_exists = True
                 account_config = self.aim_ctx.project['accounts'][org_account_id]
 
@@ -96,7 +96,6 @@ class AccountController(Controller):
                     break
             if config_exists == True and account_exists == True:
                 print("Organization Account and Config already exist, skipping: %s" % (org_account_id))
-                continue
 
             if config_exists == False:
                 print("Initializing Organization Account Configuration: %s\n" % (org_account_id))
@@ -122,7 +121,7 @@ class AccountController(Controller):
                         if yesno == True:
                             # Break out of the while loop and onto the next account id
                             break
-                        account_config = project['accounts'][org_account_id]
+                        account_config = self.aim_ctx.project['accounts'][org_account_id]
                         account_defaults['name'] = account_config['name']
                         account_defaults['title'] = account_config['title']
                         account_defaults['region'] = account_config['region']
@@ -152,7 +151,17 @@ class AccountController(Controller):
                             sys.exit(1)
                     print("Account status:\n")
                     yaml.dump(account_status, sys.stdout)
-                    print("")
+                    while account_status['CreateAccountStatus']['State'] == 'IN_PROGRESS':
+                        print("Waiting for account to be created: Status: {}".format(account_status['CreateAccountStatus']['State']))
+                        account_status = org_client.describe_create_account_status(
+                                        CreateAccountRequestId=account_status['CreateAccountStatus']['Id']
+                                    )
+                        time.sleep(10)
+                    if account_status['CreateAccountStatus']['State'] == 'FAILED':
+                        print("ERROR: Create account FAILED: {}".format(account_status['CreateAccountStatus']['FailureReason']))
+                        sys.exit(1)
+                    account_config['account_id'] = account_status['CreateAccountStatus']['AccountId']
+                    print("Account created successfully.")
 
                     # account_config['account_id'] = account_status['CreateAccountStatus']
                 else:
@@ -164,16 +173,16 @@ class AccountController(Controller):
                     yaml.dump(data=account_config,
                                 stream=output_fd)
 
-            # Wait for account creation to complete
-
             # Initialize Account CloudFormation stacks
+            self.aim_ctx.load_project()
             org_account_ctx = self.aim_ctx.get_account_context(account_name=org_account_id)
             org_account_config = self.aim_ctx.project['accounts'][org_account_id]
             stack_group = AccountStackGroup(self.aim_ctx,
                                             org_account_ctx,
                                             org_account_id,
                                             org_account_config,
-                                            self)
+                                            stack_hooks=None,
+                                            controller=self)
             self.org_stack_group_list.append(stack_group)
             stack_group.init()
 

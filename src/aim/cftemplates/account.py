@@ -19,7 +19,7 @@ class Account(CFTemplate):
         # Super
         super().__init__(aim_ctx,
                          account_ctx,
-                         aws_account=None,
+                         aws_region=account_config.region,
                          config_ref=account_config_ref,
                          aws_name=self.account_id,
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])

@@ -23,7 +23,10 @@ class AccountContext(object):
         self.client_cache = {}
         self.resource_cache = {}
         self.aim_ctx = aim_ctx
-        self.config = aim_ctx.project['accounts'][name]
+        if name in aim_ctx.project['accounts'].keys():
+            self.config = aim_ctx.project['accounts'][name]
+        else:
+            self.config = None
         self.mfa_account = mfa_account
         self.aws_session = None
         cache_filename = '-'.join(['aim', aim_ctx.project.name, 'account', self.name])

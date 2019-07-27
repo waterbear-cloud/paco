@@ -45,11 +45,15 @@ class ProjectController(Controller):
         # TODO: project_component == 'credentials' so we can: aim init project credentials
         #project_component = controller_args['arg_1']
         if use_cookie_cutter == True:
+            # TODO: I don't think cookie cutter will work well here.
+            #       We need to know the name of the project so that we can detect if it
+            #       has already been created and skip this part so that we can
+            #       'aim init project' idempotently
             print("\nAIM Project initialization")
             print("--------------------------\n")
             print("About to create a new AIM Project directory at {}\n".format(os.getcwd()))
             cookiecutter(os.path.join(os.path.dirname(__file__), '../commands', 'aim-cookiecutter'))
-        else:
+        elif True == False:
             project_name = controller_args['arg_1']
             project_folder = controller_args['arg_2']
 
@@ -78,6 +82,38 @@ class ProjectController(Controller):
                         stream=output_fd)
 
             os.chmod(credentials_path, stat.S_IRUSR)
+
+        # Initialize Accounts
+        accounts_dir = os.path.join(self.aim_ctx.project_folder, 'Accounts')
+        master_account_file = loader.gen_yaml_filename(accounts_dir, 'master')
+        with open(master_account_file, 'r') as stream:
+            master_account_config = yaml.load(stream)
+
+        print("\nAWS Account Initialization\n")
+        if 'organization_account_ids' in master_account_config.keys():
+            print("Project accounts have already been defined, skipping...")
+            print("Existing accounts: {}".format(','.join(master_account_config['organization_account_ids'])))
+        else:
+            print("Enter a comma delimited list of account names to add to this project:")
+            account_ids = self.aim_ctx.input("  Account Ids: ", 'prod,tools,security,data,dev')
+            master_account_config['organization_account_ids'] = account_ids.split(',')
+            with open(master_account_file, 'w') as stream:
+                yaml.dump(master_account_config, stream)
+
+        self.aim_ctx.load_project()
+        account_ctl = self.aim_ctx.get_controller('account')
+
+        print("\nProject Initialization Complete")
+        print("Next, provision the project:")
+        print("\n\taim provision project --home <project folder>\n")
+
+    def provision(self):
+        account_ctl = self.aim_ctx.get_controller('account')
+        account_ctl.provision()
+
+    def validate(self):
+        account_ctl = self.aim_ctx.get_controller('account')
+        account_ctl.validate()
 
 
 

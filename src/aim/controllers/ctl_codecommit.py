@@ -36,7 +36,7 @@ class CodeCommitController(Controller):
         # all resource.ref codecommit.* calls to self.resolve_ref()
         if self.config != None:
             self.config.resolve_ref_obj = self
-        self.init_stack_groups()
+            self.init_stack_groups()
 
     def init_stack_groups(self):
         # CodeCommit Repository

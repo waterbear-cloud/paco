@@ -9,6 +9,7 @@ class Route53Controller(Controller):
         super().__init__(aim_ctx,
                          "Service",
                          "Route53")
+
         if not 'route53' in self.aim_ctx.project:
             self.init_done = True
             return
@@ -25,7 +26,7 @@ class Route53Controller(Controller):
     def init(self, controller_args):
         if self.init_done:
             return
-        self.config.resolv_ref_obj = self
+        self.config.resolve_ref_obj = self
         self.init_done = True
         self.init_stack_groups()
 

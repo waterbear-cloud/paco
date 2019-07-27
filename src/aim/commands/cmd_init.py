@@ -49,6 +49,8 @@ def init_command(aim_ctx, controller_type, arg_1=None, arg_2=None, arg_3=None, a
         sys.exit()
 
     aim_ctx.log("Init: Controller: {}  arg_1({}) arg_2({}) arg_3({}) arg_4({})".format(controller_type, arg_1, arg_2, arg_3, arg_4) )
+
+    # If we are initializing the project, laod_project needs to behave differently
     project_init=False
     if controller_type == 'project' and arg_1 == None:
         project_init=True

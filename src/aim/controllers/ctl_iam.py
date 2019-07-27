@@ -13,6 +13,67 @@ from aim.core.yaml import YAML
 yaml=YAML()
 yaml.default_flow_sytle = False
 
+class PolicyContext():
+    def __init__(self, aim_ctx, account_ctx, region, group_id, policy_id, policy_ref, policy_config_yaml, parent_config, stack_group, template_params, stack_tags):
+        self.aim_ctx = aim_ctx
+        self.account_ctx = account_ctx
+        self.region = region
+
+        self.group_id = group_id
+        self.name = None
+        self.arn = None
+        self.policy_id = policy_id
+        self.policy_ref = policy_ref
+        self.policy_config_yaml = policy_config_yaml
+        self.stack_group = stack_group
+        self.stack_tags = stack_tags
+        self.policy_template = None
+        self.policy_stack = None
+        self.template_params = template_params
+        self.policy_context = {}
+
+        self.policy_context = {}
+
+        policy_config_dict = yaml.load(self.policy_config_yaml)
+        self.policy_config = aim.models.iam.ManagedPolicy(policy_id, parent_config)
+        aim.models.loader.apply_attributes_from_config(self.policy_config, policy_config_dict)
+
+        self.init_policy()
+
+    def init_policy(self):
+        self.policy_config.resolve_ref_obj = self
+        policy_context = {
+            'id': self.policy_id,
+            'config': self.policy_config,
+            'ref': self.policy_ref,
+            'template_params': self.template_params
+        }
+
+        template_name = '-'.join([self.group_id, self.policy_id])
+        policy_context['template'] = IAMManagedPolicies(self.aim_ctx,
+                                                        self.account_ctx,
+                                                        self.region,
+                                                        policy_context,
+                                                        template_name)
+
+        policy_stack_tags = StackTags(self.stack_tags)
+        policy_stack_tags.add_tag('AIM-IAM-Resource-Type', 'ManagedPolicy')
+
+        policy_context['stack'] = Stack(aim_ctx=self.aim_ctx,
+                                        account_ctx=self.account_ctx,
+                                        grp_ctx=self.stack_group,
+                                        stack_config=self.policy_config,
+                                        template=policy_context['template'],
+                                        aws_region=self.region,
+                                        stack_tags=policy_stack_tags)
+
+        self.name = policy_context['template'].gen_policy_name(self.policy_id)
+        self.arn = "arn:aws:iam::{0}:policy/{1}".format(self.account_ctx.get_id(), self.name)
+
+        self.policy_context[self.policy_ref] = policy_context
+        self.stack_group.add_stack_order(policy_context['stack'])
+
+
 class RoleContext():
     def __init__(self, aim_ctx, account_ctx, region, group_id, role_id, role_ref, role_config, stack_group, template_params, stack_tags):
         self.aim_ctx = aim_ctx
@@ -169,10 +230,28 @@ class IAMController(Controller):
                          "IAM")
 
         self.role_context = {}
+        self.policy_context = {}
         #self.aim_ctx.log("IAM Service: Configuration: %s" % (name))
 
     def init(self, controller_args):
         pass
+
+    def create_managed_policy(self, aim_ctx, account_ctx, region, group_id, policy_id, policy_ref, policy_config_yaml, parent_config, stack_group, template_params, stack_tags):
+        if policy_ref not in self.policy_context.keys():
+            self.policy_context[policy_ref] = PolicyContext(aim_ctx=self.aim_ctx,
+                                                            account_ctx=account_ctx,
+                                                            region=region,
+                                                            group_id=group_id,
+                                                            policy_id=policy_id,
+                                                            policy_ref=policy_ref,
+                                                            policy_config_yaml=policy_config_yaml,
+                                                            parent_config=parent_config,
+                                                            stack_group=stack_group,
+                                                            template_params=template_params,
+                                                            stack_tags=stack_tags)
+        else:
+            print("Managed Policy already exists: %s" % (policy_ref))
+            raise StackException(AimErrorCode.Unknown)
 
     def add_managed_policy(self, role_ref, *args, **kwargs):
         return self.role_context[role_ref].add_managed_policy(*args, **kwargs)
