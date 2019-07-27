@@ -129,12 +129,15 @@ Outputs:
         for alarm_set_id in alarm_sets.keys():
             alarm_set = alarm_sets[alarm_set_id]
             for alarm_id in alarm_set.keys():
+                netenv = get_parent_by_interface(resource, schemas.INetworkEnvironment)
                 env = get_parent_by_interface(resource, schemas.IEnvironment)
                 envreg = get_parent_by_interface(resource, schemas.IEnvironmentRegion)
                 app = get_parent_by_interface(resource, schemas.IApplication)
                 group = get_parent_by_interface(resource, schemas.IResourceGroup)
                 alarm = alarm_set[alarm_id]
                 description = {
+                    "netenv_name": netenv.name,
+                    "netenv_title": netenv.title,
                     "env_name": env.name,
                     "env_title": env.title,
                     "envreg_name": envreg.name,
