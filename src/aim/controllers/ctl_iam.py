@@ -171,7 +171,7 @@ class IAMController(Controller):
         self.role_context = {}
         #self.aim_ctx.log("IAM Service: Configuration: %s" % (name))
 
-    def init(self, init_config):
+    def init(self, controller_args):
         pass
 
     def add_managed_policy(self, role_ref, *args, **kwargs):

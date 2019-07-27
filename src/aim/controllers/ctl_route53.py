@@ -22,7 +22,7 @@ class Route53Controller(Controller):
         self.second = False
         self.init_done = False
 
-    def init(self, init_config):
+    def init(self, controller_args):
         if self.init_done:
             return
         self.config.resolv_ref_obj = self

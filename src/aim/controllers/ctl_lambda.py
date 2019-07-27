@@ -23,7 +23,7 @@ class LambdaController(Controller):
 
         #self.aim_ctx.log("Route53 Service: Configuration: %s" % (name)
 
-    def init(self, init_config):
+    def init(self, controller_args):
         if self.init_done:
             return
         self.config.resolv_ref_obj = self

@@ -44,7 +44,7 @@ class AccountController(Controller):
     def cache_id(self, hook, hook_arg):
         return self.init_accounts_cache_id
 
-    def init(self, config_arg):
+    def init(self, controller_args):
         # Get the master account config
         self.master_account_config = None
         for account_id in self.aim_ctx.project['accounts']:

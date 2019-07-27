@@ -96,7 +96,7 @@ def test_web_server_responds(verbose):
     project = aim.models.load_project_from_yaml(AimReference(), 'tproj')
     web_asg = project['ne']['tnet']['dev']['us-west-2'].applications['tapp'].groups['site'].resources['alb']
     aim_ctx = AimContext('tproj')
-    aim_ctx.init_project()
+    aim_ctx.load_project()
     account = aim_ctx.get_account_context(account_name='master')
     client = account.get_aws_client('elbv2')
     response = client.describe_load_balancers(Names=[web_asg.resource_name])
