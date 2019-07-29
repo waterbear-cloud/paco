@@ -80,11 +80,17 @@ Parameters:
     Description: "Boolean indicating whether an SDB Domain will be created to be used as a cache."
     Type: String
 
+  Layers:
+    Description: "List of up to 5 Lambda Layer ARNs."
+    Type: CommaDelimitedList
+    Default: ""
+
 {0[parameters]:s}
 
 Conditions:
   ReservedConcurrentExecutionsIsEnabled: !Not [!Equals [!Ref ReservedConcurrentExecutions, 0]]
   SDBCacheIsEnabled: !Equals [!Ref EnableSDBCache, 'true']
+  LayersExist: !Not [!Equals [!Join ["", !Ref Layers], ""]]
 
 Resources:
 
@@ -164,6 +170,11 @@ Resources:
           - !Ref ReservedConcurrentExecutions
           - !Ref AWS::NoValue
       Timeout: !Ref Timeout{0[environment]:s}
+      Layers:
+        !If
+          - LayersExist
+          - !Ref Layers
+          - !Ref AWS::NoValue
 
   InvokePolicy:
     Type: AWS::IAM::ManagedPolicy
