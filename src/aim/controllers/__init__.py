@@ -9,6 +9,7 @@ from aim.controllers.ctl_project import ProjectController
 from aim.controllers.ctl_ec2 import EC2Controller
 from aim.controllers.ctl_cloudwatch import CloudWatchController
 from aim.controllers.ctl_lambda import LambdaController
+from aim.controllers.ctl_notificationgroups import NotificationGroupsController
 
 klass = {
     'NetEnv': NetEnvController,
@@ -21,5 +22,6 @@ klass = {
     'Project': ProjectController,
     'EC2': EC2Controller,
     'CloudWatch': CloudWatchController,
-    'Lambda': LambdaController
+    'Lambda': LambdaController,
+    'NotificationGroups': NotificationGroupsController
 }
