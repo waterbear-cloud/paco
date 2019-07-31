@@ -47,8 +47,8 @@ class ProjectController(Controller):
         if use_cookie_cutter == True:
             # TODO: I don't think cookie cutter will work well here.
             #       We need to know the name of the project so that we can detect if it
-            #       has already been created and skip this part so that we can
-            #       'aim init project' idempotently
+            #       has already been created and skip this part so that we can make
+            #       'aim init project' idempotent
             print("\nAIM Project initialization")
             print("--------------------------\n")
             print("About to create a new AIM Project directory at {}\n".format(os.getcwd()))
@@ -95,7 +95,7 @@ class ProjectController(Controller):
             print("Existing accounts: {}".format(','.join(master_account_config['organization_account_ids'])))
         else:
             print("Enter a comma delimited list of account names to add to this project:")
-            account_ids = self.aim_ctx.input("  Account Ids: ", 'prod,tools,security,data,dev')
+            account_ids = self.aim_ctx.input("  Account Names: ", 'prod,tools,security,data,dev')
             master_account_config['organization_account_ids'] = account_ids.split(',')
             with open(master_account_file, 'w') as stream:
                 yaml.dump(master_account_config, stream)

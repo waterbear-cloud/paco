@@ -344,9 +344,9 @@ class NetEnvController(Controller):
         subenv_id = controller_args['arg_2']
         region = controller_args['arg_3']
 
-        print("NetEnv: {}: Init: Starting" % netenv_id)
+        print("NetEnv: {}: Init: Starting".format(netenv_id))
         self.load_env(netenv_id, subenv_id, region)
-        print("NetEnv: {}: Init: Complete" % netenv_id)
+        print("NetEnv: {}: Init: Complete".format(netenv_id))
 
     def validate(self):
         for netenv_ctx in self.net_envs_list:
