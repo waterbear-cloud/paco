@@ -46,7 +46,7 @@ Outputs:
           'outputs': None,
         }
         output_fmt = """
-  Topic{0[name]:s}:
+  SNSTopic{0[name]:s}:
     Value: !Ref Topic{0[name]:s}
 """
 
@@ -57,13 +57,12 @@ Outputs:
 {0[display_name]:s}
         Subscription:
 {0[subscription]:s}
-        TopicName: '{0[topic_name]:s}'
 
 """
 
         topics_yaml = ""
         outputs_yaml = ""
-        for topic_name, topic in config.items():
+        for topic in config.values():
             if topic.title:
                 display_name = "        DisplayName: '{}'".format(topic.title)
             else:
@@ -76,12 +75,12 @@ Outputs:
             topic_table = {
                 'name': self.normalize_resource_name(topic.name),
                 'display_name': display_name,
-                'topic_name': topic.name,
                 'subscription': subscription
             }
-
             topics_yaml += topic_fmt.format(topic_table)
             outputs_yaml += output_fmt.format(topic_table)
+            output_ref = '.'.join(['groups', topic.name])
+            self.register_stack_output_config(output_ref, 'SNSTopic' + self.normalize_resource_name(topic.name))
 
         template_table['topics'] = topics_yaml
         template_table['outputs'] = outputs_yaml

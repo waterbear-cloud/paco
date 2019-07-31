@@ -270,9 +270,10 @@ class Stack():
                 self.outputs_value_cache[key] = output['OutputValue']
                 return self.outputs_value_cache[key]
 
-        print("Key: " + key)
-        print(stack_metadata)
-        raise StackException(AimErrorCode.Unknown)
+        raise StackException(
+            AimErrorCode.Unknown,
+            message="Could not find Stack Output {} in stack_metadata:\n\n{}".format(key, stack_metadata)
+        )
 
     def get_outputs_key_from_ref(self, aim_ref):
         #print("Template: " + self.template.aws_name)

@@ -1,6 +1,12 @@
 import aim.cftemplates
+import os
+import pathlib
 from aim.controllers.controllers import Controller
 from aim.stack_group import StackGroup, Stack, StackTags
+from aim.core.yaml import YAML
+
+yaml=YAML()
+yaml.default_flow_sytle = False
 
 class NotificationGroupsStackGroup(StackGroup):
     def __init__(
@@ -76,7 +82,7 @@ class NotificationGroupsController(Controller):
             self.config.region,
             'SNS',
             self,
-            None,
+            'monitor.ref notificationgroups',
             self.config,
             StackTags(stack_tags)
         )
@@ -89,6 +95,18 @@ class NotificationGroupsController(Controller):
     def provision(self):
         "Provision"
         self.ng_stackgroup.provision()
+
+        # Save to Outputs/MonitorConfig/NotificationGroups.yaml file
+        data = self.ng_stackgroup.stacks[0].output_config_dict
+        monitor_config_path = os.path.join(
+            self.aim_ctx.project_folder,
+            'Outputs',
+            'MonitorConfig'
+        )
+        pathlib.Path(monitor_config_path).mkdir(parents=True, exist_ok=True)
+        monitor_config_yaml_path = os.path.join(monitor_config_path, 'NotificationGroups.yaml')
+        with open(monitor_config_yaml_path, "w") as output_fd:
+            yaml.dump(data=data, stream=output_fd)
 
     def delete(self):
         "Delete"

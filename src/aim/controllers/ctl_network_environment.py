@@ -36,7 +36,7 @@ class SubNetEnvContext():
                                                              self.subenv_id,
                                                              self.region)
         self.resource_yaml_path = os.path.join(self.aim_ctx.project_folder,
-                                               'Resources',
+                                               'Outputs',
                                                'NetworkEnvironments')
         self.resource_yaml = os.path.join(self.resource_yaml_path, self.resource_yaml_filename)
         self.stack_tags = StackTags()
