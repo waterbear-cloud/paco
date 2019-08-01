@@ -135,6 +135,9 @@ Outputs:
                 app = get_parent_by_interface(resource, schemas.IApplication)
                 group = get_parent_by_interface(resource, schemas.IResourceGroup)
                 alarm = alarm_set[alarm_id]
+                notification_arns = [
+                    self.aim_ctx.project['notificationgroups'][group].resource_name for group in alarm.notification_groups
+                ]
                 description = {
                     "netenv_name": netenv.name,
                     "netenv_title": netenv.title,
@@ -151,7 +154,7 @@ Outputs:
                     "alarm_name": alarm.name,
                     "classification": alarm.classification,
                     "severity": alarm.severity,
-                    "topic_arns": alarm.notification_groups
+                    "topic_arns": notification_arns
                 }
                 normalized_set_id = self.normalize_resource_name(alarm_set_id)
                 normalized_id = self.normalize_resource_name(alarm_id)
