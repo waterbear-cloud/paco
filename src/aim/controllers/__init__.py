@@ -11,15 +11,15 @@ from aim.controllers.ctl_cloudwatch import CloudWatchController
 from aim.controllers.ctl_lambda import LambdaController
 
 klass = {
-    'NetEnv': NetEnvController,
-    'S3': S3Controller,
-    'CodeCommit': CodeCommitController,
-    'Route53': Route53Controller,
-    'ACM': ACMController,
-    'IAM': IAMController,
-    'Account': AccountController,
-    'Project': ProjectController,
-    'EC2': EC2Controller,
-    'CloudWatch': CloudWatchController,
-    'Lambda': LambdaController
+    'netenv': NetEnvController,
+    's3': S3Controller,
+    'codecommit': CodeCommitController,
+    'route53': Route53Controller,
+    'acm': ACMController,
+    'iam': IAMController,
+    'account': AccountController,
+    'project': ProjectController,
+    'ec2': EC2Controller,
+    'cloudwatch': CloudWatchController,
+    'lambda': LambdaController
 }

@@ -23,7 +23,10 @@ class AccountContext(object):
         self.client_cache = {}
         self.resource_cache = {}
         self.aim_ctx = aim_ctx
-        self.config = aim_ctx.project['accounts'][name]
+        if name in aim_ctx.project['accounts'].keys():
+            self.config = aim_ctx.project['accounts'][name]
+        else:
+            self.config = None
         self.mfa_account = mfa_account
         self.aws_session = None
         cache_filename = '-'.join(['aim', aim_ctx.project.name, 'account', self.name])
@@ -131,9 +134,12 @@ class AimContext(object):
         return region
 
 
-    def init_project(self):
+    def load_project(self, project_init=False):
         print("Project: %s" % (self.home))
         self.project_folder = self.home
+        if project_init == True:
+            return
+
         # Config Processor Init
         self.config_processor = ConfigProcessor(self)
         self.project = load_project_from_yaml(self.aim_ref, self.project_folder, None) #self.config_processor.load_yaml)
@@ -164,10 +170,11 @@ class AimContext(object):
         self.get_controller('CodeCommit')
         self.get_controller('S3').init({'name': 'buckets'})
 
-    def get_controller(self, controller_type, config_arg=None):
+    def get_controller(self, controller_type, controller_args=None):
         #print("Creating controller_type: " + controller_type)
+        controller_type = controller_type.lower()
         controller = None
-        if controller_type != 'Service':
+        if controller_type != 'service':
             if controller_type in self.controllers:
                 #print("Returning cached controller: " + controller_type)
                 controller = self.controllers[controller_type]
@@ -176,14 +183,14 @@ class AimContext(object):
                 controller = aim.controllers.klass[controller_type](self)
                 self.controllers[controller_type] = controller
         else:
-            service_name = config_arg['name']
+            service_name = controller_args['arg_1']
             if service_name.lower() not in self.services:
                 print("Could not find Service: %s" % (service_name))
                 raise StackException(AimErrorCode.Unknown)
 
             controller = self.services[service_name.lower()]
 
-        controller.init(config_arg)
+        controller.init(controller_args)
         return controller
 
     def log(self, msg, *args):
