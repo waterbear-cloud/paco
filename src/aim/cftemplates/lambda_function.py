@@ -255,12 +255,7 @@ Resources:
         Roles:
           - !Ref RoleName
 
-  #Permission:
-  #  Type: AWS::Lambda::Permission
-  #  Properties:
-  #    Action: "lambda:InvokeFunction"
-  #    FunctionName: !GetAtt Function.Arn
-  #    Principal: events.amazonaws.com
+{0[permissions]:s}
 
 Outputs:
     FunctionName:
@@ -284,7 +279,8 @@ Outputs:
             'parameters': "",
             'environment': "",
             'outputs': "",
-            'sdb_dependency': sdb_dependency
+            'sdb_dependency': sdb_dependency,
+            'permissions': ""
         }
 
         env_header = """
@@ -306,6 +302,23 @@ Outputs:
           'key': '',
           'value': ''
         }
+
+        permission_fmt = """
+  {0[name]:s}Permission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt Function.Arn
+      Principal: {0[principal]:s}
+      SourceArn: {0[source_arn]:s}
+"""
+
+        permission_table = {
+          'name': None,
+          'principal': None,
+          'source_arn': None
+        }
+
         parameters_yaml = ""
         env_yaml = ""
         env_config = lambda_config.environment
@@ -333,6 +346,19 @@ Outputs:
 
         if env_yaml != "":
           template_table['environment'] = env_header + env_yaml
+
+        # Lambda Permissions
+        idx = 1
+        template_table['permissions'] = ""
+        for sns_topic in lambda_config.sns_topics:
+            param_name = 'SNSTopicArn%d' % idx
+            parameters_yaml += self.gen_parameter('String', param_name, 'An SNS Topic ARN to grant permission to.')
+            self.set_parameter(param_name, sns_topic)
+            permission_table['name'] = param_name
+            permission_table['principal'] = 'sns.amazonaws.com'
+            permission_table['source_arn'] = '!Ref %s' % param_name
+            template_table['permissions'] += permission_fmt.format(permission_table)
+            idx += 1
 
         template_table['parameters'] = parameters_yaml
 

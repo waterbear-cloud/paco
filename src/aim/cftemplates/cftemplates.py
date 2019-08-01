@@ -476,3 +476,10 @@ class CFTemplate():
         name = name.replace('_', '')
         name = name.replace('.', '')
         return name
+
+    def gen_parameter(self, param_type, name, description):
+        return """
+  {}:
+    Description: {}
+    Type: {}
+""".format(name, description, param_type)
