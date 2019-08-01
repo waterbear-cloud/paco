@@ -9,6 +9,10 @@ Changelog for aim
 - CloudWatch Alarm descriptions are JSON with metadata about the environment,
   region, application, resource group and resource that the alarm is for.
 
+- Rewrote commands with consistent way of passing arguments to controllers.
+
+- Added Account initialization to 'aim init project'.
+
 
 1.1.0 (2019-07-24)
 ------------------
