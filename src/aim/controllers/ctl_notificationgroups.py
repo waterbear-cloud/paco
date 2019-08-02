@@ -36,12 +36,15 @@ class NotificationGroupsStackGroup(StackGroup):
     def init(self):
         "init"
         # create a template
+        sns_topics_config = []
+        # TODO: Build a list of ISNSTopic configurations
+        breakpoint()
         ng_sns_template = aim.cftemplates.SNSTopics(
             self.aim_ctx,
             self.account_ctx,
             self.region,
             'NG',
-            self.config,
+            sns_topics_config,
             self.resource_ref
         )
 
