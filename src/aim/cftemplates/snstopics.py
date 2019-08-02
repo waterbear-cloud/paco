@@ -84,7 +84,7 @@ Outputs:
             if topic.display_name != None or len(topic.subscriptions) > 0:
                 topic_table['properties'] = "Properties:\n"
             if topic.display_name:
-                topic_table['display_name'] = "\n        DisplayName: '{}'".format(topic.display_name)
+                topic_table['display_name'] = "\n      DisplayName: '{}'".format(topic.display_name)
 
             if len(topic.subscriptions) > 0:
                 topic_table['subscription'] += "      Subscription:\n"

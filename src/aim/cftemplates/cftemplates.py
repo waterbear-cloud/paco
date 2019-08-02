@@ -1,16 +1,17 @@
-import os
 import boto3
-import pathlib
-from enum import Enum
-from botocore.exceptions import ClientError
-from aim.core.exception import StackException
-from aim.core.exception import AimErrorCode
-from pprint import pprint
-from aim.stack_group import Stack
+import os
 import pathlib
 import random
 import string
+from enum import Enum
+from aim.core.exception import StackException
+from aim.core.exception import AimErrorCode
+from aim.stack_group import Stack
 from aim.config import aim_context
+from aim.models import references
+from botocore.exceptions import ClientError
+from pprint import pprint
+
 
 # Used to call a Service to get an answer
 class ServiceValueParam():
@@ -136,6 +137,7 @@ class Parameter():
         else:
             print("Error: Parameter: Type Error")
             print(type(value))
+            breakpoint()
             raise AimErrorException(AimErrorCode.Unknown)
 
         self.value = normalized_value
@@ -339,12 +341,14 @@ class CFTemplate():
         elif isinstance(param_value, list):
             param_entry = Parameter(param_key, self.list_to_string(param_value))
         elif isinstance(param_value, str) and self.aim_ctx.aim_ref.is_ref(param_value):
-            param_value.replace("<account>", self.account_ctx.get_name())
-            param_value.replace("<region>", self.aws_region)
-            ref_value = self.aim_ctx.get_ref(param_value, account_ctx=self.account_ctx)
+            param_value = param_value.replace("<account>", self.account_ctx.get_name())
+            param_value = param_value.replace("<region>", self.aws_region)
+            ref_value = references.resolve_ref(param_value, self.aim_ctx.project, account_ctx=self.account_ctx)
             if ref_value == None:
-                print("ERROR: Unable to locate value for ref: " + param_value)
-                raise StackException(AimErrorCode.Unknown)
+                raise StackException(
+                    AimErrorCode.Unknown,
+                    message="Unable to locate value for ref: " + param_value
+                )
             if isinstance(ref_value, Stack):
                 stack_output_key = self.get_stack_outputs_key_from_ref(param_value, ref_value)
                 param_entry = StackOutputParam(param_key, ref_value, stack_output_key)
