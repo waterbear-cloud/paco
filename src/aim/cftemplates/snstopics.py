@@ -4,6 +4,7 @@ CloudFormation template for SNS Topics
 
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.models import references
+from aim.models.references import Reference
 
 
 class SNSTopics(CFTemplate):
@@ -34,8 +35,6 @@ class SNSTopics(CFTemplate):
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'SNS Topics'
 
-Parameters:
-
 {0[parameters]:s}
 
 Resources:
@@ -59,7 +58,7 @@ Outputs:
         topic_fmt = """
   Topic{0[name]:s}:
     Type: AWS::SNS::Topic
-    Properties:
+    {0[properties]:s}
       # Important: If you specify a TopicName, updates cannot be performed that require
       # replacement of this resource.
       # TopicName: !Ref AWS::NoValue{0[display_name]:s}
@@ -69,6 +68,7 @@ Outputs:
 
         topic_table = {
             'name': None,
+            'properties': None,
             'display_name': None,
             'subscription': None
         }
@@ -80,6 +80,9 @@ Outputs:
             topic_table['name'] = self.normalize_resource_name(topic.name)
             topic_table['display_name'] = ""
             topic_table['subscription'] = ""
+            topic_table['properties'] = ""
+            if topic.display_name != None or len(topic.subscriptions) > 0:
+                topic_table['properties'] = "Properties:\n"
             if topic.display_name:
                 topic_table['display_name'] = "\n        DisplayName: '{}'".format(topic.display_name)
 
@@ -114,3 +117,6 @@ Outputs:
     def validate(self):
         super().validate()
 
+    def get_outputs_key_from_ref(self, ref):
+        ref = Reference(ref)
+        return "SNSTopic"+ref.last_part
