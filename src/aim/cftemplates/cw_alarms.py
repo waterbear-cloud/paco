@@ -17,11 +17,19 @@ def get_alarm_actions(notificationgroups, alarm):
     However, if a plugin is registered, it will provide the actions instead.
     """
     # if a service plugin provides override_alarm_actions, call that instead
-    #service_plugins = aim.models.services.list_service_plugins()
-    #for plugin_name, plugin_module in service_plugins.items():
-    #    # ToDo: check for adn warn if more than one plugin provides override_alarm_actions
-    #    if hasattr(plugin_module, 'override_alarm_actions'):
-    #        return plugin_module.override_alarm_actions(alarm)
+    service_plugins = aim.models.services.list_service_plugins()
+
+    # Error if more than one plugin provides override_alarm_actions
+    count = 0
+    for plugin_module in service_plugins.values():
+        if hasattr(plugin_module, 'override_alarm_actions'):
+            count += 1
+    if count > 1:
+        raise aim.models.exceptions.InvalidAimProjectFile('More than one Service plugin is overriding alarm actions')
+
+    for plugin_name, plugin_module in service_plugins.items():
+        if hasattr(plugin_module, 'override_alarm_actions'):
+            return plugin_module.override_alarm_actions(alarm)
 
     # default behaviour is to use notification groups directly
     notification_arns = [

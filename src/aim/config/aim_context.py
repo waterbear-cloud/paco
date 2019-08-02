@@ -3,6 +3,7 @@ import os
 import aim.config.aws_credentials
 import aim.core.log
 import aim.controllers
+import aim.models.services
 import pkg_resources
 from functools import partial
 from aim.models import load_project_from_yaml
@@ -145,11 +146,7 @@ class AimContext(object):
         os.environ['AWS_DEFAULT_REGION'] = self.project['credentials'].aws_default_region
 
         # Load the Service Plugins
-        service_plugins = {
-            entry_point.name: entry_point.load()
-            for entry_point
-            in pkg_resources.iter_entry_points('aim.services')
-        }
+        service_plugins = aim.models.services.list_service_plugins()
         for plugin_name, plugin_module in service_plugins.items():
             try:
                 service = plugin_module.instantiate_class(self, self.project[plugin_name.lower()])
