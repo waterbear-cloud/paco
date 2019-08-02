@@ -319,6 +319,20 @@ Outputs:
           'source_arn': None
         }
 
+        sns_subscription_fmt = """
+  {0[name]:s}Subscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !GetAtt Function.Arn
+      Protocol: lambda
+      TopicArn: {0[topic_arn]:s}
+"""
+
+        sns_subscription_table = {
+          'name': None,
+          'topic_arn': None
+        }
+
         parameters_yaml = ""
         env_yaml = ""
         env_config = lambda_config.environment
@@ -347,17 +361,23 @@ Outputs:
         if env_yaml != "":
           template_table['environment'] = env_header + env_yaml
 
-        # Lambda Permissions
-        idx = 1
         template_table['permissions'] = ""
-        for sns_topic in lambda_config.sns_topics:
+        # SNS Topic Permissions and Subscription
+        idx = 1
+        for sns_topic_arn in lambda_config.sns_topics:
+            # SNS Topic Arn parameters
             param_name = 'SNSTopicArn%d' % idx
             parameters_yaml += self.gen_parameter('String', param_name, 'An SNS Topic ARN to grant permission to.')
-            self.set_parameter(param_name, sns_topic)
+            self.set_parameter(param_name, sns_topic_arn)
+            # Lambda Permissions
             permission_table['name'] = param_name
             permission_table['principal'] = 'sns.amazonaws.com'
             permission_table['source_arn'] = '!Ref %s' % param_name
             template_table['permissions'] += permission_fmt.format(permission_table)
+            # SNS Topic Subscription
+            sns_subscription_table['name'] = param_name
+            sns_subscription_table['topic_arn'] = '!Ref %s' % param_name
+            template_table['permissions'] += sns_subscription_fmt.format(sns_subscription_table)
             idx += 1
 
         template_table['parameters'] = parameters_yaml

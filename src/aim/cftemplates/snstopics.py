@@ -62,8 +62,7 @@ Outputs:
     Properties:
       # Important: If you specify a TopicName, updates cannot be performed that require
       # replacement of this resource.
-      # TopicName: !Ref AWS::NoValue
-{0[display_name]:s}
+      # TopicName: !Ref AWS::NoValue{0[display_name]:s}
 {0[subscription]:s}
 
 """
@@ -82,10 +81,10 @@ Outputs:
             topic_table['display_name'] = ""
             topic_table['subscription'] = ""
             if topic.display_name:
-                topic_table['display_name'] = "        DisplayName: '{}'".format(topic.display_name)
+                topic_table['display_name'] = "\n        DisplayName: '{}'".format(topic.display_name)
 
             if len(topic.subscriptions) > 0:
-                topic_table['subscription'] += "     Subscription:\n"
+                topic_table['subscription'] += "      Subscription:\n"
             for subscription in topic.subscriptions:
                 endpoint = ""
                 if references.is_ref(subscription.endpoint):
@@ -96,7 +95,7 @@ Outputs:
                 else:
                     endpoint = subscription.endpoint
                 #if subscription.endpoint.is_ref()
-                topic_table['subscription'] += "            - Endpoint: {}\n              Protocol: {}\n".format(
+                topic_table['subscription'] += "        - Endpoint: {}\n          Protocol: {}\n".format(
                     endpoint, subscription.protocol
                 )
 
