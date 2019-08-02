@@ -759,8 +759,6 @@ policies:
         return None
 
     def resolve_ref(self, ref):
-        ref.set_account_name(self.account_ctx.get_name())
-        ref.set_region(self.aws_region)
         if isinstance(ref.resource, models.applications.SNSTopic):
             return self.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.CodePipeBuildDeploy):
