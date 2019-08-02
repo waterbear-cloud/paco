@@ -87,6 +87,7 @@ class ApplicationEngine():
             self.stack_group,
             self.stack_tags
         )
+
         # Resource Groups
         for grp_id, grp_config in self.config.groups_ordered():
             for res_id, res_config in grp_config.resources_ordered():
@@ -94,22 +95,9 @@ class ApplicationEngine():
                 res_stack_tags.add_tag('AIM-Application-Group-Name', grp_id)
                 res_stack_tags.add_tag('AIM-Application-Resource-Name', res_id)
                 res_config.resolve_ref_obj = self
-                if res_config.type == 'ACM':
-                    self.init_acm_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
-                elif res_config.type == 'S3Bucket':
-                    self.init_s3bucket_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
-                elif res_config.type == 'LBClassic':
-                    self.init_lbclassic_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
-                elif res_config.type == 'LBApplication':
-                    self.init_lbapplication_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
-                elif res_config.type == 'ASG':
-                    self.init_asg_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
-                elif res_config.type == 'EC2':
-                    self.init_ec2_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
-                elif res_config.type == 'CodePipeBuildDeploy':
-                    self.init_cpbd_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
-                elif res_config.type == 'Lambda':
-                    self.init_lambda_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
+                init_method = getattr(self, "init_{}_resource".format(res_config.type.lower()))
+                init_method(grp_id, res_id, res_config, StackTags(res_stack_tags))
+
         print("ApplicationEngine: Init: %s: Completed" % (self.app_id))
 
     def gen_resource_ref(self, grp_id, res_id, attribute=None):
@@ -153,6 +141,34 @@ class ApplicationEngine():
             stack_tags=res_stack_tags
         )
         self.stack_group.add_stack_order(alarms_stack)
+
+    def init_snstopic_resource(self, grp_id, res_id, res_config, res_stack_tags):
+        if res_config.enabled == False:
+            print("ApplicationEngine: Init: SNSTopic: %s *disabled*" % (res_id))
+        else:
+            print("ApplicationEngine: Init: SNSTopic: %s" % (res_id))
+
+        sns_config_ref = self.gen_ref(grp_id, res_id)
+        aws_name = '-'.join([grp_id, res_id])
+        sns_topics_config = [res_config]
+        sns_template = aim.cftemplates.SNSTopics(
+            self.aim_ctx,
+            self.account_ctx,
+            self.aws_region,
+            aws_name,
+            sns_topics_config,
+            sns_config_ref
+        )
+        sns_stack = Stack(
+            self.aim_ctx,
+            self.account_ctx,
+            self.stack_group,
+            res_config,
+            sns_template,
+            aws_region=self.aws_region,
+            stack_tags=res_stack_tags
+        )
+        self.stack_group.add_stack_order(sns_stack)
 
     def init_lambda_resource(self, grp_id, res_id, res_config, res_stack_tags):
         if res_config.enabled == False:
@@ -462,7 +478,7 @@ role_name: %s""" % ("ASGInstance")
             )
             self.stack_group.add_stack_order(ec2_stack)
 
-    def init_cpbd_resource(self, grp_id, res_id, res_config, res_stack_tags):
+    def init_codepipebuilddeploy_resource(self, grp_id, res_id, res_config, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: CodePipeBuildDeploy: %s *disabled*" % (res_id))
         else:
