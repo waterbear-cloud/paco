@@ -2,11 +2,39 @@
 CloudFormation template for CloudWatch Alarms
 """
 
+import aim.models.services
 import json
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.models import schemas
 from aim.models import vocabulary
 from aim.models.locations import get_parent_by_interface
+from aim.models.formatter import get_formatted_model_context
+
+
+def get_alarm_actions(notificationgroups, alarm):
+    """Return a list of SNS Topic alarm actions.
+    This will by default be a list of SNS Topics that the alarm is subscribed to.
+    However, if a plugin is registered, it will provide the actions instead.
+    """
+    # if a service plugin provides override_alarm_actions, call that instead
+    #service_plugins = aim.models.services.list_service_plugins()
+    #for plugin_name, plugin_module in service_plugins.items():
+    #    # ToDo: check for adn warn if more than one plugin provides override_alarm_actions
+    #    if hasattr(plugin_module, 'override_alarm_actions'):
+    #        return plugin_module.override_alarm_actions(alarm)
+
+    # default behaviour is to use notification groups directly
+    notification_arns = [
+        notificationgroups[group].resource_name for group in alarm.notification_groups
+    ]
+    if len(notification_arns) > 5:
+        raise aim.models.exceptions.InvalidAimProjectFile("""
+Alarm {} has {} actions, but CloudWatch Alarms allow a maximum of 5 actions.
+
+{}""".format(alarm.name, len(notification_arns), get_formatted_model_context(alarm))
+        )
+
+    return notification_arns
 
 
 class CWAlarms(CFTemplate):
@@ -73,9 +101,8 @@ Outputs:
   Alarm{0[id]:s}:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      ActionsEnabled: False
-      #AlarmActions:
-      #  - String
+{0[alarm_actions]:s}
+
       AlarmDescription: '{0[description]:s}'
 
       # Important: If you specify a name, you cannot perform updates that require
@@ -89,14 +116,10 @@ Outputs:
       EvaluateLowSampleCountPercentile: {0[evaluate_low_sample_count_percentile]:s}
       EvaluationPeriods: {0[evaluation_periods]:d}
       ExtendedStatistic: {0[extended_statistic]:s}
-      #InsufficientDataActions:
-      #  - String
       MetricName: {0[metric_name]:s}
       #Metrics :
       #  - MetricDataQuery
       Namespace: {0[namespace]:s}
-      #OKActions :
-      #  - String
       Period: {0[period]:d}
       Statistic: {0[statistic]:s}
       Threshold: {0[threshold]:f}
@@ -121,7 +144,8 @@ Outputs:
             'threshold': 0,
             'treat_missing_data': None,
             'extended_statistic': None,
-            'evaluate_low_sample_count_percentile': None
+            'evaluate_low_sample_count_percentile': None,
+            'alarm_actions': None
         }
 
         alarms_yaml = ""
@@ -158,6 +182,14 @@ Outputs:
                 }
                 normalized_set_id = self.normalize_resource_name(alarm_set_id)
                 normalized_id = self.normalize_resource_name(alarm_id)
+                alarm_actions = get_alarm_actions(self.aim_ctx.project['notificationgroups'], alarm)
+                if len(alarm_actions) > 0:
+                    alarm_actions_cfn = "      ActionsEnabled: True\n      AlarmActions:\n"
+                    for action in alarm_actions:
+                        alarm_actions_cfn += "         - " + action
+                else:
+                    alarm_actions_cfn = '      ActionsEnabled: False\n'
+                alarm_table['alarm_actions'] = alarm_actions_cfn
                 alarm_table['id'] = normalized_set_id+normalized_id
                 alarm_table['description'] = json.dumps(description)
                 alarm_table['name'] = alarm_id

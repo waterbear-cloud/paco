@@ -643,8 +643,6 @@ class StackGroup():
                 order_item.stack.validate()
 
     def provision(self):
-        self.update_state()
-        return
         # Loop through stacks and provision each one
         for order_item in self.stack_orders:
             #print("StackGroup: Provision: %s: %d" % (order_item.stack.get_name(), order_item.order.value))
