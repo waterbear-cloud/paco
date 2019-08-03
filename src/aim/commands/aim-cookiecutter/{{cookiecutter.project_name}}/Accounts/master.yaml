@@ -2,4 +2,5 @@ name: Master
 title: Master AWS Account
 account_type: AWS
 account_id: '{{cookiecutter.master_account_id}}'
-admin_delegate_role_name: 'AIM-Admin-Delegate-Role'
+admin_delegate_role_name: 'Waterbear-Cloud-Admin-Delegate-Role'
+region: '{{cookiecutter.default_region}}'

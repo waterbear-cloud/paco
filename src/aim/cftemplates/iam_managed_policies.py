@@ -57,20 +57,21 @@ Outputs:
         Version: "2012-10-17"
         Statement:
 {0[statement]:s}
-      Roles:
 {0[roles]}
-      #Users:
-      #  - String
+{0[users]}
 """
         policy_table = {
             'name': None,
             'path': None,
             'cf_resource_name_prefix': None,
             'statement': None,
-            'roles': None
+            'roles': None,
+            'users': None
         }
 
         role_fmt = """        - %s
+"""
+        user_fmt = """        - %s
 """
 
         policy_outputs_fmt = """
@@ -102,8 +103,20 @@ Outputs:
 
         # Roles
         policy_table['roles'] = ""
-        for role in policy_config.roles:
-            policy_table['roles'] += role_fmt % (role)
+        if policy_config.roles and len(policy_config.roles) > 0:
+            policy_table['roles'] = """      Roles:
+"""
+            for role in policy_config.roles:
+                policy_table['roles'] += role_fmt % (role)
+
+        # Users
+        policy_table['users'] = ""
+        if policy_config.users and len(policy_config.users) > 0:
+            policy_table['users'] = """      Users:
+"""
+            for user in policy_config.users:
+                policy_table['users'] += user_fmt % (user)
+
         # Path
         policy_table['path'] = policy_config.path
         # Statement

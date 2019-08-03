@@ -46,8 +46,8 @@ class SubNetEnvContext():
                                                'NetworkEnvironments')
         self.resource_yaml = os.path.join(self.resource_yaml_path, self.resource_yaml_filename)
         self.stack_tags = StackTags()
-        self.stack_tags.add_tag('AIM-Network-Environment-Name', self.netenv_id)
-        self.stack_tags.add_tag('AIM-Environment-Name', self.subenv_id)
+        self.stack_tags.add_tag('aim.netenv.name', self.netenv_id)
+        self.stack_tags.add_tag('aim.env.name', self.subenv_id)
 
     def init(self):
         if self.init_done:
@@ -342,15 +342,18 @@ class NetEnvController(Controller):
 
         return netenv_ctx
 
-    def init(self, init_config):
-        if self.init_done == True or init_config == None:
+    def init(self, controller_args):
+        if self.init_done == True or controller_args == None:
             return
         self.init_done = True
-        print("NetEnv: %s: Init: Starting" % init_config['netenv_id'])
-        self.load_env(init_config['netenv_id'],
-                      init_config['subenv_id'],
-                      init_config['region'])
-        print("NetEnv: %s: Init: Complete" % init_config['netenv_id'])
+
+        netenv_id = controller_args['arg_1']
+        subenv_id = controller_args['arg_2']
+        region = controller_args['arg_3']
+
+        print("NetEnv: {}: Init: Starting".format(netenv_id))
+        self.load_env(netenv_id, subenv_id, region)
+        print("NetEnv: {}: Init: Complete".format(netenv_id))
 
     def validate(self):
         for netenv_ctx in self.net_envs_list:

@@ -18,7 +18,7 @@ def shell_command(aim_ctx, netenv_id, env_id, region, instance_ref, home='.'):
         print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')
         sys.exit()
 
-    aim_ctx.init_project()
+    aim_ctx.load_project()
     config_arg = {
             'netenv_id': netenv_id,
             'subenv_id': env_id,

@@ -251,7 +251,7 @@ class S3Controller(Controller):
                                 None)
 
 
-    def init_s3_resource(self, init_config, stack_tags):
+    def init_s3_resource(self, controller_args, stack_tags):
         if self.init_s3_resource_done == True:
             return
         self.init_s3_resource_done = True
@@ -273,9 +273,9 @@ class S3Controller(Controller):
 
         self.init_bucket_environments(s3_env_map, stack_tags)
 
-    def init(self, init_config):
-        if init_config != None:
-            self.init_s3_resource(init_config, stack_tags=None)
+    def init(self, controller_args):
+        if controller_args != None:
+            self.init_s3_resource(controller_args, stack_tags=None)
 
     def init_context(self, account_ctx, region, resource_ref, stack_group, stack_tags):
         if resource_ref not in self.contexts.keys():

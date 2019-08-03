@@ -15,9 +15,10 @@ def controller_args(func):
     """
     decorator to add controller args
     """
-    func = click.argument("config_region", required=False, type=click.STRING)(func)
-    func = click.argument("config_name", required=False, type=click.STRING)(func)
-    func = click.argument("component_name", required=True, type=click.STRING)(func)
+    func = click.argument("arg_4", required=False, type=click.STRING)(func)
+    func = click.argument("arg_3", required=False, type=click.STRING)(func)
+    func = click.argument("arg_2", required=False, type=click.STRING)(func)
+    func = click.argument("arg_1", required=False, type=click.STRING)(func)
     func = click.argument("controller_type", required=True, type=click.STRING)(func)
     return func
 

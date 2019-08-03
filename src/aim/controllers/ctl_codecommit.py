@@ -24,19 +24,19 @@ class CodeCommitController(Controller):
         self.stack_grps = []
         self.init_done = False
 
-    def init(self, init_config):
+    def init(self, controller_args):
         if self.init_done:
             return
         self.init_done = True
 
-        if init_config:
-            self.name = init_config['name']
+        if controller_args:
+            self.name = controller_args['arg_1']
         self.config = self.aim_ctx.project['codecommit']
         # Sets the CodeCommit reference resolver object to forward all
         # all aim.ref resource.codecommit.* calls to self.resolve_ref()
         if self.config != None:
             self.config.resolve_ref_obj = self
-        self.init_stack_groups()
+            self.init_stack_groups()
 
     def init_stack_groups(self):
         # CodeCommit Repository

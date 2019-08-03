@@ -21,7 +21,44 @@ class AccountStackGroup(StackGroup):
         self.stack_hooks = stack_hooks
 
     def init(self, do_not_cache=False):
-        # Network Stack Templates
+
+        if self.account_config.is_master == True:
+            # Create Managed Policy to allow the Adminsitrator to switch to this org accounts delegagte role
+            resource_list = ""
+            for org_account_name in self.account_config.organization_account_ids:
+                org_account_ctx = self.aim_ctx.get_account_context(account_name=org_account_name)
+                resource_list += """
+      - arn:aws:iam::{}:role/{}""".format(org_account_ctx.get_id(), self.account_config.admin_delegate_role_name)
+            user_list = """
+  - {}""".format(self.aim_ctx.project['credentials'].master_admin_iam_username)
+
+            for iam_user in self.account_config.admin_iam_users.keys():
+                user_list += """
+  - {}""".format(self.account_config.admin_iam_users[iam_user].username)
+            # Build Policy
+            policy_config_yaml = """
+name: 'OrgAccountDelegate-{}'
+statement:
+  - effect: Allow
+    action:
+      - sts:AssumeRole
+    resource:{}
+users: {}
+""".format(org_account_name, resource_list, user_list)
+
+            ctl_iam = self.aim_ctx.get_controller('iam')
+            ctl_iam.create_managed_policy(  self.aim_ctx,
+                                            self.account_ctx,
+                                            self.account_config.region,
+                                            'organization',
+                                            'iam-delegate',
+                                            'config.ref account.master.organization_account_ids.policy',
+                                            policy_config_yaml,
+                                            parent_config=self.account_config,
+                                            stack_group=self,
+                                            template_params=None,
+                                            stack_tags=None)
+
         if self.account_config.admin_iam_users == None:
             print("Account Group: %s *disabeld no admin_iam_users*" % (self.account_id))
             return
@@ -55,5 +92,4 @@ class AccountStackGroup(StackGroup):
         super().validate()
 
     def provision(self):
-        # self.validate()
         super().provision()
