@@ -22,6 +22,8 @@ from aim.models import schemas
 from aim.models.locations import get_parent_by_interface
 from aim.core.yaml import YAML
 from aim.config import aim_context
+from aim.core.exception import StackException
+from aim.core.exception import AimErrorCode
 
 yaml=YAML()
 yaml.default_flow_sytle = False
@@ -122,6 +124,11 @@ class LaunchBundle():
             attribute='instance_iam_role.arn'
         )
         self.instance_iam_role_arn = self.aim_ctx.get_ref(instance_iam_role_arn_ref)
+        if self.instance_iam_role_arn == None:
+            raise StackException(
+                    AimErrorCode.Unknown,
+                    message="ec2_launch_manager: LaunchBundle: build: Unable to locate value for ref: " + instance_iam_role_arn_ref
+                )
 
 
 class EC2LaunchManager():

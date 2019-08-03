@@ -233,21 +233,8 @@ class CFTemplate():
                         break
                 rep_1_idx = dollar_idx
                 rep_2_idx = self.body.find("}", rep_1_idx, end_str_idx)+1
-                next_ref_idx = self.body.find(".ref ", rep_1_idx, rep_2_idx)
+                next_ref_idx = self.body.find("aim.ref ", rep_1_idx, rep_2_idx)
                 if next_ref_idx != -1:
-                    if self.body[next_ref_idx-len("netenv"):].startswith("netenv"):
-                        next_ref_idx -= len("netenv")
-                    elif self.body[next_ref_idx-len("config"):].startswith("config"):
-                        next_ref_idx -= len("config")
-                    elif self.body[next_ref_idx-len("service"):].startswith("service"):
-                        next_ref_idx -= len("service")
-                    elif self.body[next_ref_idx-len("resource"):].startswith("resource"):
-                        next_ref_idx -= len("resource")
-                    else:
-                        print("ERROR: unable to parse reference: " + self.body[next_ref_idx-10:next_ref_idx+64])
-                        raise StackException(AimErrorCode.Unknown)
-                    #netenv_ref_idx = self.body.find("netenv.ref ", rep_1_idx, rep_2_idx)
-                    #sub_ref_idx = netenv_ref_idx + len("netenv.ref ")
                     sub_ref_idx = next_ref_idx
                     sub_ref = self.body[sub_ref_idx:sub_ref_idx+(rep_2_idx-sub_ref_idx-1)]
                     #print("Sub ref: " + sub_ref)
@@ -257,6 +244,11 @@ class CFTemplate():
                         sub_ref = sub_ref.replace('<region>', self.aws_region)
 
                     sub_value = self.aim_ctx.get_ref(sub_ref)
+                    if sub_value == None:
+                        raise StackException(
+                            AimErrorCode.Unknown,
+                            message="cftemplate: aim_sub: Unable to locate value for ref: " + sub_ref
+                        )
                     #print("Sub Value: %s" % (sub_value))
                     # Replace the ${}
                     sub_var = self.body[rep_1_idx:rep_1_idx+(rep_2_idx-rep_1_idx)]
@@ -347,7 +339,7 @@ class CFTemplate():
             if ref_value == None:
                 raise StackException(
                     AimErrorCode.Unknown,
-                    message="Unable to locate value for ref: " + param_value
+                    message="cftemplate: set_parameter: Unable to locate value for ref: " + param_value
                 )
             if isinstance(ref_value, Stack):
                 stack_output_key = self.get_stack_outputs_key_from_ref(param_value, ref_value)
@@ -382,7 +374,7 @@ class CFTemplate():
     def get_stack_outputs_key_from_ref(self, aim_ref, stack=None):
         #print("get_stack_outputs_key_from_ref: Aim ref: " + aim_ref)
         if stack == None:
-            stack = self.aim_ctx.get_ref(aim_ref)
+            stack = references.resolve_ref(aim_ref, self.aim_ctx.project)
         output_key = stack.get_outputs_key_from_ref(aim_ref)
         if output_key == None:
             raise StackException(AimErrorCode.Unknown)

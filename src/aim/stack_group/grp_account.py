@@ -17,7 +17,7 @@ class AccountStackGroup(StackGroup):
 
         self.account_id = account_id
         self.account_config = account_config
-        self.account_config_ref = 'config.ref accounts.%s' % (account_id)
+        self.account_config_ref = 'aim.ref accounts.%s' % (account_id)
         self.stack_hooks = stack_hooks
 
     def init(self, do_not_cache=False):

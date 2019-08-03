@@ -2,6 +2,7 @@ import os
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
+from aim.models.references import Reference
 from io import StringIO
 from enum import Enum
 
@@ -149,23 +150,19 @@ Outputs:
         super().validate()
 
     def get_local_sg_ref(self, aim_ref):
-        ref_parts = aim_ref.split(' ')
-        if ref_parts[0] != 'netenv.ref':
-            raise StackException(AimErrorCode.Unknown)
-
-        ref_parts = ref_parts[1].split('.')
-        return ref_parts[-2]
+        ref = Reference(aim_ref)
+        return ref.parts[-2]
 
     def get_outputs_key_from_ref(self, aim_ref):
+        ref = Reference(aim_ref)
+
         ref_dict = self.aim_ctx.aim_ref.parse_ref(aim_ref)
         ref_parts = ref_dict['ref_parts']
-        network_component = ref_parts[5]
-        vpc_component = ref_parts[6]
-        sg_component = ref_parts[7]
-        sg_id = ref_parts[8]
+        network_component = ref_parts[6]
+        vpc_component = ref_parts[7]
+        sg_component = ref_parts[8]
+        sg_id = ref_parts[9]
 
-        if ref_dict['subenv_component'] != 'subenv':
-            raise StackException(AimErrorCode.Unknown)
         if ref_dict['netenv_component'] != 'network':
             raise StackException(AimErrorCode.Unknown)
         if network_component != 'vpc':

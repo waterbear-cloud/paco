@@ -59,7 +59,6 @@ class ASG(CFTemplate):
 
         asg_name = aim_ctx.normalized_join([self.subenv_ctx.netenv_id, self.subenv_ctx.subenv_id, app_id, grp_id, asg_id], '', True)
         self.set_parameter('ASGName', asg_name)
-
         self.set_parameter('ASGDesiredCapacity', asg_config.desired_capacity)
         self.set_parameter('ASGHealthCheckGracePeriodSecs', asg_config.health_check_grace_period_secs)
         self.set_parameter('ASGHealthCheckType', asg_config.health_check_type)
@@ -77,7 +76,7 @@ class ASG(CFTemplate):
         subnet_list_output_key = 'SubnetList' + str(self.subenv_ctx.availability_zones())
         self.set_parameter(StackOutputParam('ASGSubnetList', segment_stack, subnet_list_output_key))
 
-        # Load Balancers: A list of netenv.ref to ELBs
+        # Load Balancers: A list of aim.ref netenv.to ELBs
         if asg_config.load_balancers != None and len(asg_config.load_balancers) > 0:
             lb_param = StackOutputParam('ASGLoadBalancerNames')
             for load_balancer in asg_config.load_balancers:

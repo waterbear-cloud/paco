@@ -35,7 +35,7 @@ class CodePipeBuild(CFTemplate):
         self.set_parameter('ResourceNamePrefix', self.ResourceName)
 
         # Project Refereces
-        self.set_parameter('CodeCommitRepositoryName', res_config.codecommit_repository + ".name" ) # Add .name attribute to resource.ref
+        self.set_parameter('CodeCommitRepositoryName', res_config.codecommit_repository + ".name" ) # Add .name attribute to aim.ref resource
 
         # Code Commit Role ARN lookup
         codecommit_role_arn_ref = self.subenv_ctx.gen_ref(app_id=app_id, grp_id=grp_id, res_id=res_id, attribute='codecommit_role.arn')

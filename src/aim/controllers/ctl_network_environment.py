@@ -27,7 +27,13 @@ class SubNetEnvContext():
         self.stack_grps = []
         subenv_account_ref = self.config.network.aws_account
         self.account_ctx = aim_ctx.get_account_context(account_ref=subenv_account_ref)
-        self.config_ref_prefix = '.'.join([self.netenv_id, 'subenv', self.subenv_id, self.region])
+        self.config_ref_prefix = '.'.join(
+            [   self.netenv_ctx.config_ref_prefix,
+                self.netenv_id,
+                'subenv',
+                self.subenv_id,
+                self.region
+            ])
 
         # Network Stack Group
         self.aim_ctx.log("Environment: %s" % (self.subenv_id))
@@ -179,7 +185,7 @@ class SubNetEnvContext():
         # Save merged_config to yaml file
         pathlib.Path(self.resource_yaml_path).mkdir(parents=True, exist_ok=True)
         with open(self.resource_yaml, "w") as output_fd:
-            yaml.dump(data=merged_config[self.netenv_id]['subenv'][self.subenv_id][self.region],
+            yaml.dump(data=merged_config['netenv'][self.netenv_id]['subenv'][self.subenv_id][self.region],
                       stream=output_fd)
 
     def validate(self):
@@ -222,7 +228,7 @@ class SubNetEnvContext():
                 segment_id=None,
                 attribute=None,
                 seperator='.'):
-        netenv_ref = 'netenv.ref {0}.subenv.{1}.{2}'.format(self.netenv_id, self.subenv_id, self.region)
+        netenv_ref = 'aim.ref netenv.{0}.subenv.{1}.{2}'.format(self.netenv_id, self.subenv_id, self.region)
         if app_id != None:
             netenv_ref = seperator.join([netenv_ref, 'applications', app_id])
         if iam_id != None:
@@ -248,6 +254,7 @@ class NetEnvContext():
         self.netenv_id = netenv_id
         self.sub_envs = {}
         self.netenv_ctl = netenv_ctl
+        self.config_ref_prefix = "netenv"
 
         self.config = self.aim_ctx.project['ne'][netenv_id]
 
@@ -420,7 +427,7 @@ class NetEnvController(Controller):
         subenv_id = ref_dict['subenv_id']
         subenv_region = ref_dict['subenv_region']
 
-        # netenv.ref wbsites.subenv.prod.applications.sites.resources.alb.dns.ssl_certificate.arn
+        # aim.ref netenv.wbsites.subenv.prod.applications.sites.resources.alb.dns.ssl_certificate.arn
         netenv_ctx = self.net_envs[netenv_id]
 
         if netenv_component == 'network':

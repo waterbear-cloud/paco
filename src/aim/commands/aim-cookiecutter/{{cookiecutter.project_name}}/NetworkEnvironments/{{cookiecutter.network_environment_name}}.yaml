@@ -42,7 +42,7 @@ network:
             - from_port: 80
               name: HTTP
               protocol: tcp
-              source_security_group_id: netenv.ref {{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.alb.id
+              source_security_group_id: aim.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.alb.id
               to_port: 80
     segments:
       public:
@@ -85,7 +85,7 @@ applications:
                 target_group: {{cookiecutter.application_name}}
             scheme: internet-facing
             security_groups:
-              - netenv.ref {{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.alb.id
+              - aim.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.alb.id
             segment: public
           web:
             type: ASG
@@ -98,17 +98,17 @@ applications:
             health_check_type: ELB
             instance_iam_role:
               enabled: true
-            instance_ami: function.ref aws.ec2.ami.latest.amazon-linux-2
-            instance_key_pair: resource.ref ec2.keypairs.aimkeypair
+            instance_ami: aim.ref function.aws.ec2.ami.latest.amazon-linux-2
+            instance_key_pair: aim.ref resource.ec2.keypairs.aimkeypair
             instance_monitoring: false
             instance_type: t2.nano
             max_instances: 2
             min_instances: 1
             desired_capacity: 1
             target_groups:
-              - netenv.ref {{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.alb.target_groups.{{cookiecutter.application_name}}.arn
+              - aim.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.alb.target_groups.{{cookiecutter.application_name}}.arn
             security_groups:
-              - netenv.ref {{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.web.id
+              - aim.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.web.id
             segment: web
             termination_policies:
               - Default
@@ -134,7 +134,7 @@ environments:
         {{cookiecutter.application_name}}:
           enabled: true
       network:
-        aws_account: config.ref accounts.master
+        aws_account: aim.ref accounts.master
         availability_zones: 2
         name: example
         vpc:
@@ -164,7 +164,7 @@ environments:
                 min_instances: 2
                 desired_capacity: 2
       network:
-        aws_account: config.ref accounts.master
+        aws_account: aim.ref accounts.master
         availability_zones: 2
         name: example
         vpc:

@@ -145,5 +145,5 @@ Outputs:
     def get_outputs_key_from_ref(self, aim_ref):
         ref_dict = self.aim_ctx.aim_ref.parse_ref(aim_ref)
 
-        output_key = self.gen_cf_logical_name(ref_dict['ref_parts'][1], '_') + "HostedZoneId"
+        output_key = self.gen_cf_logical_name(ref_dict['ref_parts'][2], '_') + "HostedZoneId"
         return output_key

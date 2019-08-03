@@ -38,7 +38,7 @@ class AccountContext(object):
         return self.name
 
     def gen_ref(self):
-        return 'config.ref account.%s' % (self.get_name())
+        return 'aim.ref account.%s' % (self.get_name())
 
     def get_temporary_credentials(self):
         return self.aws_session.get_temporary_credentials()
@@ -108,7 +108,7 @@ class AimContext(object):
             account_name = ref_dict['ref_parts'][1]
         elif netenv_ref != None:
             account_ref = netenv_ref.split(' ')[1]
-            account_ref = 'netenv.ref '+'.'.join(account_ref.split('.', 4)[:-1])+".network.aws_account"
+            account_ref = 'aim.ref netenv.'+'.'.join(account_ref.split('.', 4)[:-1])+".network.aws_account"
             account_ref = self.get_ref(account_ref)
             return self.get_account_context(account_ref=account_ref)
         elif account_name == None:

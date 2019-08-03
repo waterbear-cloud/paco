@@ -61,7 +61,7 @@ class ApplicationEngine():
         seperator='.'
     ):
         """Generate a reference string"""
-        ref_str = '{0} {1}.applications.{2}'.format(self.ref_type, self.config_ref_prefix, self.app_id)
+        ref_str = 'aim.ref {0}.applications.{1}'.format(self.config_ref_prefix, self.app_id)
         if grp_id != None:
             ref_str = seperator.join([ref_str, 'groups', grp_id])
         if res_id != None:
@@ -215,7 +215,7 @@ statement:
         # Set defaults if assume role policy was not explicitly configured
         if not hasattr(role_config, 'assume_role_policy') or role_config.assume_role_policy == None:
             policy_dict = { 'effect': 'Allow',
-                            'aws': ["aim.sub 'arn:aws:iam::${config.ref accounts.%s}:root'" % (self.account_ctx.get_name())],
+                            'aws': ["aim.sub 'arn:aws:iam::${aim.ref accounts.%s}:root'" % (self.account_ctx.get_name())],
                             'service': ['lambda.amazonaws.com'] }
             role_config.set_assume_role_policy(policy_dict)
         # Always turn off instance profiles for Lambda functions
@@ -274,7 +274,7 @@ statement:
             print("ApplicationEngine: Init: S3: %s *disabled*" % (res_id))
         else:
             print("ApplicationEngine: Init: S3: %s" % (res_id))
-            s3_config_ref = "netenv.ref "+self.gen_resource_ref(grp_id, res_id)
+            s3_config_ref = "aim.ref "+self.gen_resource_ref(grp_id, res_id)
             # Generate s3 bucket name for application deployment
             bucket_name_prefix = '-'.join([self.get_aws_name(), grp_id])
             #print("Application depoloyment bucket name: %s" % new_name)
@@ -485,7 +485,7 @@ role_name: %s""" % ("ASGInstance")
             print("ApplicationEngine: Init: CodePipeBuildDeploy: %s" % (res_id))
             tools_account_ctx = self.aim_ctx.get_account_context(res_config.tools_account)
             # XXX: Fix Hardcoded!!!
-            data_account_ctx = self.aim_ctx.get_account_context("config.ref accounts.data")
+            data_account_ctx = self.aim_ctx.get_account_context("aim.ref accounts.data")
 
             # -----------------
             # S3 Artifacts Bucket:
@@ -533,7 +533,7 @@ role_name: %s""" % ("ASGInstance")
                         # Sub-Environment account
                         "aim.sub 'arn:aws:iam::${%s}:root'" % (self.aim_ctx.get_ref(aws_account_ref)),
                         # CodeCommit Account
-                        "aim.sub 'arn:aws:iam::${config.ref accounts.data}:root'",
+                        "aim.sub 'arn:aws:iam::${aim.ref accounts.data}:root'",
                         # Tools Account
                     ]
                 }

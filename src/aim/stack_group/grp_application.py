@@ -40,7 +40,7 @@ class ApplicationStackGroup(StackGroup):
                                              self.subenv_ctx.config.applications[self.app_id],
                                              self.config_ref_prefix,
                                              self,
-                                             'netenv.ref',
+                                             'netenv',
                                              stack_tags=self.stack_tags,
                                              subenv_ctx=self.subenv_ctx)
         self.app_engine.init()

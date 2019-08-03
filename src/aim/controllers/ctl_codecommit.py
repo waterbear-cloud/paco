@@ -33,7 +33,7 @@ class CodeCommitController(Controller):
             self.name = init_config['name']
         self.config = self.aim_ctx.project['codecommit']
         # Sets the CodeCommit reference resolver object to forward all
-        # all resource.ref codecommit.* calls to self.resolve_ref()
+        # all aim.ref resource.codecommit.* calls to self.resolve_ref()
         if self.config != None:
             self.config.resolve_ref_obj = self
         self.init_stack_groups()
@@ -74,7 +74,7 @@ class CodeCommitController(Controller):
         role_yaml = """
 assume_role_policy:
   aws:
-    - aim.sub '${{config.ref accounts.master}}'
+    - aim.sub '${{aim.ref accounts.master}}'
 instance_profile: false
 path: /
 role_name: Tools-Account-Delegate-Role
@@ -119,8 +119,8 @@ policies:
 
     def resolve_ref(self, ref):
         # codecommit.example.app1.name
-        group_id = ref.parts[1]
-        repo_id = ref.parts[2]
+        group_id = ref.parts[2]
+        repo_id = ref.parts[3]
         repo_config = self.stack_grps[0].config.repository_groups[group_id][repo_id]
         if ref.last_part == "name":
             return repo_config.name
