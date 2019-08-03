@@ -565,7 +565,7 @@ class StackGroup():
         self.stack_output_config = {}
         self.state = None
         self.prev_state = None
-        self.state_filename = self.get_aws_name()+"-StackGroup-State.yaml"
+        self.state_filename = '-'.join([self.get_aws_name(), group_name, "StackGroup-State.yaml"])
         self.state_filepath = os.path.join(self.aim_ctx.build_folder, self.state_filename)
 
     def delete_stack(self, account_name, region, stack_name):
