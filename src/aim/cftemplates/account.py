@@ -59,6 +59,8 @@ Resources:
             iam_user_table['id'] = 0
             for iam_user_id in self.account_config.admin_iam_users:
                 iam_user_config = self.account_config.admin_iam_users[iam_user_id]
+                if iam_user_config.username == self.aim_ctx.project['credentials'].master_admin_iam_username:
+                    continue
                 iam_user_table['username'] = iam_user_config.username
                 iam_users_yaml += iam_user_template.format(iam_user_table)
                 iam_user_table['id'] += 1

@@ -13,8 +13,6 @@
     "aws_default_region": "{{ 'Administrator Default AWS Region' | env_override('AIM_AWS_DEFAULT_REGION') }}",
     "master_account_id": "{{ 'Master AWS Account Id' | env_override('AIM_MASTER_ACCOUNT_ID') }}",
     "master_admin_iam_username": "{{ 'Master Admin IAM Username' | env_override('AIM_MASTER_ADMIN_IAM_USERNAME') }}",
-    "aws_access_key_id": "{{ 'Administrator AWS Access Key ID' | env_override('AIM_AWS_ACCESS_KEY_ID') }}",
-    "aws_secret_access_key": "{{ 'Administrator AWS Secret Access Key' | env_override('AIM_AWS_SECRET_ACCESS_KEY') }}",
     "_extensions": [
         "aim.commands.cmd_init.EnvOverrideExtension"
     ]

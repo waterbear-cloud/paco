@@ -298,8 +298,8 @@ class AimContext(object):
 
             if allowed_values != None:
                 for allowed_value in allowed_values:
-                    value_match == False
-                    if is_instance(value, str) and case_sensitive == False:
+                    value_match = False
+                    if isinstance(value, str) and case_sensitive == False:
                         if allowed_value.lower() == value.lower():
                             value_match = True
                     elif allowed_value == value:
@@ -309,7 +309,8 @@ class AimContext(object):
                             return True
                         else:
                             return value
-                print("Invalid response: %s: Try again.\n" % (value))
+                print("Invalid value: %s" % (value))
+                print("Allowed values: %s\n" % ', '.join(allowed_values))
                 continue
 
             try_again = False
