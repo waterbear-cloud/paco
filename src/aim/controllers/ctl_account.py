@@ -74,12 +74,37 @@ class AccountController(Controller):
 
         self.init_organization_stack_groups()
 
+    def get_account_default(self, key, arg_1=None):
+        account_defaults = {
+                    'name': {
+                        'prod': 'Production',
+                        'dev': 'Development',
+                        'security': 'Security',
+                        'data': 'Data',
+                        'tools': 'Tools'
+                    },
+                    'title': {
+                        'prod': 'Production AWS Account',
+                        'dev': 'Development AWS Account',
+                        'security': 'Security AWS Account',
+                        'data': 'Data AWS Account',
+                        'tools': 'Tools AWS Account'
+                    },
+                    'region': self.master_account_config.region,
+                    'root_email': None,
+                }
+        if key == 'name' or key == 'title':
+            if arg_1 in account_defaults[key].keys():
+                return account_defaults[key][arg_1]
+        else:
+            return account_defaults[key]
+
+
     def init_accounts_yaml(self):
         # Next we process the Master account's organization accounts
         for org_account_id in self.master_account_config.organization_account_ids:
             # Check if things already exist
             # Config Check
-            config_exists = False
             account_config = None
             if org_account_id in self.aim_ctx.project['accounts'].keys():
                 continue
@@ -97,21 +122,22 @@ class AccountController(Controller):
                     'title': None,
                     'root_email': None,
                 }
-                account_defaults = {
-                    'name': None,
-                    'title': None,
-                    'region': None,
-                    'root_email': None,
+
+                name_defaults = {
+                    'prod': 'Production',
+                    'dev': 'Development',
                 }
-                account_config['name'] = self.aim_ctx.input("  Friendly name", account_defaults['name'])
-                account_config['title'] = self.aim_ctx.input("  Title", account_defaults['title'])
-                account_config['region'] = self.aim_ctx.input("  Region", account_defaults['region'])
-                account_config['root_email'] = self.aim_ctx.input("  Root email address", account_defaults['root_email'])
+
+
+                account_config['name'] = self.aim_ctx.input("  Friendly name", self.get_account_default('name', org_account_id))
+                account_config['title'] = self.aim_ctx.input("  Title", self.get_account_default('title', org_account_id))
+                account_config['region'] = self.aim_ctx.input("  Region", self.get_account_default('region'))
+                account_config['root_email'] = self.aim_ctx.input("  Root email address")
 
                 # Verify the information collected
-                print("\n%s: Account Configuration\n" % (org_account_id))
+                print("\n--- %s Configuration ---" % org_account_id)
                 yaml.dump(account_config, sys.stdout)
-                print("")
+                print("---\n")
                 correct_value = self.aim_ctx.input("Is this the correct configuration for: %s ?" % (org_account_id),
                                                     yes_no_prompt=True)
 
@@ -168,10 +194,10 @@ class AccountController(Controller):
                 continue
 
             # Verify the information collected
-            print("\n%s: Account Configuration\n" % (org_account_id))
+            print("\n--- %s Configuration ---" % org_account_id)
             yaml.dump(account_config, sys.stdout)
-            print("")
-            correct_value = self.aim_ctx.input("Is this the correct configuration for: %s ?" % (org_account_id),
+            print("---\n")
+            correct_value = self.aim_ctx.input("Is this the correct configuration for '%s'?" % (org_account_id),
                                                 yes_no_prompt=True)
 
             if correct_value == False:

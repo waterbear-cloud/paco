@@ -98,7 +98,7 @@ class ProjectController(Controller):
                 )
 
     def init_credentials(self, force=False):
-        print("AIM Project Credentials Initialization")
+        print("\nAIM Project Credentials Initialization")
         print("--------------------------------------\n")
         if self.project_context_path.exists() == False:
             print("Project does not exist: {}".format(self.project_context_path))
