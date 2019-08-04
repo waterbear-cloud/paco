@@ -1,7 +1,7 @@
 Changelog for aim
 =================
 
-1.1.1 (unreleased)
+2.0.1 (unreleased)
 ------------------
 
 ### Added
