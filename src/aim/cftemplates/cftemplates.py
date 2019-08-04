@@ -390,11 +390,18 @@ class CFTemplate():
             comma = ','
         return str_list
 
-    def gen_cf_logical_name(self, name, sep):
-        name_list = name.split(sep)
-        cf_name = ""
-        for name_item in name_list:
-            cf_name += name_item.title()
+    def gen_cf_logical_name(self, name, sep=None):
+        sep_list = ['_','-','@','.']
+        if sep != None:
+            sep_list = [sep]
+        for sep in sep_list:
+            cf_name = ""
+            for name_item in name.split(sep):
+                if len(name_item) > 1:
+                    cf_name += name_item[0].upper() + name_item[1:]
+                else:
+                    cf_name += name_item.upper()
+            name = cf_name
         cf_name = cf_name.replace('-','')
 
         return cf_name
@@ -471,6 +478,7 @@ class CFTemplate():
         name = name.replace('-', '')
         name = name.replace('_', '')
         name = name.replace('.', '')
+        name = name.replace('@', '')
         return name
 
     def gen_parameter(self, param_type, name, description):
