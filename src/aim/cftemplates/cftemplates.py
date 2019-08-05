@@ -343,7 +343,6 @@ class CFTemplate():
 
     # Gets the output key of a project reference
     def get_stack_outputs_key_from_ref(self, ref, stack=None):
-        #print("get_stack_outputs_key_from_ref: Aim ref: " + aim_ref)
         if isinstance(ref, Reference) == False:
             raise StackException(
                 AimErrorCode.Unknown,
