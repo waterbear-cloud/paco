@@ -73,5 +73,5 @@ Resources:
         #self.aim_ctx.log("Validating Segment Template")
         super().validate()
 
-    def get_outputs_key_from_ref(self, aim_ref):
+    def get_outputs_key_from_ref(self, ref):
         return None

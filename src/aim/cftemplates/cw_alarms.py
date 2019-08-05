@@ -192,7 +192,7 @@ Outputs:
                 normalized_set_id = self.normalize_resource_name(alarm_set_id)
                 normalized_id = self.normalize_resource_name(alarm_id)
                 alarm_actions = get_alarm_actions(self.aim_ctx.project['notificationgroups'], alarm)
-                if len(alarm_actions) > 0:
+                if len(alarm_actions) > 0 and alarm_actions[0] != None:
                     alarm_actions_cfn = "      ActionsEnabled: True\n      AlarmActions:\n"
                     for action in alarm_actions:
                         alarm_actions_cfn += "         - " + action
@@ -236,6 +236,6 @@ Outputs:
     def validate(self):
         super().validate()
 
-    def get_outputs_key_from_ref(self, aim_ref):
+    def get_outputs_key_from_ref(self, ref):
         # There is only one output key
         return None

@@ -233,13 +233,3 @@ Outputs:
             policies_yaml += policy_fmt.format(policy_table)
 
         return policies_yaml
-
-    def get_role_arn_from_id(self, role_id):
-        role_name = self.gen_iam_role_name("Role", role_id)
-        return "arn:aws:iam::{0}:role/{1}".format(self.account_ctx.get_id(), role_name)
-
-    def get_role_arn_from_ref(self, ref_dict):
-        role_id = ref_dict['ref_parts'][6]
-        role_name = self.gen_iam_role_name("Role", role_id)
-        return "arn:aws:iam::{0}:role/{1}".format(self.account_ctx.get_id(), role_name)
-

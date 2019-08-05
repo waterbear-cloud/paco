@@ -279,7 +279,3 @@ class IAMController(Controller):
     def role_profile_arn(self, role_ref):
         return self.role_context[role_ref].role_profile_arn
 
-
-    def get_value_from_ref(self, aim_ref):
-
-        raise StackException(AimErrorCode.Unknown)

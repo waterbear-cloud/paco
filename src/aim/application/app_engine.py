@@ -788,6 +788,10 @@ policies:
             if ref.resource_ref.startswith('instance_id'):
                 asg_stack = self.get_stack_from_ref(ref)
                 asg_outputs_key = asg_stack.template.get_outputs_key_from_ref(ref)
+                if asg_outputs_key == None:
+                    raise StackException(
+                        AimErrorCode.Unknown,
+                        message="Unable to find outputkey for ref: %s" % ref.raw)
                 asg_name = asg_stack.get_outputs_value(asg_outputs_key)
                 asg_client = self.account_ctx.get_aws_client('autoscaling')
                 asg_response = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])

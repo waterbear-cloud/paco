@@ -2,6 +2,7 @@ import os
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
+from aim.models.references import Reference
 from io import StringIO
 from enum import Enum
 import base64
@@ -52,7 +53,7 @@ class ASG(CFTemplate):
         sg_output_param = StackOutputParam('LCSecurityGroupList')
         for sg_ref in asg_config.security_groups:
             # TODO: Better name for self.get_stack_outputs_key_from_ref?
-            sg_output_key = self.get_stack_outputs_key_from_ref(sg_ref)
+            sg_output_key = self.get_stack_outputs_key_from_ref(Reference(sg_ref))
             sg_stack = self.aim_ctx.get_ref(sg_ref)
             sg_output_param.add_stack_output(sg_stack, sg_output_key)
         self.set_parameter(sg_output_param)
@@ -81,7 +82,7 @@ class ASG(CFTemplate):
             lb_param = StackOutputParam('ASGLoadBalancerNames')
             for load_balancer in asg_config.load_balancers:
                 elb_stack = self.aim_ctx.get_ref(load_balancer)
-                elb_output_key = self.get_stack_outputs_key_from_ref(load_balancer)
+                elb_output_key = self.get_stack_outputs_key_from_ref(Reference(load_balancer))
                 lb_param.add_stack_output(elb_stack, elb_output_key)
             self.set_parameter(lb_param)
 
@@ -90,7 +91,7 @@ class ASG(CFTemplate):
             lb_param = StackOutputParam('TargetGroupArns')
             for target_group_arn in asg_config.target_groups:
                 alb_stack = self.aim_ctx.get_ref(target_group_arn)
-                alb_output_key = self.get_stack_outputs_key_from_ref(target_group_arn)
+                alb_output_key = self.get_stack_outputs_key_from_ref(Reference(target_group_arn))
                 lb_param.add_stack_output(alb_stack, alb_output_key)
             self.set_parameter(lb_param)
 

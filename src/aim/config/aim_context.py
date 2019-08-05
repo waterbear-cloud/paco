@@ -13,6 +13,7 @@ from aim.config import ConfigProcessor
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.models import vocabulary
+from aim.models.references import Reference
 
 class AccountContext(object):
 
@@ -103,12 +104,11 @@ class AimContext(object):
         self.logger = aim.core.log.get_aim_logger()
         self.project = None
         self.master_account = None
-        self.aim_ref = references.AimReference()
 
     def get_account_context(self, account_ref=None, account_name=None, netenv_ref=None):
         if account_ref != None:
-            ref_dict = self.aim_ref.parse_ref(account_ref)
-            account_name = ref_dict['ref_parts'][1]
+            ref = Reference(account_ref)
+            account_name = ref.parts[1]
         elif netenv_ref != None:
             account_ref = netenv_ref.split(' ')[1]
             account_ref = 'aim.ref netenv.'+'.'.join(account_ref.split('.', 4)[:-1])+".network.aws_account"
@@ -128,7 +128,7 @@ class AimContext(object):
 
     def get_region_from_ref(self, netenv_ref):
         region = netenv_ref.split(' ')[1]
-        # aimdemo.subenv.dev.us-west-2.applications
+        # aimdemo.dev.us-west-2.applications
         region = region.split('.')[3]
         if region not in vocabulary.aws_regions.keys():
             return None
@@ -143,7 +143,7 @@ class AimContext(object):
 
         # Config Processor Init
         self.config_processor = ConfigProcessor(self)
-        self.project = load_project_from_yaml(self.aim_ref, self.project_folder, None) #self.config_processor.load_yaml)
+        self.project = load_project_from_yaml(self.project_folder, None) #self.config_processor.load_yaml)
         self.build_folder = os.path.join(self.home, "build", self.project.name)
         self.master_account = AccountContext(aim_ctx=self,
                                              name='master',

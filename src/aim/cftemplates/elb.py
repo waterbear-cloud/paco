@@ -2,6 +2,7 @@ import os
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
+from aim.models.references import Reference
 from io import StringIO
 from enum import Enum
 
@@ -67,7 +68,7 @@ class ELB(CFTemplate):
         sg_output_param = StackOutputParam('SecurityGroupList')
         for sg_ref in elb_config['security_groups']:
             # TODO: Better name for self.get_stack_outputs_key_from_ref?
-            sg_output_key = self.get_stack_outputs_key_from_ref(sg_ref)
+            sg_output_key = self.get_stack_outputs_key_from_ref(Reference(sg_ref))
             sg_stack = self.aim_ctx.get_ref(sg_ref, 'stack')
             sg_output_param.add_stack_output(sg_stack, sg_output_key)
         self.set_parameter(sg_output_param)
@@ -245,6 +246,6 @@ Outputs:
         #self.aim_ctx.log("Validating ELB Template")
         super().validate()
 
-    def get_outputs_key_from_ref(self, aim_ref):
+    def get_outputs_key_from_ref(self, ref):
         # There is only one output key
         return "LoadBalancer"

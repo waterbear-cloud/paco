@@ -166,5 +166,5 @@ Outputs:
         #self.aim_ctx.log("Validating NATGateway Template")
         super().validate()
 
-    def get_outputs_key_from_ref(self, aim_ref):
-        pass
+    def get_outputs_key_from_ref(self, ref):
+        return None

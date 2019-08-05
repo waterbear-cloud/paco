@@ -157,7 +157,7 @@ Outputs:
 #------------------------------------------------------------------------------
 """)
         # Config Model AWS resource Ids
-        # vpc_ref: <netenv>.<subenv_id>.network.vpc
+        # vpc_ref: <netenv>.network.vpc
         self.register_stack_output_config(vpc_config_ref, 'VPC')
         self.register_stack_output_config(vpc_config_ref + ".internet_gateway", 'InternetGateway')
 

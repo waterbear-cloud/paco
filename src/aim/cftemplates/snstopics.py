@@ -118,5 +118,4 @@ Outputs:
         super().validate()
 
     def get_outputs_key_from_ref(self, ref):
-        ref = Reference(ref)
         return "SNSTopic"+ref.last_part

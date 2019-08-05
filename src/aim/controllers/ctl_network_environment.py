@@ -30,7 +30,6 @@ class SubNetEnvContext():
         self.config_ref_prefix = '.'.join(
             [   self.netenv_ctx.config_ref_prefix,
                 self.netenv_id,
-                'subenv',
                 self.subenv_id,
                 self.region
             ])
@@ -185,7 +184,7 @@ class SubNetEnvContext():
         # Save merged_config to yaml file
         pathlib.Path(self.resource_yaml_path).mkdir(parents=True, exist_ok=True)
         with open(self.resource_yaml, "w") as output_fd:
-            yaml.dump(data=merged_config['netenv'][self.netenv_id]['subenv'][self.subenv_id][self.region],
+            yaml.dump(data=merged_config['netenv'][self.netenv_id][self.subenv_id][self.region],
                       stream=output_fd)
 
     def validate(self):
@@ -228,7 +227,7 @@ class SubNetEnvContext():
                 segment_id=None,
                 attribute=None,
                 seperator='.'):
-        netenv_ref = 'aim.ref netenv.{0}.subenv.{1}.{2}'.format(self.netenv_id, self.subenv_id, self.region)
+        netenv_ref = 'aim.ref netenv.{0}.{1}.{2}'.format(self.netenv_id, self.subenv_id, self.region)
         if app_id != None:
             netenv_ref = seperator.join([netenv_ref, 'applications', app_id])
         if iam_id != None:
@@ -263,7 +262,6 @@ class NetEnvContext():
             if region in self.sub_envs[subenv_id]:
                 return self.sub_envs[subenv_id][region]
 
-        #subenv_config = self.config.subenv_config_dict(subenv_id, region)
         subenv_config = self.config[subenv_id][region]
         subenv_ctx = SubNetEnvContext(self.aim_ctx, self, subenv_id, region, subenv_config)
         self.sub_envs[subenv_id] = { region: subenv_ctx }
@@ -374,83 +372,3 @@ class NetEnvController(Controller):
     def get_subenv_ctx(self, netenv_id, subenv_id, region):
         netenv_ctx = self.net_envs[netenv_id]
         return netenv_ctx.get_subenv_ctx(subenv_id, region)
-
-    def get_network_stack_grp(self, netenv_id, subenv_id, region):
-        netenv_ctx = self.net_envs[netenv_id]
-        subenv_ctx =  self.get_subenv_ctx(netenv_id, subenv_id, region)
-        return subenv_ctx.network_stack_grp
-
-    def get_application_stack_grp(self, netenv_id, subenv_id, region, app_id):
-        subenv_ctx = self.get_subenv_ctx(netenv_id, subenv_id, region)
-        return subenv_ctx.application_stack_grps[app_id]
-
-    def get_iam_stack_grp(self, netenv_id, subenv_id, region, iam_id):
-        subenv_ctx = self.get_subenv_ctx(netenv_id, subenv_id, region)
-        return subenv_ctx.iam_stack_grps[iam_id]
-
-    def get_stack_from_ref(self, ref_dict):
-        ref_parts = ref_dict['ref_parts']
-        netenv_id = ref_dict['netenv_id']
-        subenv_id = ref_dict['subenv_id']
-        subenv_region = ref_dict['subenv_region']
-        netenv_component = ref_dict['netenv_component']
-        stack=None
-        if netenv_component == 'network':
-            network_grp = self.get_network_stack_grp(netenv_id, subenv_id, subenv_region)
-            if network_grp == None:
-                raise StackException(AimErrorCode.Unknown)
-            stack = network_grp.get_stack_from_ref(ref_dict['raw'])
-        elif netenv_component == 'applications':
-            # Get application Group
-            app_id = ref_parts[5]
-            app_grp = self.get_application_stack_grp(netenv_id, subenv_id, subenv_region, app_id)
-            # If none, we are probably referencing ourselves when we are not yet finished initializing
-            if app_grp == None:
-                raise StackException(AimErrorCode.Unknown)
-            # Get the stack for the resource in the app grp
-            stack = app_grp.get_stack_from_ref(ref_dict['raw'])
-        elif netenv_component == 'iam':
-            # 0      1      2         3   4
-            # netenv.subenv.subenv_id.region.iam.iam_id.roles.role_id
-            iam_id = ref_parts[5]
-            iam_grp = self.get_iam_stack_grp(netenv_id, subenv_id, subenv_region, iam_id)
-            return iam_grp.get_stack_from_ref(ref_dict['raw'])
-        if stack == None:
-            print("Unable to find stack for ref: " + ref_dict['raw'])
-            raise StackException(AimErrorCode.Unknown)
-
-        return stack
-
-    def get_value_from_ref(self, ref_dict): #, app_stack_grp=None):
-        # "applications.app1.deployments.cpbd.s3.buckets.deployment_artifacts.arn"
-        ref_parts = ref_dict['ref_parts']
-        last_ref_part = ref_parts[len(ref_parts)-1]
-        netenv_component = ref_dict['netenv_component']
-        netenv_id = ref_dict['netenv_id']
-        subenv_id = ref_dict['subenv_id']
-        subenv_region = ref_dict['subenv_region']
-
-        # aim.ref netenv.wbsites.subenv.prod.applications.sites.resources.alb.dns.ssl_certificate.arn
-        netenv_ctx = self.net_envs[netenv_id]
-
-        if netenv_component == 'network':
-            network_grp = self.get_network_stack_grp(netenv_id, subenv_id, subenv_region)
-            if network_grp == None:
-                raise StackException(AimErrorCode.Unknown)
-            return network_grp.get_value_from_ref(ref_dict)
-        elif netenv_component == 'iam':
-            iam_group_id = ref_parts[5]
-            iam_stack_grp = self.get_iam_stack_grp(netenv_id, subenv_id, subenv_region, iam_group_id)
-            if iam_stack_grp == None:
-                print("ERROR: Not Found: ctl_network_environment: get_value_from_ref: IAM Stack group: " + ref_dict['raw'])
-                raise StackException(AimErrorCode.Unknown)
-            return iam_stack_grp.get_value_from_ref(ref_dict)
-        elif netenv_component == "applications":
-            app_id = ref_parts[5]
-            app_stack_grp = self.get_application_stack_grp(netenv_id, subenv_id, subenv_region, app_id)
-            if app_stack_grp == None:
-                raise StackException(AimErrorCode.Unknown)
-            return app_stack_grp.get_value_from_ref(ref_dict)
-
-        print("ERROR: Unhandled ref: ctl_network_environment: get_value_from_ref: " + ref_dict['raw'])
-        raise StackException(AimErrorCode.Unknown)
