@@ -303,9 +303,9 @@ class CFTemplate():
         elif isinstance(param_value, list):
             param_entry = Parameter(param_key, self.list_to_string(param_value))
         elif isinstance(param_value, str) and references.is_ref(param_value):
-            ref = Reference(param_value)
             param_value = param_value.replace("<account>", self.account_ctx.get_name())
             param_value = param_value.replace("<region>", self.aws_region)
+            ref = Reference(param_value)
             ref_value = ref.resolve(self.aim_ctx.project, account_ctx=self.account_ctx)
             if ref_value == None:
                 raise StackException(
