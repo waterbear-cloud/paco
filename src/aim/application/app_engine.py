@@ -234,7 +234,6 @@ statement:
             stack_tags=res_stack_tags
         )
 
-
         aws_name = '-'.join([grp_id, res_id])
         lambda_template = aim.cftemplates.Lambda(
             self.aim_ctx,
@@ -254,6 +253,11 @@ statement:
             stack_tags=res_stack_tags
         )
         self.stack_group.add_stack_order(lambda_stack)
+        # add alarms if there is monitoring configuration
+        if hasattr(res_config, 'monitoring') and len(res_config.monitoring.alarm_sets.values()) > 0:
+            aws_name = '-'.join(['Lambda', grp_id, res_id])
+            breakpoint()
+            self.init_alarms(aws_name, lambda_config_ref, res_config, StackTags(res_stack_tags))
 
     def init_acm_resource(self, grp_id, res_id, res_config, res_stack_tags):
         if res_config.enabled == False:
