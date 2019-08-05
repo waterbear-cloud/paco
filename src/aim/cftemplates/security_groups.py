@@ -3,6 +3,7 @@ from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
 from aim.models.references import Reference
+from aim.core.exception import StackException, AimErrorCode
 from io import StringIO
 from enum import Enum
 
@@ -153,22 +154,10 @@ Outputs:
         ref = Reference(aim_ref)
         return ref.parts[-2]
 
-    def get_outputs_key_from_ref(self, aim_ref):
-        ref = Reference(aim_ref)
-
-        ref_dict = self.aim_ctx.aim_ref.parse_ref(aim_ref)
-        ref_parts = ref_dict['ref_parts']
-        network_component = ref_parts[6]
-        vpc_component = ref_parts[7]
-        sg_component = ref_parts[8]
-        sg_id = ref_parts[9]
-
-        if ref_dict['netenv_component'] != 'network':
-            raise StackException(AimErrorCode.Unknown)
-        if network_component != 'vpc':
-            raise StackException(AimErrorCode.Unknown)
-        if vpc_component != 'security_groups':
-            raise StackException(AimErrorCode.Unknown)
-
-        # Output key is the specific security group id in the yaml config
+    def get_outputs_key_from_ref(self, ref):
+        if ref.last_part != 'id' or ref.parts[-4] != 'security_groups':
+            raise StackException(
+                AimErrorCode.Unknown,
+                message="Unable to find outputkey for ref: %s" % ref.raw)
+        sg_id = ref.parts[-2]
         return sg_id

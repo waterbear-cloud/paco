@@ -275,12 +275,12 @@ class Stack():
             message="Could not find Stack Output {} in stack_metadata:\n\n{}".format(key, stack_metadata)
         )
 
-    def get_outputs_key_from_ref(self, aim_ref):
-        #print("Template: " + self.template.aws_name)
-        key = self.template.get_outputs_key_from_ref(aim_ref)
-        #pprint("get_outputs_key_from_ref: " + key)
+    def get_outputs_key_from_ref(self, ref):
+        key = self.template.get_outputs_key_from_ref(ref)
         if key == None:
-            raise StackException(AimErrorCode.Unknown)
+            raise StackException(
+                AimErrorCode.Unknown,
+                message="Unable to find outputs key for ref: %s" % ref.raw)
         return key
 
     def gen_cache_id(self):

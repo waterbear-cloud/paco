@@ -417,14 +417,11 @@ Outputs:
         #self.aim_ctx.log("Validating Segment Template")
         super().validate()
 
-    def get_outputs_key_from_ref(self, aim_ref):
-        ref_dict = self.aim_ctx.aim_ref.parse_ref(aim_ref)
-        ref_parts = ref_dict['ref_parts']
-
-        az_idx = len(ref_parts)-2
+    def get_outputs_key_from_ref(self, ref):
+        az_idx = len(ref.parts)-2
         resource_idx = az_idx + 1
-        if ref_parts[resource_idx] == "subnet_id":
-            return 'SubnetId' + ref_parts[az_idx].upper()
-        elif ref_parts[resource_idx] == "route_table_id":
-            return "RouteTableId" + ref_parts[az_idx].upper()
+        if ref.parts[resource_idx] == "subnet_id":
+            return 'SubnetId' + ref.parts[az_idx].upper()
+        elif ref.parts[resource_idx] == "route_table_id":
+            return "RouteTableId" + ref.parts[az_idx].upper()
         return None

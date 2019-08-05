@@ -9,38 +9,9 @@ from aim.core.exception import AimErrorCode
 from aim.stack_group import Stack
 from aim.config import aim_context
 from aim.models import references
+from aim.models.references import Reference
 from botocore.exceptions import ClientError
 from pprint import pprint
-
-
-# Used to call a Service to get an answer
-class ServiceValueParam():
-    def __init__(self, aim_ctx, param_key, value_ref):
-        self.key = param_key
-        self.ref = value_ref
-        # entry:
-        #   'stack': stack,
-        #   'output_keys': []
-        self.entry_list = []
-        self.resolved_value = ""
-        self.aim_ctx = aim_ctx
-
-    def gen_parameter_value(self):
-        # ref_dict = aim_ctx.parse_ref(self.ref)
-        # TODO: Look at config_ref. for now we wonly assume ACM
-        acm_ctl = self.aim_ctx.get_controller('ACM')
-        return acm_ctl.get_value_from_ref(self.ref)
-
-
-    # Generates a parameter entry
-    #  - All stacks are queried, their output values gathered and are placed
-    #    in a single comma delimited list to be passed to the next stacks
-    #    parameter as a single value
-    def gen_parameter(self):
-        # ref_dict = aim_ctx.parse_ref(self.ref)
-        # TODO: Look at config_ref. for now we wonly assume ACM
-        param_value = self.gen_parameter_value()
-        return Parameter(self.key, param_value)
 
 # StackOutputParam
 #    Holds a list of dicts describing a stack and the outputs that are required
@@ -331,17 +302,18 @@ class CFTemplate():
             param_entry = param_key
         elif isinstance(param_value, list):
             param_entry = Parameter(param_key, self.list_to_string(param_value))
-        elif isinstance(param_value, str) and self.aim_ctx.aim_ref.is_ref(param_value):
+        elif isinstance(param_value, str) and references.is_ref(param_value):
+            ref = Reference(param_value)
             param_value = param_value.replace("<account>", self.account_ctx.get_name())
             param_value = param_value.replace("<region>", self.aws_region)
-            ref_value = references.resolve_ref(param_value, self.aim_ctx.project, account_ctx=self.account_ctx)
+            ref_value = ref.resolve(self.aim_ctx.project, account_ctx=self.account_ctx)
             if ref_value == None:
                 raise StackException(
                     AimErrorCode.Unknown,
                     message="cftemplate: set_parameter: Unable to locate value for ref: " + param_value
                 )
             if isinstance(ref_value, Stack):
-                stack_output_key = self.get_stack_outputs_key_from_ref(param_value, ref_value)
+                stack_output_key = self.get_stack_outputs_key_from_ref(ref, ref_value)
                 param_entry = StackOutputParam(param_key, ref_value, stack_output_key)
             else:
                 param_entry = Parameter(param_key, ref_value)
@@ -370,13 +342,21 @@ class CFTemplate():
         self.body = template_body
 
     # Gets the output key of a project reference
-    def get_stack_outputs_key_from_ref(self, aim_ref, stack=None):
+    def get_stack_outputs_key_from_ref(self, ref, stack=None):
         #print("get_stack_outputs_key_from_ref: Aim ref: " + aim_ref)
+        if isinstance(ref, Reference) == False:
+            raise StackException(
+                AimErrorCode.Unknown,
+                message="Invalid Reference object")
+
+
         if stack == None:
-            stack = references.resolve_ref(aim_ref, self.aim_ctx.project)
-        output_key = stack.get_outputs_key_from_ref(aim_ref)
+            stack = ref.resolve(self.aim_ctx.project)
+        output_key = stack.get_outputs_key_from_ref(ref)
         if output_key == None:
-            raise StackException(AimErrorCode.Unknown)
+            raise StackException(
+                AimErrorCode.Unknown,
+                message="Unable to find outputkey for ref: %s" % ref.raw)
         return output_key
 
 

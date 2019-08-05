@@ -2,6 +2,7 @@ import os
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
+from aim.models.references import Reference
 from io import StringIO
 from enum import Enum
 from pprint import pprint
@@ -63,7 +64,7 @@ class ALB(CFTemplate):
         for sg_ref in alb_config.security_groups:
             # TODO: Better name for self.get_stack_outputs_key_from_ref?
             # print("ALB: SG_REF: " + sg_ref)
-            sg_output_key = self.get_stack_outputs_key_from_ref(sg_ref)
+            sg_output_key = self.get_stack_outputs_key_from_ref(Reference(sg_ref))
             sg_stack = self.aim_ctx.get_ref(sg_ref)
             sg_output_param.add_stack_output(sg_stack, sg_output_key)
         self.set_parameter(sg_output_param)
@@ -468,17 +469,14 @@ Outputs:
         #self.aim_ctx.log("Validating ALB Template")
         super().validate()
 
-    def get_outputs_key_from_ref(self, aim_ref):
+    def get_outputs_key_from_ref(self, ref):
         # There is only one output key
         # aim.ref netenv.wbsites.applications.sites.resources.alb.target_groups.app.arn
-        ref_dict = self.aim_ctx.aim_ref.parse_ref(aim_ref)
-        last_idx = len(ref_dict['ref_parts'])-1
         key = None
         #print(aim_ref)
-        if ref_dict['ref_parts'][last_idx] == 'arn':
-            key = "TargetGroupArn" + ref_dict['ref_parts'][last_idx-1]
-        elif ref_dict['ref_parts'][last_idx] == 'name':
-            key = "TargetGroupName" + ref_dict['ref_parts'][last_idx-1]
+        if ref.last_part == 'arn':
+            key = "TargetGroupArn" + ref.parts[-2]
+        elif ref.last_part == 'name':
+            key = "TargetGroupName" + ref.parts[-2]
 
-        #print("alb: get_outputs_key_from_ref: Key: " + key)
         return key

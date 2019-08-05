@@ -385,8 +385,8 @@ Outputs:
         self.set_template(template_fmt.format(template_table))
 
     def get_outputs_key_from_ref(self, ref):
-        if ref[-3:] == 'arn':
+        if ref.last_part == 'arn':
           return 'FunctionArn'
-        if ref[-4:] == 'name':
+        if ref.last_part == 'name':
           return 'FunctionName'
 

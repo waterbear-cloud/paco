@@ -430,5 +430,5 @@ Resources:
     def get_codepipeline_role_arn(self):
         return "arn:aws:iam::{0}:role/".format(self.account_ctx.get_id()) + self.ResourceName + "-CodePipeline-Service"
 
-    def get_outputs_key_from_ref(self, aim_ref):
+    def get_outputs_key_from_ref(self, ref):
         return None

@@ -13,7 +13,7 @@ def describe_command(ctx, home='.'):
     if not ctx.home:
         print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')
         sys.exit()
-    project = aim.models.load_project_from_yaml(ctx.aim_ref, ctx.home)
+    project = aim.models.load_project_from_yaml(ctx.home)
 
     print('Project: {} - {}'.format(project.name, project.title))
     print('Location: {}'.format(ctx.home))

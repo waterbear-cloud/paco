@@ -117,10 +117,10 @@ Outputs:
         #self.aim_ctx.log("Validating ASG Template")
         super().validate()
 
-    def get_outputs_key_from_ref(self, aim_ref):
+    def get_outputs_key_from_ref(self, ref):
         # There is only one output key
-        if aim_ref[-4:] == '.arn':
+        if ref.last_part == 'arn':
             return 'EventRuleArn'
-        elif aim_ref[-3:] == '.id':
+        elif ref.last_part == 'id':
             return 'EventRuleId'
         return None

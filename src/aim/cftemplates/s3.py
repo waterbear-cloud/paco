@@ -174,13 +174,10 @@ Outputs:
         super().validate()
 
 
-    def get_outputs_key_from_ref(self, aim_ref):
-        ref_dict = self.aim_ctx.aim_ref.parse_ref(aim_ref)
-        ref_parts = ref_dict['ref_parts']
-        last_idx = len(ref_parts)-1
+    def get_outputs_key_from_ref(self, ref):
         output_key = None
-        if ref_parts[last_idx] == "name":
-            output_key = self.gen_cf_logical_name(ref_parts[last_idx-1], '_') + "BucketName"
+        if ref.last_part == "name":
+            output_key = self.gen_cf_logical_name(ref.parts[-2], '_') + "BucketName"
 
         return output_key
 

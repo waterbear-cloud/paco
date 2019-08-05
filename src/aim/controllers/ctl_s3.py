@@ -323,8 +323,3 @@ class S3Controller(Controller):
             for s3_context in self.contexts.values():
                 s3_context.delete()
 
-    def get_stack_from_ref(self, resource_ref, *args, **kwargs):
-        return self.contexts[resource_ref].get_stack_from_ref(*args, **kwargs)
-
-    def get_value_from_ref(self, resource_ref, *args, **kwargs):
-        return self.contexts[resource_ref].get_value_from_ref(*args, **kwargs)
