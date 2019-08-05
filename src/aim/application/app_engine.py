@@ -33,7 +33,7 @@ class ApplicationEngine():
         stack_group,
         ref_type,
         stack_tags=StackTags(),
-        subenv_ctx=None
+        env_ctx=None
     ):
         self.aim_ctx = aim_ctx
         self.config = config
@@ -43,7 +43,7 @@ class ApplicationEngine():
         self.aws_region = aws_region
         self.stack_group = stack_group
         self.ref_type = ref_type
-        self.subenv_ctx = subenv_ctx
+        self.env_ctx = env_ctx
         self.iam_contexts = []
         self.cpbd_codepipebuild_stack = None
         self.cpbd_codecommit_role_template = None
@@ -303,7 +303,7 @@ statement:
                 self.aim_ctx,
                 self.account_ctx,
                 self.aws_region,
-                self.subenv_ctx,
+                self.env_ctx,
                 self.app_id,
                 res_id,
                 aws_name,
@@ -334,7 +334,7 @@ statement:
             self.aim_ctx,
             self.account_ctx,
             self.aws_region,
-            self.subenv_ctx,
+            self.env_ctx,
             aws_name,
             self.app_id,
             res_id,
@@ -377,7 +377,7 @@ role_name: %s""" % ("ASGInstance")
             role_config = res_config.instance_iam_role
 
         # The ID to give this role is: group.resource.instance_iam_role
-        instance_iam_role_ref = self.subenv_ctx.gen_ref(
+        instance_iam_role_ref = self.env_ctx.gen_ref(
             app_id=self.app_id,
             grp_id=grp_id,
             res_id=res_id,
@@ -423,7 +423,7 @@ role_name: %s""" % ("ASGInstance")
             self.aim_ctx,
             self.account_ctx,
             self.aws_region,
-            self.subenv_ctx,
+            self.env_ctx,
             aws_name,
             self.app_id,
             grp_id,
@@ -460,7 +460,7 @@ role_name: %s""" % ("ASGInstance")
                 self.aim_ctx,
                 self.account_ctx,
                 self.aws_region,
-                self.subenv_id,
+                self.env_id,
                 aws_name,
                 self.app_id,
                 res_id,
@@ -495,25 +495,25 @@ role_name: %s""" % ("ASGInstance")
             s3_artifacts_bucket_name = s3_ctl.get_bucket_name(s3_artifacts_bucket_ref)
 
             # S3 Artifacts Bucket:  POST
-            codebuild_role_ref = self.subenv_ctx.gen_ref(
+            codebuild_role_ref = self.env_ctx.gen_ref(
                 app_id=self.app_id,
                 grp_id=grp_id,
                 res_id=res_id,
                 attribute='codebuild_role.arn'
             )
-            codepipeline_role_ref = self.subenv_ctx.gen_ref(
+            codepipeline_role_ref = self.env_ctx.gen_ref(
                 app_id=self.app_id,
                 grp_id=grp_id,
                 res_id=res_id,
                 attribute='codepipeline_role.arn'
             )
-            codedeploy_tools_delegate_role_ref = self.subenv_ctx.gen_ref(
+            codedeploy_tools_delegate_role_ref = self.env_ctx.gen_ref(
                 app_id=self.app_id,
                 grp_id=grp_id,
                 res_id=res_id,
                 attribute='codedeploy_tools_delegate_role.arn'
             )
-            codecommit_role_ref = self.subenv_ctx.gen_ref(
+            codecommit_role_ref = self.env_ctx.gen_ref(
                 app_id=self.app_id,
                 grp_id=grp_id,
                 res_id=res_id,
@@ -523,7 +523,7 @@ role_name: %s""" % ("ASGInstance")
             # ----------------
             # KMS Key
             #
-            aws_account_ref = self.subenv_ctx.gen_ref(attribute='network.aws_account')
+            aws_account_ref = self.env_ctx.gen_ref(attribute='network.aws_account')
             kms_config_dict = {
                 'admin_principal': {
                     'aws': [ "!Sub 'arn:aws:iam::${{AWS::AccountId}}:root'" ]
@@ -595,7 +595,7 @@ policies:
         resource:
           - "!Ref CMKArn"
 """
-            kms_ref = self.subenv_ctx.gen_ref(
+            kms_ref = self.env_ctx.gen_ref(
                 app_id=self.app_id,
                 grp_id=grp_id,
                 res_id=res_id,
@@ -615,7 +615,7 @@ policies:
 
             iam_ctl = self.aim_ctx.get_controller('IAM')
             # The ID to give this role is: group.resource.instance_iam_role
-            codecommit_iam_role_ref = self.subenv_ctx.gen_ref(app_id=self.app_id,
+            codecommit_iam_role_ref = self.env_ctx.gen_ref(app_id=self.app_id,
                                                               grp_id=grp_id,
                                                               res_id=res_id,
                                                               attribute='codecommit_role')
@@ -650,7 +650,7 @@ policies:
                 self.aim_ctx,
                 self.account_ctx,
                 self.aws_region,
-                self.subenv_ctx,
+                self.env_ctx,
                 aws_name,
                 self.app_id,
                 grp_id,
@@ -678,7 +678,7 @@ policies:
                 self.aim_ctx,
                 tools_account_ctx,
                 self.aws_region,
-                self.subenv_ctx,
+                self.env_ctx,
                 aws_name,
                 self.app_id,
                 grp_id,
@@ -700,7 +700,7 @@ policies:
             self.stack_group.add_stack_order(self.cpbd_codepipebuild_stack)
 
             # Add CodeBuild Role ARN to KMS Key principal now that the role is created
-            codebuild_arn_ref = self.subenv_ctx.gen_ref(
+            codebuild_arn_ref = self.env_ctx.gen_ref(
                 app_id=self.app_id,
                 grp_id=grp_id,
                 res_id=res_id,

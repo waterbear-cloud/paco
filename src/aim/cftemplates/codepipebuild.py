@@ -11,7 +11,7 @@ class CodePipeBuild(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
-                 subenv_ctx,
+                 env_ctx,
                  aws_name,
                  app_id,
                  grp_id,
@@ -20,7 +20,7 @@ class CodePipeBuild(CFTemplate):
                  artifacts_bucket_name,
                  codedeploy_tools_delegate_role_arn,
                  cpbd_config_ref):
-        self.subenv_ctx = subenv_ctx
+        self.env_ctx = env_ctx
         #aim_ctx.log("S3 CF Template init")
         super().__init__(aim_ctx,
                          account_ctx,
@@ -29,7 +29,7 @@ class CodePipeBuild(CFTemplate):
                          aws_name='-'.join(["CPBD-PipeBuild", aws_name]),
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])
 
-        self.ResourceName = aim_ctx.normalized_join([subenv_ctx.get_aws_name(), app_id, grp_id, res_id], '-', False)
+        self.ResourceName = aim_ctx.normalized_join([env_ctx.get_aws_name(), app_id, grp_id, res_id], '-', False)
 
         # Initialize Parameters
         self.set_parameter('ResourceNamePrefix', self.ResourceName)
@@ -38,25 +38,25 @@ class CodePipeBuild(CFTemplate):
         self.set_parameter('CodeCommitRepositoryName', res_config.codecommit_repository + ".name" ) # Add .name attribute to aim.ref resource
 
         # Code Commit Role ARN lookup
-        codecommit_role_arn_ref = self.subenv_ctx.gen_ref(app_id=app_id, grp_id=grp_id, res_id=res_id, attribute='codecommit_role.arn')
+        codecommit_role_arn_ref = self.env_ctx.gen_ref(app_id=app_id, grp_id=grp_id, res_id=res_id, attribute='codecommit_role.arn')
         codecommit_role_arn = self.aim_ctx.get_ref(codecommit_role_arn_ref)
         self.set_parameter('CodeCommitRoleArn', codecommit_role_arn)
-        codecommit_repo_arn_ref = self.subenv_ctx.gen_ref(app_id=app_id, grp_id=grp_id, res_id=res_id, attribute='codecommit.arn')
+        codecommit_repo_arn_ref = self.env_ctx.gen_ref(app_id=app_id, grp_id=grp_id, res_id=res_id, attribute='codecommit.arn')
         codecommit_repo_arn = self.aim_ctx.get_ref(codecommit_repo_arn_ref)
         self.set_parameter('CodeCommitRepositoryArn', codecommit_repo_arn)
 
-        app_name_ref = self.subenv_ctx.gen_ref(app_id=app_id,
+        app_name_ref = self.env_ctx.gen_ref(app_id=app_id,
                                                grp_id=grp_id,
                                                res_id=res_id,
                                                attribute='codedeploy_application_name')
         codedeploy_application_name = self.aim_ctx.get_ref(app_name_ref)
         self.set_parameter('CodeDeployApplicationName', codedeploy_application_name)
 
-        codedeploy_account_id_ref = self.subenv_ctx.gen_ref(attribute='network.aws_account')
+        codedeploy_account_id_ref = self.env_ctx.gen_ref(attribute='network.aws_account')
         codedeploy_account_id = self.aim_ctx.get_ref(codedeploy_account_id_ref)
         self.set_parameter('CodeDeployAccountId', codedeploy_account_id)
 
-        codedeploy_aws_region = self.subenv_ctx.region
+        codedeploy_aws_region = self.env_ctx.region
         self.set_parameter('CodeDeployRegion', codedeploy_aws_region)
         self.set_parameter('CodeDeployToolsDelegateRoleArn', codedeploy_tools_delegate_role_arn)
         self.set_parameter('ArtifactsBucketName', artifacts_bucket_name)
@@ -64,13 +64,13 @@ class CodePipeBuild(CFTemplate):
         self.set_parameter('DeploymentBranchName', res_config.deployment_branch_name)
         self.set_parameter('ManualApprovalEnabled', res_config.manual_approval_enabled)
         self.set_parameter('ManualApprovalNotificationEmail', res_config.manual_approval_notification_email)
-        codedeploy_ref = self.subenv_ctx.gen_ref( app_id=app_id,
+        codedeploy_ref = self.env_ctx.gen_ref( app_id=app_id,
                                                   grp_id=grp_id,
                                                   res_id=res_id,
                                                   attribute='deploy.deployment_group_name')
         self.set_parameter('CodeDeployGroupName', codedeploy_ref)
 
-        kms_ref = self.subenv_ctx.gen_ref(app_id=app_id,
+        kms_ref = self.env_ctx.gen_ref(app_id=app_id,
                                           grp_id=grp_id,
                                           res_id=res_id,
                                           attribute='kms')

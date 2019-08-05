@@ -11,7 +11,7 @@ class ELB(CFTemplate):
     def __init__(self, aim_ctx,
                  account_ctx,
                  aws_region,
-                 subenv_ctx,
+                 env_ctx,
                  app_id,
                  elb_id,
                  aws_name,
@@ -19,8 +19,8 @@ class ELB(CFTemplate):
                  elb_config_ref):
         #aim_ctx.log("ELB CF Template init")
 
-        self.subenv_ctx = subenv_ctx
-        segment_stack = self.subenv_ctx.get_segment_stack(alb_config['segment'])
+        self.env_ctx = env_ctx
+        segment_stack = self.env_ctx.get_segment_stack(alb_config['segment'])
 
         super().__init__(aim_ctx=aim_ctx,
                          account_ctx=account_ctx,
@@ -42,7 +42,7 @@ class ELB(CFTemplate):
         self.set_parameter('CustomDomainName', elb_config['dns']['domain_name'])
         self.set_parameter('HostedZoneId', elb_config['dns']['hosted_zone_id'])
 
-        elb_region = self.subenv_ctx.region
+        elb_region = self.env_ctx.region
         self.set_parameter('ELBHostedZoneId', self.lb_hosted_zone_id('elb', elb_region))
 
         # 32 Characters max
@@ -53,7 +53,7 @@ class ELB(CFTemplate):
         #   - Check for duplicates with validating template
         # TODO: Make a method for this
         #load_balancer_name = aim_ctx.project_ctx.name + "-" + aim_ctx.env_ctx.name + "-" + stack_group_ctx.application_name + "-" + elb_id
-        load_balancer_name = aim_ctx.normalized_join([self.subenv_ctx.netenv_id, self.subenv_ctx.subenv_id, app_id, elb_id],
+        load_balancer_name = aim_ctx.normalized_join([self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, elb_id],
                                                      '',
                                                      True)
         self.set_parameter('LoadBalancerName', load_balancer_name)
@@ -61,7 +61,7 @@ class ELB(CFTemplate):
         self.set_parameter('Scheme', elb_config['scheme'])
 
         # Segment SubnetList is a Segment stack Output based on availability zones
-        subnet_list_key = 'SubnetList' + str(self.subenv_ctx.availability_zones())
+        subnet_list_key = 'SubnetList' + str(self.env_ctx.availability_zones())
         self.set_parameter(StackOutputParam('SubnetList', segment_stack, subnet_list_key))
 
         # Security Group List

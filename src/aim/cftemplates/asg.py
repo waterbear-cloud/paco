@@ -13,7 +13,7 @@ class ASG(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
-                 subenv_ctx,
+                 env_ctx,
                  aws_name,
                  app_id,
                  grp_id,
@@ -25,9 +25,9 @@ class ASG(CFTemplate):
                  ec2_manager_cache_id ):
 
         #aim_ctx.log("ASG CF Template init")
-        self.subenv_ctx = subenv_ctx
+        self.env_ctx = env_ctx
         self.ec2_manager_cache_id = ec2_manager_cache_id
-        segment_stack = self.subenv_ctx.get_segment_stack(asg_config.segment)
+        segment_stack = self.env_ctx.get_segment_stack(asg_config.segment)
 
         # Super Init:
         aws_name='-'.join(["ASG", aws_name])
@@ -58,7 +58,7 @@ class ASG(CFTemplate):
             sg_output_param.add_stack_output(sg_stack, sg_output_key)
         self.set_parameter(sg_output_param)
 
-        asg_name = aim_ctx.normalized_join([self.subenv_ctx.netenv_id, self.subenv_ctx.subenv_id, app_id, grp_id, asg_id], '', True)
+        asg_name = aim_ctx.normalized_join([self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, grp_id, asg_id], '', True)
         self.set_parameter('ASGName', asg_name)
         self.set_parameter('ASGDesiredCapacity', asg_config.desired_capacity)
         self.set_parameter('ASGHealthCheckGracePeriodSecs', asg_config.health_check_grace_period_secs)
@@ -74,7 +74,7 @@ class ASG(CFTemplate):
         self.set_parameter('ASGUpdatePolicyMinInstancesInService', asg_config.update_policy_min_instances_in_service)
 
         # Segment SubnetList is a Segment stack Output based on availability zones
-        subnet_list_output_key = 'SubnetList' + str(self.subenv_ctx.availability_zones())
+        subnet_list_output_key = 'SubnetList' + str(self.env_ctx.availability_zones())
         self.set_parameter(StackOutputParam('ASGSubnetList', segment_stack, subnet_list_output_key))
 
         # Load Balancers: A list of aim.ref netenv.to ELBs

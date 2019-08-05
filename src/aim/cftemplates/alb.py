@@ -11,16 +11,16 @@ class ALB(CFTemplate):
     def __init__(self, aim_ctx,
                  account_ctx,
                  aws_region,
-                 subenv_ctx,
+                 env_ctx,
                  aws_name,
                  app_id,
                  alb_id,
                  alb_config,
                  alb_config_ref):
         #aim_ctx.log("ALB CF Template init")
-        self.subenv_ctx = subenv_ctx
+        self.env_ctx = env_ctx
         self.alb_config_ref = alb_config_ref
-        segment_stack = self.subenv_ctx.get_segment_stack(alb_config.segment)
+        segment_stack = self.env_ctx.get_segment_stack(alb_config.segment)
 
         super().__init__(aim_ctx=aim_ctx,
                          account_ctx=account_ctx,
@@ -31,12 +31,12 @@ class ALB(CFTemplate):
 
         # Initialize Parameters
         self.set_parameter('ALBEnabled', alb_config.enabled)
-        vpc_stack = self.subenv_ctx.get_vpc_stack()
+        vpc_stack = self.env_ctx.get_vpc_stack()
         self.set_parameter(StackOutputParam('VPC', vpc_stack, 'VPC'))
         self.set_parameter('CustomDomainName', getattr(alb_config.dns, 'domain_name', ''))
         self.set_parameter('HostedZoneId', getattr(alb_config.dns, 'hosted_zone_id', ''))
 
-        alb_region = subenv_ctx.region
+        alb_region = env_ctx.region
         self.set_parameter('ALBHostedZoneId', self.lb_hosted_zone_id('alb', alb_region))
 
         # 32 Characters max
@@ -47,7 +47,7 @@ class ALB(CFTemplate):
         #   - Check for duplicates with validating template
         # TODO: Make a method for this
         #load_balancer_name = aim_ctx.project_ctx.name + "-" + aim_ctx.env_ctx.name + "-" + stack_group_ctx.application_name + "-" + alb_id
-        load_balancer_name = aim_ctx.normalized_join([self.subenv_ctx.netenv_id, self.subenv_ctx.subenv_id, app_id, alb_id],
+        load_balancer_name = aim_ctx.normalized_join([self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, alb_id],
                                                      '',
                                                      True)
         self.set_parameter('LoadBalancerName', load_balancer_name)
@@ -55,7 +55,7 @@ class ALB(CFTemplate):
         self.set_parameter('Scheme', alb_config.scheme)
 
         # Segment SubnetList is a Segment stack Output based on availability zones
-        subnet_list_key = 'SubnetList' + str(self.subenv_ctx.availability_zones())
+        subnet_list_key = 'SubnetList' + str(self.env_ctx.availability_zones())
 
         self.set_parameter(StackOutputParam('SubnetList', segment_stack, subnet_list_key))
 

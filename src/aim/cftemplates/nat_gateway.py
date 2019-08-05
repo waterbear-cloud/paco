@@ -11,11 +11,11 @@ class NATGateway(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
-                 subenv_ctx,
+                 env_ctx,
                  nat_id,
                  config_ref):
         #aim_ctx.log("NATGateway CF Template init")
-        self.subenv_ctx = subenv_ctx
+        self.env_ctx = env_ctx
         aws_name = '-'.join(["NGW",nat_id])
 
         super().__init__(aim_ctx,
@@ -25,7 +25,7 @@ class NATGateway(CFTemplate):
                          aws_name=aws_name,
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])
 
-        self.set_parameter('NATGatewayEnabled', self.subenv_ctx.nat_gateway_enabled(nat_id))
+        self.set_parameter('NATGatewayEnabled', self.env_ctx.nat_gateway_enabled(nat_id))
 
         # Define the Template
         template_fmt = """
@@ -115,10 +115,10 @@ Outputs:
         resources_yaml = ""
         outputs_yaml = ""
 
-        nat_az = self.subenv_ctx.nat_gateway_az(nat_id)
-        num_vpc_azs = self.subenv_ctx.availability_zones()
-        nat_segment = self.subenv_ctx.nat_gateway_segment(nat_id)
-        segment_ref = self.subenv_ctx.gen_ref(segment_id=nat_segment)
+        nat_az = self.env_ctx.nat_gateway_az(nat_id)
+        num_vpc_azs = self.env_ctx.availability_zones()
+        nat_segment = self.env_ctx.nat_gateway_segment(nat_id)
+        segment_ref = self.env_ctx.gen_ref(segment_id=nat_segment)
         if nat_az == 'all':
             cur_az = 1
         else:
@@ -145,9 +145,9 @@ Outputs:
                 if nat_az == 'all':
                     gateway_id = az_id
                 # Default Routes
-                dgw_segments = self.subenv_ctx.nat_gateway_default_route_segments(nat_id)
+                dgw_segments = self.env_ctx.nat_gateway_default_route_segments(nat_id)
                 for segment_id in dgw_segments:
-                    segment_ref = self.subenv_ctx.gen_ref(segment_id=segment_id)
+                    segment_ref = self.env_ctx.gen_ref(segment_id=segment_id)
                     default_route_table['segment'] = segment_id
                     default_route_table['az_id'] = az_id
                     default_route_table['gateway_id'] = gateway_id

@@ -13,14 +13,14 @@ class SecurityGroups(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
-                 subenv_ctx,
+                 env_ctx,
                  security_groups_config,
                  sg_group_id,
                  sg_group_config_ref):
 
         #aim_ctx.log("SecurityGroup CF Template init")
 
-        self.subenv_ctx = subenv_ctx
+        self.env_ctx = env_ctx
 
         super().__init__(aim_ctx,
                          account_ctx,
@@ -28,7 +28,7 @@ class SecurityGroups(CFTemplate):
                          config_ref=sg_group_config_ref,
                          aws_name='-'.join(["SecurityGroups", sg_group_id]))
 
-        vpc_stack = self.subenv_ctx.get_vpc_stack()
+        vpc_stack = self.env_ctx.get_vpc_stack()
         # Initialize Parameters
         self.set_parameter(StackOutputParam('VPC', vpc_stack, 'VPC'))
 
@@ -83,8 +83,8 @@ Resources:
             sg_table['cf_sg_name'] = sg_name
             # Controller Name, Network Environment Name
             #sg_table['group_name'] = aim_ctx.config_controller.aws_name() + "-" + self.stack_group_ctx.aws_name + "-" + sg_name
-            group_name = aim_ctx.normalized_join([self.subenv_ctx.netenv_id,
-                                                  self.subenv_ctx.subenv_id,
+            group_name = aim_ctx.normalized_join([self.env_ctx.netenv_id,
+                                                  self.env_ctx.env_id,
                                                   sg_group_id,
                                                   sg_name],
                                                      '',

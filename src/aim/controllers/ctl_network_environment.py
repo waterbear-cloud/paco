@@ -13,32 +13,32 @@ yaml=YAML(typ="safe", pure=True)
 yaml.default_flow_sytle = False
 
 
-class SubNetEnvContext():
-    def __init__(self, aim_ctx, netenv_ctl, netenv_id, subenv_id, region, config):
+class EnvironmentContext():
+    def __init__(self, aim_ctx, netenv_ctl, netenv_id, env_id, region, config):
         self.aim_ctx = aim_ctx
         self.netenv_ctl = netenv_ctl
         self.netenv_id = netenv_id
-        self.subenv_id = subenv_id
+        self.env_id = env_id
         self.region = region
         self.config = config
         self.network_stack_grp = None
         self.application_stack_grps = {}
         self.iam_stack_grps = {}
         self.stack_grps = []
-        subenv_account_ref = self.config.network.aws_account
-        self.account_ctx = aim_ctx.get_account_context(account_ref=subenv_account_ref)
+        env_account_ref = self.config.network.aws_account
+        self.account_ctx = aim_ctx.get_account_context(account_ref=env_account_ref)
         self.config_ref_prefix = '.'.join(
             [   self.netenv_ctl.config_ref_prefix,
                 self.netenv_id,
-                self.subenv_id,
+                self.env_id,
                 self.region
             ])
 
         # Network Stack Group
-        self.aim_ctx.log("Environment: %s" % (self.subenv_id))
+        self.aim_ctx.log("Environment: %s" % (self.env_id))
         self.init_done = False
         self.resource_yaml_filename = "{}-{}-{}.yaml".format(self.netenv_id,
-                                                             self.subenv_id,
+                                                             self.env_id,
                                                              self.region)
         self.resource_yaml_path = os.path.join(self.aim_ctx.project_folder,
                                                'Outputs',
@@ -46,7 +46,7 @@ class SubNetEnvContext():
         self.resource_yaml = os.path.join(self.resource_yaml_path, self.resource_yaml_filename)
         self.stack_tags = StackTags()
         self.stack_tags.add_tag('aim.netenv.name', self.netenv_id)
-        self.stack_tags.add_tag('aim.env.name', self.subenv_id)
+        self.stack_tags.add_tag('aim.env.name', self.env_id)
 
     def init(self):
         if self.init_done:
@@ -91,7 +91,7 @@ class SubNetEnvContext():
 
     def get_aws_name(self):
         aws_name = '-'.join([self.netenv_ctl.get_aws_name(),
-                             self.subenv_id])
+                             self.env_id])
         return aws_name
 
     def get_segment_stack(self, segment_id):
@@ -178,7 +178,7 @@ class SubNetEnvContext():
         # Save merged_config to yaml file
         pathlib.Path(self.resource_yaml_path).mkdir(parents=True, exist_ok=True)
         with open(self.resource_yaml, "w") as output_fd:
-            yaml.dump(data=merged_config['netenv'][self.netenv_id][self.subenv_id][self.region],
+            yaml.dump(data=merged_config['netenv'][self.netenv_id][self.env_id][self.region],
                       stream=output_fd)
 
     def validate(self):
@@ -221,7 +221,7 @@ class SubNetEnvContext():
                 segment_id=None,
                 attribute=None,
                 seperator='.'):
-        netenv_ref = 'aim.ref netenv.{0}.{1}.{2}'.format(self.netenv_id, self.subenv_id, self.region)
+        netenv_ref = 'aim.ref netenv.{0}.{1}.{2}'.format(self.netenv_id, self.env_id, self.region)
         if app_id != None:
             netenv_ref = seperator.join([netenv_ref, 'applications', app_id])
         if iam_id != None:
@@ -251,20 +251,20 @@ class NetEnvController(Controller):
         self.config = None
         self.config_ref_prefix = "netenv"
 
-    def init_sub_env(self, subenv_id, region):
-        if subenv_id in self.sub_envs.keys():
-            if region in self.sub_envs[subenv_id]:
-                return self.sub_envs[subenv_id][region]
+    def init_sub_env(self, env_id, region):
+        if env_id in self.sub_envs.keys():
+            if region in self.sub_envs[env_id]:
+                return self.sub_envs[env_id][region]
 
-        subenv_config = self.config[subenv_id][region]
-        subenv_ctx = SubNetEnvContext(self.aim_ctx, self, self.netenv_id, subenv_id, region, subenv_config)
-        self.sub_envs[subenv_id] = { region: subenv_ctx }
-        subenv_ctx.init()
+        env_config = self.config[env_id][region]
+        env_ctx = EnvironmentContext(self.aim_ctx, self, self.netenv_id, env_id, region, env_config)
+        self.sub_envs[env_id] = { region: env_ctx }
+        env_ctx.init()
 
     def init_all_sub_envs(self):
-        for subenv_id in self.config.keys():
-            for region in self.config[subenv_id].env_regions:
-                self.init_sub_env(subenv_id, region)
+        for env_id in self.config.keys():
+            for region in self.config[env_id].env_regions:
+                self.init_sub_env(env_id, region)
 
     def init(self, controller_args):
         if self.init_done == True or controller_args == None:
@@ -272,44 +272,44 @@ class NetEnvController(Controller):
         self.init_done = True
 
         self.netenv_id = controller_args['arg_1']
-        subenv_id = controller_args['arg_2']
+        env_id = controller_args['arg_2']
         region = controller_args['arg_3']
 
         self.config = self.aim_ctx.project['ne'][self.netenv_id]
 
         print("NetEnv: {}: Init: Starting".format(self.netenv_id))
-        if subenv_id != None:
+        if env_id != None:
             if region == None:
                 raise StackException(
                     AimErrorCode.Unknown,
-                    message="Missing region argument: aim <command> netenv %s %s <region>" % (self.netenv_id, subenv_id)
+                    message="Missing region argument: aim <command> netenv %s %s <region>" % (self.netenv_id, env_id)
                 )
-            self.init_sub_env(subenv_id, region)
+            self.init_sub_env(env_id, region)
         else:
             self.init_all_sub_envs()
         print("NetEnv: {}: Init: Complete".format(self.netenv_id))
 
     def validate(self):
-        for subenv_id in self.sub_envs.keys():
-            for region in self.sub_envs[subenv_id].keys():
-                print("Validating Environment: %s.%s" % (subenv_id, region))
-                self.sub_envs[subenv_id][region].validate()
+        for env_id in self.sub_envs.keys():
+            for region in self.sub_envs[env_id].keys():
+                print("Validating Environment: %s.%s" % (env_id, region))
+                self.sub_envs[env_id][region].validate()
 
     def provision(self):
-        for subenv_id in self.sub_envs.keys():
-            for region in self.sub_envs[subenv_id].keys():
-                env_region = self.aim_ctx.project['ne'][self.netenv_id][subenv_id][region]
+        for env_id in self.sub_envs.keys():
+            for region in self.sub_envs[env_id].keys():
+                env_region = self.aim_ctx.project['ne'][self.netenv_id][env_id][region]
                 if env_region.is_enabled():
-                    self.sub_envs[subenv_id][region].provision()
+                    self.sub_envs[env_id][region].provision()
 
     def backup(self, config_arg):
-        subenv_ctx = self.sub_envs[config_arg['subenv_id']][config_arg['region']]
-        subenv_ctx.backup(config_arg['resource'])
+        env_ctx = self.sub_envs[config_arg['env_id']][config_arg['region']]
+        env_ctx.backup(config_arg['resource'])
 
     def delete(self):
-        for subenv_id in self.sub_envs.keys():
-            for region in self.sub_envs[subenv_id].keys():
-                self.sub_envs[subenv_id][region].delete()
+        for env_id in self.sub_envs.keys():
+            for region in self.sub_envs[env_id].keys():
+                self.sub_envs[env_id][region].delete()
 
     def get_aws_name(self):
         return '-'.join([super().get_aws_name(), self.netenv_id])

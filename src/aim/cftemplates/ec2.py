@@ -12,7 +12,7 @@ class EC2(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
-                 subenv_id,
+                 env_id,
                  aws_name,
                  app_id,
                  ec2_id,
@@ -28,7 +28,7 @@ class EC2(CFTemplate):
                          aws_name=aws_name)
 
         # Initialize Parameters
-        instance_name = aim_ctx.normalized_join([self.subenv_ctx.netenv_id, subenv_id, app_id, ec2_id],
+        instance_name = aim_ctx.normalized_join([self.env_ctx.netenv_id, env_id, app_id, ec2_id],
                                                      '',
                                                      True)
         self.set_parameter('InstanceName', instance_name)
@@ -39,7 +39,7 @@ class EC2(CFTemplate):
         #self.set_parameter('SubnetId', ec2_config['?'])
 
         # Segment SubnetList is a Segment stack Output based on availability zones
-        segment_stack = self.subenv_ctx.get_segment_stack(ec2_config.segment)
+        segment_stack = self.env_ctx.get_segment_stack(ec2_config.segment)
         subnet_list_output_key = 'SubnetList1'
         self.set_parameter(StackOutputParam('SubnetId', segment_stack, subnet_list_output_key))
 
