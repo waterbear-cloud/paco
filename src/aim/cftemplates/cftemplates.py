@@ -137,7 +137,6 @@ class Parameter():
         else:
             print("Error: Parameter: Type Error")
             print(type(value))
-            breakpoint()
             raise AimErrorException(AimErrorCode.Unknown)
 
         self.value = normalized_value

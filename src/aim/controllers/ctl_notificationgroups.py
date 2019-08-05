@@ -47,7 +47,6 @@ class NotificationGroupsStackGroup(StackGroup):
             sns_topics_config,
             self.resource_ref
         )
-
         ng_sns_stack = Stack(
             self.aim_ctx,
             self.account_ctx,

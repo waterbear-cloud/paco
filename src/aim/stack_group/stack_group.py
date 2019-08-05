@@ -270,7 +270,6 @@ class Stack():
                 self.outputs_value_cache[key] = output['OutputValue']
                 return self.outputs_value_cache[key]
 
-        breakpoint()
         raise StackException(
             AimErrorCode.Unknown,
             message="Could not find Stack Output {} in stack_metadata:\n\n{}".format(key, stack_metadata)
