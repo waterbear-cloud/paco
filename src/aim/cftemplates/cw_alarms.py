@@ -85,7 +85,7 @@ Description: 'CloudWatch Alarms'
 Parameters:
 
   AlarmResource:
-    Description: "The resource name or id to assign the alarm dimenions"
+    Description: "The resource name or id to assign the alarm dimensions"
     Type: String
 
 Resources:
@@ -171,24 +171,40 @@ Outputs:
                 notification_arns = [
                     self.aim_ctx.project['notificationgroups'][group].resource_name for group in alarm.notification_groups
                 ]
-                description = {
-                    "netenv_name": netenv.name,
-                    "netenv_title": netenv.title,
-                    "env_name": env.name,
-                    "env_title": env.title,
-                    "envreg_name": envreg.name,
-                    "envreg_title": envreg.title,
-                    "app_name": app.name,
-                    "app_title": app.title,
-                    "resource_group_name": group.name,
-                    "resource_group_title": group.title,
-                    "resource_name": resource.name,
-                    "resource_title": resource.title,
-                    "alarm_name": alarm.name,
-                    "classification": alarm.classification,
-                    "severity": alarm.severity,
-                    "topic_arns": notification_arns
-                }
+                if netenv == None:
+                    # service applications do not live in a NetEnv, they have a shorter description
+                    description = {
+                        "app_name": app.name,
+                        "app_title": app.title,
+                        "resource_group_name": group.name,
+                        "resource_group_title": group.title,
+                        "resource_name": resource.name,
+                        "resource_title": resource.title,
+                        "alarm_name": alarm.name,
+                        "classification": alarm.classification,
+                        "severity": alarm.severity,
+                        "topic_arns": notification_arns
+                    }
+                else:
+                    # full, normal netenv description
+                    description = {
+                        "netenv_name": netenv.name,
+                        "netenv_title": netenv.title,
+                        "env_name": env.name,
+                        "env_title": env.title,
+                        "envreg_name": envreg.name,
+                        "envreg_title": envreg.title,
+                        "app_name": app.name,
+                        "app_title": app.title,
+                        "resource_group_name": group.name,
+                        "resource_group_title": group.title,
+                        "resource_name": resource.name,
+                        "resource_title": resource.title,
+                        "alarm_name": alarm.name,
+                        "classification": alarm.classification,
+                        "severity": alarm.severity,
+                        "topic_arns": notification_arns
+                    }
                 normalized_set_id = self.normalize_resource_name(alarm_set_id)
                 normalized_id = self.normalize_resource_name(alarm_id)
                 alarm_actions = get_alarm_actions(self.aim_ctx.project['notificationgroups'], alarm)
