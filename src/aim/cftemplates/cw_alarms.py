@@ -29,7 +29,6 @@ def get_alarm_actions(notificationgroups, alarm):
 
     for plugin_name, plugin_module in service_plugins.items():
         if hasattr(plugin_module, 'override_alarm_actions'):
-            print('Loading Alarm Actions from service {}'.format(plugin_name))
             return plugin_module.override_alarm_actions(None, alarm)
 
     # default behaviour is to use notification groups directly

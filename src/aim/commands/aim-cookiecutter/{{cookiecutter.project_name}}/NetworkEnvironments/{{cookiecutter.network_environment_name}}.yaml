@@ -42,7 +42,7 @@ network:
             - from_port: 80
               name: HTTP
               protocol: tcp
-              source_security_group_id: aim.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.alb.id
+              source_security_group: aim.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.alb
               to_port: 80
     segments:
       public:
@@ -85,7 +85,7 @@ applications:
                 target_group: {{cookiecutter.application_name}}
             scheme: internet-facing
             security_groups:
-              - aim.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.alb.id
+              - aim.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.alb
             segment: public
           web:
             type: ASG
@@ -106,9 +106,9 @@ applications:
             min_instances: 1
             desired_capacity: 1
             target_groups:
-              - aim.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.alb.target_groups.{{cookiecutter.application_name}}.arn
+              - aim.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.alb.target_groups.{{cookiecutter.application_name}}
             security_groups:
-              - aim.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.web.id
+              - aim.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.web
             segment: web
             termination_policies:
               - Default

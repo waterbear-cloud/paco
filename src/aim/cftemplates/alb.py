@@ -35,9 +35,6 @@ class ALB(CFTemplate):
         self.set_parameter('ALBEnabled', alb_config.enabled)
         vpc_stack = self.env_ctx.get_vpc_stack()
         self.set_parameter(StackOutputParam('VPC', vpc_stack, 'VPC'))
-        self.set_parameter('CustomDomainName', getattr(alb_config.dns, 'domain_name', ''))
-        self.set_parameter('HostedZoneId', getattr(alb_config.dns, 'hosted_zone_id', ''))
-
         alb_region = env_ctx.region
         self.set_parameter('ALBHostedZoneId', self.lb_hosted_zone_id('alb', alb_region))
 
@@ -66,6 +63,7 @@ class ALB(CFTemplate):
         for sg_ref in alb_config.security_groups:
             # TODO: Better name for self.get_stack_outputs_key_from_ref?
             # print("ALB: SG_REF: " + sg_ref)
+            sg_ref += '.id'
             sg_output_key = self.get_stack_outputs_key_from_ref(Reference(sg_ref))
             sg_stack = self.aim_ctx.get_ref(sg_ref)
             sg_output_param.add_stack_output(sg_stack, sg_output_key)
@@ -107,15 +105,6 @@ Parameters:
     Description: A List of security groups to attach to the ALB
     Type: List<AWS::EC2::SecurityGroup::Id>
 
-  CustomDomainName:
-    Description: Custom DNS name to assign to the ALB
-    Type: String
-    Default: ""
-
-  HostedZoneId:
-    Description: The Route53 Hosted Zone ID where the Custom Domain will be added
-    Type: String
-
   ALBHostedZoneId:
     Description: The Regonal AWS Route53 Hosted Zone ID
     Type: String
@@ -125,7 +114,6 @@ Parameters:
 {0[SSLCertificateParameters]:s}
 
 Conditions:
-  CustomDomainIsEnabled: !Not [!Equals [!Ref CustomDomainName, ""] ]
   ALBIsEnabled: !Equals [!Ref ALBEnabled, "true"]
 
 Resources:
@@ -384,7 +372,7 @@ Outputs:
                     listener_table['ssl_listener_cert_list'] += ssl_certificate_list_fmt.format(ssl_certificate_table)
                     #print(listener_yaml)
                     ssl_cert_param_yaml += ssl_cert_param_fmt.format(ssl_certificate_table)
-                    self.set_parameter('SSLCertificateIdL%sC%d' % (listener_name, ssl_cert_idx),listener.ssl_certificates[ssl_cert_idx])
+                    self.set_parameter('SSLCertificateIdL%sC%d' % (listener_name, ssl_cert_idx),listener.ssl_certificates[ssl_cert_idx]+".arn")
                 listener_table['listener_certificate'] = listener_certificate_fmt.format(listener_table)
             # Listener
             listener_yaml += listener_fmt.format(listener_table)
@@ -444,9 +432,9 @@ Outputs:
         record_sets_param_yaml = ""
         record_set_table['idx'] = 0
         for alb_dns in alb_config.dns:
-            record_set_table['hosted_zone_id'] = alb_dns.hosted_zone_id
+            record_set_table['hosted_zone_id'] = alb_dns.hosted_zone+'.id'
             record_set_table['domain_name'] = alb_dns.domain_name
-            self.set_parameter('HostedZoneID%d' % (record_set_table['idx']), alb_dns.hosted_zone_id)
+            self.set_parameter('HostedZoneID%d' % (record_set_table['idx']), alb_dns.hosted_zone+'.id')
             record_sets_yaml += record_set_fmt.format(record_set_table)
             record_sets_param_yaml += record_set_param_fmt.format(record_set_table)
             record_set_table['idx'] += 1

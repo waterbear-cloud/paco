@@ -54,6 +54,7 @@ class ASG(CFTemplate):
         sg_output_param = StackOutputParam('LCSecurityGroupList')
         for sg_ref in asg_config.security_groups:
             # TODO: Better name for self.get_stack_outputs_key_from_ref?
+            sg_ref += '.id'
             sg_output_key = self.get_stack_outputs_key_from_ref(Reference(sg_ref))
             sg_stack = self.aim_ctx.get_ref(sg_ref)
             sg_output_param.add_stack_output(sg_stack, sg_output_key)
@@ -90,9 +91,10 @@ class ASG(CFTemplate):
         # Target Group Arns
         if asg_config.target_groups != None and len(asg_config.target_groups) > 0:
             lb_param = StackOutputParam('TargetGroupArns')
-            for target_group_arn in asg_config.target_groups:
-                alb_stack = self.aim_ctx.get_ref(target_group_arn)
-                alb_output_key = self.get_stack_outputs_key_from_ref(Reference(target_group_arn))
+            for target_group_ref in asg_config.target_groups:
+                target_group_ref += '.arn'
+                alb_stack = self.aim_ctx.get_ref(target_group_ref)
+                alb_output_key = self.get_stack_outputs_key_from_ref(Reference(target_group_ref))
                 lb_param.add_stack_output(alb_stack, alb_output_key)
             self.set_parameter(lb_param)
 

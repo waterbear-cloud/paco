@@ -734,11 +734,7 @@ policies:
             self.stack_group.add_stack_order(kms_stack_post)
 
             # Get the ASG Instance Role ARN
-            if res_config.asg_name[-5:] != '.name':
-                print("Invalid ASG Name reference: %s" % (res_config.asg_name))
-                raise StackException(AimErrorCode.Unknown)
-
-            asg_instance_role_ref = res_config.asg_name[:-5]+'.instance_iam_role.arn'
+            asg_instance_role_ref = res_config.asg+'.instance_iam_role.arn'
             cpbd_s3_bucket_policy = {
                 'aws': [
                     "aim.sub '${{{0}}}'".format(codebuild_role_ref),

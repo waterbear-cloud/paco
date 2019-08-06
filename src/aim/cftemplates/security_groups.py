@@ -121,10 +121,10 @@ Resources:
                     # SourceSecurtiyGroupId or CidrIp are required
                     if sg_rule_config.cidr_ip != '':
                         sg_rule_table['source'] = '\n      CidrIp: ' + sg_rule_config.cidr_ip
-                    elif sg_rule_config.source_security_group_id != '':
+                    elif sg_rule_config.source_security_group != '':
                         # XXX: TODO: This only handles references to security groups within the
                         #            template currently being generated.
-                        local_ref = self.get_local_sg_ref(sg_rule_config.source_security_group_id)
+                        local_ref = self.get_local_sg_ref(sg_rule_config.source_security_group+'.id')
                         sg_rule_table['source'] = '\n      SourceSecurityGroupId: !Ref ' + local_ref
                     else:
                         raise StackException(AimErrorCode.Unknown)

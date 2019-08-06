@@ -52,13 +52,9 @@ class StackOutputParam():
     def gen_parameter_value(self):
         param_value = ""
         comma = ''
-        #print("cftemplates: StackOutputParam: gen_parameter_value: ")
-        #pprint(repr(self.entry_list))
         for entry in self.entry_list:
             for output_key in entry['output_keys']:
-                #print(entry['stack'].template.aws_name + ": gen_parameter: output_key: " + output_key)
                 output_value = entry['stack'].get_outputs_value(output_key)
-                #print("Value: " + output_value)
                 param_value += comma + output_value
                 comma = ','
 

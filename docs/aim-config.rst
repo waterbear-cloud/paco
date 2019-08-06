@@ -204,7 +204,7 @@ aim.ref netenv
 
 To refer to a value in a NetworkEnvironment use an ``aim.ref netenv`` reference. For example:
 
-``aim.ref netenv.my-aim-example.network.vpc.security_groups.app.lb.id``
+``aim.ref netenv.my-aim-example.network.vpc.security_groups.app.lb``
 
 After ``aim.ref netenv`` should be a part which matches the filename of a file (without the .yaml or .yml extension)
 in the NetworkEnvironments directory.
@@ -231,7 +231,7 @@ An example where a ``aim.ref netenv`` refers to the id of a SecurityGroup:
                             - from_port: 80
                             name: HTTP
                             protocol: tcp
-                            source_security_group_id: aim.ref netenv.my-aim-example.network.vpc.security_groups.app.lb.id
+                            source_security_group: aim.ref netenv.my-aim-example.network.vpc.security_groups.app.lb
 
 You can refer to an S3 Bucket and it will return the ARN of the bucket:
 
@@ -268,7 +268,7 @@ and configured with the ACM cert:
                             - port: 443
                                 protocol: HTTPS
                                 ssl_certificates:
-                                - aim.ref netenv.my-aim-example.applications.app.groups.site.resources.cert.arn
+                                - aim.ref netenv.my-aim-example.applications.app.groups.site.resources.cert
 
 
 aim.ref resource
@@ -276,13 +276,13 @@ aim.ref resource
 
 To refer to a global resource created in the Resources directory, use an ``aim.ref resource``. For example:
 
-``aim.ref resource.route53.example.id``
+``aim.ref resource.route53.example``
 
 After the ``aim.ref resource`` the next part should matche the filename of a file
 (without the .yaml or .yml extension)  in the Resources directory.
 Subsequent parts will walk down the YAML in that file.
 
-In the example below, the ``hosted_zone_id`` of a Route53 record is looked up.
+In the example below, the ``hosted_zone`` of a Route53 record is looked up.
 
 .. code-block:: yaml
 
@@ -294,7 +294,7 @@ In the example below, the ``hosted_zone_id`` of a Route53 record is looked up.
                 site:
                     alb:
                         dns:
-                        - hosted_zone_id: aim.ref resource.route53.example.id
+                        - hosted_zone: aim.ref resource.route53.example
 
     # Resources/Route53.yaml
 
@@ -580,7 +580,7 @@ Networks have the following hierarchy:
                                 - from_port: 80
                                   name: HTTP
                                   protocol: tcp
-                                  source_security_group_id: aim.ref netenv.my-aim-example.network.vpc.security_groups.app.lb.id
+                                  source_security_group: aim.ref netenv.my-aim-example.network.vpc.security_groups.app.lb
                                   to_port: 80
 
 
@@ -979,7 +979,7 @@ EgressRule
       - None
       - The IP protocol name (tcp, udp, icmp, icmpv6) or number.
       - IP Protocol
-    * - source_security_group_id
+    * - source_security_group
       - TextReference
       - .. fa:: times
       - None
@@ -1046,7 +1046,7 @@ IngressRule
       - None
       - The IP protocol name (tcp, udp, icmp, icmpv6) or number.
       - IP Protocol
-    * - source_security_group_id
+    * - source_security_group
       - TextReference
       - .. fa:: times
       - None
