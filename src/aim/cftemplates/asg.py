@@ -3,6 +3,7 @@ from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
 from aim.models.references import Reference
+from aim.utils import normalized_join
 from io import StringIO
 from enum import Enum
 import base64
@@ -58,7 +59,7 @@ class ASG(CFTemplate):
             sg_output_param.add_stack_output(sg_stack, sg_output_key)
         self.set_parameter(sg_output_param)
 
-        asg_name = aim_ctx.normalized_join([self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, grp_id, asg_id], '', True)
+        asg_name = normalized_join([self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, grp_id, asg_id], '', True)
         self.set_parameter('ASGName', asg_name)
         self.set_parameter('ASGDesiredCapacity', asg_config.desired_capacity)
         self.set_parameter('ASGHealthCheckGracePeriodSecs', asg_config.health_check_grace_period_secs)

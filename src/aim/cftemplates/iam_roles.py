@@ -1,11 +1,12 @@
 import os
+import sys
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
-from io import StringIO
+from aim.utils import md5sum, normalize_name
 from enum import Enum
-import sys
-from aim.utils import md5sum
+from io import StringIO
+
 
 class IAMRoles(CFTemplate):
     def __init__(self,
@@ -175,11 +176,11 @@ Outputs:
     def gen_iam_role_name(self, role_type, role_id):
         iam_context_hash = md5sum(str_data=self.role_ref)[:8].upper()
         role_name = '-'.join([iam_context_hash, role_type[0], role_id])
-        role_name = self.aim_ctx.normalize_name(role_name, '-', False)
+        role_name = normalize_name(role_name, '-', False)
         return role_name
 
     def get_cf_resource_name_prefix(self, resource_name):
-        norm_res_name = self.aim_ctx.normalize_name(resource_name, '', True)
+        norm_res_name = normalize_name(resource_name, '', True)
         return norm_res_name.replace('-', '')
 
     def gen_role_policies(self, policies):

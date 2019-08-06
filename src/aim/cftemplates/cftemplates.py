@@ -7,11 +7,13 @@ from enum import Enum
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.stack_group import Stack
-from aim.utils import md5sum
 from aim.models import references
 from aim.models.references import Reference
+from aim.utils import dict_of_dicts_merge
+from aim.utils import md5sum
 from botocore.exceptions import ClientError
 from pprint import pprint
+
 
 # StackOutputParam
 #    Holds a list of dicts describing a stack and the outputs that are required
@@ -397,7 +399,7 @@ class CFTemplate():
         merged_config = {}
         for output_config in self.stack_output_config_list:
             config_dict = output_config.get_config_dict(stack)
-            merged_config = self.aim_ctx.dict_of_dicts_merge(merged_config, config_dict)
+            merged_config = dict_of_dicts_merge(merged_config, config_dict)
 
         return merged_config
 

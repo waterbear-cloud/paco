@@ -2,7 +2,7 @@ import os
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
-from aim.utils import md5sum
+from aim.utils import md5sum, normalize_name
 from io import StringIO
 from enum import Enum
 import sys
@@ -144,11 +144,11 @@ Outputs:
     def gen_policy_name(self, policy_id):
         policy_context_hash = md5sum(str_data=self.policy_context['ref'])[:8].upper()
         policy_name = '-'.join([policy_context_hash, policy_id])
-        policy_name = self.aim_ctx.normalize_name(policy_name, '-', False)
+        policy_name = normalize_name(policy_name, '-', False)
         return policy_name
 
     def get_cf_resource_name_prefix(self, resource_name):
-        norm_res_name = self.aim_ctx.normalize_name(resource_name, '', True)
+        norm_res_name = normalize_name(resource_name, '', True)
         return norm_res_name.replace('-', '')
 
     # TODO: This shares the same code in iam_roles.py. This should

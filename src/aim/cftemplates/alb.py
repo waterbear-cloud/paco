@@ -3,9 +3,11 @@ from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
 from aim.models.references import Reference
+from aim.utils import normalized_join
 from io import StringIO
 from enum import Enum
 from pprint import pprint
+
 
 class ALB(CFTemplate):
     def __init__(self, aim_ctx,
@@ -47,7 +49,7 @@ class ALB(CFTemplate):
         #   - Check for duplicates with validating template
         # TODO: Make a method for this
         #load_balancer_name = aim_ctx.project_ctx.name + "-" + aim_ctx.env_ctx.name + "-" + stack_group_ctx.application_name + "-" + alb_id
-        load_balancer_name = aim_ctx.normalized_join([self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, alb_id],
+        load_balancer_name = normalized_join([self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, alb_id],
                                                      '',
                                                      True)
         self.set_parameter('LoadBalancerName', load_balancer_name)

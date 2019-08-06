@@ -1,13 +1,15 @@
 import click
 import os
 import pathlib
+from aim.controllers.controllers import Controller
+from aim.core.exception import StackException
+from aim.core.exception import AimErrorCode
+from aim.core.yaml import YAML
 from aim.stack_group import NetworkStackGroup
 from aim.stack_group import ApplicationStackGroup, StackTags
 from aim.stack_group import IAMStackGroup
-from aim.core.exception import StackException
-from aim.core.exception import AimErrorCode
-from aim.controllers.controllers import Controller
-from aim.core.yaml import YAML
+from aim.utils import dict_of_dicts_merge
+
 
 yaml=YAML(typ="safe", pure=True)
 yaml.default_flow_sytle = False
@@ -172,7 +174,7 @@ class EnvironmentContext():
         for stack_grp in self.stack_grps:
             for stack in stack_grp.stacks:
                 config_dict = stack.get_stack_output_config()
-                merged_config = self.aim_ctx.dict_of_dicts_merge(merged_config, config_dict)
+                merged_config = dict_of_dicts_merge(merged_config, config_dict)
 
 
         # Save merged_config to yaml file

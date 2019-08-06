@@ -7,7 +7,7 @@ from aim.core.exception import AimException, AimErrorCode
 from botocore.exceptions import ClientError
 from enum import Enum
 from aim.core.yaml import YAML
-from aim.utils import md5sum
+from aim.utils import md5sum, str_spc
 from copy import deepcopy
 
 yaml=YAML(typ="safe", pure=True)
@@ -98,8 +98,8 @@ class StackHooks():
 
     def run(self, stack_action, stack_timing, stack):
         for hook in self.hooks[stack_action][stack_timing]:
-            action_name = self.aim_ctx.str_spc("Hook:", stack.max_action_name_size)
-            account_name = self.aim_ctx.str_spc(stack.account_ctx.get_name()+":", stack.max_account_name_size)
+            action_name = str_spc("Hook:", stack.max_action_name_size)
+            account_name = str_spc(stack.account_ctx.get_name()+":", stack.max_account_name_size)
             print("{0} {1} {2}: {3}.{4}: {5}".format(account_name, action_name, stack.get_name(), stack_action, stack_timing, hook['name'] ))
 
             hook['method'](hook, hook['arg'])
@@ -349,8 +349,8 @@ class Stack():
     def create_stack(self):
         # Create Stack
         self.action = "create"
-        account_name = self.aim_ctx.str_spc(self.account_ctx.get_name()+":", self.max_account_name_size)
-        action_name = self.aim_ctx.str_spc("Create:", self.max_action_name_size)
+        account_name = str_spc(self.account_ctx.get_name()+":", self.max_account_name_size)
+        action_name = str_spc("Create:", self.max_action_name_size)
         self.aim_ctx.log("{0} {1} {2}".format(account_name, action_name, self.get_name()))
         try:
             stack_parameters = self.template.generate_stack_parameters()
@@ -373,8 +373,8 @@ class Stack():
     def update_stack(self):
         # Update Stack
         self.action = "update"
-        action_name = self.aim_ctx.str_spc("Update:", self.max_action_name_size)
-        account_name = self.aim_ctx.str_spc(self.account_ctx.get_name()+":", self.max_account_name_size)
+        action_name = str_spc("Update:", self.max_action_name_size)
+        account_name = str_spc(self.account_ctx.get_name()+":", self.max_account_name_size)
         print("{0} {1} {2}".format(account_name, action_name, self.get_name()))
         stack_parameters = self.template.generate_stack_parameters()
         self.hooks.run("update", "pre", self)
@@ -397,9 +397,9 @@ class Stack():
                     success = True
 
                 if success == True:
-                    msg = self.aim_ctx.str_spc("", self.max_account_name_size+1)
+                    msg = str_spc("", self.max_account_name_size+1)
                     #print("msg: |{0}|".format(msg))
-                    msg += self.aim_ctx.str_spc("Done:", self.max_action_name_size)
+                    msg += str_spc("Done:", self.max_action_name_size)
                     print("{0} {1}".format(msg, self.get_name()))
                     self.stack_success()
                 else:
@@ -417,8 +417,8 @@ class Stack():
     def delete_stack(self):
         # Delete Stack
         self.action = "delete"
-        account_name = self.aim_ctx.str_spc(self.account_ctx.get_name()+":", self.max_account_name_size)
-        action_name = self.aim_ctx.str_spc("Delete:", self.max_action_name_size)
+        account_name = str_spc(self.account_ctx.get_name()+":", self.max_account_name_size)
+        action_name = str_spc("Delete:", self.max_action_name_size)
         self.aim_ctx.log("{0} {1} {2}".format(account_name, action_name, self.get_name()))
         self.hooks.run("delete", "pre", self)
         self.cf_client.delete_stack( StackName=self.get_name() )
@@ -438,8 +438,8 @@ class Stack():
 
         # If last md5 is equal, then we no changes are required
         if self.is_stack_cached() == True:
-            account_name = self.aim_ctx.str_spc(self.account_ctx.get_name()+':', self.max_account_name_size)
-            action_name = self.aim_ctx.str_spc("Cached:", self.max_action_name_size)
+            account_name = str_spc(self.account_ctx.get_name()+':', self.max_account_name_size)
+            action_name = str_spc("Cached:", self.max_action_name_size)
             print("{0} {1} {2}".format(account_name, action_name, self.get_name()))
             return
 
@@ -449,23 +449,23 @@ class Stack():
         elif self.is_complete():
             self.update_stack()
         elif self.is_creating() or self.is_updating() or self.is_deleting():
-            account_name = self.aim_ctx.str_spc(self.account_ctx.get_name()+':', self.max_account_name_size)
+            account_name = str_spc(self.account_ctx.get_name()+':', self.max_account_name_size)
             if self.is_creating():
-                action_name = self.aim_ctx.str_spc("Create:", self.max_action_name_size)
+                action_name = str_spc("Create:", self.max_action_name_size)
                 self.action = "create"
             elif self.is_deleting():
-                action_name = self.aim_ctx.str_spc("Delete:", self.max_action_name_size)
+                action_name = str_spc("Delete:", self.max_action_name_size)
                 self.action = "delete"
             else:
-                action_name = self.aim_ctx.str_spc("Update:", self.max_action_name_size)
+                action_name = str_spc("Update:", self.max_action_name_size)
                 self.action = "update"
             print("{0} {1} {2}".format(account_name, action_name, self.get_name()))
 #        elif self.has_failure_status():
             # Delete stack here if in error state
 #            pass
         elif self.is_creating() == False and self.is_updating() == False:
-            account_name = self.aim_ctx.str_spc(self.account_ctx.get_name()+':', self.max_account_name_size)
-            action_name = self.aim_ctx.str_spc("Error:", self.max_action_name_size)
+            account_name = str_spc(self.account_ctx.get_name()+':', self.max_account_name_size)
+            action_name = str_spc("Error:", self.max_action_name_size)
             print("{0} {1} {2}".format(account_name, action_name, self.get_name()))
             print(self.status)
             raise StackException(AimErrorCode.Unknown)
@@ -493,8 +493,8 @@ class Stack():
             return
         self.get_status()
         waiter = None
-        account_name = self.aim_ctx.str_spc(self.account_ctx.get_name()+":", self.max_account_name_size)
-        action_name = self.aim_ctx.str_spc(self.action.capitalize()+":", self.max_action_name_size)
+        account_name = str_spc(self.account_ctx.get_name()+":", self.max_account_name_size)
+        action_name = str_spc(self.action.capitalize()+":", self.max_action_name_size)
         detail_log = "{0} {1} {2}".format(account_name, action_name, self.get_name())
         #print("Wait For Complete??: " + detail_log)
         if self.is_updating():
@@ -524,12 +524,12 @@ class Stack():
             raise StackException(AimErrorCode.Unknown)
 
         if waiter != None:
-            msg = self.aim_ctx.str_spc("", self.max_account_name_size+1)
-            msg += self.aim_ctx.str_spc("Waiting:", self.max_action_name_size)
+            msg = str_spc("", self.max_account_name_size+1)
+            msg += str_spc("Waiting:", self.max_action_name_size)
             print("{0} {1}".format(msg, self.get_name()))
             waiter.wait(StackName=self.get_name())
-            msg = self.aim_ctx.str_spc("", self.max_account_name_size+1)
-            msg += self.aim_ctx.str_spc("Done:", self.max_action_name_size)
+            msg = str_spc("", self.max_account_name_size+1)
+            msg += str_spc("Done:", self.max_action_name_size)
             print("{0} {1}".format(msg, self.get_name()))
 
         if self.is_exists():

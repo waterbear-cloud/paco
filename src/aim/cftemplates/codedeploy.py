@@ -2,8 +2,9 @@ import os
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
-from io import StringIO
+from aim.utils import normalized_join
 from enum import Enum
+from io import StringIO
 
 
 class CodeDeploy(CFTemplate):
@@ -29,7 +30,7 @@ class CodeDeploy(CFTemplate):
                          aws_name='-'.join(["CPBD-Deploy", aws_name]),
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])
 
-        self.resource_name = aim_ctx.normalized_join([self.env_ctx.get_aws_name(), app_id, grp_id, res_id],
+        self.resource_name = normalized_join([self.env_ctx.get_aws_name(), app_id, grp_id, res_id],
                                                      '-',
                                                      False)
         self.application_name = self.resource_name

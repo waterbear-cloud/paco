@@ -2,6 +2,7 @@ import os
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
+from aim.utils import normalized_join
 from io import StringIO
 from enum import Enum
 
@@ -29,7 +30,7 @@ class CodePipeBuild(CFTemplate):
                          aws_name='-'.join(["CPBD-PipeBuild", aws_name]),
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])
 
-        self.ResourceName = aim_ctx.normalized_join([env_ctx.get_aws_name(), app_id, grp_id, res_id], '-', False)
+        self.ResourceName = normalized_join([env_ctx.get_aws_name(), app_id, grp_id, res_id], '-', False)
 
         # Initialize Parameters
         self.set_parameter('ResourceNamePrefix', self.ResourceName)

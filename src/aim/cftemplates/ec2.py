@@ -3,6 +3,7 @@ from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
 from aim.models.references import Reference
+from aim.utils import normalized_join
 from io import StringIO
 from enum import Enum
 
@@ -28,7 +29,7 @@ class EC2(CFTemplate):
                          aws_name=aws_name)
 
         # Initialize Parameters
-        instance_name = aim_ctx.normalized_join([self.env_ctx.netenv_id, env_id, app_id, ec2_id],
+        instance_name = normalized_join([self.env_ctx.netenv_id, env_id, app_id, ec2_id],
                                                      '',
                                                      True)
         self.set_parameter('InstanceName', instance_name)
