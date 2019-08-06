@@ -1,7 +1,7 @@
 Changelog for aim
 =================
 
-1.1.1 (unreleased)
+2.0.1 (unreleased)
 ------------------
 
 ### Added
@@ -12,6 +12,11 @@ Changelog for aim
 - Rewrote commands with consistent way of passing arguments to controllers.
 
 - Added Account initialization to 'aim init project'.
+
+### Changed
+
+ - AIM references have a new format! It's simpler and more consistent.
+   Every ref now starts with ``aim.ref ``.
 
 
 1.1.0 (2019-07-24)

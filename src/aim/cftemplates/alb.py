@@ -2,6 +2,7 @@ import os
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
+from aim.models.references import Reference
 from io import StringIO
 from enum import Enum
 from pprint import pprint
@@ -10,16 +11,16 @@ class ALB(CFTemplate):
     def __init__(self, aim_ctx,
                  account_ctx,
                  aws_region,
-                 subenv_ctx,
+                 env_ctx,
                  aws_name,
                  app_id,
                  alb_id,
                  alb_config,
                  alb_config_ref):
         #aim_ctx.log("ALB CF Template init")
-        self.subenv_ctx = subenv_ctx
+        self.env_ctx = env_ctx
         self.alb_config_ref = alb_config_ref
-        segment_stack = self.subenv_ctx.get_segment_stack(alb_config.segment)
+        segment_stack = self.env_ctx.get_segment_stack(alb_config.segment)
 
         super().__init__(aim_ctx=aim_ctx,
                          account_ctx=account_ctx,
@@ -30,12 +31,12 @@ class ALB(CFTemplate):
 
         # Initialize Parameters
         self.set_parameter('ALBEnabled', alb_config.enabled)
-        vpc_stack = self.subenv_ctx.get_vpc_stack()
+        vpc_stack = self.env_ctx.get_vpc_stack()
         self.set_parameter(StackOutputParam('VPC', vpc_stack, 'VPC'))
         self.set_parameter('CustomDomainName', getattr(alb_config.dns, 'domain_name', ''))
         self.set_parameter('HostedZoneId', getattr(alb_config.dns, 'hosted_zone_id', ''))
 
-        alb_region = subenv_ctx.region
+        alb_region = env_ctx.region
         self.set_parameter('ALBHostedZoneId', self.lb_hosted_zone_id('alb', alb_region))
 
         # 32 Characters max
@@ -46,7 +47,7 @@ class ALB(CFTemplate):
         #   - Check for duplicates with validating template
         # TODO: Make a method for this
         #load_balancer_name = aim_ctx.project_ctx.name + "-" + aim_ctx.env_ctx.name + "-" + stack_group_ctx.application_name + "-" + alb_id
-        load_balancer_name = aim_ctx.normalized_join([self.subenv_ctx.netenv_id, self.subenv_ctx.subenv_id, app_id, alb_id],
+        load_balancer_name = aim_ctx.normalized_join([self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, alb_id],
                                                      '',
                                                      True)
         self.set_parameter('LoadBalancerName', load_balancer_name)
@@ -54,7 +55,7 @@ class ALB(CFTemplate):
         self.set_parameter('Scheme', alb_config.scheme)
 
         # Segment SubnetList is a Segment stack Output based on availability zones
-        subnet_list_key = 'SubnetList' + str(self.subenv_ctx.availability_zones())
+        subnet_list_key = 'SubnetList' + str(self.env_ctx.availability_zones())
 
         self.set_parameter(StackOutputParam('SubnetList', segment_stack, subnet_list_key))
 
@@ -63,7 +64,7 @@ class ALB(CFTemplate):
         for sg_ref in alb_config.security_groups:
             # TODO: Better name for self.get_stack_outputs_key_from_ref?
             # print("ALB: SG_REF: " + sg_ref)
-            sg_output_key = self.get_stack_outputs_key_from_ref(sg_ref)
+            sg_output_key = self.get_stack_outputs_key_from_ref(Reference(sg_ref))
             sg_stack = self.aim_ctx.get_ref(sg_ref)
             sg_output_param.add_stack_output(sg_stack, sg_output_key)
         self.set_parameter(sg_output_param)
@@ -468,17 +469,14 @@ Outputs:
         #self.aim_ctx.log("Validating ALB Template")
         super().validate()
 
-    def get_outputs_key_from_ref(self, aim_ref):
+    def get_outputs_key_from_ref(self, ref):
         # There is only one output key
-        # netenv.ref wbsites.applications.sites.resources.alb.target_groups.app.arn
-        ref_dict = self.aim_ctx.aim_ref.parse_ref(aim_ref)
-        last_idx = len(ref_dict['ref_parts'])-1
+        # aim.ref netenv.wbsites.applications.sites.resources.alb.target_groups.app.arn
         key = None
         #print(aim_ref)
-        if ref_dict['ref_parts'][last_idx] == 'arn':
-            key = "TargetGroupArn" + ref_dict['ref_parts'][last_idx-1]
-        elif ref_dict['ref_parts'][last_idx] == 'name':
-            key = "TargetGroupName" + ref_dict['ref_parts'][last_idx-1]
+        if ref.last_part == 'arn':
+            key = "TargetGroupArn" + ref.parts[-2]
+        elif ref.last_part == 'name':
+            key = "TargetGroupName" + ref.parts[-2]
 
-        #print("alb: get_outputs_key_from_ref: Key: " + key)
         return key

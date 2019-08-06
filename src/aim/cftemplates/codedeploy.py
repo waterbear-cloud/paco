@@ -11,7 +11,7 @@ class CodeDeploy(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
-                 subenv_ctx,
+                 env_ctx,
                  aws_name,
                  app_id,
                  grp_id,
@@ -21,7 +21,7 @@ class CodeDeploy(CFTemplate):
                  cpbd_config_ref):
 
         #aim_ctx.log("S3 CF Template init")
-        self.subenv_ctx = subenv_ctx
+        self.env_ctx = env_ctx
         super().__init__(aim_ctx,
                          account_ctx,
                          aws_region,
@@ -29,7 +29,7 @@ class CodeDeploy(CFTemplate):
                          aws_name='-'.join(["CPBD-Deploy", aws_name]),
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])
 
-        self.resource_name = aim_ctx.normalized_join([self.subenv_ctx.get_aws_name(), app_id, grp_id, res_id],
+        self.resource_name = aim_ctx.normalized_join([self.env_ctx.get_aws_name(), app_id, grp_id, res_id],
                                                      '-',
                                                      False)
         self.application_name = self.resource_name
@@ -46,7 +46,7 @@ class CodeDeploy(CFTemplate):
         self.set_parameter('CodeDeployStyleOption', deploy_config.deploy_style_option)
         self.set_parameter('CodeDeployConfigValue', deploy_config.deploy_config_value)
         self.set_parameter('ToolsAccountId', deploy_config.tools_account)
-        deploy_kms_ref = self.subenv_ctx.gen_ref( app_id=app_id,
+        deploy_kms_ref = self.env_ctx.gen_ref( app_id=app_id,
                                                   grp_id=grp_id,
                                                   res_id=res_id,
                                                   attribute='kms')
@@ -387,5 +387,5 @@ Outputs:
         #self.aim_ctx.log("Validating CodeDeploy Template")
         super().validate()
 
-    def get_outputs_key_from_ref(self, aim_ref):
+    def get_outputs_key_from_ref(self, ref):
         return "DeploymentGroupName"

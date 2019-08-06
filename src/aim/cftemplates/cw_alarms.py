@@ -2,11 +2,48 @@
 CloudFormation template for CloudWatch Alarms
 """
 
+import aim.models.services
 import json
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.models import schemas
 from aim.models import vocabulary
 from aim.models.locations import get_parent_by_interface
+from aim.models.formatter import get_formatted_model_context
+
+
+def get_alarm_actions(notificationgroups, alarm):
+    """Return a list of SNS Topic alarm actions.
+    This will by default be a list of SNS Topics that the alarm is subscribed to.
+    However, if a plugin is registered, it will provide the actions instead.
+    """
+    # if a service plugin provides override_alarm_actions, call that instead
+    service_plugins = aim.models.services.list_service_plugins()
+
+    # Error if more than one plugin provides override_alarm_actions
+    count = 0
+    for plugin_module in service_plugins.values():
+        if hasattr(plugin_module, 'override_alarm_actions'):
+            count += 1
+    if count > 1:
+        raise aim.models.exceptions.InvalidAimProjectFile('More than one Service plugin is overriding alarm actions')
+
+    for plugin_name, plugin_module in service_plugins.items():
+        if hasattr(plugin_module, 'override_alarm_actions'):
+            print('Loading Alarm Actions from service {}'.format(plugin_name))
+            return plugin_module.override_alarm_actions(None, alarm)
+
+    # default behaviour is to use notification groups directly
+    notification_arns = [
+        notificationgroups[group].resource_name for group in alarm.notification_groups
+    ]
+    if len(notification_arns) > 5:
+        raise aim.models.exceptions.InvalidAimProjectFile("""
+Alarm {} has {} actions, but CloudWatch Alarms allow a maximum of 5 actions.
+
+{}""".format(alarm.name, len(notification_arns), get_formatted_model_context(alarm))
+        )
+
+    return notification_arns
 
 
 class CWAlarms(CFTemplate):
@@ -48,7 +85,7 @@ Description: 'CloudWatch Alarms'
 Parameters:
 
   AlarmResource:
-    Description: "The resource name or id to assign the alarm dimenions"
+    Description: "The resource name or id to assign the alarm dimensions"
     Type: String
 
 Resources:
@@ -73,9 +110,8 @@ Outputs:
   Alarm{0[id]:s}:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      ActionsEnabled: False
-      #AlarmActions:
-      #  - String
+{0[alarm_actions]:s}
+
       AlarmDescription: '{0[description]:s}'
 
       # Important: If you specify a name, you cannot perform updates that require
@@ -89,14 +125,10 @@ Outputs:
       EvaluateLowSampleCountPercentile: {0[evaluate_low_sample_count_percentile]:s}
       EvaluationPeriods: {0[evaluation_periods]:d}
       ExtendedStatistic: {0[extended_statistic]:s}
-      #InsufficientDataActions:
-      #  - String
       MetricName: {0[metric_name]:s}
       #Metrics :
       #  - MetricDataQuery
       Namespace: {0[namespace]:s}
-      #OKActions :
-      #  - String
       Period: {0[period]:d}
       Statistic: {0[statistic]:s}
       Threshold: {0[threshold]:f}
@@ -121,7 +153,8 @@ Outputs:
             'threshold': 0,
             'treat_missing_data': None,
             'extended_statistic': None,
-            'evaluate_low_sample_count_percentile': None
+            'evaluate_low_sample_count_percentile': None,
+            'alarm_actions': None
         }
 
         alarms_yaml = ""
@@ -135,26 +168,53 @@ Outputs:
                 app = get_parent_by_interface(resource, schemas.IApplication)
                 group = get_parent_by_interface(resource, schemas.IResourceGroup)
                 alarm = alarm_set[alarm_id]
-                description = {
-                    "netenv_name": netenv.name,
-                    "netenv_title": netenv.title,
-                    "env_name": env.name,
-                    "env_title": env.title,
-                    "envreg_name": envreg.name,
-                    "envreg_title": envreg.title,
-                    "app_name": app.name,
-                    "app_title": app.title,
-                    "resource_group_name": group.name,
-                    "resource_group_title": group.title,
-                    "resource_name": resource.name,
-                    "resource_title": resource.title,
-                    "alarm_name": alarm.name,
-                    "classification": alarm.classification,
-                    "severity": alarm.severity,
-                    "topic_arns": alarm.notification_groups
-                }
+                notification_arns = [
+                    self.aim_ctx.project['notificationgroups'][group].resource_name for group in alarm.notification_groups
+                ]
+                if netenv == None:
+                    # service applications do not live in a NetEnv, they have a shorter description
+                    description = {
+                        "app_name": app.name,
+                        "app_title": app.title,
+                        "resource_group_name": group.name,
+                        "resource_group_title": group.title,
+                        "resource_name": resource.name,
+                        "resource_title": resource.title,
+                        "alarm_name": alarm.name,
+                        "classification": alarm.classification,
+                        "severity": alarm.severity,
+                        "topic_arns": notification_arns
+                    }
+                else:
+                    # full, normal netenv description
+                    description = {
+                        "netenv_name": netenv.name,
+                        "netenv_title": netenv.title,
+                        "env_name": env.name,
+                        "env_title": env.title,
+                        "envreg_name": envreg.name,
+                        "envreg_title": envreg.title,
+                        "app_name": app.name,
+                        "app_title": app.title,
+                        "resource_group_name": group.name,
+                        "resource_group_title": group.title,
+                        "resource_name": resource.name,
+                        "resource_title": resource.title,
+                        "alarm_name": alarm.name,
+                        "classification": alarm.classification,
+                        "severity": alarm.severity,
+                        "topic_arns": notification_arns
+                    }
                 normalized_set_id = self.normalize_resource_name(alarm_set_id)
                 normalized_id = self.normalize_resource_name(alarm_id)
+                alarm_actions = get_alarm_actions(self.aim_ctx.project['notificationgroups'], alarm)
+                if len(alarm_actions) > 0 and alarm_actions[0] != None:
+                    alarm_actions_cfn = "      ActionsEnabled: True\n      AlarmActions:\n"
+                    for action in alarm_actions:
+                        alarm_actions_cfn += "         - " + action
+                else:
+                    alarm_actions_cfn = '      ActionsEnabled: False\n'
+                alarm_table['alarm_actions'] = alarm_actions_cfn
                 alarm_table['id'] = normalized_set_id+normalized_id
                 alarm_table['description'] = json.dumps(description)
                 alarm_table['name'] = alarm_id
@@ -192,6 +252,6 @@ Outputs:
     def validate(self):
         super().validate()
 
-    def get_outputs_key_from_ref(self, aim_ref):
+    def get_outputs_key_from_ref(self, ref):
         # There is only one output key
         return None

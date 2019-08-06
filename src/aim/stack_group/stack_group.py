@@ -270,16 +270,17 @@ class Stack():
                 self.outputs_value_cache[key] = output['OutputValue']
                 return self.outputs_value_cache[key]
 
-        print("Key: " + key)
-        print(stack_metadata)
-        raise StackException(AimErrorCode.Unknown)
+        raise StackException(
+            AimErrorCode.Unknown,
+            message="Could not find Stack Output {} in stack_metadata:\n\n{}".format(key, stack_metadata)
+        )
 
-    def get_outputs_key_from_ref(self, aim_ref):
-        #print("Template: " + self.template.aws_name)
-        key = self.template.get_outputs_key_from_ref(aim_ref)
-        #pprint("get_outputs_key_from_ref: " + key)
+    def get_outputs_key_from_ref(self, ref):
+        key = self.template.get_outputs_key_from_ref(ref)
         if key == None:
-            raise StackException(AimErrorCode.Unknown)
+            raise StackException(
+                AimErrorCode.Unknown,
+                message="Unable to find outputs key for ref: %s" % ref.raw)
         return key
 
     def gen_cache_id(self):
@@ -561,6 +562,76 @@ class StackGroup():
         self.stack_orders = []
         self.controller.cur_stack_grp = self
         self.stack_output_config = {}
+        self.state = None
+        self.prev_state = None
+        self.state_filename = '-'.join([self.get_aws_name(), group_name, "StackGroup-State.yaml"])
+        self.state_filepath = os.path.join(self.aim_ctx.build_folder, self.state_filename)
+
+    def delete_stack(self, account_name, region, stack_name):
+        # Delete Stack
+        account_ctx = self.aim_ctx.get_account_context(account_name=account_name)
+        cf_client = account_ctx.get_aws_client('cloudformation', region)
+        cf_client.delete_stack( StackName=stack_name )
+
+    def new_state(self):
+        state = {
+            'stack_names': [],
+            'account_names': [],
+            'regions': []
+        }
+        return state
+
+    def load_state(self):
+        if os.path.isfile(self.state_filepath) == False:
+            return self.new_state()
+        with open(self.state_filepath, "r") as stream:
+            state = yaml.load(stream)
+        if state == None:
+            return self.new_state()
+        return state
+
+    def gen_state(self):
+        state = self.new_state()
+
+        for stack in self.stacks:
+            state['stack_names'].append(stack.get_name())
+            state['account_names'].append(stack.account_ctx.get_name())
+            state['regions'].append(stack.aws_region)
+
+        return state
+
+    def update_state(self):
+        cur_state = self.load_state()
+        new_state = self.gen_state()
+        deleted_stacks = []
+        for stack_name in cur_state['stack_names']:
+            if stack_name not in new_state['stack_names']:
+                stack_idx = cur_state['stack_names'].index(stack_name)
+                deleted_stacks.append(stack_idx)
+
+        if len(deleted_stacks) > 0:
+            print("The following Stacks are no longer needed:\n")
+            for idx in deleted_stacks:
+                print("   - %s.%s: %s" % (
+                    cur_state['account_names'][idx],
+                    cur_state['regions'][idx],
+                    cur_state['stack_names'][idx]
+                ))
+            answer = self.aim_ctx.input("\nDelete them from your AWS environment?", default="Y", yes_no_prompt=True)
+            if answer == True:
+                for idx in deleted_stacks:
+                    self.delete_stack(
+                        cur_state['account_names'][idx],
+                        cur_state['regions'][idx],
+                        cur_state['stack_names'][idx]
+                    )
+                    # TODO: Wait for the stacks
+
+
+        with open(self.state_filepath, "w") as output_fd:
+                yaml.dump(  data=new_state,
+                            stream=output_fd)
+        #deleted_stack.wait_for_complete(verbose=False)
 
 
 
@@ -583,6 +654,7 @@ class StackGroup():
                     order_item.stack.wait_for_complete(verbose=False)
                 #else:
                     #print("StackGroup: Provision: Cached: %s: %d" % (order_item.stack.get_name(), order_item.order.value))
+        self.update_state()
 
     def delete(self):
         # Loop through stacks and deletes each one

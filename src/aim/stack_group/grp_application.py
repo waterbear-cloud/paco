@@ -9,7 +9,7 @@ class ApplicationStackGroup(StackGroup):
     def __init__(self,
                  aim_ctx,
                  account_ctx,
-                 subenv_ctx,
+                 env_ctx,
                  app_id,
                  stack_tags):
         aws_name = '-'.join(['App', app_id])
@@ -17,32 +17,32 @@ class ApplicationStackGroup(StackGroup):
                          account_ctx,
                          app_id,
                          aws_name,
-                         subenv_ctx)
+                         env_ctx)
 
-        self.subenv_ctx = subenv_ctx
+        self.env_ctx = env_ctx
         self.app_id = app_id
         #self.netenv_config = netenv_ctx.config
-        self.config_ref_prefix = self.subenv_ctx.config_ref_prefix
-        self.aws_region = self.subenv_ctx.region
-        self.subenv_id = self.subenv_ctx.subenv_id
+        self.config_ref_prefix = self.env_ctx.config_ref_prefix
+        self.aws_region = self.env_ctx.region
+        self.env_id = self.env_ctx.env_id
         self.stack_tags = stack_tags
 
     def init(self):
                # Old config_ref
-        #str.join('.',[self.subenv_ctx.netenv_id,
-    #                                self.subenv_id,
+        #str.join('.',[self.env_ctx.netenv_id,
+    #                                self.env_id,
     #                                'applications',
     #                                 self.app_id])
         self.app_engine = ApplicationEngine( self.aim_ctx,
                                              self.account_ctx,
                                              self.aws_region,
                                              self.app_id,
-                                             self.subenv_ctx.config.applications[self.app_id],
+                                             self.env_ctx.config.applications[self.app_id],
                                              self.config_ref_prefix,
                                              self,
-                                             'netenv.ref',
+                                             'netenv',
                                              stack_tags=self.stack_tags,
-                                             subenv_ctx=self.subenv_ctx)
+                                             env_ctx=self.env_ctx)
         self.app_engine.init()
 
     def validate(self):

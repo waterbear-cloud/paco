@@ -33,7 +33,7 @@ class ApplicationEngine():
         stack_group,
         ref_type,
         stack_tags=StackTags(),
-        subenv_ctx=None
+        env_ctx=None
     ):
         self.aim_ctx = aim_ctx
         self.config = config
@@ -43,7 +43,7 @@ class ApplicationEngine():
         self.aws_region = aws_region
         self.stack_group = stack_group
         self.ref_type = ref_type
-        self.subenv_ctx = subenv_ctx
+        self.env_ctx = env_ctx
         self.iam_contexts = []
         self.cpbd_codepipebuild_stack = None
         self.cpbd_codecommit_role_template = None
@@ -61,7 +61,7 @@ class ApplicationEngine():
         seperator='.'
     ):
         """Generate a reference string"""
-        ref_str = '{0} {1}.applications.{2}'.format(self.ref_type, self.config_ref_prefix, self.app_id)
+        ref_str = 'aim.ref {0}.applications.{1}'.format(self.config_ref_prefix, self.app_id)
         if grp_id != None:
             ref_str = seperator.join([ref_str, 'groups', grp_id])
         if res_id != None:
@@ -87,6 +87,7 @@ class ApplicationEngine():
             self.stack_group,
             self.stack_tags
         )
+
         # Resource Groups
         for grp_id, grp_config in self.config.groups_ordered():
             for res_id, res_config in grp_config.resources_ordered():
@@ -94,22 +95,9 @@ class ApplicationEngine():
                 res_stack_tags.add_tag('AIM-Application-Group-Name', grp_id)
                 res_stack_tags.add_tag('AIM-Application-Resource-Name', res_id)
                 res_config.resolve_ref_obj = self
-                if res_config.type == 'ACM':
-                    self.init_acm_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
-                elif res_config.type == 'S3Bucket':
-                    self.init_s3bucket_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
-                elif res_config.type == 'LBClassic':
-                    self.init_lbclassic_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
-                elif res_config.type == 'LBApplication':
-                    self.init_lbapplication_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
-                elif res_config.type == 'ASG':
-                    self.init_asg_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
-                elif res_config.type == 'EC2':
-                    self.init_ec2_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
-                elif res_config.type == 'CodePipeBuildDeploy':
-                    self.init_cpbd_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
-                elif res_config.type == 'Lambda':
-                    self.init_lambda_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
+                init_method = getattr(self, "init_{}_resource".format(res_config.type.lower()))
+                init_method(grp_id, res_id, res_config, StackTags(res_stack_tags))
+
         print("ApplicationEngine: Init: %s: Completed" % (self.app_id))
 
     def gen_resource_ref(self, grp_id, res_id, attribute=None):
@@ -153,6 +141,34 @@ class ApplicationEngine():
             stack_tags=res_stack_tags
         )
         self.stack_group.add_stack_order(alarms_stack)
+
+    def init_snstopic_resource(self, grp_id, res_id, res_config, res_stack_tags):
+        if res_config.enabled == False:
+            print("ApplicationEngine: Init: SNSTopic: %s *disabled*" % (res_id))
+        else:
+            print("ApplicationEngine: Init: SNSTopic: %s" % (res_id))
+
+        sns_config_ref = self.gen_ref(grp_id, res_id)
+        aws_name = '-'.join([grp_id, res_id])
+        sns_topics_config = [res_config]
+        sns_template = aim.cftemplates.SNSTopics(
+            self.aim_ctx,
+            self.account_ctx,
+            self.aws_region,
+            aws_name,
+            sns_topics_config,
+            sns_config_ref
+        )
+        sns_stack = Stack(
+            self.aim_ctx,
+            self.account_ctx,
+            self.stack_group,
+            res_config,
+            sns_template,
+            aws_region=self.aws_region,
+            stack_tags=res_stack_tags
+        )
+        self.stack_group.add_stack_order(sns_stack)
 
     def init_lambda_resource(self, grp_id, res_id, res_config, res_stack_tags):
         if res_config.enabled == False:
@@ -199,7 +215,7 @@ statement:
         # Set defaults if assume role policy was not explicitly configured
         if not hasattr(role_config, 'assume_role_policy') or role_config.assume_role_policy == None:
             policy_dict = { 'effect': 'Allow',
-                            'aws': ["aim.sub 'arn:aws:iam::${config.ref accounts.%s}:root'" % (self.account_ctx.get_name())],
+                            'aws': ["aim.sub 'arn:aws:iam::${aim.ref accounts.%s}:root'" % (self.account_ctx.get_name())],
                             'service': ['lambda.amazonaws.com'] }
             role_config.set_assume_role_policy(policy_dict)
         # Always turn off instance profiles for Lambda functions
@@ -217,7 +233,6 @@ statement:
             template_params=None,
             stack_tags=res_stack_tags
         )
-
 
         aws_name = '-'.join([grp_id, res_id])
         lambda_template = aim.cftemplates.Lambda(
@@ -238,6 +253,10 @@ statement:
             stack_tags=res_stack_tags
         )
         self.stack_group.add_stack_order(lambda_stack)
+        # add alarms if there is monitoring configuration
+        if hasattr(res_config, 'monitoring') and len(res_config.monitoring.alarm_sets.values()) > 0:
+            aws_name = '-'.join(['Lambda', grp_id, res_id])
+            self.init_alarms(aws_name, lambda_config_ref + '.name', res_config, StackTags(res_stack_tags))
 
     def init_acm_resource(self, grp_id, res_id, res_config, res_stack_tags):
         if res_config.enabled == False:
@@ -258,7 +277,7 @@ statement:
             print("ApplicationEngine: Init: S3: %s *disabled*" % (res_id))
         else:
             print("ApplicationEngine: Init: S3: %s" % (res_id))
-            s3_config_ref = "netenv.ref "+self.gen_resource_ref(grp_id, res_id)
+            s3_config_ref = "aim.ref "+self.gen_resource_ref(grp_id, res_id)
             # Generate s3 bucket name for application deployment
             bucket_name_prefix = '-'.join([self.get_aws_name(), grp_id])
             #print("Application depoloyment bucket name: %s" % new_name)
@@ -287,7 +306,7 @@ statement:
                 self.aim_ctx,
                 self.account_ctx,
                 self.aws_region,
-                self.subenv_ctx,
+                self.env_ctx,
                 self.app_id,
                 res_id,
                 aws_name,
@@ -318,7 +337,7 @@ statement:
             self.aim_ctx,
             self.account_ctx,
             self.aws_region,
-            self.subenv_ctx,
+            self.env_ctx,
             aws_name,
             self.app_id,
             res_id,
@@ -361,7 +380,7 @@ role_name: %s""" % ("ASGInstance")
             role_config = res_config.instance_iam_role
 
         # The ID to give this role is: group.resource.instance_iam_role
-        instance_iam_role_ref = self.subenv_ctx.gen_ref(
+        instance_iam_role_ref = self.env_ctx.gen_ref(
             app_id=self.app_id,
             grp_id=grp_id,
             res_id=res_id,
@@ -407,7 +426,7 @@ role_name: %s""" % ("ASGInstance")
             self.aim_ctx,
             self.account_ctx,
             self.aws_region,
-            self.subenv_ctx,
+            self.env_ctx,
             aws_name,
             self.app_id,
             grp_id,
@@ -444,7 +463,7 @@ role_name: %s""" % ("ASGInstance")
                 self.aim_ctx,
                 self.account_ctx,
                 self.aws_region,
-                self.subenv_id,
+                self.env_id,
                 aws_name,
                 self.app_id,
                 res_id,
@@ -462,14 +481,14 @@ role_name: %s""" % ("ASGInstance")
             )
             self.stack_group.add_stack_order(ec2_stack)
 
-    def init_cpbd_resource(self, grp_id, res_id, res_config, res_stack_tags):
+    def init_codepipebuilddeploy_resource(self, grp_id, res_id, res_config, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: CodePipeBuildDeploy: %s *disabled*" % (res_id))
         else:
             print("ApplicationEngine: Init: CodePipeBuildDeploy: %s" % (res_id))
             tools_account_ctx = self.aim_ctx.get_account_context(res_config.tools_account)
             # XXX: Fix Hardcoded!!!
-            data_account_ctx = self.aim_ctx.get_account_context("config.ref accounts.data")
+            data_account_ctx = self.aim_ctx.get_account_context("aim.ref accounts.data")
 
             # -----------------
             # S3 Artifacts Bucket:
@@ -479,25 +498,25 @@ role_name: %s""" % ("ASGInstance")
             s3_artifacts_bucket_name = s3_ctl.get_bucket_name(s3_artifacts_bucket_ref)
 
             # S3 Artifacts Bucket:  POST
-            codebuild_role_ref = self.subenv_ctx.gen_ref(
+            codebuild_role_ref = self.env_ctx.gen_ref(
                 app_id=self.app_id,
                 grp_id=grp_id,
                 res_id=res_id,
                 attribute='codebuild_role.arn'
             )
-            codepipeline_role_ref = self.subenv_ctx.gen_ref(
+            codepipeline_role_ref = self.env_ctx.gen_ref(
                 app_id=self.app_id,
                 grp_id=grp_id,
                 res_id=res_id,
                 attribute='codepipeline_role.arn'
             )
-            codedeploy_tools_delegate_role_ref = self.subenv_ctx.gen_ref(
+            codedeploy_tools_delegate_role_ref = self.env_ctx.gen_ref(
                 app_id=self.app_id,
                 grp_id=grp_id,
                 res_id=res_id,
                 attribute='codedeploy_tools_delegate_role.arn'
             )
-            codecommit_role_ref = self.subenv_ctx.gen_ref(
+            codecommit_role_ref = self.env_ctx.gen_ref(
                 app_id=self.app_id,
                 grp_id=grp_id,
                 res_id=res_id,
@@ -507,7 +526,7 @@ role_name: %s""" % ("ASGInstance")
             # ----------------
             # KMS Key
             #
-            aws_account_ref = self.subenv_ctx.gen_ref(attribute='network.aws_account')
+            aws_account_ref = self.env_ctx.gen_ref(attribute='network.aws_account')
             kms_config_dict = {
                 'admin_principal': {
                     'aws': [ "!Sub 'arn:aws:iam::${{AWS::AccountId}}:root'" ]
@@ -517,7 +536,7 @@ role_name: %s""" % ("ASGInstance")
                         # Sub-Environment account
                         "aim.sub 'arn:aws:iam::${%s}:root'" % (self.aim_ctx.get_ref(aws_account_ref)),
                         # CodeCommit Account
-                        "aim.sub 'arn:aws:iam::${config.ref accounts.data}:root'",
+                        "aim.sub 'arn:aws:iam::${aim.ref accounts.data}:root'",
                         # Tools Account
                     ]
                 }
@@ -579,7 +598,7 @@ policies:
         resource:
           - "!Ref CMKArn"
 """
-            kms_ref = self.subenv_ctx.gen_ref(
+            kms_ref = self.env_ctx.gen_ref(
                 app_id=self.app_id,
                 grp_id=grp_id,
                 res_id=res_id,
@@ -599,7 +618,7 @@ policies:
 
             iam_ctl = self.aim_ctx.get_controller('IAM')
             # The ID to give this role is: group.resource.instance_iam_role
-            codecommit_iam_role_ref = self.subenv_ctx.gen_ref(app_id=self.app_id,
+            codecommit_iam_role_ref = self.env_ctx.gen_ref(app_id=self.app_id,
                                                               grp_id=grp_id,
                                                               res_id=res_id,
                                                               attribute='codecommit_role')
@@ -634,7 +653,7 @@ policies:
                 self.aim_ctx,
                 self.account_ctx,
                 self.aws_region,
-                self.subenv_ctx,
+                self.env_ctx,
                 aws_name,
                 self.app_id,
                 grp_id,
@@ -662,7 +681,7 @@ policies:
                 self.aim_ctx,
                 tools_account_ctx,
                 self.aws_region,
-                self.subenv_ctx,
+                self.env_ctx,
                 aws_name,
                 self.app_id,
                 grp_id,
@@ -684,7 +703,7 @@ policies:
             self.stack_group.add_stack_order(self.cpbd_codepipebuild_stack)
 
             # Add CodeBuild Role ARN to KMS Key principal now that the role is created
-            codebuild_arn_ref = self.subenv_ctx.gen_ref(
+            codebuild_arn_ref = self.env_ctx.gen_ref(
                 app_id=self.app_id,
                 grp_id=grp_id,
                 res_id=res_id,
@@ -743,7 +762,9 @@ policies:
         return None
 
     def resolve_ref(self, ref):
-        if isinstance(ref.resource, models.applications.CodePipeBuildDeploy):
+        if isinstance(ref.resource, models.applications.SNSTopic):
+            return self.get_stack_from_ref(ref)
+        elif isinstance(ref.resource, models.applications.CodePipeBuildDeploy):
             if ref.resource_ref == 'codecommit_role.arn':
                 iam_ctl = self.aim_ctx.get_controller("IAM")
                 return iam_ctl.role_arn(ref.raw[:-4])
@@ -770,6 +791,10 @@ policies:
             if ref.resource_ref.startswith('instance_id'):
                 asg_stack = self.get_stack_from_ref(ref)
                 asg_outputs_key = asg_stack.template.get_outputs_key_from_ref(ref)
+                if asg_outputs_key == None:
+                    raise StackException(
+                        AimErrorCode.Unknown,
+                        message="Unable to find outputkey for ref: %s" % ref.raw)
                 asg_name = asg_stack.get_outputs_value(asg_outputs_key)
                 asg_client = self.account_ctx.get_aws_client('autoscaling')
                 asg_response = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])

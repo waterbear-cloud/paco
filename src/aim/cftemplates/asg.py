@@ -2,6 +2,7 @@ import os
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
+from aim.models.references import Reference
 from io import StringIO
 from enum import Enum
 import base64
@@ -12,7 +13,7 @@ class ASG(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
-                 subenv_ctx,
+                 env_ctx,
                  aws_name,
                  app_id,
                  grp_id,
@@ -24,9 +25,9 @@ class ASG(CFTemplate):
                  ec2_manager_cache_id ):
 
         #aim_ctx.log("ASG CF Template init")
-        self.subenv_ctx = subenv_ctx
+        self.env_ctx = env_ctx
         self.ec2_manager_cache_id = ec2_manager_cache_id
-        segment_stack = self.subenv_ctx.get_segment_stack(asg_config.segment)
+        segment_stack = self.env_ctx.get_segment_stack(asg_config.segment)
 
         # Super Init:
         aws_name='-'.join(["ASG", aws_name])
@@ -52,14 +53,13 @@ class ASG(CFTemplate):
         sg_output_param = StackOutputParam('LCSecurityGroupList')
         for sg_ref in asg_config.security_groups:
             # TODO: Better name for self.get_stack_outputs_key_from_ref?
-            sg_output_key = self.get_stack_outputs_key_from_ref(sg_ref)
+            sg_output_key = self.get_stack_outputs_key_from_ref(Reference(sg_ref))
             sg_stack = self.aim_ctx.get_ref(sg_ref)
             sg_output_param.add_stack_output(sg_stack, sg_output_key)
         self.set_parameter(sg_output_param)
 
-        asg_name = aim_ctx.normalized_join([self.subenv_ctx.netenv_id, self.subenv_ctx.subenv_id, app_id, grp_id, asg_id], '', True)
+        asg_name = aim_ctx.normalized_join([self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, grp_id, asg_id], '', True)
         self.set_parameter('ASGName', asg_name)
-
         self.set_parameter('ASGDesiredCapacity', asg_config.desired_capacity)
         self.set_parameter('ASGHealthCheckGracePeriodSecs', asg_config.health_check_grace_period_secs)
         self.set_parameter('ASGHealthCheckType', asg_config.health_check_type)
@@ -74,15 +74,15 @@ class ASG(CFTemplate):
         self.set_parameter('ASGUpdatePolicyMinInstancesInService', asg_config.update_policy_min_instances_in_service)
 
         # Segment SubnetList is a Segment stack Output based on availability zones
-        subnet_list_output_key = 'SubnetList' + str(self.subenv_ctx.availability_zones())
+        subnet_list_output_key = 'SubnetList' + str(self.env_ctx.availability_zones())
         self.set_parameter(StackOutputParam('ASGSubnetList', segment_stack, subnet_list_output_key))
 
-        # Load Balancers: A list of netenv.ref to ELBs
+        # Load Balancers: A list of aim.ref netenv.to ELBs
         if asg_config.load_balancers != None and len(asg_config.load_balancers) > 0:
             lb_param = StackOutputParam('ASGLoadBalancerNames')
             for load_balancer in asg_config.load_balancers:
                 elb_stack = self.aim_ctx.get_ref(load_balancer)
-                elb_output_key = self.get_stack_outputs_key_from_ref(load_balancer)
+                elb_output_key = self.get_stack_outputs_key_from_ref(Reference(load_balancer))
                 lb_param.add_stack_output(elb_stack, elb_output_key)
             self.set_parameter(lb_param)
 
@@ -91,7 +91,7 @@ class ASG(CFTemplate):
             lb_param = StackOutputParam('TargetGroupArns')
             for target_group_arn in asg_config.target_groups:
                 alb_stack = self.aim_ctx.get_ref(target_group_arn)
-                alb_output_key = self.get_stack_outputs_key_from_ref(target_group_arn)
+                alb_output_key = self.get_stack_outputs_key_from_ref(Reference(target_group_arn))
                 lb_param.add_stack_output(alb_stack, alb_output_key)
             self.set_parameter(lb_param)
 

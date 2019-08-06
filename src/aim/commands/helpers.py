@@ -46,15 +46,17 @@ def handle_exceptions(func):
     """
     @wraps(func)
     def decorated(*args, **kwargs):
+        return func(*args, **kwargs)
         try:
             return func(*args, **kwargs)
         except (InvalidAimReference, UnusedAimProjectField, InvalidAimProjectFile, AimException, StackException, BotoCoreError,
             ClientError, Boto3Error) as error:
-            #import pdb; pdb.set_trace();
             click.echo("\nERROR!\n")
             error_name = error.__class__.__name__
             if error_name in ('InvalidAimProjectFile', 'UnusedAimProjectField', 'InvalidAimReference'):
                 click.echo("Invalid AIM project configuration files at {}".format(args[0].home))
+            elif error_name in ('StackException'):
+                click.echo(error.message)
             click.echo(error)
             sys.exit(1)
 

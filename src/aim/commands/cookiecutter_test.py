@@ -93,7 +93,7 @@ def test_delete_netenv(verbose):
 # Tests for simple-web-app
 
 def test_web_server_responds(verbose):
-    project = aim.models.load_project_from_yaml(AimReference(), 'tproj')
+    project = aim.models.load_project_from_yaml('tproj')
     web_asg = project['ne']['tnet']['dev']['us-west-2'].applications['tapp'].groups['site'].resources['alb']
     aim_ctx = AimContext('tproj')
     aim_ctx.load_project()

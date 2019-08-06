@@ -2,6 +2,8 @@ import os
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
+from aim.models.references import Reference
+from aim.core.exception import StackException, AimErrorCode
 from io import StringIO
 from enum import Enum
 
@@ -11,14 +13,14 @@ class SecurityGroups(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
-                 subenv_ctx,
+                 env_ctx,
                  security_groups_config,
                  sg_group_id,
                  sg_group_config_ref):
 
         #aim_ctx.log("SecurityGroup CF Template init")
 
-        self.subenv_ctx = subenv_ctx
+        self.env_ctx = env_ctx
 
         super().__init__(aim_ctx,
                          account_ctx,
@@ -26,7 +28,7 @@ class SecurityGroups(CFTemplate):
                          config_ref=sg_group_config_ref,
                          aws_name='-'.join(["SecurityGroups", sg_group_id]))
 
-        vpc_stack = self.subenv_ctx.get_vpc_stack()
+        vpc_stack = self.env_ctx.get_vpc_stack()
         # Initialize Parameters
         self.set_parameter(StackOutputParam('VPC', vpc_stack, 'VPC'))
 
@@ -81,8 +83,8 @@ Resources:
             sg_table['cf_sg_name'] = sg_name
             # Controller Name, Network Environment Name
             #sg_table['group_name'] = aim_ctx.config_controller.aws_name() + "-" + self.stack_group_ctx.aws_name + "-" + sg_name
-            group_name = aim_ctx.normalized_join([self.subenv_ctx.netenv_id,
-                                                  self.subenv_ctx.subenv_id,
+            group_name = aim_ctx.normalized_join([self.env_ctx.netenv_id,
+                                                  self.env_ctx.env_id,
                                                   sg_group_id,
                                                   sg_name],
                                                      '',
@@ -149,29 +151,13 @@ Outputs:
         super().validate()
 
     def get_local_sg_ref(self, aim_ref):
-        ref_parts = aim_ref.split(' ')
-        if ref_parts[0] != 'netenv.ref':
-            raise StackException(AimErrorCode.Unknown)
+        ref = Reference(aim_ref)
+        return ref.parts[-2]
 
-        ref_parts = ref_parts[1].split('.')
-        return ref_parts[-2]
-
-    def get_outputs_key_from_ref(self, aim_ref):
-        ref_dict = self.aim_ctx.aim_ref.parse_ref(aim_ref)
-        ref_parts = ref_dict['ref_parts']
-        network_component = ref_parts[5]
-        vpc_component = ref_parts[6]
-        sg_component = ref_parts[7]
-        sg_id = ref_parts[8]
-
-        if ref_dict['subenv_component'] != 'subenv':
-            raise StackException(AimErrorCode.Unknown)
-        if ref_dict['netenv_component'] != 'network':
-            raise StackException(AimErrorCode.Unknown)
-        if network_component != 'vpc':
-            raise StackException(AimErrorCode.Unknown)
-        if vpc_component != 'security_groups':
-            raise StackException(AimErrorCode.Unknown)
-
-        # Output key is the specific security group id in the yaml config
+    def get_outputs_key_from_ref(self, ref):
+        if ref.last_part != 'id' or ref.parts[-4] != 'security_groups':
+            raise StackException(
+                AimErrorCode.Unknown,
+                message="Unable to find outputkey for ref: %s" % ref.raw)
+        sg_id = ref.parts[-2]
         return sg_id

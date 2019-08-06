@@ -10,13 +10,13 @@ class Segment(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
-                 subenv_ctx,
+                 env_ctx,
                  segment_id,
                  segment_config,
                  segment_config_ref):
 
         #aim_ctx.log("Segment CF Template init")
-        self.subenv_ctx = subenv_ctx
+        self.env_ctx = env_ctx
         # Super
         super().__init__(aim_ctx,
                          account_ctx,
@@ -24,8 +24,8 @@ class Segment(CFTemplate):
                          config_ref=segment_config_ref,
                          aws_name='-'.join(["Segments", segment_id]))
 
-        vpc_stack = self.subenv_ctx.get_vpc_stack()
-        availability_zones = self.subenv_ctx.availability_zones()
+        vpc_stack = self.env_ctx.get_vpc_stack()
+        availability_zones = self.env_ctx.availability_zones()
 
         # Initialize Parameters
         # VPC
@@ -417,14 +417,11 @@ Outputs:
         #self.aim_ctx.log("Validating Segment Template")
         super().validate()
 
-    def get_outputs_key_from_ref(self, aim_ref):
-        ref_dict = self.aim_ctx.aim_ref.parse_ref(aim_ref)
-        ref_parts = ref_dict['ref_parts']
-
-        az_idx = len(ref_parts)-2
+    def get_outputs_key_from_ref(self, ref):
+        az_idx = len(ref.parts)-2
         resource_idx = az_idx + 1
-        if ref_parts[resource_idx] == "subnet_id":
-            return 'SubnetId' + ref_parts[az_idx].upper()
-        elif ref_parts[resource_idx] == "route_table_id":
-            return "RouteTableId" + ref_parts[az_idx].upper()
+        if ref.parts[resource_idx] == "subnet_id":
+            return 'SubnetId' + ref.parts[az_idx].upper()
+        elif ref.parts[resource_idx] == "route_table_id":
+            return "RouteTableId" + ref.parts[az_idx].upper()
         return None

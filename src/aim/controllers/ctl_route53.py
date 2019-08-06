@@ -60,6 +60,6 @@ class Route53Controller(Controller):
     def resolve_ref(self, ref):
         # route53.example.id
         if ref.last_part == "id":
-            return self.get_stack(zone_id=ref.parts[1])
+            return self.get_stack(zone_id=ref.parts[2])
 
         return None

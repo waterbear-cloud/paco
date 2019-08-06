@@ -1,45 +1,17 @@
-import os
 import boto3
-import pathlib
-from enum import Enum
-from botocore.exceptions import ClientError
-from aim.core.exception import StackException
-from aim.core.exception import AimErrorCode
-from pprint import pprint
-from aim.stack_group import Stack
+import os
 import pathlib
 import random
 import string
+from enum import Enum
+from aim.core.exception import StackException
+from aim.core.exception import AimErrorCode
+from aim.stack_group import Stack
 from aim.config import aim_context
-
-# Used to call a Service to get an answer
-class ServiceValueParam():
-    def __init__(self, aim_ctx, param_key, value_ref):
-        self.key = param_key
-        self.ref = value_ref
-        # entry:
-        #   'stack': stack,
-        #   'output_keys': []
-        self.entry_list = []
-        self.resolved_value = ""
-        self.aim_ctx = aim_ctx
-
-    def gen_parameter_value(self):
-        # ref_dict = aim_ctx.parse_ref(self.ref)
-        # TODO: Look at config_ref. for now we wonly assume ACM
-        acm_ctl = self.aim_ctx.get_controller('ACM')
-        return acm_ctl.get_value_from_ref(self.ref)
-
-
-    # Generates a parameter entry
-    #  - All stacks are queried, their output values gathered and are placed
-    #    in a single comma delimited list to be passed to the next stacks
-    #    parameter as a single value
-    def gen_parameter(self):
-        # ref_dict = aim_ctx.parse_ref(self.ref)
-        # TODO: Look at config_ref. for now we wonly assume ACM
-        param_value = self.gen_parameter_value()
-        return Parameter(self.key, param_value)
+from aim.models import references
+from aim.models.references import Reference
+from botocore.exceptions import ClientError
+from pprint import pprint
 
 # StackOutputParam
 #    Holds a list of dicts describing a stack and the outputs that are required
@@ -231,21 +203,8 @@ class CFTemplate():
                         break
                 rep_1_idx = dollar_idx
                 rep_2_idx = self.body.find("}", rep_1_idx, end_str_idx)+1
-                next_ref_idx = self.body.find(".ref ", rep_1_idx, rep_2_idx)
+                next_ref_idx = self.body.find("aim.ref ", rep_1_idx, rep_2_idx)
                 if next_ref_idx != -1:
-                    if self.body[next_ref_idx-len("netenv"):].startswith("netenv"):
-                        next_ref_idx -= len("netenv")
-                    elif self.body[next_ref_idx-len("config"):].startswith("config"):
-                        next_ref_idx -= len("config")
-                    elif self.body[next_ref_idx-len("service"):].startswith("service"):
-                        next_ref_idx -= len("service")
-                    elif self.body[next_ref_idx-len("resource"):].startswith("resource"):
-                        next_ref_idx -= len("resource")
-                    else:
-                        print("ERROR: unable to parse reference: " + self.body[next_ref_idx-10:next_ref_idx+64])
-                        raise StackException(AimErrorCode.Unknown)
-                    #netenv_ref_idx = self.body.find("netenv.ref ", rep_1_idx, rep_2_idx)
-                    #sub_ref_idx = netenv_ref_idx + len("netenv.ref ")
                     sub_ref_idx = next_ref_idx
                     sub_ref = self.body[sub_ref_idx:sub_ref_idx+(rep_2_idx-sub_ref_idx-1)]
                     #print("Sub ref: " + sub_ref)
@@ -255,6 +214,11 @@ class CFTemplate():
                         sub_ref = sub_ref.replace('<region>', self.aws_region)
 
                     sub_value = self.aim_ctx.get_ref(sub_ref)
+                    if sub_value == None:
+                        raise StackException(
+                            AimErrorCode.Unknown,
+                            message="cftemplate: aim_sub: Unable to locate value for ref: " + sub_ref
+                        )
                     #print("Sub Value: %s" % (sub_value))
                     # Replace the ${}
                     sub_var = self.body[rep_1_idx:rep_1_idx+(rep_2_idx-rep_1_idx)]
@@ -338,15 +302,18 @@ class CFTemplate():
             param_entry = param_key
         elif isinstance(param_value, list):
             param_entry = Parameter(param_key, self.list_to_string(param_value))
-        elif isinstance(param_value, str) and self.aim_ctx.aim_ref.is_ref(param_value):
-            param_value.replace("<account>", self.account_ctx.get_name())
-            param_value.replace("<region>", self.aws_region)
-            ref_value = self.aim_ctx.get_ref(param_value, account_ctx=self.account_ctx)
+        elif isinstance(param_value, str) and references.is_ref(param_value):
+            param_value = param_value.replace("<account>", self.account_ctx.get_name())
+            param_value = param_value.replace("<region>", self.aws_region)
+            ref = Reference(param_value)
+            ref_value = ref.resolve(self.aim_ctx.project, account_ctx=self.account_ctx)
             if ref_value == None:
-                print("ERROR: Unable to locate value for ref: " + param_value)
-                raise StackException(AimErrorCode.Unknown)
+                raise StackException(
+                    AimErrorCode.Unknown,
+                    message="cftemplate: set_parameter: Unable to locate value for ref: " + param_value
+                )
             if isinstance(ref_value, Stack):
-                stack_output_key = self.get_stack_outputs_key_from_ref(param_value, ref_value)
+                stack_output_key = self.get_stack_outputs_key_from_ref(ref, ref_value)
                 param_entry = StackOutputParam(param_key, ref_value, stack_output_key)
             else:
                 param_entry = Parameter(param_key, ref_value)
@@ -375,13 +342,20 @@ class CFTemplate():
         self.body = template_body
 
     # Gets the output key of a project reference
-    def get_stack_outputs_key_from_ref(self, aim_ref, stack=None):
-        #print("get_stack_outputs_key_from_ref: Aim ref: " + aim_ref)
+    def get_stack_outputs_key_from_ref(self, ref, stack=None):
+        if isinstance(ref, Reference) == False:
+            raise StackException(
+                AimErrorCode.Unknown,
+                message="Invalid Reference object")
+
+
         if stack == None:
-            stack = self.aim_ctx.get_ref(aim_ref)
-        output_key = stack.get_outputs_key_from_ref(aim_ref)
+            stack = ref.resolve(self.aim_ctx.project)
+        output_key = stack.get_outputs_key_from_ref(ref)
         if output_key == None:
-            raise StackException(AimErrorCode.Unknown)
+            raise StackException(
+                AimErrorCode.Unknown,
+                message="Unable to find outputkey for ref: %s" % ref.raw)
         return output_key
 
 
@@ -394,11 +368,18 @@ class CFTemplate():
             comma = ','
         return str_list
 
-    def gen_cf_logical_name(self, name, sep):
-        name_list = name.split(sep)
-        cf_name = ""
-        for name_item in name_list:
-            cf_name += name_item.title()
+    def gen_cf_logical_name(self, name, sep=None):
+        sep_list = ['_','-','@','.']
+        if sep != None:
+            sep_list = [sep]
+        for sep in sep_list:
+            cf_name = ""
+            for name_item in name.split(sep):
+                if len(name_item) > 1:
+                    cf_name += name_item[0].upper() + name_item[1:]
+                else:
+                    cf_name += name_item.upper()
+            name = cf_name
         cf_name = cf_name.replace('-','')
 
         return cf_name
@@ -475,4 +456,12 @@ class CFTemplate():
         name = name.replace('-', '')
         name = name.replace('_', '')
         name = name.replace('.', '')
+        name = name.replace('@', '')
         return name
+
+    def gen_parameter(self, param_type, name, description):
+        return """
+  {}:
+    Description: {}
+    Type: {}
+""".format(name, description, param_type)

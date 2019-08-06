@@ -5,24 +5,24 @@ from pprint import pprint
 import aim.cftemplates
 
 class NetworkStackGroup(StackGroup):
-    def __init__(self, aim_ctx, account_ctx, subenv_ctx, stack_tags):
+    def __init__(self, aim_ctx, account_ctx, env_ctx, stack_tags):
 
         super().__init__(aim_ctx,
                          account_ctx,
-                         subenv_ctx.netenv_id,
+                         env_ctx.netenv_id,
                          "Net",
-                         subenv_ctx)
+                         env_ctx)
 
-        self.subenv_ctx = subenv_ctx
-        self.config_ref_prefix = self.subenv_ctx.config_ref_prefix
-        self.region = self.subenv_ctx.region
+        self.env_ctx = env_ctx
+        self.config_ref_prefix = self.env_ctx.config_ref_prefix
+        self.region = self.env_ctx.region
         self.stack_tags = stack_tags
 
     def init(self):
         # Network Stack Templates
         print("NetworkStackGroup Init: VPC")
         # VPC Stack
-        vpc_config = self.subenv_ctx.vpc_config()
+        vpc_config = self.env_ctx.vpc_config()
         vpc_config_ref = '.'.join([self.config_ref_prefix, "network.vpc"])
         vpc_template = aim.cftemplates.VPC(self.aim_ctx,
                                            self.account_ctx,
@@ -44,14 +44,14 @@ class NetworkStackGroup(StackGroup):
         #print("Segments -----------")
         self.segment_list = []
         self.segment_dict = {}
-        for segment_id in self.subenv_ctx.segment_ids():
-            segment_config = self.subenv_ctx.segment_config(segment_id)
+        for segment_id in self.env_ctx.segment_ids():
+            segment_config = self.env_ctx.segment_config(segment_id)
             segment_config.resolve_ref_obj = self
             segment_config_ref = '.'.join([self.config_ref_prefix, "network.vpc.segments", segment_id])
             segment_template = aim.cftemplates.Segment(self.aim_ctx,
                                                        self.account_ctx,
                                                        self.region,
-                                                       self.subenv_ctx,
+                                                       self.env_ctx,
                                                        segment_id,
                                                        segment_config,
                                                        segment_config_ref)
@@ -70,7 +70,7 @@ class NetworkStackGroup(StackGroup):
         print("NetworkStackGroup Init: Security Groups")
         #print("Security Groups -----------")
         #pprint(self.netenv_config.config_dict)
-        sg_config = self.subenv_ctx.security_groups()
+        sg_config = self.env_ctx.security_groups()
         self.sg_list = []
         self.sg_dict = {}
         for sg_id in sg_config:
@@ -81,7 +81,7 @@ class NetworkStackGroup(StackGroup):
             sg_template = aim.cftemplates.SecurityGroups( aim_ctx=self.aim_ctx,
                                                           account_ctx=self.account_ctx,
                                                           aws_region=self.region,
-                                                          subenv_ctx=self.subenv_ctx,
+                                                          env_ctx=self.env_ctx,
                                                           security_groups_config=sg_config[sg_id],
                                                           sg_group_id=sg_id,
                                                           sg_group_config_ref=sg_group_config_ref )
@@ -102,10 +102,10 @@ class NetworkStackGroup(StackGroup):
 
         # NAT Gateway
         self.nat_list = []
-        for nat_id in self.subenv_ctx.nat_gateway_ids():
+        for nat_id in self.env_ctx.nat_gateway_ids():
             # We now disable the NAT Gatewy in the template sot hat we can delete it and recreate
             # it when disabled.
-            #if self.subenv_ctx.nat_gateway_enabled(nat_id) == False:
+            #if self.env_ctx.nat_gateway_enabled(nat_id) == False:
             #    print("NetworkStackGroup Init: NAT Gateway: %s *disabled*" % (nat_id))
             #    continue
             print("NetworkStackGroup Init: NAT Gateway: %s" % (nat_id))
@@ -113,7 +113,7 @@ class NetworkStackGroup(StackGroup):
             nat_template = aim.cftemplates.NATGateway( aim_ctx=self.aim_ctx,
                                                        account_ctx=self.account_ctx,
                                                        aws_region=self.region,
-                                                       subenv_ctx=self.subenv_ctx,
+                                                       env_ctx=self.env_ctx,
                                                        nat_id=nat_id,
                                                        config_ref=nat_config_ref)
             nat_stack = Stack(self.aim_ctx,

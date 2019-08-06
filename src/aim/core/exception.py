@@ -27,8 +27,8 @@ class AimException(Exception):
 
 
 class StackException(AimException):
-    def __init__(self, code):
-        super().__init__(code)
+    def __init__(self, code, message=None):
+        super().__init__(code, message)
 
     def get_error_str(self):
         error_str =  "StackException: " + self.code.name + ": " + self.message

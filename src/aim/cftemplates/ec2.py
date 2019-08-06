@@ -2,6 +2,7 @@ import os
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
+from aim.models.references import Reference
 from io import StringIO
 from enum import Enum
 
@@ -11,7 +12,7 @@ class EC2(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
-                 subenv_id,
+                 env_id,
                  aws_name,
                  app_id,
                  ec2_id,
@@ -27,7 +28,7 @@ class EC2(CFTemplate):
                          aws_name=aws_name)
 
         # Initialize Parameters
-        instance_name = aim_ctx.normalized_join([self.subenv_ctx.netenv_id, subenv_id, app_id, ec2_id],
+        instance_name = aim_ctx.normalized_join([self.env_ctx.netenv_id, env_id, app_id, ec2_id],
                                                      '',
                                                      True)
         self.set_parameter('InstanceName', instance_name)
@@ -38,7 +39,7 @@ class EC2(CFTemplate):
         #self.set_parameter('SubnetId', ec2_config['?'])
 
         # Segment SubnetList is a Segment stack Output based on availability zones
-        segment_stack = self.subenv_ctx.get_segment_stack(ec2_config.segment)
+        segment_stack = self.env_ctx.get_segment_stack(ec2_config.segment)
         subnet_list_output_key = 'SubnetList1'
         self.set_parameter(StackOutputParam('SubnetId', segment_stack, subnet_list_output_key))
 
@@ -47,7 +48,7 @@ class EC2(CFTemplate):
         for sg_ref in ec2_config.security_groups:
             # TODO: Better name for self.get_stack_outputs_key_from_ref?
             security_group_stack = self.aim_ctx.get_ref(sg_ref)
-            sg_output_key = self.get_stack_outputs_key_from_ref(sg_ref)
+            sg_output_key = self.get_stack_outputs_key_from_ref(Reference(sg_ref))
             sg_output_param.add_stack_output(security_group_stack, sg_output_key)
         self.set_parameter(sg_output_param)
 
@@ -55,7 +56,7 @@ class EC2(CFTemplate):
         self.set_parameter('InstanceIAMProfileName', ec2_config.instance_iam_profile)
         self.set_parameter('RootVolumeSizeGB', ec2_config.root_volume_size_gb)
 
-        self.set_parameter('DisableApiTermination', ec2_configdisable_api_termination)
+        self.set_parameter('DisableApiTermination', ec2_config.disable_api_termination)
         self.set_parameter('PrivateIpAddress', ec2_config.private_ip_address)
 
         self.set_parameter('UserData', ec2_config.user_data)
@@ -163,5 +164,5 @@ Outputs:
         #self.aim_ctx.log("Validating EC2 Template")
         super().validate()
 
-    def get_outputs_key_from_ref(self, aim_ref):
+    def get_outputs_key_from_ref(self, ref):
         return "InstanceId"

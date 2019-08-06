@@ -188,12 +188,3 @@ Outputs:
             statement_yaml += statement_fmt.format(statement_table)
 
         return statement_yaml
-
-    def get_policy_arn_from_id(self, policy_id):
-        policy_name = self.gen_policy_name(policy_id)
-        return "arn:aws:iam::{0}:policy/{1}".format(self.account_ctx.get_id(), policy_name)
-
-    def get_policy_arn_from_ref(self, ref_dict):
-        policy_id = ref_dict['ref_parts'][6]
-        policy_name = self.gen_policy_name(policy_id)
-        return "arn:aws:iam::{0}:policy/{1}".format(self.account_ctx.get_id(), policy_name)

@@ -282,7 +282,7 @@ this file will describe your network and looks like this:
                             - from_port: 80
                               name: HTTP
                               protocol: tcp
-                              source_security_group_id: netenv.ref mynet.network.vpc.security_groups.myapp.alb.id
+                              source_security_group_id: aim.ref netenv.mynet.network.vpc.security_groups.myapp.alb.id
                               to_port: 80
             segments:
                 public:
@@ -331,7 +331,7 @@ section. There is only one application in this quickstart and it is named ``myap
                         target_group: myapp
                     scheme: internet-facing
                     security_groups:
-                        - netenv.ref mynet.network.vpc.security_groups.myapp.alb.id
+                        - aim.ref netenv.mynet.network.vpc.security_groups.myapp.alb.id
                     segment: public
                 webserver:
                     type: ASG
@@ -352,9 +352,9 @@ section. There is only one application in this quickstart and it is named ``myap
                     min_instances: 1
                     desired_capacity: 1
                     target_groups:
-                        - netenv.ref mynet.applications.myapp.groups.site.resources.alb.target_groups.myapp.arn
+                        - aim.ref netenv.mynet.applications.myapp.groups.site.resources.alb.target_groups.myapp.arn
                     security_groups:
-                        - netenv.ref mynet.network.vpc.security_groups.myapp.webserver.id
+                        - aim.ref netenv.mynet.network.vpc.security_groups.myapp.webserver.id
                     segment: webserver
                     termination_policies:
                         - Default
@@ -390,7 +390,7 @@ provisioned.
                 myapp:
                     enabled: true
             network:
-                aws_account: config.ref accounts.master
+                aws_account: aim.ref accounts.master
                 vpc:
                     cidr: 10.20.0.0/16
                     segments:
@@ -418,7 +418,7 @@ provisioned.
                                     min_instances: 2
                                     desired_capacity: 2
                 network:
-                    aws_account: config.ref accounts.master
+                    aws_account: aim.ref accounts.master
                     vpc:
                         cidr: 10.20.0.0/16
                         segments:

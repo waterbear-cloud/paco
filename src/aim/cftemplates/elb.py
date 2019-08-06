@@ -2,6 +2,7 @@ import os
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
+from aim.models.references import Reference
 from io import StringIO
 from enum import Enum
 
@@ -10,7 +11,7 @@ class ELB(CFTemplate):
     def __init__(self, aim_ctx,
                  account_ctx,
                  aws_region,
-                 subenv_ctx,
+                 env_ctx,
                  app_id,
                  elb_id,
                  aws_name,
@@ -18,8 +19,8 @@ class ELB(CFTemplate):
                  elb_config_ref):
         #aim_ctx.log("ELB CF Template init")
 
-        self.subenv_ctx = subenv_ctx
-        segment_stack = self.subenv_ctx.get_segment_stack(alb_config['segment'])
+        self.env_ctx = env_ctx
+        segment_stack = self.env_ctx.get_segment_stack(alb_config['segment'])
 
         super().__init__(aim_ctx=aim_ctx,
                          account_ctx=account_ctx,
@@ -41,7 +42,7 @@ class ELB(CFTemplate):
         self.set_parameter('CustomDomainName', elb_config['dns']['domain_name'])
         self.set_parameter('HostedZoneId', elb_config['dns']['hosted_zone_id'])
 
-        elb_region = self.subenv_ctx.region
+        elb_region = self.env_ctx.region
         self.set_parameter('ELBHostedZoneId', self.lb_hosted_zone_id('elb', elb_region))
 
         # 32 Characters max
@@ -52,7 +53,7 @@ class ELB(CFTemplate):
         #   - Check for duplicates with validating template
         # TODO: Make a method for this
         #load_balancer_name = aim_ctx.project_ctx.name + "-" + aim_ctx.env_ctx.name + "-" + stack_group_ctx.application_name + "-" + elb_id
-        load_balancer_name = aim_ctx.normalized_join([self.subenv_ctx.netenv_id, self.subenv_ctx.subenv_id, app_id, elb_id],
+        load_balancer_name = aim_ctx.normalized_join([self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, elb_id],
                                                      '',
                                                      True)
         self.set_parameter('LoadBalancerName', load_balancer_name)
@@ -60,14 +61,14 @@ class ELB(CFTemplate):
         self.set_parameter('Scheme', elb_config['scheme'])
 
         # Segment SubnetList is a Segment stack Output based on availability zones
-        subnet_list_key = 'SubnetList' + str(self.subenv_ctx.availability_zones())
+        subnet_list_key = 'SubnetList' + str(self.env_ctx.availability_zones())
         self.set_parameter(StackOutputParam('SubnetList', segment_stack, subnet_list_key))
 
         # Security Group List
         sg_output_param = StackOutputParam('SecurityGroupList')
         for sg_ref in elb_config['security_groups']:
             # TODO: Better name for self.get_stack_outputs_key_from_ref?
-            sg_output_key = self.get_stack_outputs_key_from_ref(sg_ref)
+            sg_output_key = self.get_stack_outputs_key_from_ref(Reference(sg_ref))
             sg_stack = self.aim_ctx.get_ref(sg_ref, 'stack')
             sg_output_param.add_stack_output(sg_stack, sg_output_key)
         self.set_parameter(sg_output_param)
@@ -245,6 +246,6 @@ Outputs:
         #self.aim_ctx.log("Validating ELB Template")
         super().validate()
 
-    def get_outputs_key_from_ref(self, aim_ref):
+    def get_outputs_key_from_ref(self, ref):
         # There is only one output key
         return "LoadBalancer"

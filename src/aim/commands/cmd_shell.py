@@ -21,9 +21,9 @@ def shell_command(aim_ctx, netenv_id, env_id, region, instance_ref, home='.'):
     aim_ctx.load_project()
     config_arg = {
             'netenv_id': netenv_id,
-            'subenv_id': env_id,
+            'env_id': env_id,
             'region' : region,
         }
     aim_ctx.get_controller('NetEnv', config_arg)
-    full_ref = 'netenv.ref %s.subenv.%s.%s.%s' % (netenv_id, env_id, region, instance_ref)
+    full_ref = 'aim.ref netenv.%s.%s.%s.%s' % (netenv_id, env_id, region, instance_ref)
     aim_ctx.get_ref(full_ref)

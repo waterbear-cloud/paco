@@ -17,7 +17,7 @@ class AccountStackGroup(StackGroup):
 
         self.account_id = account_id
         self.account_config = account_config
-        self.account_config_ref = 'config.ref accounts.%s' % (account_id)
+        self.account_config_ref = 'aim.ref accounts.%s' % (account_id)
         self.stack_hooks = stack_hooks
 
     def init(self, do_not_cache=False):
@@ -27,14 +27,13 @@ class AccountStackGroup(StackGroup):
             resource_list = ""
             for org_account_name in self.account_config.organization_account_ids:
                 org_account_ctx = self.aim_ctx.get_account_context(account_name=org_account_name)
-                resource_list += """
-      - arn:aws:iam::{}:role/{}""".format(org_account_ctx.get_id(), self.account_config.admin_delegate_role_name)
-            user_list = """
-  - {}""".format(self.aim_ctx.project['credentials'].master_admin_iam_username)
+                resource_list += "\n      - arn:aws:iam::{}:role/{}".format(org_account_ctx.get_id(), self.account_config.admin_delegate_role_name)
+            #user_list = "\n  - {}".format(self.aim_ctx.project['credentials'].master_admin_iam_username)
 
+            user_list = ""
             for iam_user in self.account_config.admin_iam_users.keys():
-                user_list += """
-  - {}""".format(self.account_config.admin_iam_users[iam_user].username)
+                user_list += "\n  - {}".format(self.account_config.admin_iam_users[iam_user].username)
+
             # Build Policy
             policy_config_yaml = """
 name: 'OrgAccountDelegate-{}'
@@ -43,9 +42,8 @@ statement:
     action:
       - sts:AssumeRole
     resource:{}
-users: {}
-""".format(org_account_name, resource_list, user_list)
-
+users:{}
+    """.format(org_account_name, resource_list, user_list)
             ctl_iam = self.aim_ctx.get_controller('iam')
             ctl_iam.create_managed_policy(  self.aim_ctx,
                                             self.account_ctx,
@@ -59,29 +57,33 @@ users: {}
                                             template_params=None,
                                             stack_tags=None)
 
-        if self.account_config.admin_iam_users == None:
-            print("Account Group: %s *disabeld no admin_iam_users*" % (self.account_id))
-            return
-        print("Account Group: %s" % (self.account_id))
-        # VPC Stack
-        account_template = aim.cftemplates.Account(self.aim_ctx,
-                                                   self.account_ctx,
-                                                   self.account_id,
-                                                   self.account_config,
-                                                   self.account_config_ref)
+            # Account Stack
+            #
+            # The Account template creates Admin IAM users.
+            # Since we add the .credentials master admin iam user name to this list automatically,
+            # we do not want to recreate it here until we have a cloudformation custom resource
+            # that can handle existing users.
+            # TODO: Switch to CustomResource to allow for existing users
+            custom_resource_complete = False
+            if custom_resource_complete:
+                account_template = aim.cftemplates.Account(self.aim_ctx,
+                                                        self.account_ctx,
+                                                        self.account_id,
+                                                        self.account_config,
+                                                        self.account_config_ref)
 
-        self.account_stack = Stack(aim_ctx=self.aim_ctx,
-                                    account_ctx=self.account_ctx,
-                                    grp_ctx=self,
-                                    stack_config=self.account_config,
-                                    template=account_template,
-                                    aws_region=self.account_config.region,
-                                    hooks=self.stack_hooks,
-                                    do_not_cache=do_not_cache)
+                self.account_stack = Stack(aim_ctx=self.aim_ctx,
+                                            account_ctx=self.account_ctx,
+                                            grp_ctx=self,
+                                            stack_config=self.account_config,
+                                            template=account_template,
+                                            aws_region=self.account_config.region,
+                                            hooks=self.stack_hooks,
+                                            do_not_cache=do_not_cache)
 
-        self.add_stack_order(self.account_stack)
+                self.add_stack_order(self.account_stack)
 
-        print("Account Group Init: Completed")
+        print("Account Group Init: %s: Completed" % self.account_id)
 
     def resolve_ref(self, ref):
         raise StackException(AimErrorCode.Unknown)

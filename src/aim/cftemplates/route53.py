@@ -142,8 +142,8 @@ Outputs:
         #self.aim_ctx.log("Validating Route53 Template")
         super().validate()
 
-    def get_outputs_key_from_ref(self, aim_ref):
-        ref_dict = self.aim_ctx.aim_ref.parse_ref(aim_ref)
-
-        output_key = self.gen_cf_logical_name(ref_dict['ref_parts'][1], '_') + "HostedZoneId"
+    def get_outputs_key_from_ref(self, ref):
+        if ref.last_part != 'id' or ref.parts[-3] != 'route53':
+            return None
+        output_key = self.gen_cf_logical_name(ref.parts[-2], '_') + "HostedZoneId"
         return output_key
