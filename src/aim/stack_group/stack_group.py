@@ -7,7 +7,7 @@ from aim.core.exception import AimException, AimErrorCode
 from botocore.exceptions import ClientError
 from enum import Enum
 from aim.core.yaml import YAML
-from aim.config import aim_context
+from aim.utils import md5sum
 from copy import deepcopy
 
 yaml=YAML(typ="safe", pure=True)
@@ -46,7 +46,7 @@ class StackTags():
         return tag_list
 
     def gen_cache_id(self):
-        return aim_context.md5sum(str_data=yaml.dump(self.tags))
+        return md5sum(str_data=yaml.dump(self.tags))
 
 
 class StackOrderItem():

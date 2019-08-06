@@ -51,7 +51,8 @@ setup(
         'aim.stack_group',
         'aim.tests',
         'aim.doc',
-        'aim.application'
+        'aim.application',
+        'aim.utils'
     ],
     include_package_data=True,
     zip_safe=False,

@@ -7,7 +7,7 @@ from enum import Enum
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.stack_group import Stack
-from aim.config import aim_context
+from aim.utils import md5sum
 from aim.models import references
 from aim.models.references import Reference
 from botocore.exceptions import ClientError
@@ -327,13 +327,13 @@ class CFTemplate():
         self.parameters.append(param_entry)
 
     def gen_cache_id(self):
-        template_md5 = aim_context.md5sum(self.get_yaml_path())
+        template_md5 = md5sum(self.get_yaml_path())
         outputs_str = ""
         for param_entry in self.parameters:
             param_value = param_entry.gen_parameter_value()
             outputs_str += param_value
 
-        outputs_md5 = aim_context.md5sum(str_data=outputs_str)
+        outputs_md5 = md5sum(str_data=outputs_str)
 
         return template_md5+outputs_md5
 

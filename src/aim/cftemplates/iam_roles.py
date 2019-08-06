@@ -5,7 +5,7 @@ from aim.cftemplates.cftemplates import StackOutputParam
 from io import StringIO
 from enum import Enum
 import sys
-from aim.config import aim_context
+from aim.utils import md5sum
 
 class IAMRoles(CFTemplate):
     def __init__(self,
@@ -173,7 +173,7 @@ Outputs:
 
     # Generate a name valid in CloudFormation
     def gen_iam_role_name(self, role_type, role_id):
-        iam_context_hash = aim_context.md5sum(str_data=self.role_ref)[:8].upper()
+        iam_context_hash = md5sum(str_data=self.role_ref)[:8].upper()
         role_name = '-'.join([iam_context_hash, role_type[0], role_id])
         role_name = self.aim_ctx.normalize_name(role_name, '-', False)
         return role_name

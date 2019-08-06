@@ -1,11 +1,9 @@
-import hashlib
 import os
 import aim.config.aws_credentials
 import aim.core.log
 import aim.controllers
 import aim.models.services
 import pkg_resources
-from functools import partial
 from aim.models import load_project_from_yaml
 from aim.models import references
 from copy import deepcopy
@@ -315,17 +313,3 @@ class AimContext(object):
 
             try_again = False
         return value
-
-def md5sum(filename=None, str_data=None):
-    d = hashlib.md5()
-    if filename != None:
-        with open(filename, mode='rb') as f:
-            for buf in iter(partial(f.read, 128), b''):
-                d.update(buf)
-    elif str_data != None:
-        d.update(bytearray(str_data, 'utf-8'))
-    else:
-        print("cli: md5sum: Filename or String data expected")
-        raise StackException(AimErrorCode.Unknown)
-
-    return d.hexdigest()

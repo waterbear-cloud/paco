@@ -21,7 +21,7 @@ from aim import models
 from aim.models import schemas
 from aim.models.locations import get_parent_by_interface
 from aim.core.yaml import YAML
-from aim.config import aim_context
+from aim.utils import md5sum
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 
@@ -101,9 +101,9 @@ class LaunchBundle():
             file_path = os.path.join(bundle_folder, bundle_file['name'])
             with open(file_path, "w") as output_fd:
                 output_fd.write(bundle_file['contents'])
-            contents_md5 += aim_context.md5sum(str_data=bundle_file['contents'])
+            contents_md5 += md5sum(str_data=bundle_file['contents'])
 
-        self.cache_id = aim_context.md5sum(str_data=contents_md5)
+        self.cache_id = md5sum(str_data=contents_md5)
 
         lb_tar_filename = str.join('.', [bundle_folder, 'tgz'])
         lb_tar = tarfile.open(lb_tar_filename, "w:gz")

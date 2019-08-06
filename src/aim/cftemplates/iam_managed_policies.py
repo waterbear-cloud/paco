@@ -2,7 +2,7 @@ import os
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
-from aim.config import aim_context
+from aim.utils import md5sum
 from io import StringIO
 from enum import Enum
 import sys
@@ -142,7 +142,7 @@ Outputs:
 
     # Generate a name valid in CloudFormation
     def gen_policy_name(self, policy_id):
-        policy_context_hash = aim_context.md5sum(str_data=self.policy_context['ref'])[:8].upper()
+        policy_context_hash = md5sum(str_data=self.policy_context['ref'])[:8].upper()
         policy_name = '-'.join([policy_context_hash, policy_id])
         policy_name = self.aim_ctx.normalize_name(policy_name, '-', False)
         return policy_name
