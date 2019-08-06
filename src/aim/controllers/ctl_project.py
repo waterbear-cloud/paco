@@ -179,5 +179,3 @@ class ProjectController(Controller):
         account_ctl = self.aim_ctx.get_controller('account')
         account_ctl.validate()
 
-
-
