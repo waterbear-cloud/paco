@@ -6,7 +6,6 @@ import aim.models.services
 import pkg_resources
 from aim.models import load_project_from_yaml
 from aim.models import references
-from copy import deepcopy
 from aim.config import ConfigProcessor
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
