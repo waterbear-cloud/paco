@@ -4,7 +4,9 @@ Changelog for aim
 1.3.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Fixed
+
+- Python packaging, also include version.txt.
 
 
 1.3.0 (2019-08-07)

@@ -4,7 +4,7 @@ global-exclude *.egg-info
 graft src/aim
 recursive-exclude src __pycache__/*
 
-include README.md CHANGELOG.md
+include README.md CHANGELOG.md version.txt
 
-exclude *.txt *.ini *.cfg *.lock Pipfile
+exclude *.ini *.cfg *.lock Pipfile
 
