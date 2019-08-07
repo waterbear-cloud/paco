@@ -4,8 +4,7 @@ import pathlib
 import random
 import string
 from enum import Enum
-from aim.core.exception import StackException
-from aim.core.exception import AimErrorCode
+from aim.core.exception import StackException, AimErrorCode, AimException
 from aim.stack_group import Stack
 from aim.models import references
 from aim.models.references import Reference
@@ -37,7 +36,7 @@ class StackOutputParam():
 
     def add_stack_output(self, stack, stack_output_key):
         if stack_output_key == None:
-            raise AimErrorException(AimErrorCode.Unknown)
+            raise AimException(AimErrorCode.Unknown)
         #print(stack.template.aws_name + ": add_stack_output: output_key: " + stack_output_key)
         for entry in self.entry_list:
             if entry['stack'] == stack:
@@ -106,7 +105,7 @@ class Parameter():
         else:
             print("Error: Parameter: Type Error")
             print(type(value))
-            raise AimErrorException(AimErrorCode.Unknown)
+            raise AimException(AimErrorCode.Unknown)
 
         self.value = normalized_value
         self.use_previous_value = use_previous_value
@@ -448,7 +447,7 @@ class CFTemplate():
         elif lb_type == 'nlb':
             return nlb_zone_id[lb_region]
         else:
-            raise AimErrorException(AimErrorCode.Unknown)
+            raise AimException(AimErrorCode.Unknown)
 
     def normalize_resource_name(self, name):
         name = name.replace('-', '')

@@ -70,11 +70,15 @@ class CWAlarms(CFTemplate):
         )
         self.alarm_sets = alarm_sets
         self.dimension = vocabulary.cloudwatch[res_type]['dimension']
-        self.namespace = vocabulary.cloudwatch[res_type]['namespace']
-        # Initialize Parameters
-        self.set_parameter('AlarmResource', res_config_ref)
 
-        # TOOD: Template needs Scale in/out policies
+        # Initialize Parameters
+        if resource.resource_name:
+            resource_name = resource.resource_name
+        else:
+            # ToDo: check this code ...
+            # this is an invalid alarm - should only be for envs not provisioned
+            resource_name = resource.name
+        self.set_parameter('AlarmResource', resource_name)
 
         # Define the Template
         template_fmt = """
@@ -206,6 +210,8 @@ Outputs:
                     }
                 normalized_set_id = self.normalize_resource_name(alarm_set_id)
                 normalized_id = self.normalize_resource_name(alarm_id)
+
+                # Alarm actions
                 alarm_actions = get_alarm_actions(self.aim_ctx.project['notificationgroups'], alarm)
                 if len(alarm_actions) > 0 and alarm_actions[0] != None:
                     alarm_actions_cfn = "      ActionsEnabled: True\n      AlarmActions:\n"
@@ -213,14 +219,20 @@ Outputs:
                         alarm_actions_cfn += "         - " + action
                 else:
                     alarm_actions_cfn = '      ActionsEnabled: False\n'
+
+                # Metric Namespace can override default Resource Namespace
+                if alarm.namespace:
+                    namespace = alarm.namespace
+                else:
+                    namespace = vocabulary.cloudwatch[res_type]['namespace']
+
                 alarm_table['alarm_actions'] = alarm_actions_cfn
                 alarm_table['id'] = normalized_set_id+normalized_id
                 alarm_table['description'] = json.dumps(description)
                 alarm_table['name'] = alarm_id
                 alarm_table['comparison_operator'] = alarm.comparison_operator
                 alarm_table['evaluation_periods'] = alarm.evaluation_periods
-                alarm_table['metric_name'] = alarm.metric_name
-                alarm_table['namespace'] = self.namespace
+                alarm_table['namespace'] = namespace
                 alarm_table['dimensions'] = dimensions_fmt % (self.dimension)
                 alarm_table['evaluation_periods'] = alarm.evaluation_periods
                 alarm_table['metric_name'] = alarm.metric_name
