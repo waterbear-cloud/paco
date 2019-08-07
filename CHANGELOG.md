@@ -1,10 +1,13 @@
 Changelog for aim
 =================
 
-1.2.1 (unreleased)
+1.3.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Changed
+
+- CloudWatchAlarms now check for namespace and dimesions fields, that
+  can be used to override the default of one primary dimension and the resource_name.
 
 
 1.2.0 (2019-08-06)

@@ -71,25 +71,10 @@ class CWAlarms(CFTemplate):
         self.alarm_sets = alarm_sets
         self.dimension = vocabulary.cloudwatch[res_type]['dimension']
 
-        # Initialize Parameters
-        if resource.resource_name:
-            resource_name = resource.resource_name
-        else:
-            # ToDo: check this code ...
-            # this is an invalid alarm - should only be for envs not provisioned
-            resource_name = resource.name
-        self.set_parameter('AlarmResource', resource_name)
-
         # Define the Template
         template_fmt = """
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'CloudWatch Alarms'
-
-Parameters:
-
-  AlarmResource:
-    Description: "The resource name or id to assign the alarm dimensions"
-    Type: String
 
 Resources:
 
@@ -109,38 +94,37 @@ Outputs:
     Value: !Ref Alarm{0[id]:s}
 """
 
+        # Important: If you specify a name, you cannot perform updates that require
+        # replacement of this resource. You can perform updates that require no or
+        # some interruption. If you must replace the resource, specify a new name.
+        # AlarmName: '{0[name]:s}'
+        # ToDo: enable settings for
+        # Metrics :
+        #   - MetricDataQuery
+        # Unit: String
+        # DatapointsToAlarm: Integer
+
         alarm_fmt = """
   Alarm{0[id]:s}:
     Type: AWS::CloudWatch::Alarm
     Properties:
 {0[alarm_actions]:s}
-
       AlarmDescription: '{0[description]:s}'
-
-      # Important: If you specify a name, you cannot perform updates that require
-      # replacement of this resource. You can perform updates that require no or
-      # some interruption. If you must replace the resource, specify a new name.
-      # AlarmName: '{0[name]:s}'
-
       ComparisonOperator: {0[comparison_operator]:s}
-      #DatapointsToAlarm: Integer
       Dimensions: {0[dimensions]:s}
       EvaluateLowSampleCountPercentile: {0[evaluate_low_sample_count_percentile]:s}
       EvaluationPeriods: {0[evaluation_periods]:d}
       ExtendedStatistic: {0[extended_statistic]:s}
       MetricName: {0[metric_name]:s}
-      #Metrics :
-      #  - MetricDataQuery
       Namespace: {0[namespace]:s}
       Period: {0[period]:d}
       Statistic: {0[statistic]:s}
       Threshold: {0[threshold]:f}
       TreatMissingData: {0[treat_missing_data]:s}
-      # Unit: String
 """
         dimensions_fmt = """
-        - Name: %s
-          Value: !Ref AlarmResource"""
+        - Name: {}
+          Value: {}"""
 
         alarm_table = {
             'id': None,
@@ -220,6 +204,28 @@ Outputs:
                 else:
                     alarm_actions_cfn = '      ActionsEnabled: False\n'
 
+                # Dimensions
+                # if there are no dimensions, then fallback to the default of
+                # a primary dimension and the resource's resource_name
+                if len(alarm.dimensions) < 1:
+                    dimensions = [
+                        (vocabulary.cloudwatch[res_type]['dimension'], resource.resource_name)
+                    ]
+                else:
+                    dimensions = []
+                    for dimension in alarm.dimensions:
+                        if dimension.value.startswith('python:'):
+                            # XXX improve eval saftey or rework as a ref ...
+                            value = eval(dimension.value[7:])
+                        else:
+                            value = dimension.value
+                        dimensions.append(
+                            (dimension.name, value)
+                        )
+                dimensions_str = ''
+                for name, value in dimensions:
+                    dimensions_str += dimensions_fmt.format(name, value)
+
                 # Metric Namespace can override default Resource Namespace
                 if alarm.namespace:
                     namespace = alarm.namespace
@@ -233,7 +239,7 @@ Outputs:
                 alarm_table['comparison_operator'] = alarm.comparison_operator
                 alarm_table['evaluation_periods'] = alarm.evaluation_periods
                 alarm_table['namespace'] = namespace
-                alarm_table['dimensions'] = dimensions_fmt % (self.dimension)
+                alarm_table['dimensions'] = dimensions_str
                 alarm_table['evaluation_periods'] = alarm.evaluation_periods
                 alarm_table['metric_name'] = alarm.metric_name
                 alarm_table['period'] = alarm.period
