@@ -9,6 +9,9 @@ Changelog for aim
 - CloudWatchAlarms now check for namespace and dimesions fields, that
   can be used to override the default of one primary dimension and the resource_name.
 
+### Fixed
+
+- Python dist did not include README.md and CHANGELOG.md
 
 1.2.0 (2019-08-06)
 ------------------
