@@ -47,9 +47,15 @@ files each with a different format. This directories are:
   * ``Resources/``: These contain global or shared resources, such as
     S3 Buckets, IAM Users, EC2 Keypairs.
 
-Also at the top level is a ``project.yaml`` file. Currently this file just
-contains ``name:`` and ``title:`` attributes, but may be later extended to
-contain useful global project configuration.
+Also at the top level are ``project.yaml`` and ``aim-project-version.txt`` files.
+
+The ``aim-project-version.txt`` is a simple one line file with the version of the AIM Project
+file format, e.g. ``2.1``. The AIM Project file format version contains a major and a medium
+version. The major version indicates backwards incompatable changes, while the medium
+version indicates additions of new object types and fields.
+
+The ``project.yaml`` contains gloabl information about the AIM Project. It also contains
+an ``aim_project_version`` field that is loaded from ``aim-project-version.txt``.
 
 The YAML files are organized as nested key-value dictionaries. In each sub-directory,
 key names map to relevant AIM schemas. An AIM schema is a set of fields that describe
@@ -215,7 +221,7 @@ aim.ref netenv
 
 To refer to a value in a NetworkEnvironment use an ``aim.ref netenv`` reference. For example:
 
-``aim.ref netenv.my-aim-example.network.vpc.security_groups.app.lb.id``
+``aim.ref netenv.my-aim-example.network.vpc.security_groups.app.lb``
 
 After ``aim.ref netenv`` should be a part which matches the filename of a file (without the .yaml or .yml extension)
 in the NetworkEnvironments directory.
@@ -287,7 +293,7 @@ aim.ref resource
 
 To refer to a global resource created in the Resources directory, use an ``aim.ref resource``. For example:
 
-``aim.ref resource.route53.example.id``
+``aim.ref resource.route53.example``
 
 After the ``aim.ref resource`` the next part should matche the filename of a file
 (without the .yaml or .yml extension)  in the Resources directory.
@@ -741,7 +747,6 @@ def convert_schema_to_list_table(schema):
         elif data_type == 'Bool':
             data_type = 'Boolean'
         elif data_type == 'Object':
-            #import pdb; pdb.set_trace();
             if field.schema.extends(IMapping):
                 data_type = 'Container of {}_ AIM schemas'.format(field.schema.__name__[1:])
             else:
