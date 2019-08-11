@@ -48,7 +48,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
 {0[log_group_name]:s}
-{0[retention]:s}\n\n"""
+{0[retention]:s}\n"""
         loggroup_table = {
             'name': None,
             'expire_events_after': None,
@@ -59,7 +59,7 @@ Resources:
         for log_source in self.resource.monitoring.log_sets.get_all_log_sources():
             loggroup_table['name'] = self.normalize_resource_name(log_source.name)
             loggroup_table['properties'] = "Properties:\n"
-            loggroup_table['log_group_name'] = "\n      LogGroupName: '{}'".format(prefixed_name(resource, log_source.log_group_name))
+            loggroup_table['log_group_name'] = "      LogGroupName: '{}'".format(prefixed_name(resource, log_source.log_group_name))
 
             # override default retention?
             override_retention = None
@@ -70,10 +70,14 @@ Resources:
                 retention = override_retention
             else:
                 retention = default_retention
-            loggroup_table['retention'] = "\n      RetentionInDays: '{}'".format(retention)
+            if retention == 'Never':
+                loggroup_table['retention'] = ''
+            else:
+                loggroup_table['retention'] = "      RetentionInDays: '{}'".format(retention)
 
             log_groups_yaml += log_group_fmt.format(loggroup_table)
 
+        template_table['log_groups'] = log_groups_yaml
         self.set_template(template_fmt.format(template_table))
 
     def validate(self):
