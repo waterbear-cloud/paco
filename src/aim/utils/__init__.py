@@ -12,6 +12,8 @@ Here be utils.
 
 import hashlib
 from aim.core.exception import StackException
+from aim.models import schemas
+from aim.models.locations import get_parent_by_interface
 from copy import deepcopy
 from functools import partial
 
@@ -82,3 +84,13 @@ def normalized_join(str_list, replace_sep, camel_case):
         normalized_str += str_item
 
     return normalized_str
+
+def prefixed_name(resource, name):
+    """Returns a name prefixed to be unique:
+    e.g. env_name-app_name-group_name-resource_name-name"""
+    # currently ony works for resources in an environment
+    env_name = get_parent_by_interface(resource, schemas.IEnvironment).name
+    app_name = get_parent_by_interface(resource, schemas.IApplication).name
+    group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
+
+    return '-'.join([env_name, app_name, group_name, resource.name, name])

@@ -13,3 +13,8 @@ class Controller():
 
     def get_aws_name(self):
         return self.aws_name
+
+    def init(self, controller_args):
+        if self.init_done:
+            return
+        self.init_done = True

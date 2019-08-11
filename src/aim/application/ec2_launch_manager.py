@@ -21,7 +21,7 @@ from aim import models
 from aim.models import schemas
 from aim.models.locations import get_parent_by_interface
 from aim.core.yaml import YAML
-from aim.utils import md5sum
+from aim.utils import md5sum, prefixed_name
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 
@@ -329,7 +329,6 @@ echo "No Launch bundles to load"
            to do what it needs to do (e.g. send metrics and logs to CloudWatch)
         """
         monitoring = resource.monitoring
-        env_name = get_parent_by_interface(resource, schemas.IEnvironment).name
         app_name = get_parent_by_interface(resource, schemas.IApplication).name
         group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
 
@@ -431,6 +430,7 @@ cd ${{LB_DIR}}
 
         # if there is logging, add to the cwagent config
         if monitoring.log_sets:
+            log_sources = []
             agent_config["logs"] = {
                 "logs_collected": {
                     "files": {
@@ -439,24 +439,21 @@ cd ${{LB_DIR}}
                 }
             }
             collect = agent_config['logs']['logs_collected']['files']['collect_list']
-            for log_set_name in monitoring.log_sets.keys():
-                for log_cat_name in monitoring.log_sets[log_set_name].keys():
-                    for log_source in monitoring.log_sets[log_set_name][log_cat_name].values():
-                        prefixed_log_group_name = '-'.join([
-                            env_name, app_name, group_name, resource.name, log_source.log_group_name
-                        ])
-                        collect_item = {
-                            "file_path": log_source.path,
-                            "log_group_name": prefixed_log_group_name,
-                            "log_stream_name": log_source.log_stream_name,
-                            "encoding": log_source.encoding,
-                            "timezone": log_source.timezone
-                        }
-                        if log_source.multi_line_start_pattern:
-                            collect_item["multi_line_start_pattern"] = log_source.multi_line_start_pattern
-                        if log_source.timestamp_format:
-                            collect_item["timestamp_format"] = log_source.timestamp_format
-                        collect.append(collect_item)
+            for log_source in monitoring.log_sets.get_all_log_sources():
+                log_sources.append(log_source)
+                prefixed_log_group_name = prefixed_name(resource, log_source.log_group_name)
+                collect_item = {
+                    "file_path": log_source.path,
+                    "log_group_name": prefixed_log_group_name,
+                    "log_stream_name": log_source.log_stream_name,
+                    "encoding": log_source.encoding,
+                    "timezone": log_source.timezone
+                }
+                if log_source.multi_line_start_pattern:
+                    collect_item["multi_line_start_pattern"] = log_source.multi_line_start_pattern
+                if log_source.timestamp_format:
+                    collect_item["timestamp_format"] = log_source.timestamp_format
+                collect.append(collect_item)
 
         # Convert CW Agent data structure to JSON string
         agent_config = json.dumps(agent_config)
@@ -508,6 +505,12 @@ statement:
         )
         cw_lb.set_launch_script(launch_script)
         cw_lb.add_file('amazon-cloudwatch-agent.json', agent_config)
+
+        # Create the CloudWatch Log Groups so that Expiry and MetricFilters can be set
+        if monitoring.log_sets:
+            log_groups_ctl = self.aim_ctx.get_controller('LogGroups')
+            log_groups_ctl.init_log_sources(resource, self.account_ctx)
+            # get the stack to provision?
 
         # Save Configuration
         self.add_bundle(cw_lb)
