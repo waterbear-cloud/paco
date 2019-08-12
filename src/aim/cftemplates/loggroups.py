@@ -62,12 +62,15 @@ Resources:
             loggroup_table['log_group_name'] = "      LogGroupName: '{}'".format(prefixed_name(resource, log_source.log_group_name))
 
             # override default retention?
+            # 1. log_source.expire_events_after <- specific to single log group
+            # 2. log_category.expire_events_after <- applies to an entire log_category
+            # 3. log_groups.expire_events_after <- global default
             override_retention = None
             log_category = log_source.__parent__.name
-            if log_category in cw_log_groups.log_category:
-                override_retention = cw_log_groups.log_category[log_category].expire_events_after
-            if override_retention:
-                retention = override_retention
+            if log_source.expire_events_after:
+                retention = log_source.expire_events_after
+            elif log_category in cw_log_groups.log_category:
+                retention = cw_log_groups.log_category[log_category].expire_events_after
             else:
                 retention = default_retention
             if retention == 'Never':
