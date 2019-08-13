@@ -362,7 +362,7 @@ Outputs:
             listener_table['ssl_certificates'] = ""
             listener_table['listener_certificate'] = ""
             listener_table['ssl_listener_cert_list'] = ""
-            if len(listener.ssl_certificates) > 0:
+            if len(listener.ssl_certificates) > 0 and alb_config.enabled:
                 listener_table['ssl_certificates'] = ssl_certificate_fmt
                 ssl_certificate_table['cert_idx'] = 0
                 ssl_certificate_table['listener_name'] = listener_name
