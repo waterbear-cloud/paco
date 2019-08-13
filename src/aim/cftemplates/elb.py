@@ -41,7 +41,7 @@ class ELB(CFTemplate):
         self.set_parameter('ConnectionSettingsIdleSeconds', elb_config['connection_settings']['idle_timeout'])
         self.set_parameter('CrossZone', elb_config['cross_zone'])
         self.set_parameter('CustomDomainName', elb_config['dns']['domain_name'])
-        self.set_parameter('HostedZoneId', elb_config['dns']['hosted_zone_id'])
+        self.set_parameter('HostedZoneId', elb_config['dns']['hosted_zone'])
 
         elb_region = self.env_ctx.region
         self.set_parameter('ELBHostedZoneId', self.lb_hosted_zone_id('elb', elb_region))

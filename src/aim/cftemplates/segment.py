@@ -411,7 +411,7 @@ Outputs:
         if availability_zones > 1:
           self.register_stack_output_config(segment_config_ref+'.az2.subnet_id', 'SubnetIdAZ2')
         if availability_zones > 2:
-          self.register_stack_output_config(segment_config_ref, '.az3.subnet_id', 'SubnetIdAZ3')
+          self.register_stack_output_config(segment_config_ref+'.az3.subnet_id', 'SubnetIdAZ3')
 
     def validate(self):
         #self.aim_ctx.log("Validating Segment Template")

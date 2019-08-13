@@ -38,9 +38,9 @@ class CodeDeploy(CFTemplate):
         # Initialize Parameters
         self.set_parameter('ResourceNamePrefix', self.resource_name)
         self.set_parameter('ApplicationName', self.application_name)
-        self.set_parameter('CodeDeployASGName', deploy_config.asg_name)
+        self.set_parameter('CodeDeployASGName', deploy_config.asg+'.name')
         self.set_parameter('ELBName', deploy_config.elb_name)
-        self.set_parameter('ALBTargetGroupName', deploy_config.alb_target_group_name)
+        self.set_parameter('ALBTargetGroupName', deploy_config.alb_target_group+'.name')
         self.set_parameter('ArtifactsBucketName', artifacts_bucket_name)
         self.set_parameter('CodeDeployAutoRollbackEnabled', deploy_config.auto_rollback_enabled)
         self.set_parameter('CodeDeployConfigType', deploy_config.deploy_config_type)
@@ -52,7 +52,7 @@ class CodeDeploy(CFTemplate):
                                                   res_id=res_id,
                                                   attribute='kms')
         self.set_parameter('CMKArn', deploy_kms_ref)
-        self.set_parameter('TargetInstanceRoleName', deploy_config.deploy_instance_role_name)
+        self.set_parameter('TargetInstanceRoleName', deploy_config.deploy_instance_role+'.name')
 
         # Define the Template
         template_fmt = """

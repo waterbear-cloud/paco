@@ -12,6 +12,7 @@ Here be utils.
 
 import hashlib
 from aim.core.exception import StackException
+from copy import deepcopy
 from functools import partial
 
 

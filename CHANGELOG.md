@@ -1,15 +1,51 @@
 Changelog for aim
 =================
 
-2.0.1 (unreleased)
+1.3.2 (unreleased)
+------------------
+
+- Nothing changed yet.
+
+
+1.3.1 (2019-08-07)
+------------------
+
+### Fixed
+
+- Python packaging, also include version.txt.
+
+
+1.3.0 (2019-08-07)
+------------------
+
+### Changed
+
+- CloudWatchAlarms now check for namespace and dimesions fields, that
+  can be used to override the default of one primary dimension and the resource_name.
+
+### Fixed
+
+- Python dist did not include README.md and CHANGELOG.md
+
+1.2.0 (2019-08-06)
 ------------------
 
 ### Added
 
+- Deleting resources can leave dangling CloudFormation templates in your
+  account. Controllers for NetworkEnvironments now keep track of templates
+  they've provisioned and warn you about unused templates.
+
+- NotificationGroups can be provisioned as SNS Topics and subscriptions.
+  Use ``aim provision notificationgroups``.
+
 - CloudWatch Alarm descriptions are JSON with metadata about the environment,
   region, application, resource group and resource that the alarm is for.
 
+- CloudWatch Alarms will not notify the SNS Topics that they are subscribed to.
+
 - Rewrote commands with consistent way of passing arguments to controllers.
+  Controllers args can now be all lower case.
 
 - Added Account initialization to 'aim init project'.
 
@@ -18,6 +54,7 @@ Changelog for aim
  - AIM references have a new format! It's simpler and more consistent.
    Every ref now starts with ``aim.ref ``.
 
+ - Created ``aim.utils`` to clean up AimContext object.
 
 1.1.0 (2019-07-24)
 ------------------
