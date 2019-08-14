@@ -85,6 +85,4 @@ Resources:
         template_table['log_groups'] = log_groups_yaml
         self.set_template(template_fmt.format(template_table))
 
-    def validate(self):
-        super().validate()
 

@@ -12,11 +12,13 @@ Note that EC2 Launch Mangaer is linux-centric and won't work
 on Windows instances.
 """
 
+
+import aim.cftemplates
 import json
 import os
 import pathlib
 import tarfile
-from aim.stack_group import StackHooks, StackTags
+from aim.stack_group import StackHooks, Stack, StackTags
 from aim import models
 from aim.models import schemas
 from aim.models.locations import get_parent_by_interface
@@ -507,12 +509,29 @@ statement:
         cw_lb.set_launch_script(launch_script)
         cw_lb.add_file('amazon-cloudwatch-agent.json', agent_config)
 
-        # Create the CloudWatch Log Groups so that Expiry and MetricFilters can be set
+        # Create the CloudWatch Log Groups so that Retention and MetricFilters can be set
         if monitoring.log_sets:
-            log_groups_ctl = self.aim_ctx.get_controller('LogGroups')
-            log_groups_ctl.init_log_sources(resource, self.account_ctx)
+            log_group_template = aim.cftemplates.LogGroups(
+                self.aim_ctx,
+                self.account_ctx,
+                self.aws_region,
+                'LG',
+                resource,
+                'some ref?'
+            )
+            log_group_stack = Stack(
+                aim_ctx=self.aim_ctx,
+                account_ctx=self.account_ctx,
+                grp_ctx=self.stack_group,
+                stack_config=None,
+                template=log_group_template,
+                aws_region=self.aws_region
+            )
+            self.stack_group.add_stack_order(log_group_stack)
+            #log_groups_ctl = self.aim_ctx.get_controller('LogGroups')
+            #log_groups_ctl.init_log_sources(resource, self.account_ctx)
             # get the stack to provision?
-            log_groups_ctl.provision()
+            #log_groups_ctl.provision()
 
         # Save Configuration
         self.add_bundle(cw_lb)
