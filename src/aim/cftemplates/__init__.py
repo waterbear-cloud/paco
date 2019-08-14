@@ -21,3 +21,4 @@ from aim.cftemplates.lambda_permission import LambdaPermission
 from aim.cftemplates.account import Account
 from aim.cftemplates.cw_event_rule import CWEventRule
 from aim.cftemplates.snstopics import SNSTopics
+from aim.cftemplates.cloudfront import CloudFront

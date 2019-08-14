@@ -456,7 +456,8 @@ class CFTemplate():
         name = name.replace('@', '')
         return name
 
-    def gen_parameter(self, param_type, name, description):
+    def gen_parameter(self, param_type, name, description, value):
+        self.set_parameter(name, value)
         return """
   {}:
     Description: {}

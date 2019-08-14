@@ -7,8 +7,8 @@ import time
 
 class DNSValidatedACMCertClient():
 
-    def __init__(self, account_ctx, domain):
-        self.acm_client = account_ctx.get_aws_client('acm')
+    def __init__(self, account_ctx, domain, region):
+        self.acm_client = account_ctx.get_aws_client('acm', aws_region=region)
         self.route_53_client = account_ctx.get_aws_client(client_name='route53',
                                                           client_config=Config(retries={'max_attempts': 10}))
 

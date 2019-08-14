@@ -92,8 +92,12 @@ Outputs:
                 endpoint = ""
                 if references.is_ref(subscription.endpoint):
                     param_name = 'Endpoint%s' % topic_table['name']
-                    parameters_yaml += self.gen_parameter('String', param_name, 'SNSTopic Endpoint value.')
-                    self.set_parameter(param_name, subscription.endpoint)
+                    parameters_yaml += self.gen_parameter(
+                        param_type='String',
+                        name=param_name,
+                        description='SNSTopic Endpoint value.',
+                        value=subscription.endpoint
+                        )
                     endpoint = "!Ref %s" % param_name
                 else:
                     endpoint = subscription.endpoint

@@ -142,6 +142,49 @@ class ApplicationEngine():
         )
         self.stack_group.add_stack_order(alarms_stack)
 
+    def init_cloudfront_resource(self, grp_id, res_id, res_config, res_stack_tags):
+        if res_config.enabled == False:
+            print("ApplicationEngine: Init: CloudFront: %s *disabled*" % (res_id))
+        else:
+            print("ApplicationEngine: Init: CloudFront: %s" % (res_id))
+        cloudfront_config_ref = self.gen_resource_ref(grp_id, res_id)
+        # Create Certificate in us-east-1 because that is where CloudFront lives.
+        acm_ctl = self.aim_ctx.get_controller('ACM')
+        cert_group_id = self.gen_resource_ref(grp_id, res_id, 'viewer_certificate')
+        cert_group_id = cert_group_id.replace(self.aws_region, 'us-east-1')
+        cert_config = self.aim_ctx.get_ref(res_config.viewer_certificate.certificate)
+        acm_ctl.add_certificate_config(
+            self.account_ctx,
+            'us-east-1',
+            cert_group_id,
+            'viewer_certificate',
+            cert_config
+        )
+        res_config.viewer_certificate.resolve_ref_obj = self
+        # CloudFront CloudFormation
+        aws_name = '-'.join([grp_id, res_id])
+        cloudfront_template = aim.cftemplates.CloudFront(
+            self.aim_ctx,
+            self.account_ctx,
+            self.aws_region,
+            aws_name,
+            self.app_id,
+            grp_id,
+            res_id,
+            res_config,
+            cloudfront_config_ref
+        )
+        cloudfront_stack = Stack(
+            self.aim_ctx,
+            self.account_ctx,
+            self.stack_group,
+            res_config,
+            cloudfront_template,
+            aws_region=self.aws_region,
+            stack_tags=res_stack_tags
+        )
+        self.stack_group.add_stack_order(cloudfront_stack)
+
     def init_snstopic_resource(self, grp_id, res_id, res_config, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: SNSTopic: %s *disabled*" % (res_id))
@@ -267,6 +310,7 @@ statement:
             cert_group_id = self.gen_resource_ref(grp_id, res_id)
             acm_ctl.add_certificate_config(
                 self.account_ctx,
+                self.aws_region,
                 cert_group_id,
                 res_id,
                 res_config
@@ -802,5 +846,11 @@ policies:
         elif isinstance(ref.resource, models.applications.Lambda):
             lambda_stack = self.get_stack_from_ref(ref)
             return lambda_stack
+        elif isinstance(ref.resource, models.applications.CFViewerCertificate):
+            acm_ctl = self.aim_ctx.get_controller('ACM')
+            # Force the region to us-east-1 because CloudFront lives there
+            ref.sub_part(ref.region, 'us-east-1')
+            ref.region = 'us-east-1'
+            return acm_ctl.resolve_ref(ref)
 
         return None

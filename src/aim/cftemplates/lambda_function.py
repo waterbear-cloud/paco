@@ -367,8 +367,12 @@ Outputs:
         for sns_topic_arn in lambda_config.sns_topics:
             # SNS Topic Arn parameters
             param_name = 'SNSTopicArn%d' % idx
-            parameters_yaml += self.gen_parameter('String', param_name, 'An SNS Topic ARN to grant permission to.')
-            self.set_parameter(param_name, sns_topic_arn)
+            parameters_yaml += self.gen_parameter(
+                param_type='String',
+                name=param_name,
+                description='An SNS Topic ARN to grant permission to.',
+                value=sns_topic_arn
+            )
             # Lambda Permissions
             permission_table['name'] = param_name
             permission_table['principal'] = 'sns.amazonaws.com'
