@@ -528,10 +528,6 @@ statement:
                 aws_region=self.aws_region
             )
             self.stack_group.add_stack_order(log_group_stack)
-            #log_groups_ctl = self.aim_ctx.get_controller('LogGroups')
-            #log_groups_ctl.init_log_sources(resource, self.account_ctx)
-            # get the stack to provision?
-            #log_groups_ctl.provision()
 
         # Save Configuration
         self.add_bundle(cw_lb)
