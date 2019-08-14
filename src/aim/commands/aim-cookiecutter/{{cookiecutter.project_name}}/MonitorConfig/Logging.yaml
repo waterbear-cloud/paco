@@ -1,0 +1,39 @@
+cw_logging:
+  expire_events_after_days: '7'
+  log_sets:
+    amazon_linux:
+      log_groups:
+        audit:
+          sources:
+            audit:
+              path: "/var/log/audit/audit.log"
+              log_stream_name: "{instance_id}"
+        secure:
+          sources:
+            secure:
+              path: "/var/log/secure"
+              log_stream_name: "{instance_id}"
+        messages:
+          sources:
+            messages:
+              path: "/var/log/messages"
+              log_stream_name: "{instance_id}"
+        yum:
+          sources:
+            yum:
+              path: "/var/log/yum.log"
+              log_stream_name: "{instance_id}"
+    apache:
+      log_groups:
+        access:
+          expire_events_after_days: '14'
+          sources:
+            access:
+              path: "/var/log/httpd/access.log"
+              log_stream_name: "access-{instance_id}"
+        error:
+          expire_events_after_days: '14'
+          sources:
+            error:
+              path: "/var/log/httpd/error.log"
+              log_stream_name: "error-{instance_id}"

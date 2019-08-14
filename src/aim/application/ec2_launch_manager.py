@@ -430,7 +430,7 @@ cd ${{LB_DIR}}
 
         # if there is logging, add to the cwagent config
         if monitoring.log_sets:
-            log_sources = []
+            log_groups = []
             agent_config["logs"] = {
                 "logs_collected": {
                     "files": {
@@ -441,7 +441,8 @@ cd ${{LB_DIR}}
             collect = agent_config['logs']['logs_collected']['files']['collect_list']
             for log_source in monitoring.log_sets.get_all_log_sources():
                 log_sources.append(log_source)
-                prefixed_log_group_name = prefixed_name(resource, log_source.log_group_name)
+                log_group = get_parent_by_interface(log_source, schemas.ICloudWatchLogGroup)
+                prefixed_log_group_name = prefixed_name(resource, log_group.get_log_group_name())
                 collect_item = {
                     "file_path": log_source.path,
                     "log_group_name": prefixed_log_group_name,
