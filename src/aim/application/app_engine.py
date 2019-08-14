@@ -147,43 +147,48 @@ class ApplicationEngine():
             print("ApplicationEngine: Init: CloudFront: %s *disabled*" % (res_id))
         else:
             print("ApplicationEngine: Init: CloudFront: %s" % (res_id))
-        cloudfront_config_ref = self.gen_resource_ref(grp_id, res_id)
-        # Create Certificate in us-east-1 because that is where CloudFront lives.
-        acm_ctl = self.aim_ctx.get_controller('ACM')
-        cert_group_id = self.gen_resource_ref(grp_id, res_id, 'viewer_certificate')
-        cert_group_id = cert_group_id.replace(self.aws_region, 'us-east-1')
-        cert_config = self.aim_ctx.get_ref(res_config.viewer_certificate.certificate)
-        acm_ctl.add_certificate_config(
-            self.account_ctx,
-            'us-east-1',
-            cert_group_id,
-            'viewer_certificate',
-            cert_config
-        )
-        res_config.viewer_certificate.resolve_ref_obj = self
-        # CloudFront CloudFormation
-        aws_name = '-'.join([grp_id, res_id])
-        cloudfront_template = aim.cftemplates.CloudFront(
-            self.aim_ctx,
-            self.account_ctx,
-            self.aws_region,
-            aws_name,
-            self.app_id,
-            grp_id,
-            res_id,
-            res_config,
-            cloudfront_config_ref
-        )
-        cloudfront_stack = Stack(
-            self.aim_ctx,
-            self.account_ctx,
-            self.stack_group,
-            res_config,
-            cloudfront_template,
-            aws_region=self.aws_region,
-            stack_tags=res_stack_tags
-        )
-        self.stack_group.add_stack_order(cloudfront_stack)
+
+        for factory_name, factory_config in res_config.factory.items():
+            cloudfront_config_ref = self.gen_resource_ref(grp_id, res_id, attribute='factory.'+factory_name)
+            res_config.domain_aliases = factory_config.domain_aliases
+            res_config.viewer_certificate.certificate = factory_config.viewer_certificate.certificate
+
+            # Create Certificate in us-east-1 because that is where CloudFront lives.
+            acm_ctl = self.aim_ctx.get_controller('ACM')
+            cert_group_id = self.gen_resource_ref(grp_id, res_id, 'factory.'+factory_name+'.viewer_certificate')
+            cert_group_id = cert_group_id.replace(self.aws_region, 'us-east-1')
+            cert_config = self.aim_ctx.get_ref(res_config.viewer_certificate.certificate)
+            acm_ctl.add_certificate_config(
+                self.account_ctx,
+                'us-east-1',
+                cert_group_id,
+                'viewer_certificate',
+                cert_config
+            )
+            res_config.viewer_certificate.resolve_ref_obj = self
+            factory_config.viewer_certificate.resolve_ref_obj = self
+            # CloudFront CloudFormation
+            aws_name = '-'.join([grp_id, res_id, factory_name])
+            cloudfront_template = aim.cftemplates.CloudFront(
+                self.aim_ctx,
+                self.account_ctx,
+                self.aws_region,
+                aws_name,
+                self.app_id,
+                grp_id,
+                res_config,
+                cloudfront_config_ref
+            )
+            cloudfront_stack = Stack(
+                self.aim_ctx,
+                self.account_ctx,
+                self.stack_group,
+                res_config,
+                cloudfront_template,
+                aws_region=self.aws_region,
+                stack_tags=res_stack_tags
+            )
+            self.stack_group.add_stack_order(cloudfront_stack)
 
     def init_snstopic_resource(self, grp_id, res_id, res_config, res_stack_tags):
         if res_config.enabled == False:

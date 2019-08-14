@@ -17,7 +17,6 @@ class CloudFront(CFTemplate):
                  aws_name,
                  app_id,
                  grp_id,
-                 cloudfront_id,
                  cloudfront_config,
                  config_ref):
 
@@ -66,7 +65,8 @@ Resources:
           AcmCertificateArn: !Ref ViewerCertificate
           SslSupportMethod: !Ref ViewerCertSSLSupportedMethod
           MinimumProtocolVersion: !Ref ViewerCertMinimumProtocolVersion
-        #WebACLId: !Ref WAFWebACL
+{0[custom_error_responses]:s}
+{0[webacl_id]:s}
 
 {0[aliases_record_sets]:s}
 
@@ -149,6 +149,16 @@ Outputs:
           description='SSL Viewer Certificate Minimum Protocol Version',
           value=cloudfront_config.viewer_certificate.minimum_protocol_version
         )
+        # WAF Web Acl Id
+        webacl_id_yaml = ""
+        if cloudfront_config.webacl_id != None:
+            webacl_id_yaml = "        WebACLId: !Ref WAFWebACLId"
+            parameters_yaml += self.gen_parameter(
+              param_type='String',
+              name='WebAclId',
+              description='WAF Web Acl ID',
+              value=cloudfront_config.webacl_id
+            )
 
         # ---------------------------------------------------------------------
         # Domain Aliases
@@ -251,12 +261,36 @@ Outputs:
             for ssl_protocol in origin.custom_origin_config.ssl_protocols:
                 origin_table['ssl_protocols'] += "\n                - %s" % ssl_protocol
             origins_yaml += origin_fmt.format(origin_table)
+        # ---------------------------------------------------------------------
+        # Custom Error Responses
+        error_resp_fmt = """        CustomErrorResponses:
+          - ErrorCachingMinTTL: {0[error_caching_min_ttl]:d}
+            ErrorCode: {0[error_code]:d}
+            ResponseCode: {0[response_code]:d}
+            ResponsePagePath: {0[response_page_path]:s}
+"""
+        error_resp_table = {
+            'error_caching_min_ttl': None,
+            'error_code': None,
+            'response_code': None,
+            'response_page_path': None
+        }
+        custom_error_responses_yaml = ""
+        for error_resp in cloudfront_config.custom_error_responses:
+            for key in error_resp_table.keys():
+                value = getattr(error_resp, key)
+                error_resp_table[key] = value
+            custom_error_responses_yaml += error_resp_fmt.format(error_resp_table)
 
+        # ---------------------------------------------------------------------
 
         template_table['parameters'] = parameters_yaml
         template_table['domain_aliases'] = domain_aliases_yaml
         template_table['allowed_methods'] = allowed_methods_yaml
         template_table['origins'] = origins_yaml
         template_table['aliases_record_sets'] = aliases_record_sets_yaml
+        template_table['custom_error_responses'] = custom_error_responses_yaml
+        template_table['webacl_id'] = webacl_id_yaml
+
 
         self.set_template(template_fmt.format(template_table))
