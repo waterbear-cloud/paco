@@ -2,7 +2,7 @@ import os
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
-from aim.models.references import Reference, is_ref
+from aim.models.references import Reference, is_ref, resolve_ref
 from aim.utils import md5sum
 from io import StringIO
 from enum import Enum
@@ -223,7 +223,7 @@ Outputs:
           - Id: {0[id]:s}
             DomainName: {0[domain_name]:s}
             CustomOriginConfig:
-              HTTPPort: {0[http_port]:d}
+              {0[http_port]:s}
               HTTPSPort: {0[https_port]:d}
               OriginKeepaliveTimeout: {0[keepalive_timeout]:d}
               OriginProtocolPolicy: {0[protocol_policy]:s}
@@ -242,17 +242,24 @@ Outputs:
         }
         origins_yaml = ""
         for origin_name, origin in cloudfront_config.origins.items():
-            domain_hash = md5sum(str_data=origin.domain_name)
+            if origin.s3_bucket != None:
+                domain_hash = md5sum(str_data=origin.s3_bucket)
+                origin_domain_name = self.aim_ctx.get_ref(origin.s3_bucket+'.url')
+            else:
+                domain_hash = md5sum(str_data=origin.domain_name)
+                origin_domain_name = origin.domain_name
             param_name = 'OriginDomain' + domain_hash
             parameters_yaml += self.gen_parameter(
                 param_type='String',
                 name=param_name,
                 description='Origin Domain Name',
-                value=origin.domain_name
+                value=origin_domain_name
             )
             origin_table['id'] = origin_name
             origin_table['domain_name'] = '!Ref ' + param_name
-            origin_table['http_port'] = origin.custom_origin_config.http_port
+            origin_table['http_port'] = ''
+            if origin.custom_origin_config.http_port != None:
+              origin_table['http_port'] = 'HTTPPort: '+str(origin.custom_origin_config.http_port)
             origin_table['https_port'] = origin.custom_origin_config.https_port
             origin_table['keepalive_timeout'] = origin.custom_origin_config.keepalive_timeout
             origin_table['protocol_policy'] = origin.custom_origin_config.protocol_policy

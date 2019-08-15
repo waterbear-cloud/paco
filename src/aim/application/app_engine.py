@@ -331,6 +331,9 @@ statement:
             bucket_name_prefix = '-'.join([self.get_aws_name(), grp_id])
             #print("Application depoloyment bucket name: %s" % new_name)
             s3_ctl = self.aim_ctx.get_controller('S3')
+            # If an account was nto set, use the network default
+            if res_config.account == None:
+                res_config.account = self.aim_ctx.get_ref('aim.ref '+self.config_ref_prefix+'.network.aws_account')
             account_ctx = self.aim_ctx.get_account_context(account_ref=res_config.account)
             s3_ctl.init_context(account_ctx, self.aws_region, s3_config_ref, self.stack_group, res_stack_tags)
             s3_ctl.add_bucket(
