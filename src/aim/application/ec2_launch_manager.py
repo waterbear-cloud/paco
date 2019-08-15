@@ -430,7 +430,7 @@ cd ${{LB_DIR}}
                     "collection_interval": interval
                 }
 
-        # if there is logging, add to the cwagent config
+        # if there is logging, add it to the cwagent config
         if monitoring.log_sets:
             log_groups = []
             agent_config["logs"] = {
@@ -440,12 +440,11 @@ cd ${{LB_DIR}}
                     }
                 }
             }
-            collect = agent_config['logs']['logs_collected']['files']['collect_list']
+            collect_list = agent_config['logs']['logs_collected']['files']['collect_list']
             for log_source in monitoring.log_sets.get_all_log_sources():
-                log_sources.append(log_source)
                 log_group = get_parent_by_interface(log_source, schemas.ICloudWatchLogGroup)
                 prefixed_log_group_name = prefixed_name(resource, log_group.get_log_group_name())
-                collect_item = {
+                source_config = {
                     "file_path": log_source.path,
                     "log_group_name": prefixed_log_group_name,
                     "log_stream_name": log_source.log_stream_name,
@@ -453,10 +452,10 @@ cd ${{LB_DIR}}
                     "timezone": log_source.timezone
                 }
                 if log_source.multi_line_start_pattern:
-                    collect_item["multi_line_start_pattern"] = log_source.multi_line_start_pattern
+                    source_config["multi_line_start_pattern"] = log_source.multi_line_start_pattern
                 if log_source.timestamp_format:
-                    collect_item["timestamp_format"] = log_source.timestamp_format
-                collect.append(collect_item)
+                    source_config["timestamp_format"] = log_source.timestamp_format
+                collect_list.append(source_config)
 
         # Convert CW Agent data structure to JSON string
         agent_config = json.dumps(agent_config)
