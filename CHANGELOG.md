@@ -1,10 +1,13 @@
 Changelog for aim
 =================
 
-1.3.2 (unreleased)
+1.4.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Added
+
+- LogGroups are created for all groups that the CloudWatch Agent will require.
+  Uses the new Logging schema in aim.models.
 
 
 1.3.1 (2019-08-07)
