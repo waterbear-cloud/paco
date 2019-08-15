@@ -11,6 +11,7 @@ from aim.controllers.ctl_cloudwatch import CloudWatchController
 from aim.controllers.ctl_lambda import LambdaController
 from aim.controllers.ctl_notificationgroups import NotificationGroupsController
 
+
 klass = {
     'netenv': NetEnvController,
     's3': S3Controller,
@@ -23,5 +24,5 @@ klass = {
     'ec2': EC2Controller,
     'cloudwatch': CloudWatchController,
     'lambda': LambdaController,
-    'notificationsgroups': NotificationGroupsController
+    'notificationsgroups': NotificationGroupsController,
 }
