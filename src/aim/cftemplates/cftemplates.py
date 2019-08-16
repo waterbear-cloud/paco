@@ -463,3 +463,9 @@ class CFTemplate():
     Description: {}
     Type: {}
 """.format(name, description, param_type)
+
+    def gen_output(self, name, value):
+        return """
+  {}:
+    Value: {}
+""".format(name, value)

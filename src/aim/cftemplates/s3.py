@@ -122,7 +122,6 @@ Resources:
             }
 
         s3_bucket_outputs_fmt = """
-Outputs:
   {0[cf_resource_name_prefix]:s}BucketName:
     Value: !Ref {0[cf_resource_name_prefix]:s}Bucket
 """
@@ -158,6 +157,8 @@ Outputs:
             cloudfront_origin_table['cf_resource_name_prefix'] = s3_bucket_table['cf_resource_name_prefix']
             cloudfront_origin_table['access_id_description'] = self.s3_context_id
             resources_yaml += cloudfront_origin_fmt.format(cloudfront_origin_table)
+            outputs_yaml += self.gen_output('CloudFrontOriginAccessIdentity', '!Ref CloudFrontOriginAccessIdentity')
+            self.register_stack_output_config(config_ref, 'CloudFrontOriginAccessIdentity')
         elif len(bucket_config.policy) > 0:
             # Bucket Policy
             if bucket_policy_only == False:
@@ -200,6 +201,8 @@ Outputs:
 
         template_table['parameters_yaml'] = parameters_yaml
         template_table['resources_yaml'] = resources_yaml
+        if outputs_yaml != '':
+            outputs_yaml = "Outputs:\n"+outputs_yaml
         template_table['outputs_yaml'] = outputs_yaml
 
         self.set_template(template_fmt.format(template_table))
@@ -213,6 +216,8 @@ Outputs:
         output_key = None
         if ref.last_part == "name":
             output_key = self.gen_cf_logical_name(ref.parts[-2], '_') + "BucketName"
+        elif ref.last_part == 'origin_id':
+            return 'CloudFrontOriginAccessIdentity'
 
         return output_key
 
