@@ -38,7 +38,7 @@ class ACMController(Controller):
             cert_config = acm_config['config']
             cert_domain = cert_config.domain_name
             #aws_session = acm_config.account_ctx.get_session()
-            acm_client = DNSValidatedACMCertClient(acm_config['account_ctx'], cert_domain)
+            acm_client = DNSValidatedACMCertClient(acm_config['account_ctx'], cert_domain, acm_config['region'])
             #print("Alternate sert name: %s" % (cert_config.subject_alternative_names))
             cert_arn = acm_client.request_certificate(cert_config.subject_alternative_names)
             #           print("Cert arn: %s" % (cert_arn))
@@ -47,7 +47,7 @@ class ACMController(Controller):
                 validation_records = acm_client.get_domain_validation_records(cert_arn)
                 #                print("Validation records")
                 #                print(validation_records)
-                if 'ResourceRecord' not in validation_records[0]:
+                if len(validation_records) == 0 or 'ResourceRecord' not in validation_records[0]:
                     print("Waiting for DNS Validation records...")
                     time.sleep(1)
                     validation_records = None
@@ -69,7 +69,7 @@ class ACMController(Controller):
             group_id = '.'.join(ref.parts[:-1])
             cert_id = ref.parts[-2]
             res_config = self.get_cert_config(group_id, cert_id)
-            acm_client = DNSValidatedACMCertClient(res_config['account_ctx'], ref.resource.domain_name)
+            acm_client = DNSValidatedACMCertClient(res_config['account_ctx'], res_config['config'].domain_name, ref.region)
             if acm_client:
                 cert_arn = acm_client.get_certificate_arn()
                 if cert_arn == None:
@@ -82,7 +82,7 @@ class ACMController(Controller):
                 raise StackException(AimErrorCode.Unknown)
         raise StackException(AimErrorCode.Unknown)
 
-    def add_certificate_config(self, account_ctx, group_id, cert_id, cert_config):
+    def add_certificate_config(self, account_ctx, region, group_id, cert_id, cert_config):
         # print("Add Certificate Config: " + group_id + " " + cert_id)
         if group_id not in self.cert_config_map.keys():
             self.cert_config_map[group_id] = []
@@ -91,7 +91,8 @@ class ACMController(Controller):
             'group_id': group_id,
             'id': cert_id,
             'config': cert_config,
-            'account_ctx': account_ctx
+            'account_ctx': account_ctx,
+            'region': region
         }
         self.cert_config_map[group_id].append(map_config)
         self.cert_config_list.append(map_config)

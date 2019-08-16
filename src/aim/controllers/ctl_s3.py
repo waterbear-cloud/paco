@@ -107,17 +107,18 @@ class S3Context():
 
         bucket_config.resolve_ref_obj = self
 
-        # S3 Delete on Stack Delete hook
-        if stack_hooks == None:
-            stack_hooks = StackHooks(self.aim_ctx)
+        # If the bucket already exists, do not create a stack for it
+        if bucket_config.external_resource == False:
+            # S3 Delete on Stack Delete hook
+            if stack_hooks == None:
+                stack_hooks = StackHooks(self.aim_ctx)
 
+            stack_hooks.add('S3StackGroup', 'delete', 'post',
+                            self.stack_hook_post_delete, None, self.bucket_context)
 
-        stack_hooks.add('S3StackGroup', 'delete', 'post',
-                        self.stack_hook_post_delete, None, self.bucket_context)
-
-        self.add_stack(bucket_policy_only=False,
-                        stack_hooks=stack_hooks,
-                        stack_tags=self.stack_tags)
+            self.add_stack(bucket_policy_only=False,
+                            stack_hooks=stack_hooks,
+                            stack_tags=self.stack_tags)
 
 
     def add_bucket_policy(self, policy_dict, stack_hooks=None, new_stack=True):
@@ -133,15 +134,21 @@ class S3Context():
                         stack_hooks=stack_hooks,
                         stack_tags=self.stack_tags)
 
+    def get_bucket_name(self):
+        if self.bucket_context['config'].external_resource == True:
+            return self.bucket_context['config'].bucket_name
+        else:
+            bucket_name = '-'.join([self.bucket_context['bucket_name_prefix'],
+                                    self.bucket_context['config'].name,
+                                    self.bucket_context['config'].bucket_name,
+                                    self.bucket_context['bucket_name_suffix']])
+            return bucket_name.replace('_', '-').lower()
+
     def get_bucket_arn(self):
         return 'arn:aws:s3:::'+self.get_bucket_name()
 
-    def get_bucket_name(self):
-        bucket_name = '-'.join([self.bucket_context['bucket_name_prefix'],
-                                self.bucket_context['config'].name,
-                                self.bucket_context['config'].bucket_name,
-                                self.bucket_context['bucket_name_suffix']])
-        return bucket_name.replace('_', '-').lower()
+    def get_bucket_url(self):
+        return self.get_bucket_name()+'.s3.amazonaws.com'
 
     def get_region(self):
         return self.region
@@ -211,6 +218,10 @@ class S3Context():
             return self.get_bucket_arn()
         elif ref.last_part == 'name':
             return self.get_bucket_name()
+        elif ref.last_part == 'url':
+            return self.get_bucket_url()
+        elif ref.last_part == 'origin_id':
+            return self.bucket_context['stack']
         else:
             return self.bucket_context['config']
 

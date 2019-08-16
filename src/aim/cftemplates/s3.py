@@ -58,6 +58,36 @@ Resources:
     DeletionPolicy: Retain
 """
 
+        cloudfront_origin_fmt = """
+  CloudFrontOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: '{0[access_id_description]:s}'
+
+  CloudFrontBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    DependsOn:
+      - CloudFrontOriginAccessIdentity
+      - {0[cf_resource_name_prefix]:s}Bucket
+    Properties:
+      Bucket: {0[bucket_name]:s}
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              CanonicalUser: !GetAtt CloudFrontOriginAccessIdentity.S3CanonicalUserId
+            Action:
+              - s3:GetObject
+            Resource:
+              - arn:aws:s3:::{0[bucket_name]:s}/*
+"""
+        cloudfront_origin_table = {
+            'access_id_description': None,
+            'cf_resource_name_prefix': None,
+            'bucket_name': None
+        }
+
         s3_policy_fmt = """
   {0[cf_resource_name_prefix]:s}BucketPolicy:
   {0[cf_policy_depends_on]:s}
@@ -92,7 +122,6 @@ Resources:
             }
 
         s3_bucket_outputs_fmt = """
-Outputs:
   {0[cf_resource_name_prefix]:s}BucketName:
     Value: !Ref {0[cf_resource_name_prefix]:s}Bucket
 """
@@ -123,8 +152,15 @@ Outputs:
             # parameters_yaml += s3_bucket_params_fmt.format(s3_bucket_table)
             resources_yaml += s3_bucket_fmt.format(s3_bucket_table)
 
-        # Bucket Policy
-        if len(bucket_config.policy) > 0:
+        if bucket_config.cloudfront_origin == True:
+            cloudfront_origin_table['bucket_name'] = s3_bucket_table['bucket_name']
+            cloudfront_origin_table['cf_resource_name_prefix'] = s3_bucket_table['cf_resource_name_prefix']
+            cloudfront_origin_table['access_id_description'] = self.s3_context_id
+            resources_yaml += cloudfront_origin_fmt.format(cloudfront_origin_table)
+            outputs_yaml += self.gen_output('CloudFrontOriginAccessIdentity', '!Ref CloudFrontOriginAccessIdentity')
+            self.register_stack_output_config(config_ref, 'CloudFrontOriginAccessIdentity')
+        elif len(bucket_config.policy) > 0:
+            # Bucket Policy
             if bucket_policy_only == False:
                 s3_policy_table['cf_policy_depends_on'] = s3_policy_depends_on_fmt.format(s3_bucket_table)
 
@@ -165,6 +201,8 @@ Outputs:
 
         template_table['parameters_yaml'] = parameters_yaml
         template_table['resources_yaml'] = resources_yaml
+        if outputs_yaml != '':
+            outputs_yaml = "Outputs:\n"+outputs_yaml
         template_table['outputs_yaml'] = outputs_yaml
 
         self.set_template(template_fmt.format(template_table))
@@ -178,6 +216,8 @@ Outputs:
         output_key = None
         if ref.last_part == "name":
             output_key = self.gen_cf_logical_name(ref.parts[-2], '_') + "BucketName"
+        elif ref.last_part == 'origin_id':
+            return 'CloudFrontOriginAccessIdentity'
 
         return output_key
 

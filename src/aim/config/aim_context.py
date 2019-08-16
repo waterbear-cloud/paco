@@ -71,11 +71,14 @@ class AccountContext(object):
         return self.config.account_id
 
     def get_aws_client(self, client_name, aws_region=None, client_config=None):
-        if client_name not in self.client_cache.keys():
+        client_id = client_name
+        if aws_region != None:
+            client_id += aws_region
+        if client_id not in self.client_cache.keys():
             session = self.get_session()
-            self.client_cache[client_name] = session.client(
+            self.client_cache[client_id] = session.client(
                 client_name, region_name=aws_region, config=client_config)
-        return self.client_cache[client_name]
+        return self.client_cache[client_id]
 
     def get_aws_resource(self, resource_name, aws_region=None, resource_config=None):
         if resource_name not in self.resource_cache.keys():
