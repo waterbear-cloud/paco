@@ -854,7 +854,7 @@ policies:
         elif isinstance(ref.resource, models.applications.Lambda):
             lambda_stack = self.get_stack_from_ref(ref)
             return lambda_stack
-        elif isinstance(ref.resource, models.applications.CFViewerCertificate):
+        elif isinstance(ref.resource, models.applications.CloudFrontViewerCertificate):
             acm_ctl = self.aim_ctx.get_controller('ACM')
             # Force the region to us-east-1 because CloudFront lives there
             ref.sub_part(ref.region, 'us-east-1')
