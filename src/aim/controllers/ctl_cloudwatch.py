@@ -1,9 +1,8 @@
 import os
-from aim.core.exception import StackException
-from aim.core.exception import AimErrorCode
-from aim.controllers.controllers import Controller
 import aim.cftemplates
-from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks
+from aim.controllers.controllers import Controller
+from aim.stack_group import Stack, StackGroup
+
 
 class CloudWatchController(Controller):
     def __init__(self, aim_ctx):

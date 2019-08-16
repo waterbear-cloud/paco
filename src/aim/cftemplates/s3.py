@@ -142,10 +142,22 @@ Outputs:
                 # Action
                 for action in policy_statement.action:
                     s3_policy_statement_table['action_list'] += cf_list_item.format(action)
-                # Effict
+                # Effect
                 s3_policy_statement_table['effect'] = policy_statement.effect
-                # Principal
-                if policy_statement.aws != None and len(policy_statement.aws) > 0:
+
+                # Principal - principal field
+                if policy_statement.principal != None and len(policy_statement.principal) > 0:
+                    for key, value in policy_statement.principal.items():
+                        s3_policy_statement_table['principal'] = "              {}:".format(key)
+                        # can be a string or list
+                        if type(value) == type(list()):
+                            for item in value:
+                                s3_policy_statement_table['principal'] += cf_principal_list_item.format(item)
+                        else:
+                            s3_policy_statement_table['principal'] += cf_principal_list_item.format(value)
+
+                # Principal - aws field
+                elif policy_statement.aws != None and len(policy_statement.aws) > 0:
                     s3_policy_statement_table['principal'] = "              AWS:"
                     for principal in policy_statement.aws:
                         s3_policy_statement_table['principal'] += cf_principal_list_item.format(principal)

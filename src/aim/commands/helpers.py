@@ -46,7 +46,6 @@ def handle_exceptions(func):
     """
     @wraps(func)
     def decorated(*args, **kwargs):
-        #return func(*args, **kwargs)
         try:
             return func(*args, **kwargs)
         except (InvalidAimReference, UnusedAimProjectField, InvalidAimProjectFile, AimException, StackException, BotoCoreError,
@@ -55,9 +54,16 @@ def handle_exceptions(func):
             error_name = error.__class__.__name__
             if error_name in ('InvalidAimProjectFile', 'UnusedAimProjectField', 'InvalidAimReference'):
                 click.echo("Invalid AIM project configuration files at {}".format(args[0].home))
+                if hasattr(error, 'args'):
+                    if len(error.args) > 0:
+                        click.echo(error.args[0])
             elif error_name in ('StackException'):
                 click.echo(error.message)
-            click.echo(error)
+            else:
+                if hasattr(error, 'message'):
+                    click.echo(error.message)
+                else:
+                    click.echo(error)
             sys.exit(1)
 
     return decorated

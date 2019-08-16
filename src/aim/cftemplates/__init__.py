@@ -22,3 +22,4 @@ from aim.cftemplates.account import Account
 from aim.cftemplates.cw_event_rule import CWEventRule
 from aim.cftemplates.snstopics import SNSTopics
 from aim.cftemplates.loggroups import LogGroups
+from aim.cftemplates.cloudtrail import CloudTrail
