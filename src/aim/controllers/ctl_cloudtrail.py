@@ -2,6 +2,7 @@ import aim.cftemplates
 import aim.models.applications
 import os
 from aim.controllers.controllers import Controller
+from aim.models import references
 from aim.stack_group import Stack, StackGroup
 
 
@@ -110,8 +111,13 @@ class CloudTrailController(Controller):
                 # default is to enable for all accounts
                 accounts = self.aim_ctx.project['accounts'].values()
             else:
-                # XXX ToDo: enable with aim.ref accounts
                 accounts = []
+                for account_ref in trail.accounts:
+                    # ToDo: when accounts .get_ref returns an object, remove this workaround
+                    ref = references.Reference(account_ref)
+                    account = self.aim_ctx.project['accounts'][ref.last_part]
+                    breakpoint()
+                    accounts.append(account)
             for account in accounts:
                 account_ctx = self.aim_ctx.get_account_context(account_name=account.name)
                 cloudtrail_stack_grp = CloudTrailStackGroup(

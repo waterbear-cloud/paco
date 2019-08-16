@@ -203,7 +203,17 @@ class AimContext(object):
         return os.path.join(self.stacks_folder, stack_group_type+"/"+stack_type+".yml")
 
     def get_ref(self, aim_ref, account_ctx=None):
-        return references.resolve_ref(aim_ref, self.project, account_ctx=account_ctx)
+        """Takes an AIM reference string (aim.ref <type>.<part>) and returns
+        the object or value that is being referenced.
+
+        Note that for `aim.ref accounts.<account-name>` references, the acount id is returned
+        and not the object.
+        """
+        return references.resolve_ref(
+            aim_ref,
+            self.project,
+            account_ctx=account_ctx
+        )
 
     def input(self,
                 prompt,
