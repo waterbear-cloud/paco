@@ -83,12 +83,14 @@ Resources:
             Principal:
 {0[principal]:s}
             Resource: {0[resource_list]:s}
+            {0[condition]:s}
 """
         s3_policy_statement_table = {
             'action_list': "",
             'effect': "",
             'principal': "",
-            'resource_list': ""
+            'resource_list': "",
+            'condition': "",
             }
 
         s3_bucket_outputs_fmt = """
@@ -161,6 +163,20 @@ Outputs:
                     s3_policy_statement_table['principal'] = "              AWS:"
                     for principal in policy_statement.aws:
                         s3_policy_statement_table['principal'] += cf_principal_list_item.format(principal)
+
+                if policy_statement.condition != {}:
+                    padding = "              "
+                    condition = "Condition:\n"
+                    for key, value in policy_statement.condition.items():
+                        condition += padding + "  {}:\n".format(key)
+                        for sub_key, sub_value in value.items():
+                            if type(sub_value) == type(list()):
+                                condition += padding + "    '{}':\n".format(sub_key)
+                                for item in sub_value:
+                                    condition += padding + "      - '{}'\n".format(item)
+                            else:
+                                condition += padding + "    '{}': '{}'\n".format(sub_key, sub_value)
+                    s3_policy_statement_table['condition'] = condition
 
                 # Resource
                 bucket_arn = s3_ctl.get_bucket_arn(self.s3_context_id)

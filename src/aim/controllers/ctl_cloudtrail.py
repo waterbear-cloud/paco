@@ -48,14 +48,12 @@ class CloudTrailStackGroup(StackGroup):
                     'principal': {"Service": "cloudtrail.amazonaws.com"},
                     'effect': 'Allow',
                     'action': ['s3:PutObject'],
-                    'resource_suffix': [ put_suffix ]
+                    'resource_suffix': [ put_suffix ],
+                    'condition': {"StringEquals": {"s3:x-amz-acl": "bucket-owner-full-control"}}
                 } ],
             }
             s3bucket = aim.models.applications.S3Bucket(trail.name, None)
             s3bucket.update(bucket_config_dict)
-
-            # ToDo: handle the condition for the s3:PutObject
-            # "Condition": {"StringEquals": {"s3:x-amz-acl": "bucket-owner-full-control"}}
             s3_ctl.add_bucket(
                 resource_ref=s3_config_ref,
                 region=region,
