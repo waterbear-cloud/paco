@@ -11,6 +11,8 @@ Changelog for aim
 - LogGroups are created for all groups that the CloudWatch Agent will require.
   Uses the new Logging schema in aim.models.
 
+- Added CloudFront application Resource
+
 
 1.3.1 (2019-08-07)
 ------------------

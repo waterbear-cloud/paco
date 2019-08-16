@@ -197,7 +197,7 @@ Outputs:
 
                 # Alarm actions
                 alarm_actions = get_alarm_actions(self.aim_ctx.project['notificationgroups'], alarm)
-                if len(alarm_actions) > 0 and alarm_actions[0] != None:
+                if len(alarm_actions) > 0 and alarm_actions[0] != None and alarm_actions[0] != '':
                     alarm_actions_cfn = "      ActionsEnabled: True\n      AlarmActions:\n"
                     for action in alarm_actions:
                         alarm_actions_cfn += "         - " + action
