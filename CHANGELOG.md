@@ -6,6 +6,8 @@ Changelog for aim
 
 ### Added
 
+- CloudTrail resource adds basic CloudTrail provisioning.
+
 - LogGroups are created for all groups that the CloudWatch Agent will require.
   Uses the new Logging schema in aim.models.
 

@@ -127,7 +127,7 @@ class Stack():
         self.termination_protection = False
         self.stack_suffix = stack_suffix
         if aws_region == None:
-            raise StackException(AimErrorCode.Unknown)
+            raise StackException(AimErrorCode.Unknown, message="AWS Region is not supplied")
         self.aws_region = aws_region
         self.cf_client = self.account_ctx.get_aws_client('cloudformation', aws_region)
         # self.cf_res = boto3.resource('cloudformation')

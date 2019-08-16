@@ -36,7 +36,7 @@ class StackOutputParam():
 
     def add_stack_output(self, stack, stack_output_key):
         if stack_output_key == None:
-            raise AimException(AimErrorCode.Unknown)
+            raise AimException(AimErrorCode.Unknown, message="Stack Output key is unset")
         #print(stack.template.aws_name + ": add_stack_output: output_key: " + stack_output_key)
         for entry in self.entry_list:
             if entry['stack'] == stack:
@@ -85,6 +85,24 @@ class StackOutputConfig():
         return conf_dict
 
 
+
+def marshal_value_to_cfn_yaml(value):
+    "Cast a Python value to a string usable as a CloudFormation YAML value"
+    if type(value) == bool:
+        if value:
+            return "true"
+        else:
+            return "false"
+    elif type(value) == int:
+        return str(value)
+    elif type(value) == str:
+        return value
+    else:
+        raise AimException(
+            AimErrorCode.Unknown,
+            message="Parameter could not be cast to a YAML value: {}".format(type(value))
+        )
+
 class Parameter():
     def __init__(self,
                  key,
@@ -92,22 +110,7 @@ class Parameter():
                  use_previous_value=False,
                  resolved_value=""):
         self.key = key
-        # Normalize param_value to a string
-        if type(value) == bool:
-            if value:
-                normalized_value = "true"
-            else:
-                normalized_value = "false"
-        elif type(value) == int:
-            normalized_value = str(value)
-        elif type(value) == str:
-            normalized_value = value
-        else:
-            print("Error: Parameter: Type Error")
-            print(type(value))
-            raise AimException(AimErrorCode.Unknown)
-
-        self.value = normalized_value
+        self.value = marshal_value_to_cfn_yaml(value)
         self.use_previous_value = use_previous_value
         self.resolved_value = resolved_value
 
