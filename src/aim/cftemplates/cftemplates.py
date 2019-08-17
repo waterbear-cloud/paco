@@ -161,8 +161,7 @@ class CFTemplate():
             if self.stack.aws_region != None:
                 self.yaml_path = os.path.join(self.yaml_path, self.stack.aws_region)
             else:
-                raise StackException(AimErrorCode.Unknown)
-                #print("YP: " + self.yaml_path)
+                raise StackException(AimErrorCode.Unknown, message = "Could not find YAML path: {}".format(self.yaml_path))
 
             pathlib.Path(self.yaml_path).mkdir(parents=True, exist_ok=True)
             self.yaml_path = os.path.join(self.yaml_path, yaml_filename)
@@ -185,11 +184,11 @@ class CFTemplate():
                 end_idx = len(self.body)
             str_idx = self.body.find("'", sub_idx, end_idx)
             if str_idx == -1:
-                raise StackException(AimErrorCode.Unknown)
+                raise StackException(AimErrorCode.Unknown, message="aim.sub error")
             str_idx += 1
             end_str_idx = self.body.find("'", str_idx, end_idx)
             if end_str_idx == -1:
-                raise StackException(AimErrorCode.Unknown)
+                raise StackException(AimErrorCode.Unknown, message = "aim.sub error")
             #print("Aim SUB: %s" % (self.body[str_idx:str_idx+(end_str_idx-str_idx)]))
             # Isolate any ${} replacements
             first_pass = True
@@ -197,7 +196,7 @@ class CFTemplate():
                 dollar_idx = self.body.find("${", str_idx, end_str_idx)
                 if dollar_idx == -1:
                     if first_pass == True:
-                        raise StackException(AimErrorCode.Unknown)
+                        raise StackException(AimErrorCode.Unknown, message = "aim.sub error: First pass true")
                     else:
                         #print("break 2")
                         break
@@ -321,8 +320,7 @@ class CFTemplate():
         if param_entry == None:
             param_entry = Parameter(param_key, param_value)
             if param_entry == None:
-                #print("NOOOOOOOOOOOOOOOO")
-                raise StackException(AimErrorCode.Unknown)
+                raise StackException(AimErrorCode.Unknown, message = "set_parameter says NOOOOOOOOOO")
         # Append the parameter to our list
         self.parameters.append(param_entry)
 

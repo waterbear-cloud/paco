@@ -201,8 +201,7 @@ class Stack():
                     continue
 
                 else:
-                    print(e.response['Error']['Message'])
-                    raise StackException(AimErrorCode.Unknown)
+                    raise StackException(AimErrorCode.Unknown, message=e.response['Error']['Message'])
             else:
                 #pprint(stack_list)
                 self.status = StackStatus[stack_list['Stacks'][0]['StackStatus']]
@@ -239,6 +238,7 @@ class Stack():
             return True
 
     def get_outputs_value(self, key):
+
         if key in self.outputs_value_cache.keys():
             return self.outputs_value_cache[key]
 
@@ -256,8 +256,7 @@ class Stack():
                 sys.exit(255)
                 raise StackException(AimErrorCode.StackDoesNotExist)
             else:
-                print(e.response['Error']['Message'])
-                raise StackException(AimErrorCode.Unknown)
+                raise StackException(AimErrorCode.Unknown, message=e.response['Error']['Message'])
         #print(key + ": get_outputs_value: " + repr(stack_metadata['Stacks'][0]['Outputs']))
         if 'Outputs' not in stack_metadata['Stacks'][0].keys():
             # We get here sometimes after breaking and then
@@ -270,13 +269,13 @@ class Stack():
                 self.outputs_value_cache[key] = output['OutputValue']
                 return self.outputs_value_cache[key]
 
-        #breakpoint()
         raise StackException(
             AimErrorCode.Unknown,
             message="Could not find Stack Output {} in stack_metadata:\n\n{}".format(key, stack_metadata)
         )
 
     def get_outputs_key_from_ref(self, ref):
+
         key = self.template.get_outputs_key_from_ref(ref)
         if key == None:
             raise StackException(
@@ -356,6 +355,7 @@ class Stack():
         try:
             stack_parameters = self.template.generate_stack_parameters()
         except StackException as e:
+            e.message = "Error generating stack parameters for template"
             if e.code == AimErrorCode.StackDoesNotExist:
                 print("Stack: %s: Error: Depends on StackOutputs from a stack that does not yet exist." % (self.get_name()))
             raise e
@@ -404,11 +404,9 @@ class Stack():
                     print("{0} {1}".format(msg, self.get_name()))
                     self.stack_success()
                 else:
-                    print(e.response['Error']['Message'])
-                    raise StackException(AimErrorCode.Unknown)
+                    raise StackException(AimErrorCode.Unknown, message = e.response['Error']['Message'])
             else:
-                print(e.response['Error']['Message'])
-                raise StackException(AimErrorCode.Unknown)
+                raise StackException(AimErrorCode.Unknown, message = e.response['Error']['Message'])
 
         self.cf_client.update_termination_protection(
             EnableTerminationProtection=self.termination_protection,
@@ -467,9 +465,8 @@ class Stack():
         elif self.is_creating() == False and self.is_updating() == False:
             account_name = str_spc(self.account_ctx.get_name()+':', self.max_account_name_size)
             action_name = str_spc("Error:", self.max_action_name_size)
-            print("{0} {1} {2}".format(account_name, action_name, self.get_name()))
-            print(self.status)
-            raise StackException(AimErrorCode.Unknown)
+            message = "{0} {1} {2}\n{3}".format(account_name, action_name, self.get_name(), self.status)
+            raise StackException(AimErrorCode.Unknown, message = message)
 
         #instance-profile/NE-aimdemo-dev-App-app-usw2-Profile-instance-iam-role
         #instance-profile/NE-aimdemo-dev-App-app-usw2-Role-site-webapp-instance-iam-role
@@ -520,9 +517,7 @@ class Stack():
         elif not self.is_exists():
             pass
         else:
-            print("Unknown status: ")
-            print(self.status)
-            raise StackException(AimErrorCode.Unknown)
+            raise StackException(AimErrorCode.Unknown, message="Unknown status: {}".format(self.status))
 
         if waiter != None:
             msg = str_spc("", self.max_account_name_size+1)

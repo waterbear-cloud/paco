@@ -116,7 +116,6 @@ class CloudTrailController(Controller):
                     # ToDo: when accounts .get_ref returns an object, remove this workaround
                     ref = references.Reference(account_ref)
                     account = self.aim_ctx.project['accounts'][ref.last_part]
-                    breakpoint()
                     accounts.append(account)
             for account in accounts:
                 account_ctx = self.aim_ctx.get_account_context(account_name=account.name)

@@ -28,8 +28,7 @@ def md5sum(filename=None, str_data=None):
     elif str_data != None:
         d.update(bytearray(str_data, 'utf-8'))
     else:
-        print("cli: md5sum: Filename or String data expected")
-        raise StackException(AimErrorCode.Unknown)
+        raise StackException(AimErrorCode.Unknown, message="cli: md5sum: Filename or String data expected")
 
     return d.hexdigest()
 
@@ -50,9 +49,10 @@ def str_spc(str_data, size):
     new_str = str_data
     str_len = len(str_data)
     if str_len > size:
-        print("ERROR: cli: str_spc: string size is larger than space size: {0} > {1}".format(
-            str_len, size))
-        raise StackException(AimErrorCode.Unknown)
+        message = "ERROR: cli: str_spc: string size is larger than space size: {0} > {1}".format(
+            str_len, size
+        )
+        raise StackException(AimErrorCode.Unknown, message = message)
 
     for idx in range(size - str_len):
         new_str += " "

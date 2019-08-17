@@ -115,7 +115,7 @@ class AimContext(object):
             account_ref = self.get_ref(account_ref)
             return self.get_account_context(account_ref=account_ref)
         elif account_name == None:
-            raise StackException(AimErrorCode.Unknown)
+            raise StackException(AimErrorCode.Unknown, message = "get_account_context was only passed None: Not enough context to get account.")
 
         if account_name in self.accounts:
             return self.accounts[account_name]
@@ -168,23 +168,20 @@ class AimContext(object):
         self.get_controller('S3').init({'name': 'buckets'})
 
     def get_controller(self, controller_type, controller_args=None):
-        #print("Creating controller_type: " + controller_type)
+        """Gets a controller by name and calls .init() on it with any controller args"""
         controller_type = controller_type.lower()
         controller = None
         if controller_type != 'service':
             if controller_type in self.controllers:
-                #print("Returning cached controller: " + controller_type)
                 controller = self.controllers[controller_type]
-
             if controller == None:
                 controller = aim.controllers.klass[controller_type](self)
                 self.controllers[controller_type] = controller
         else:
             service_name = controller_args['arg_1']
             if service_name.lower() not in self.services:
-                print("Could not find Service: %s" % (service_name))
-                raise StackException(AimErrorCode.Unknown)
-
+                message = "Could not find Service: {}".format(service_name)
+                raise StackException(AimErrorCode.Unknown, message = message)
             controller = self.services[service_name.lower()]
 
         controller.init(controller_args)
