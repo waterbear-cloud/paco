@@ -44,6 +44,49 @@ Alarm {} has {} actions, but CloudWatch Alarms allow a maximum of 5 actions.
 
     return notification_arns
 
+def get_alarm_description(alarm, topic_arns):
+    """Create an Alarm Description in JSON format with AIM Alarm information"""
+    netenv = get_parent_by_interface(resource, schemas.INetworkEnvironment)
+    env = get_parent_by_interface(resource, schemas.IEnvironment)
+    envreg = get_parent_by_interface(resource, schemas.IEnvironmentRegion)
+    app = get_parent_by_interface(resource, schemas.IApplication)
+    group = get_parent_by_interface(resource, schemas.IResourceGroup)
+    if netenv == None:
+        # service applications do not live in a NetEnv, they have a shorter description
+        description = {
+            "app_name": app.name,
+            "app_title": app.title,
+            "resource_group_name": group.name,
+            "resource_group_title": group.title,
+            "resource_name": resource.name,
+            "resource_title": resource.title,
+            "alarm_name": alarm.name,
+            "classification": alarm.classification,
+            "severity": alarm.severity,
+            "topic_arns": topic_arns
+        }
+    else:
+        # full, normal netenv description
+        description = {
+            "netenv_name": netenv.name,
+            "netenv_title": netenv.title,
+            "env_name": env.name,
+            "env_title": env.title,
+            "envreg_name": envreg.name,
+            "envreg_title": envreg.title,
+            "app_name": app.name,
+            "app_title": app.title,
+            "resource_group_name": group.name,
+            "resource_group_title": group.title,
+            "resource_name": resource.name,
+            "resource_title": resource.title,
+            "alarm_name": alarm.name,
+            "classification": alarm.classification,
+            "severity": alarm.severity,
+            "topic_arns": topic_arns
+        }
+    return description
+
 
 class CWAlarms(CFTemplate):
     """
@@ -149,49 +192,11 @@ Outputs:
         for alarm_set_id in alarm_sets.keys():
             alarm_set = alarm_sets[alarm_set_id]
             for alarm_id in alarm_set.keys():
-                netenv = get_parent_by_interface(resource, schemas.INetworkEnvironment)
-                env = get_parent_by_interface(resource, schemas.IEnvironment)
-                envreg = get_parent_by_interface(resource, schemas.IEnvironmentRegion)
-                app = get_parent_by_interface(resource, schemas.IApplication)
-                group = get_parent_by_interface(resource, schemas.IResourceGroup)
                 alarm = alarm_set[alarm_id]
                 notification_arns = [
                     self.aim_ctx.project['notificationgroups'][group].resource_name for group in alarm.notification_groups
                 ]
-                if netenv == None:
-                    # service applications do not live in a NetEnv, they have a shorter description
-                    description = {
-                        "app_name": app.name,
-                        "app_title": app.title,
-                        "resource_group_name": group.name,
-                        "resource_group_title": group.title,
-                        "resource_name": resource.name,
-                        "resource_title": resource.title,
-                        "alarm_name": alarm.name,
-                        "classification": alarm.classification,
-                        "severity": alarm.severity,
-                        "topic_arns": notification_arns
-                    }
-                else:
-                    # full, normal netenv description
-                    description = {
-                        "netenv_name": netenv.name,
-                        "netenv_title": netenv.title,
-                        "env_name": env.name,
-                        "env_title": env.title,
-                        "envreg_name": envreg.name,
-                        "envreg_title": envreg.title,
-                        "app_name": app.name,
-                        "app_title": app.title,
-                        "resource_group_name": group.name,
-                        "resource_group_title": group.title,
-                        "resource_name": resource.name,
-                        "resource_title": resource.title,
-                        "alarm_name": alarm.name,
-                        "classification": alarm.classification,
-                        "severity": alarm.severity,
-                        "topic_arns": notification_arns
-                    }
+                description = get_alarm_description(alarm, notification_arns)
                 normalized_set_id = self.normalize_resource_name(alarm_set_id)
                 normalized_id = self.normalize_resource_name(alarm_id)
 
