@@ -24,6 +24,8 @@ class NetworkStackGroup(StackGroup):
         # VPC Stack
         vpc_config = self.env_ctx.vpc_config()
         vpc_config_ref = '.'.join([self.config_ref_prefix, "network.vpc"])
+        vpc_config.resolve_ref_obj = self
+        vpc_config.private_hosted_zone.resolve_ref_obj = self
         vpc_template = aim.cftemplates.VPC(self.aim_ctx,
                                            self.account_ctx,
                                            self.region,
@@ -151,6 +153,8 @@ class NetworkStackGroup(StackGroup):
         return self.segment_dict[segment_id]
 
     def resolve_ref(self, ref):
+        if schemas.IPrivateHostedZone.providedBy(ref.resource):
+            return self.vpc_stack
         if ref.raw.find('network.vpc.segments') != -1:
             segment_id = ref.next_part('network.vpc.segments')
             return self.get_segment_stack(segment_id)

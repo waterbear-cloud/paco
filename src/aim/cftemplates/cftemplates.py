@@ -456,13 +456,28 @@ class CFTemplate():
         name = name.replace('@', '')
         return name
 
-    def gen_parameter(self, param_type, name, description, value):
-        self.set_parameter(name, value)
+    def gen_parameter(self, param_type, name, description, value, default=None, noecho=False):
+        if default == '':
+            default = "''"
+        if value == None:
+            value = default
+        else:
+            self.set_parameter(name, value)
+        other_yaml = ""
+        if default != None:
+            other_yaml += '\n    Default: {}'.format(default)
+        if noecho == True:
+            other_yaml += '\n    NoEcho: true'
+            desc_value = '**********'
+        else:
+            desc_value = value
+
         return """
+  # {}: {}
   {}:
     Description: {}
-    Type: {}
-""".format(name, description, param_type)
+    Type: {}{}
+""".format(name, desc_value, name, description, param_type, other_yaml)
 
     def gen_output(self, name, value):
         return """

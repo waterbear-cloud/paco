@@ -23,3 +23,4 @@ from aim.cftemplates.cw_event_rule import CWEventRule
 from aim.cftemplates.snstopics import SNSTopics
 from aim.cftemplates.loggroups import LogGroups
 from aim.cftemplates.cloudfront import CloudFront
+from aim.cftemplates.rds import RDS
