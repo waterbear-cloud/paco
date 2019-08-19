@@ -71,10 +71,10 @@ Resources:
         }
 
         codecommit_readwrite_fmt = """
-  {0[cf_repo_name_prefix]:s}ReadWritePolicy:
-    Type: AWS::IAM::Policy
+  {0[cf_repo_name_prefix]:s}RWPolicy:
+    Type: AWS::IAM::ManagedPolicy
     Properties:
-      PolicyName: {0[cf_repo_name_prefix]:s}
+      # PolicyName: {0[cf_repo_name_prefix]:s}
       PolicyDocument:
         Version: 2012-10-17
         Statement:
