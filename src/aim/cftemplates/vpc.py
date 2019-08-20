@@ -1,4 +1,7 @@
 import os
+import troposphere
+import troposphere.ec2
+import troposphere.route53
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from io import StringIO
@@ -20,146 +23,106 @@ class VPC(CFTemplate):
                          config_ref=vpc_config_ref,
                          aws_name='-'.join(["VPC"]))
 
-        # Initialize Parameters
-        self.set_parameter('CIDR', vpc_config.cidr)
-        self.set_parameter('EnableInternetGatewayCondition', vpc_config.enable_internet_gateway)
-#        self.set_parameter('EnableVGWCondition', vpc_config['vpn_gateway']['enabled'])
-        self.set_parameter('EnablePrivateHostedZoneCondition', vpc_config.private_hosted_zone.enabled)
-        self.set_parameter('EnableDnsHostnames', vpc_config.enable_dns_hostnames)
-        self.set_parameter('EnableDnsSupport', vpc_config.enable_dns_support)
-        self.set_parameter('InternalDomainName', vpc_config.private_hosted_zone.name)
+        template = troposphere.Template()
+        template.add_version('2010-09-09')
+        template.add_description('Virtual Private Network')
+
+        #---------------------------------------------------------------------
+        # VPC
+        cidr_block_param = self.gen_parameter(
+            name='CidrBlock',
+            param_type='String',
+            description='The VPC CIDR block',
+            value=vpc_config.cidr,
+            use_troposphere=True
+        )
+        enable_dns_support_param = self.gen_parameter(
+            name='EnableDnsSupport',
+            param_type='String',
+            description='Indicates whether the DNS resolution is supported for the VPC.',
+            value=vpc_config.enable_dns_support,
+            use_troposphere=True
+        )
+        enable_dns_hostname_param = self.gen_parameter(
+            name='EnableDnsHostnames',
+            param_type='String',
+            description='Indicates whether the instances launched in the VPC get DNS hostnames.',
+            value=vpc_config.enable_dns_hostnames,
+            use_troposphere=True
+        )
+        vpc_dict = {
+            'CidrBlock': troposphere.Ref(cidr_block_param),
+            'EnableDnsSupport': troposphere.Ref(enable_dns_support_param),
+            'EnableDnsHostnames': troposphere.Ref(enable_dns_hostname_param)
+        }
+        vpc_res = troposphere.ec2.VPC.from_dict('VPC', vpc_dict)
+        vpc_output = troposphere.Output(
+            'VPC',
+            Value=troposphere.Ref(vpc_res)
+        )
+
+
+        template.add_parameter(cidr_block_param)
+        template.add_parameter(enable_dns_support_param)
+        template.add_parameter(enable_dns_hostname_param)
+        template.add_resource(vpc_res)
+        template.add_output(vpc_output)
+
+        #---------------------------------------------------------------------
+        # Internet gateway
+        if vpc_config.enable_internet_gateway == True:
+            # Gateway
+            igw_res = troposphere.ec2.InternetGateway('InternetGateway')
+            # Attachment
+            igw_attachment_dict = {
+                'VpcId': troposphere.Ref(vpc_res),
+                'InternetGatewayId': troposphere.Ref(igw_res)
+            }
+            igw_attachment_res = troposphere.ec2.VPCGatewayAttachment.from_dict(
+                'InternetGatewayAttachment',
+                igw_attachment_dict
+            )
+            # Output
+            igw_output = troposphere.Output(
+                'InternetGateway',
+                Value=troposphere.Ref(igw_res)
+            )
+
+            template.add_resource(igw_res)
+            template.add_resource(igw_attachment_res)
+            template.add_output(igw_output)
+
+        #---------------------------------------------------------------------
+        # Private Hosted Zone
+        if vpc_config.private_hosted_zone.enabled == True:
+            internal_domain_name_param = self.gen_parameter(
+                name='PrivateZoneDomainName',
+                param_type='String',
+                description='The name of the private hosted zone domain.',
+                value=vpc_config.private_hosted_zone.name,
+                use_troposphere=True
+            )
+            private_zone_vpcs = troposphere.route53.HostedZoneVPCs(
+                VPCId=troposphere.Ref(vpc_res),
+                VPCRegion=troposphere.Ref('AWS::Region')
+            )
+            private_zone_res = troposphere.route53.HostedZone(
+                'PrivateHostedZone',
+                Name=troposphere.Ref(internal_domain_name_param),
+                VPCs=[private_zone_vpcs]
+            )
+            private_zone_id_output = troposphere.Output(
+                'PrivateHostedZoneId',
+                Description="Private Hosted Zone Id",
+                Value=troposphere.Ref(private_zone_res)
+            )
+
+            template.add_parameter(internal_domain_name_param)
+            template.add_resource(private_zone_res)
+            template.add_output(private_zone_id_output)
 
         # Define the Template
-        self.set_template("""
-AWSTemplateFormatVersion: '2010-09-09'
-
-Description: 'VPC, Optional Internet Gateway, Optional Virtual Gateway'
-
-#------------------------------------------------------------------------------
-Parameters:
-  CIDR:
-    Description: CIDR for the VPC
-    Type: String
-    MinLength: '9'
-    MaxLength: '18'
-    ConstraintDescription: must be a valid CIDR range of the form x.x.x.x/x
-
-  EnableInternetGatewayCondition:
-    Type: String
-    AllowedValues:
-      - true
-      - false
-
-#  EnableVGWCondition:
-#    Type: String
-#    AllowedValues:
-#      - true
-#      - false
-
-  EnablePrivateHostedZoneCondition:
-    Type: String
-    AllowedValues:
-      - true
-      - false
-
-  EnableDnsHostnames:
-    Type: String
-    Default: true
-    AllowedValues:
-      - true
-      - false
-
-  EnableDnsSupport:
-    Type: String
-    Default: true
-    AllowedValues:
-      - true
-      - false
-
-  InternalDomainName:
-    Type: String
-
-  EnableNATGateway:
-    Type: String
-    Default: false
-    AllowedValues:
-      - true
-      - false
-
-#------------------------------------------------------------------------------
-Conditions:
-  EnableInternetGateway: !Equals [ !Ref EnableInternetGatewayCondition, 'true' ]
-#  EnableVGW: !Equals [ !Ref EnableVGWCondition, 'true' ]
-  EnablePrivateHostedZone: !Equals [ !Ref EnablePrivateHostedZoneCondition, 'true' ]
-
-#------------------------------------------------------------------------------
-Resources:
-
-# VPC: Virtual Private Cloud
-  VPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: !Ref CIDR
-      EnableDnsSupport: !Ref EnableDnsSupport
-      EnableDnsHostnames: !Ref EnableDnsHostnames
-
-#------------------------------------------------------------------------------
-# Gateway to the Internet
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
-    Condition: EnableInternetGateway
-    DependsOn:
-      - VPC
-
-# Attach the Internet Gateway to the VPC
-  InternetGatewayAttachment:
-    Type: AWS::EC2::VPCGatewayAttachment
-    DependsOn:
-      - VPC
-      - InternetGateway
-    Condition: EnableInternetGateway
-    Properties:
-      VpcId: !Ref VPC
-      InternetGatewayId: !Ref InternetGateway
-
-#------------------------------------------------------------------------------
-#  VGW:
-#    Type: "AWS::EC2::VPNGateway"
-#    Condition: EnableVGW
-#    Properties:
-#      Type: ipsec.1
-
-#  VPCGatewayAttachment:
-#    Type: "AWS::EC2::VPCGatewayAttachment"
-#    Condition: EnableVGW
-#    Properties:
-#      VpcId: !Ref VPC
-#      VpnGatewayId: !Ref VGW
-
-#------------------------------------------------------------------------------
-  PrivateHostedZone:
-    Type: "AWS::Route53::HostedZone"
-    Condition: EnablePrivateHostedZone
-    Properties:
-      Name: !Ref InternalDomainName
-      VPCs:
-        - VPCId: !Ref VPC
-          VPCRegion: !Ref AWS::Region
-
-#------------------------------------------------------------------------------
-Outputs:
-  VPC:
-    Value: !Ref VPC
-
-  InternetGateway:
-    Condition: EnableInternetGateway
-    Value: !Ref InternetGateway
-
-  PrivateHostedZoneId:
-    Condition: EnablePrivateHostedZone
-    Value: !Ref PrivateHostedZone
-#------------------------------------------------------------------------------
-""")
+        self.set_template(template.to_yaml())
         # Config Model AWS resource Ids
         # vpc_ref: <netenv>.network.vpc
         self.register_stack_output_config(vpc_config_ref, 'VPC')
