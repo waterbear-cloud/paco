@@ -38,6 +38,8 @@ setup(
         'Setuptools',
         'tldextract',
         'pexpect',
+        'troposphere',
+        'awacs',
     ],
     packages=[
         'aim.adapters',

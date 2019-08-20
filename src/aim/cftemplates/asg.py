@@ -51,6 +51,7 @@ class ASG(CFTemplate):
           self.set_parameter('LCIamInstanceProfile', role_profile_arn)
 
         # Security Group List
+        # TODO: Use self.gen_ref_list_param()
         sg_output_param = StackOutputParam('LCSecurityGroupList')
         for sg_ref in asg_config.security_groups:
             # TODO: Better name for self.get_stack_outputs_key_from_ref?
@@ -81,6 +82,7 @@ class ASG(CFTemplate):
 
         # Load Balancers: A list of aim.ref netenv.to ELBs
         if asg_config.load_balancers != None and len(asg_config.load_balancers) > 0:
+            # TODO: Use self.gen_ref_list_param()
             lb_param = StackOutputParam('ASGLoadBalancerNames')
             for load_balancer in asg_config.load_balancers:
                 elb_stack = self.aim_ctx.get_ref(load_balancer)
