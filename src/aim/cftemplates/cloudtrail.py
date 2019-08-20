@@ -1,3 +1,4 @@
+from aim.models import references
 from aim.cftemplates.cftemplates import CFTemplate, marshal_value_to_cfn_yaml
 
 
@@ -32,8 +33,6 @@ Outputs:
     Type: AWS::CloudTrail::Trail
     Properties:
       TrailName: {0[trailname]:s}
-      #CloudWatchLogsLogGroupArn: String
-      #CloudWatchLogsRoleArn: String
       EnableLogFileValidation: {0[enable_log_file_validation]:s}
       IncludeGlobalServiceEvents: {0[include_global_service_events]:s}
       IsLogging: {0[is_logging]:s}
@@ -48,6 +47,8 @@ Outputs:
     Value: !Ref {0[cf_resource_name_prefix]:s}CloudTrail
 """
 
+        log_group_arn = None
+
         cloudtrail_table = {
             'cf_resource_name_prefix': self.gen_cf_logical_name(trail.name, '_'),
             'trailname': trail.name,
@@ -60,9 +61,21 @@ Outputs:
         }
 
         resources_yaml = ""
-        outputs_yaml = ""
-
         resources_yaml += cloudtrail_fmt.format(cloudtrail_table)
+        if trail.cloudwatchlogs_log_group:
+            trail.cloudwatchlogs_log_group = trail.cloudwatchlogs_log_group.replace("<account>", self.account_ctx.get_name())
+            trail.cloudwatchlogs_log_group = trail.cloudwatchlogs_log_group.replace("<region>", self.aws_region)
+            log_group_arn = references.resolve_ref(
+                trail.cloudwatchlogs_log_group,
+                self.aim_ctx.project,
+                account_ctx=account_ctx
+            )
+            cloudwatch_fmt = """
+      CloudWatchLogsLogGroupArn: {0[log_group_arn]:s}
+      CloudWatchLogsRoleArn: "XXX"
+"""
+            resources_yaml += cloudwatch_fmt.format({'log_group_arn':log_group_arn})
+        outputs_yaml = ""
         outputs_yaml += outputs_fmt.format(cloudtrail_table)
 
         template_table['resources_yaml'] = resources_yaml
