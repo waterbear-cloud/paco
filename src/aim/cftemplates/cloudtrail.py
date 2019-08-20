@@ -29,10 +29,6 @@ class CloudTrail(CFTemplate):
             'S3BucketName': s3_bucket_name,
             'S3KeyPrefix': trail.s3_key_prefix,
         }
-        trail_resource = troposphere.cloudtrail.Trail.from_dict(
-            'CloudTrail' + self.normalize_resource_name(trail.name),
-            trail_dict
-        )
         if trail.cloudwatchlogs_log_group:
             log_group = trail.cloudwatchlogs_log_group
             log_group = log_group.replace("<account>", self.account_ctx.get_name())
@@ -79,9 +75,13 @@ class CloudTrail(CFTemplate):
                 ]
             )
             template.add_resource(trail_role_resource)
-            trail_resource.DependsOn = 'CloudTrailLogDeliveryRole'
             trail_dict['CloudWatchLogsRoleArn'] = troposphere.GetAtt(trail_role_resource, "Arn")
 
+        trail_resource = troposphere.cloudtrail.Trail.from_dict(
+            'CloudTrail' + self.normalize_resource_name(trail.name),
+            trail_dict
+        )
+        trail_resource.DependsOn = 'CloudTrailLogDeliveryRole'
         template.add_resource(trail_resource)
         self.set_template(template.to_yaml())
 
