@@ -86,3 +86,4 @@ class CloudTrail(CFTemplate):
         self.set_template(template.to_yaml())
 
 
+
