@@ -47,7 +47,7 @@ class Segment(CFTemplate):
         else:
             self.set_parameter('IsPublicCondition', 'false')
         # Define the Template
-        self.set_template("""
+        template_yaml_fmt = """
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Segment: NACLs, RouteTables, Subnets'
 
@@ -146,7 +146,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-AZ1'
+          Value: !Sub '${{AWS::StackName}}-AZ1'
 
 # Inbound NACL: Allow All
   NACLAZ1EntryInboundAll:
@@ -176,7 +176,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-AZ1'
+          Value: !Sub '${{AWS::StackName}}-AZ1'
 
   RouteDefaultGWAZ1:
     Type: AWS::EC2::Route
@@ -195,7 +195,7 @@ Resources:
       AvailabilityZone: !Select [ 0, !GetAZs '' ]
       Tags:
         - Key: 'Name'
-          Value: !Sub '${AWS::StackName}-AZ1'
+          Value: !Sub '${{AWS::StackName}}-AZ1'
 
 # Association: Route Table
   SubnetAZ1RouteTableAssociation:
@@ -222,7 +222,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-AZ2'
+          Value: !Sub '${{AWS::StackName}}-AZ2'
 
 # Inbound NACL: Allow All
   NACLAZ2EntryInboundAll:
@@ -255,7 +255,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-AZ2'
+          Value: !Sub '${{AWS::StackName}}-AZ2'
 
   RouteDefaultGWAZ2:
     Type: AWS::EC2::Route
@@ -275,7 +275,7 @@ Resources:
       AvailabilityZone: !Select [ 1, !GetAZs '' ]
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-AZ2'
+          Value: !Sub '${{AWS::StackName}}-AZ2'
 
 
 # Association: Route Table
@@ -306,7 +306,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-AZ3'
+          Value: !Sub '${{AWS::StackName}}-AZ3'
 
 # Inbound NACL: Allow All
   NACLAZ3EntryInboundAll:
@@ -339,7 +339,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-AZ3'
+          Value: !Sub '${{AWS::StackName}}-AZ3'
 
   RouteDefaultGWAZ3:
     Type: AWS::EC2::Route
@@ -359,7 +359,7 @@ Resources:
       AvailabilityZone: !Select [ 2, !GetAZs '' ]
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-AZ3'
+          Value: !Sub '${{AWS::StackName}}-AZ3'
 
 
 # Association: Route Table
@@ -383,30 +383,46 @@ Resources:
 # Outputs
 Outputs:
   SubnetList1:
-    Value: !Sub '${SubnetAZ1}'
+    Value: !Sub '${{SubnetAZ1}}'
   SubnetList2:
     Condition: AZ2Enabled
-    Value: !Sub '${SubnetAZ1},${SubnetAZ2}'
+    Value: !Sub '${{SubnetAZ1}},${{SubnetAZ2}}'
   SubnetList3:
     Condition: AZ3Enabled
-    Value: !Sub '${SubnetAZ1},${SubnetAZ2},${SubnetAZ3}'
+    Value: !Sub '${{SubnetAZ1}},${{SubnetAZ2}},${{SubnetAZ3}}'
+  SubnetIdList:
+    Value: !Sub '{0[subnet_list]:s}'
   SubnetIdAZ1:
-    Value: !Sub '${SubnetAZ1}'
+    Value: !Sub '${{SubnetAZ1}}'
   SubnetIdAZ2:
     Condition: AZ2Enabled
-    Value: !Sub '${SubnetAZ2}'
+    Value: !Sub '${{SubnetAZ2}}'
   SubnetIdAZ3:
     Condition: AZ3Enabled
-    Value: !Sub '${SubnetAZ3}'
+    Value: !Sub '${{SubnetAZ3}}'
   RouteTableIdAZ1:
-    Value: !Sub '${RouteTableAZ1}'
+    Value: !Sub '${{RouteTableAZ1}}'
   RouteTableIdAZ2:
     Condition: AZ2Enabled
-    Value: !Sub '${RouteTableAZ2}'
+    Value: !Sub '${{RouteTableAZ2}}'
   RouteTableIdAZ3:
     Condition: AZ3Enabled
-    Value: !Sub '${RouteTableAZ3}'
-""")
+    Value: !Sub '${{RouteTableAZ3}}'
+"""
+        template_table = {
+            'subnet_list': None
+        }
+
+        # Subnet List
+        subnet_list = ""
+        for az_idx in range(0, availability_zones):
+            if az_idx > 0:
+               subnet_list += ','
+            subnet_list += "${{SubnetAZ{}}}".format(az_idx+1)
+        template_table['subnet_list'] = subnet_list
+        self.set_template(template_yaml_fmt.format(template_table))
+
+        self.register_stack_output_config(segment_config_ref+'.subnet_id_list', 'SubnetIdList')
         self.register_stack_output_config(segment_config_ref+'.az1.subnet_id', 'SubnetIdAZ1')
         if availability_zones > 1:
           self.register_stack_output_config(segment_config_ref+'.az2.subnet_id', 'SubnetIdAZ2')
@@ -424,4 +440,6 @@ Outputs:
             return 'SubnetId' + ref.parts[az_idx].upper()
         elif ref.parts[resource_idx] == "route_table_id":
             return "RouteTableId" + ref.parts[az_idx].upper()
+        elif ref.last_part == 'subnet_id_list':
+          return 'SubnetIdList'
         return None

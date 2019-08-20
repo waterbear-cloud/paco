@@ -24,3 +24,4 @@ from aim.cftemplates.snstopics import SNSTopics
 from aim.cftemplates.loggroups import LogGroups
 from aim.cftemplates.cloudtrail import CloudTrail
 from aim.cftemplates.cloudfront import CloudFront
+from aim.cftemplates.rds import RDS

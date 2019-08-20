@@ -142,6 +142,38 @@ class ApplicationEngine():
         )
         self.stack_group.add_stack_order(alarms_stack)
 
+    def init_rdsmysql_resource(self, grp_id, res_id, res_config, res_stack_tags):
+        if res_config.enabled == False:
+            print("ApplicationEngine: Init: RDS Mysql: %s *disabled*" % (res_id))
+        else:
+            print("ApplicationEngine: Init: RDS Mysql: %s" % (res_id))
+
+
+        rds_config_ref = self.gen_resource_ref(grp_id, res_id)
+
+        # RDS Mysql CloudFormation
+        aws_name = '-'.join([grp_id, res_id])
+        rds_template = aim.cftemplates.RDS(
+            self.aim_ctx,
+            self.account_ctx,
+            self.aws_region,
+            aws_name,
+            self.app_id,
+            grp_id,
+            res_config,
+            rds_config_ref
+        )
+        rds_stack = Stack(
+            self.aim_ctx,
+            self.account_ctx,
+            self.stack_group,
+            res_config,
+            rds_template,
+            aws_region=self.aws_region,
+            stack_tags=res_stack_tags
+        )
+        self.stack_group.add_stack_order(rds_stack)
+
     def init_cloudfront_resource(self, grp_id, res_id, res_config, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: CloudFront: %s *disabled*" % (res_id))
