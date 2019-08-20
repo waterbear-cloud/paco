@@ -142,6 +142,38 @@ class ApplicationEngine():
         )
         self.stack_group.add_stack_order(alarms_stack)
 
+    def init_elasticacheredis_resource(self, grp_id, res_id, res_config, res_stack_tags):
+        if res_config.enabled == False:
+            print("ApplicationEngine: Init: ElastiCache Redis: %s *disabled*" % (res_id))
+        else:
+            print("ApplicationEngine: Init: ElastiCache Redis: %s" % (res_id))
+
+
+        config_ref = self.gen_resource_ref(grp_id, res_id)
+
+        # ElastiCache Redis CloudFormation
+        aws_name = '-'.join([grp_id, res_id])
+        elasticache_template = aim.cftemplates.ElastiCache(
+            self.aim_ctx,
+            self.account_ctx,
+            self.aws_region,
+            aws_name,
+            self.app_id,
+            grp_id,
+            res_config,
+            config_ref
+        )
+        elasticache_stack = Stack(
+            self.aim_ctx,
+            self.account_ctx,
+            self.stack_group,
+            res_config,
+            elasticache_template,
+            aws_region=self.aws_region,
+            stack_tags=res_stack_tags
+        )
+        self.stack_group.add_stack_order(elasticache_stack)
+
     def init_rdsmysql_resource(self, grp_id, res_id, res_config, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: RDS Mysql: %s *disabled*" % (res_id))

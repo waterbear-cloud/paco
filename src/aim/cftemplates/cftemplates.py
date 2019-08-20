@@ -3,6 +3,7 @@ import os
 import pathlib
 import random
 import string
+import troposphere
 from enum import Enum
 from aim.core.exception import StackException, AimErrorCode, AimException
 from aim.stack_group import Stack
@@ -300,6 +301,7 @@ class CFTemplate():
             #print("Type: Parameter")
             param_entry = param_key
         elif isinstance(param_value, list):
+            # Security Group List
             param_entry = Parameter(param_key, self.list_to_string(param_value))
         elif isinstance(param_value, str) and references.is_ref(param_value):
             param_value = param_value.replace("<account>", self.account_ctx.get_name())
@@ -457,13 +459,16 @@ class CFTemplate():
         name = name.replace('@', '')
         return name
 
-    def gen_parameter(self, param_type, name, description, value, default=None, noecho=False):
+    def gen_parameter(self, param_type, name, description, value, default=None, noecho=False, use_troposphere=False):
         if default == '':
             default = "''"
         if value == None:
             value = default
         else:
-            self.set_parameter(name, value)
+            if type(value) == StackOutputParam:
+                self.set_parameter(value)
+            else:
+                self.set_parameter(name, value)
         other_yaml = ""
         if default != None:
             other_yaml += '\n    Default: {}'.format(default)
@@ -472,13 +477,41 @@ class CFTemplate():
             desc_value = '**********'
         else:
             desc_value = value
-
-        return """
+        if use_troposphere == False:
+            return """
   # {}: {}
   {}:
     Description: {}
     Type: {}{}
 """.format(name, desc_value, name, description, param_type, other_yaml)
+        else:
+            param_dict = {
+                'Description': description,
+                'Type': param_type
+            }
+            if default != None:
+                param_dict['Default'] = default
+            if noecho == True:
+                param_dict['NoEcho'] = True
+
+            return troposphere.Parameter.from_dict(
+                name,
+                param_dict
+            )
+
+    def gen_ref_list_param(self, param_type, name, description, value, ref_attribute=None, default=None, noecho=False, use_troposphere=False):
+        stack_output_param = StackOutputParam(name)
+        for item_ref in value:
+            if ref_attribute != None:
+                item_ref += '.'+ref_attribute
+            stack = self.aim_ctx.get_ref(item_ref)
+            if isinstance(stack, Stack) == False:
+                raise AimException(AimErrorCode.Unknown, message="Reference must resolve to a stack")
+            stack_output_key = self.get_stack_outputs_key_from_ref(Reference(item_ref))
+            stack_output_param.add_stack_output(stack, stack_output_key)
+
+
+        return self.gen_parameter(param_type, name, description, stack_output_param, default, noecho, use_troposphere)
 
     def gen_output(self, name, value):
         return """
