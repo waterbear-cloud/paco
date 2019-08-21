@@ -13,6 +13,10 @@ Changelog for aim
 
 - Added CloudFront application Resource
 
+- Added VPC Peering application resource.
+
+- Automated the glue of passing outputs from a stack to the parameter of another stack.
+
 
 1.3.1 (2019-08-07)
 ------------------
