@@ -85,11 +85,3 @@ class VPCPeering(CFTemplate):
         self.register_stack_output_config(vpc_config_ref, 'VPC')
         self.register_stack_output_config(vpc_config_ref + ".internet_gateway", 'InternetGateway')
         self.register_stack_output_config(vpc_config_ref + ".private_hosted_zone.id", 'PrivateHostedZoneId')
-
-    def validate(self):
-        #self.aim_ctx.log("Validating VPC Template")
-        super().validate()
-
-    def get_outputs_key_from_ref(self, ref):
-      if ref.parts[-2] == 'private_hosted_zone' and ref.last_part == 'id':
-          return 'PrivateHostedZoneId'

@@ -16,10 +16,12 @@ class Route53StackGroup(StackGroup):
         # Initialize config with a deepcopy of the project defaults
         self.config = route53_config
         self.stack_list = []
+        config_ref = 'resource.route53'
         route53_template = aim.cftemplates.Route53(self.aim_ctx,
                                                    self.account_ctx,
                                                    self.aim_ctx.project['credentials'].aws_default_region,
-                                                   route53_config)
+                                                   route53_config,
+                                                   config_ref)
 
         route53_stack = Stack(self.aim_ctx,
                               self.account_ctx,

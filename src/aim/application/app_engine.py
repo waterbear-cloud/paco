@@ -29,7 +29,7 @@ class ApplicationEngine():
         aws_region,
         app_id,
         config,
-        config_ref_prefix,
+        parent_config_ref,
         stack_group,
         ref_type,
         stack_tags=StackTags(),
@@ -38,7 +38,7 @@ class ApplicationEngine():
         self.aim_ctx = aim_ctx
         self.config = config
         self.app_id = app_id
-        self.config_ref_prefix = config_ref_prefix
+        self.parent_config_ref = parent_config_ref
         self.account_ctx = account_ctx
         self.aws_region = aws_region
         self.stack_group = stack_group
@@ -61,7 +61,7 @@ class ApplicationEngine():
         seperator='.'
     ):
         """Generate a reference string"""
-        ref_str = 'aim.ref {0}.applications.{1}'.format(self.config_ref_prefix, self.app_id)
+        ref_str = 'aim.ref {0}.applications.{1}'.format(self.parent_config_ref, self.app_id)
         if grp_id != None:
             ref_str = seperator.join([ref_str, 'groups', grp_id])
         if res_id != None:
@@ -83,7 +83,7 @@ class ApplicationEngine():
             self.app_id,
             self.account_ctx,
             self.aws_region,
-            self.config_ref_prefix,
+            self.parent_config_ref,
             self.stack_group,
             self.stack_tags
         )
@@ -95,14 +95,15 @@ class ApplicationEngine():
                 res_stack_tags.add_tag('AIM-Application-Group-Name', grp_id)
                 res_stack_tags.add_tag('AIM-Application-Resource-Name', res_id)
                 res_config.resolve_ref_obj = self
+                res_config_ref = self.gen_resource_ref(grp_id, res_id)
                 init_method = getattr(self, "init_{}_resource".format(res_config.type.lower()))
-                init_method(grp_id, res_id, res_config, StackTags(res_stack_tags))
+                init_method(grp_id, res_id, res_config, res_config_ref, StackTags(res_stack_tags))
 
         print("ApplicationEngine: Init: %s: Completed" % (self.app_id))
 
     def gen_resource_ref(self, grp_id, res_id, attribute=None):
         """Generate a resource reference"""
-        ref ='.'.join([self.config_ref_prefix, "applications", self.app_id, "groups", grp_id, "resources", res_id])
+        ref ='.'.join([self.parent_config_ref, "applications", self.app_id, "groups", grp_id, "resources", res_id])
         if attribute != None:
             ref = '.'.join([ref, attribute])
         return ref
@@ -120,7 +121,7 @@ class ApplicationEngine():
     def gen_iam_role_id(self, res_id, role_id):
         return '-'.join([res_id, role_id])
 
-    def init_alarms(self, aws_name, res_config_ref, res_config, res_stack_tags):
+    def init_alarms(self, aws_name, res_config, res_config_ref, res_stack_tags):
         alarms_template = aim.cftemplates.CWAlarms(
             self.aim_ctx,
             self.account_ctx,
@@ -142,14 +143,11 @@ class ApplicationEngine():
         )
         self.stack_group.add_stack_order(alarms_stack)
 
-    def init_elasticacheredis_resource(self, grp_id, res_id, res_config, res_stack_tags):
+    def init_elasticacheredis_resource(self, grp_id, res_id, res_config, res_config_ref, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: ElastiCache Redis: %s *disabled*" % (res_id))
         else:
             print("ApplicationEngine: Init: ElastiCache Redis: %s" % (res_id))
-
-
-        config_ref = self.gen_resource_ref(grp_id, res_id)
 
         # ElastiCache Redis CloudFormation
         aws_name = '-'.join([grp_id, res_id])
@@ -161,7 +159,7 @@ class ApplicationEngine():
             self.app_id,
             grp_id,
             res_config,
-            config_ref
+            res_config_ref
         )
         elasticache_stack = Stack(
             self.aim_ctx,
@@ -174,14 +172,11 @@ class ApplicationEngine():
         )
         self.stack_group.add_stack_order(elasticache_stack)
 
-    def init_rdsmysql_resource(self, grp_id, res_id, res_config, res_stack_tags):
+    def init_rdsmysql_resource(self, grp_id, res_id, res_config, res_config_ref, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: RDS Mysql: %s *disabled*" % (res_id))
         else:
             print("ApplicationEngine: Init: RDS Mysql: %s" % (res_id))
-
-
-        rds_config_ref = self.gen_resource_ref(grp_id, res_id)
 
         # RDS Mysql CloudFormation
         aws_name = '-'.join([grp_id, res_id])
@@ -193,7 +188,7 @@ class ApplicationEngine():
             self.app_id,
             grp_id,
             res_config,
-            rds_config_ref
+            res_config_ref
         )
         rds_stack = Stack(
             self.aim_ctx,
@@ -206,14 +201,14 @@ class ApplicationEngine():
         )
         self.stack_group.add_stack_order(rds_stack)
 
-    def init_cloudfront_resource(self, grp_id, res_id, res_config, res_stack_tags):
+    def init_cloudfront_resource(self, grp_id, res_id, res_config, res_config_ref, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: CloudFront: %s *disabled*" % (res_id))
         else:
             print("ApplicationEngine: Init: CloudFront: %s" % (res_id))
 
         for factory_name, factory_config in res_config.factory.items():
-            cloudfront_config_ref = self.gen_resource_ref(grp_id, res_id, attribute='factory.'+factory_name)
+            cloudfront_config_ref = res_config_ref + '.factory.' + factory_name
             res_config.domain_aliases = factory_config.domain_aliases
             res_config.viewer_certificate.certificate = factory_config.viewer_certificate.certificate
 
@@ -254,13 +249,12 @@ class ApplicationEngine():
             )
             self.stack_group.add_stack_order(cloudfront_stack)
 
-    def init_snstopic_resource(self, grp_id, res_id, res_config, res_stack_tags):
+    def init_snstopic_resource(self, grp_id, res_id, res_config, res_config_ref, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: SNSTopic: %s *disabled*" % (res_id))
         else:
             print("ApplicationEngine: Init: SNSTopic: %s" % (res_id))
 
-        sns_config_ref = self.gen_ref(grp_id, res_id)
         aws_name = '-'.join([grp_id, res_id])
         sns_topics_config = [res_config]
         sns_template = aim.cftemplates.SNSTopics(
@@ -269,7 +263,7 @@ class ApplicationEngine():
             self.aws_region,
             aws_name,
             sns_topics_config,
-            sns_config_ref
+            res_config_ref
         )
         sns_stack = Stack(
             self.aim_ctx,
@@ -282,13 +276,12 @@ class ApplicationEngine():
         )
         self.stack_group.add_stack_order(sns_stack)
 
-    def init_lambda_resource(self, grp_id, res_id, res_config, res_stack_tags):
+    def init_lambda_resource(self, grp_id, res_id, res_config, res_config_ref, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: Lambda: %s *disabled*" % (res_id))
         else:
             print("ApplicationEngine: Init: Lambda: %s" % (res_id))
 
-        lambda_config_ref = self.gen_ref(grp_id, res_id)
         # Create function execution role
         if res_config.iam_role.enabled == False:
             role_config_yaml = """
@@ -353,7 +346,7 @@ statement:
             self.aws_region,
             aws_name,
             res_config,
-            lambda_config_ref
+            res_config_ref
         )
         lambda_stack = Stack(
             self.aim_ctx,
@@ -368,9 +361,9 @@ statement:
         # add alarms if there is monitoring configuration
         if hasattr(res_config, 'monitoring') and len(res_config.monitoring.alarm_sets.values()) > 0:
             aws_name = '-'.join(['Lambda', grp_id, res_id])
-            self.init_alarms(aws_name, lambda_config_ref + '.name', res_config, StackTags(res_stack_tags))
+            self.init_alarms(aws_name, res_config, res_config_ref + '.name', StackTags(res_stack_tags))
 
-    def init_acm_resource(self, grp_id, res_id, res_config, res_stack_tags):
+    def init_acm_resource(self, grp_id, res_id, res_config, res_config_ref, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: ACM: %s *disabled*" % (res_id))
         else:
@@ -385,7 +378,7 @@ statement:
                 res_config
             )
 
-    def init_s3bucket_resource(self, grp_id, res_id, res_config, res_stack_tags):
+    def init_s3bucket_resource(self, grp_id, res_id, res_config, res_config_ref, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: S3: %s *disabled*" % (res_id))
         else:
@@ -397,7 +390,7 @@ statement:
             s3_ctl = self.aim_ctx.get_controller('S3')
             # If an account was nto set, use the network default
             if res_config.account == None:
-                res_config.account = self.aim_ctx.get_ref('aim.ref '+self.config_ref_prefix+'.network.aws_account')
+                res_config.account = self.aim_ctx.get_ref('aim.ref '+self.parent_config_ref+'.network.aws_account')
             account_ctx = self.aim_ctx.get_account_context(account_ref=res_config.account)
             s3_ctl.init_context(account_ctx, self.aws_region, s3_config_ref, self.stack_group, res_stack_tags)
             s3_ctl.add_bucket(
@@ -410,13 +403,12 @@ statement:
                 bucket_config=res_config
             )
 
-    def init_lbclassic_resource(self, grp_id, res_id, res_config, res_stack_tags):
+    def init_lbclassic_resource(self, grp_id, res_id, res_config, res_config_ref, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: LBClassic: %s *disabled*" % (res_id))
         else:
             print("ApplicationEngine: Init: LBClassic: %s" % (res_id))
             elb_config = res_config[res_id]
-            elb_config_ref = self.gen_resource_ref(grp_id, res_id)
             aws_name = '-'.join([grp_id, res_id])
             elb_template = aim.cftemplates.ELB(
                 self.aim_ctx,
@@ -427,7 +419,7 @@ statement:
                 res_id,
                 aws_name,
                 elb_config,
-                elb_config_ref
+                res_config_ref
             )
             elb_stack = Stack(
                 self.aim_ctx, self.account_ctx, self.stack_group,
@@ -439,12 +431,11 @@ statement:
             self.stack_group.add_stack_order(elb_stack)
 
 
-    def init_lbapplication_resource(self, grp_id, res_id, res_config, res_stack_tags):
+    def init_lbapplication_resource(self, grp_id, res_id, res_config, res_config_ref, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: LBApplication: %s *disabled*" % (res_id))
         else:
             print("ApplicationEngine: Init: LBApplication: %s" % (res_id))
-        alb_config_ref = self.gen_resource_ref(grp_id, res_id)
         # resolve_ref object for TargetGroups
         for target_group in res_config.target_groups.values():
             target_group.resolve_ref_obj = self
@@ -458,7 +449,7 @@ statement:
             self.app_id,
             res_id,
             res_config,
-            alb_config_ref
+            res_config_ref
         )
         alb_stack = Stack(
             self.aim_ctx,
@@ -473,14 +464,13 @@ statement:
         # add alarms if there is monitoring configuration
         if hasattr(res_config, 'monitoring') and len(res_config.monitoring.alarm_sets.values()) > 0:
             aws_name = '-'.join(['ALB', grp_id, res_id])
-            self.init_alarms(aws_name, alb_config_ref, res_config, StackTags(res_stack_tags))
+            self.init_alarms(aws_name, res_config, res_config_ref, StackTags(res_stack_tags))
 
-    def init_asg_resource(self, grp_id, res_id, res_config, res_stack_tags):
+    def init_asg_resource(self, grp_id, res_id, res_config, res_config_ref, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: ASG: %s *disabled*" % (res_id))
         else:
             print("ApplicationEngine: Init: ASG: " + res_id)
-        asg_config_ref = self.gen_resource_ref(grp_id, res_id)
         # Create instance role
         role_profile_arn = None
         if res_config.instance_iam_role.enabled == False:
@@ -548,7 +538,7 @@ role_name: %s""" % ("ASGInstance")
             grp_id,
             res_id,
             res_config,
-            asg_config_ref,
+            res_config_ref,
             role_profile_arn,
             self.ec2_launch_manager.user_data_script(self.app_id, grp_id, res_id),
             self.ec2_launch_manager.get_cache_id(self.app_id, grp_id, res_id)
@@ -566,14 +556,13 @@ role_name: %s""" % ("ASGInstance")
 
         if res_config.monitoring and len(res_config.monitoring.alarm_sets.values()) > 0:
             aws_name = '-'.join(['ASG', grp_id, res_id])
-            self.init_alarms(aws_name, asg_config_ref, res_config, StackTags(res_stack_tags))
+            self.init_alarms(aws_name, res_config, res_config_ref, StackTags(res_stack_tags))
 
-    def init_ec2_resource(self, grp_id, res_id, res_config, res_stack_tags):
+    def init_ec2_resource(self, grp_id, res_id, res_config, res_config_ref, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: EC2: %s *disabled*" % (res_id))
         else:
             print("ApplicationEngine: Init: EC2 Instance")
-            ec2_config_ref = self.gen_resource_ref(grp_id, res_id)
             aws_name = '-'.join([grp_id, res_id])
             ec2_template = aim.cftemplates.EC2(
                 self.aim_ctx,
@@ -584,7 +573,7 @@ role_name: %s""" % ("ASGInstance")
                 self.app_id,
                 res_id,
                 res_config,
-                ec2_config_ref
+                res_config_ref
             )
             ec2_stack = Stack(
                 self.aim_ctx,
@@ -597,7 +586,7 @@ role_name: %s""" % ("ASGInstance")
             )
             self.stack_group.add_stack_order(ec2_stack)
 
-    def init_codepipebuilddeploy_resource(self, grp_id, res_id, res_config, res_stack_tags):
+    def init_codepipebuilddeploy_resource(self, grp_id, res_id, res_config, res_config_ref, res_stack_tags):
         if res_config.enabled == False:
             print("ApplicationEngine: Init: CodePipeBuildDeploy: %s *disabled*" % (res_id))
         else:
@@ -657,14 +646,14 @@ role_name: %s""" % ("ASGInstance")
                     ]
                 }
             }
-            kms_conf_ref = '.'.join(["applications", self.app_id, "groups", grp_id, "resources", res_id, "kms"])
             aws_name = '-'.join([grp_id, res_id])
+            kms_config_ref = res_config_ref + '.kms'
             kms_template = aim.cftemplates.KMS(
                 self.aim_ctx,
                 tools_account_ctx,
                 self.aws_region,
                 aws_name,
-                kms_conf_ref,
+                kms_config_ref,
                 kms_config_dict
             )
             kms_stack_pre = Stack(
@@ -714,11 +703,10 @@ policies:
         resource:
           - "!Ref CMKArn"
 """
-            kms_ref = self.env_ctx.gen_ref(
-                app_id=self.app_id,
+            kms_ref = self.gen_ref(
                 grp_id=grp_id,
                 res_id=res_id,
-                attribute='kms'
+                attribute='kms.arn'
             )
             codecommit_ref = res_config.codecommit_repository
             role_table = {
@@ -734,10 +722,11 @@ policies:
 
             iam_ctl = self.aim_ctx.get_controller('IAM')
             # The ID to give this role is: group.resource.instance_iam_role
-            codecommit_iam_role_ref = self.env_ctx.gen_ref(app_id=self.app_id,
-                                                              grp_id=grp_id,
-                                                              res_id=res_id,
-                                                              attribute='codecommit_role')
+            codecommit_iam_role_ref = self.gen_ref(
+                grp_id=grp_id,
+                res_id=res_id,
+                attribute='codecommit_role'
+            )
             codecommit_iam_role_id = self.gen_iam_role_id(res_id, 'codecommit_role')
             # IAM Roles Parameters
             iam_role_params = [
@@ -763,7 +752,7 @@ policies:
 
             # ----------------------------------------------------------
             # Code Deploy
-            codedeploy_conf_ref = '.'.join(["applications", self.app_id, "groups", grp_id, "resources", res_id, "deploy"])
+            codedeploy_config_ref = res_config_ref + '.deploy'
             aws_name = '-'.join([grp_id, res_id])
             codedeploy_template = aim.cftemplates.CodeDeploy(
                 self.aim_ctx,
@@ -776,7 +765,7 @@ policies:
                 res_id,
                 res_config,
                 s3_artifacts_bucket_name,
-                codedeploy_conf_ref
+                codedeploy_config_ref
             )
             codedeploy_stack = Stack(
                 self.aim_ctx,
@@ -791,7 +780,7 @@ policies:
             self.stack_group.add_stack_order(codedeploy_stack)
 
             # PipeBuild
-            codepipebuild_conf_ref = '.'.join(["applications", self.app_id, "resources", res_id, "pipebuild"])
+            codepipebuild_config_ref = res_config_ref + '.pipebuild'
             aws_name = '-'.join([grp_id, res_id])
             codepipebuild_template = aim.cftemplates.CodePipeBuild(
                 self.aim_ctx,
@@ -805,7 +794,7 @@ policies:
                 res_config,
                 s3_artifacts_bucket_name,
                 codedeploy_template.get_tools_delegate_role_arn(),
-                codepipebuild_conf_ref
+                codepipebuild_config_ref
             )
             self.cpbd_codepipebuild_stack = Stack(
                 self.aim_ctx,
@@ -819,34 +808,34 @@ policies:
             self.stack_group.add_stack_order(self.cpbd_codepipebuild_stack)
 
             # Add CodeBuild Role ARN to KMS Key principal now that the role is created
-            codebuild_arn_ref = self.env_ctx.gen_ref(
-                app_id=self.app_id,
+            codebuild_arn_ref = self.gen_ref(
                 grp_id=grp_id,
                 res_id=res_id,
                 attribute="codebuild_role.arn"
             )
             kms_config_dict['crypto_principal']['aws'].append("aim.sub '${{{0}}}'".format(codebuild_arn_ref))
-            kms_conf_ref = '.'.join(["applications", self.app_id, "resources", res_id, "kms"])
             aws_name = '-'.join([grp_id, res_id])
             kms_template = aim.cftemplates.KMS(
                 self.aim_ctx,
                 tools_account_ctx,
                 self.aws_region,
                 aws_name,
-                kms_conf_ref,
+                kms_config_ref,
                 kms_config_dict
             )
             # Adding a file id allows us to generate a second template without overwritting
             # the first one. This is needed as we need to update the KMS policy with the
             # Codebuild Arn after the Codebuild has been created.
             kms_template.set_template_file_id("codebuild")
-            kms_stack_post = Stack(self.aim_ctx,
-                                tools_account_ctx,
-                                self.stack_group,
-                                None,
-                                kms_template,
-                                aws_region=self.aws_region,
-                                stack_tags=res_stack_tags)
+            kms_stack_post = Stack(
+                self.aim_ctx,
+                tools_account_ctx,
+                self.stack_group,
+                None,
+                kms_template,
+                aws_region=self.aws_region,
+                stack_tags=res_stack_tags
+            )
             self.stack_group.add_stack_order(kms_stack_post)
 
             # Get the ASG Instance Role ARN
@@ -891,11 +880,11 @@ policies:
                 return self.cpbd_codepipebuild_stack.template.get_codepipeline_role_arn()
             elif ref.resource_ref == 'codedeploy_tools_delegate_role.arn':
                 return self.cpbd_codedeploy_stack.template.get_tools_delegate_role_arn()
-            elif ref.resource_ref == 'kms':
+            elif ref.resource_ref.startswith('kms.'):
                 return self.cpbd_kms_stack
             elif ref.resource_ref == 'codedeploy_application_name':
                 return self.cpbd_codedeploy_stack.template.get_application_name()
-            elif ref.resource_ref == 'deploy.deployment_group_name':
+            elif ref.resource_ref == 'deploy.deployment_group.name':
                 return self.cpbd_codedeploy_stack
         elif isinstance(ref.resource, models.applications.TargetGroup):
             return self.get_stack_from_ref(ref)

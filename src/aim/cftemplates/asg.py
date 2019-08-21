@@ -337,6 +337,7 @@ Outputs:
     Value: !Ref ASG
 """ % self.ec2_manager_cache_id
         self.register_stack_output_config(asg_config_ref, 'ASGName')
+        self.register_stack_output_config(asg_config_ref+'.name', 'ASGName')
 
         asg_table = {
             'load_balancer_names': '!Ref AWS::NoValue',
@@ -349,10 +350,4 @@ Outputs:
 
         self.set_template(template_fmt.format(asg_table))
 
-    def validate(self):
-        #self.aim_ctx.log("Validating ASG Template")
-        super().validate()
 
-    def get_outputs_key_from_ref(self, ref):
-        # There is only one output key
-        return "ASGName"

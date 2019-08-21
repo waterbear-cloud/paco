@@ -158,13 +158,7 @@ Outputs:
   InstanceId:
     Value: !Ref Instance
 """
-
+        self.register_stack_output_config(ec2_config_ref+'.id', 'InstanceId')
 
         self.set_template(template_fmt)
 
-    def validate(self):
-        #self.aim_ctx.log("Validating EC2 Template")
-        super().validate()
-
-    def get_outputs_key_from_ref(self, ref):
-        return "InstanceId"

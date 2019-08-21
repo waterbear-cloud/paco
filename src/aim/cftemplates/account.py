@@ -68,10 +68,3 @@ Resources:
         template_table['iam_users'] = iam_users_yaml
         template_yaml = template.format(template_table)
         self.set_template(template_yaml)
-
-    def validate(self):
-        #self.aim_ctx.log("Validating Segment Template")
-        super().validate()
-
-    def get_outputs_key_from_ref(self, ref):
-        return None

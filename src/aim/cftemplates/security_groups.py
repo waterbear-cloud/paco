@@ -67,7 +67,7 @@ Resources:
 """
 
         sg_rule_output_fmt = """
-  {0[cf_sg_name]:s}:
+  {0[cf_sg_name]:s}Id:
     Value: !Ref {0[cf_sg_name]:s}
 """
 
@@ -139,6 +139,8 @@ Resources:
 
             # Generate Outputs while we are in the loop
             template_outputs += sg_rule_output_fmt.format(sg_table)
+            sg_config_ref = '.'.join([sg_group_config_ref, sg_name])
+            self.register_stack_output_config(sg_config_ref+'.id', sg_table['cf_sg_name']+"Id")
 
         # Outputs Yaml
         template_yaml += """
@@ -147,18 +149,7 @@ Outputs:
         template_yaml += template_outputs
         self.set_template(template_yaml)
 
-    def validate(self):
-        #self.aim_ctx.log("Validating SecurityGroups Template")
-        super().validate()
-
     def get_local_sg_ref(self, aim_ref):
         ref = Reference(aim_ref)
         return ref.parts[-2]
 
-    def get_outputs_key_from_ref(self, ref):
-        if ref.last_part != 'id' or ref.parts[-4] != 'security_groups':
-            raise StackException(
-                AimErrorCode.Unknown,
-                message="Unable to find outputkey for ref: %s" % ref.raw)
-        sg_id = ref.parts[-2]
-        return sg_id

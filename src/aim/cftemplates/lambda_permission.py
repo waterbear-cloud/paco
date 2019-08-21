@@ -17,7 +17,7 @@ class LambdaPermission(CFTemplate):
                  principal,
                  source_account,
                  source_arn,
-                 config_ref=None):
+                 config_ref):
 
         #aim_ctx.log("CLoudWatch Alarms CF Template init")
         # Super Init:
@@ -85,18 +85,5 @@ Resources:
 
 """
 
-        #self.register_stack_output_config(config_ref, 'OutoutKeyName')
-
         self.set_template(template_yaml)
 
-    def validate(self):
-        #self.aim_ctx.log("Validating ASG Template")
-        super().validate()
-
-    def get_outputs_key_from_ref(self, ref):
-        # There is only one output key
-        if ref.last_part == 'arn':
-            return 'EventRuleArn'
-        elif ref.last_part == 'id':
-            return 'EventRuleId'
-        return None

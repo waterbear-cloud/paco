@@ -314,14 +314,3 @@ Resources:
 
         self.set_template(template_yaml_fmt.format(template_table))
 
-    def validate(self):
-        #self.aim_ctx.log("Validating ASG Template")
-        super().validate()
-
-    def get_outputs_key_from_ref(self, ref):
-        # There is only one output key
-        if ref.last_part == 'arn':
-            return 'EventRuleArn'
-        elif ref.last_part == 'id':
-            return 'EventRuleId'
-        return None

@@ -68,13 +68,13 @@ class CodePipeBuild(CFTemplate):
         codedeploy_ref = self.env_ctx.gen_ref( app_id=app_id,
                                                   grp_id=grp_id,
                                                   res_id=res_id,
-                                                  attribute='deploy.deployment_group_name')
+                                                  attribute='deploy.deployment_group.name')
         self.set_parameter('CodeDeployGroupName', codedeploy_ref)
 
         kms_ref = self.env_ctx.gen_ref(app_id=app_id,
                                           grp_id=grp_id,
                                           res_id=res_id,
-                                          attribute='kms')
+                                          attribute='kms.arn')
         self.set_parameter('CMKArn', kms_ref)
 
         # Define the Template
@@ -421,15 +421,9 @@ Resources:
           Type: KMS
 """)
 
-    def validate(self):
-        #self.aim_ctx.log("Validating CodePipeBuild Template")
-        super().validate()
-
     def get_codebuild_role_arn(self):
         return "arn:aws:iam::{0}:role/".format(self.account_ctx.get_id()) + self.ResourceName + "-CodeBuild"
 
     def get_codepipeline_role_arn(self):
         return "arn:aws:iam::{0}:role/".format(self.account_ctx.get_id()) + self.ResourceName + "-CodePipeline-Service"
 
-    def get_outputs_key_from_ref(self, ref):
-        return None

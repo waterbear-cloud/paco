@@ -168,10 +168,6 @@ Outputs:
         template_table['outputs_yaml'] = outputs_yaml
         self.set_template(template_fmt.format(template_table))
 
-    def validate(self):
-        #self.aim_ctx.log("Validating IAM Roles Template")
-        super().validate()
-
     # Generate a name valid in CloudFormation
     def gen_iam_role_name(self, role_type, role_id):
         iam_context_hash = md5sum(str_data=self.role_ref)[:8].upper()

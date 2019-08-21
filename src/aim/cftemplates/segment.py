@@ -432,7 +432,3 @@ Outputs:
             self.register_stack_output_config(segment_config_ref+'.az3.subnet_id', 'SubnetIdAZ3')
             self.register_stack_output_config(segment_config_ref+'.az3.route_table.id', 'RouteTableIdAZ3')
 
-    def validate(self):
-        #self.aim_ctx.log("Validating Segment Template")
-        super().validate()
-

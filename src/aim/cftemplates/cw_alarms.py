@@ -133,6 +133,7 @@ Outputs:
                 # Dimensions
                 # if there are no dimensions, then fallback to the default of
                 # a primary dimension and the resource's resource_name
+
                 if len(alarm.dimensions) < 1:
                     dimensions = [
                         (vocabulary.cloudwatch[res_type]['dimension'], resource.resource_name)
@@ -150,6 +151,8 @@ Outputs:
                         )
                 dimensions_str = ''
                 for name, value in dimensions:
+                    #if value == None or value == '':
+                    #    breakpoint()
                     dimensions_str += dimensions_fmt.format(name, value)
 
                 # Metric Namespace can override default Resource Namespace
@@ -192,9 +195,3 @@ Outputs:
 
         self.set_template(template_fmt.format(template_table))
 
-    def validate(self):
-        super().validate()
-
-    def get_outputs_key_from_ref(self, ref):
-        # There is only one output key
-        return None

@@ -47,10 +47,12 @@ class CodeDeploy(CFTemplate):
         self.set_parameter('CodeDeployStyleOption', deploy_config.deploy_style_option)
         self.set_parameter('CodeDeployConfigValue', deploy_config.deploy_config_value)
         self.set_parameter('ToolsAccountId', deploy_config.tools_account)
-        deploy_kms_ref = self.env_ctx.gen_ref( app_id=app_id,
-                                                  grp_id=grp_id,
-                                                  res_id=res_id,
-                                                  attribute='kms')
+        deploy_kms_ref = self.env_ctx.gen_ref(
+            app_id=app_id,
+            grp_id=grp_id,
+            res_id=res_id,
+            attribute='kms.arn'
+        )
         self.set_parameter('CMKArn', deploy_kms_ref)
         self.set_parameter('TargetInstanceRoleName', deploy_config.deploy_instance_role+'.name')
 
@@ -336,41 +338,7 @@ Outputs:
      Value: !Ref CodeDeployGroup
 
 """
-
-#        instance_policy_fmt = """
-#          - Effect: {0[effect]:s}
-#            Action: {0[action_list]:s}
-#            Resource: "{0[resource_list]:s}" """
-#
-#        instance_policy_table = {
-#            'effect': None,
-#            'action_list': None,
-#            'resource_list': None
-#        }
-#
-#        policy_list_fmt = """
-#              - '{0}'"""
-#
-#        template_table = {
-#            'instance_policies': None
-#        }
-#
-#        instance_policy_yaml = ""
-#        for policy in deploy_config['deploy_instance_policy']['policies']:
-#            instance_policy_table['effect'] = policy['effect']
-#            action_yaml = ""
-#            for action in policy['action']:
-#                action_yaml += policy_list_fmt.format(action)
-#            resource_yaml = ""
-#            for resource in policy['resource']:
-#                resource_yaml += policy_list_fmt.format(resource)
-#            instance_policy_table['action_list'] = action_yaml
-#            instance_policy_table['resource_list'] = resource_yaml
-#            instance_policy_yaml += instance_policy_fmt.format(instance_policy_table)
-#
-#        template_table['instance_policies'] = instance_policy_yaml
-#
-#        self.set_template(template_fmt.format(template_table)
+        self.register_stack_output_config(cpbd_config_ref+'.deployment_group.name', 'DeploymentGroupName')
         self.set_template(template_fmt)
 
     def get_role_arn(self):
@@ -383,10 +351,4 @@ Outputs:
 
     def get_application_name(self):
         return self.application_name
-
-    def validate(self):
-        #self.aim_ctx.log("Validating CodeDeploy Template")
-        super().validate()
-
-    def get_outputs_key_from_ref(self, ref):
-        return "DeploymentGroupName"
+]

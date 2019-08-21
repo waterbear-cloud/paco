@@ -455,19 +455,3 @@ Outputs:
           self.register_stack_output_config(self.alb_config_ref+'.fullname', 'LoadBalancerFullName')
           self.register_stack_output_config(self.alb_config_ref+'.canonicalhostedzoneid', 'LoadBalancerCanonicalHostedZoneID')
           self.register_stack_output_config(self.alb_config_ref+'.canonicalhostedzoneid', 'LoadBalancerCanonicalHostedZoneID')
-
-    def validate(self):
-        #self.aim_ctx.log("Validating ALB Template")
-        super().validate()
-
-    def get_outputs_key_from_ref(self, ref):
-        # There is only one output key
-        # aim.ref netenv.wbsites.applications.sites.resources.alb.target_groups.app.arn
-        key = None
-        #print(aim_ref)
-        if ref.last_part == 'arn':
-            key = "TargetGroupArn" + ref.parts[-2]
-        elif ref.last_part == 'name':
-            key = "TargetGroupName" + ref.parts[-2]
-
-        return key

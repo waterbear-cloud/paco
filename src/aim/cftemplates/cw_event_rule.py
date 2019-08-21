@@ -107,20 +107,7 @@ Outputs:
   EventRuleArn:
     Value: !GetAtt EventRule.Arn
 """
-
-        #self.register_stack_output_config(config_ref, 'EventRuleId')
-        #self.register_stack_output_config(config_ref, 'EventRuleArn')
+        self.register_stack_output_config(config_ref+'.id', 'EventRuleId')
+        self.register_stack_output_config(config_ref+'.arn', 'EventRuleArn')
 
         self.set_template(template_yaml)
-
-    def validate(self):
-        #self.aim_ctx.log("Validating ASG Template")
-        super().validate()
-
-    def get_outputs_key_from_ref(self, ref):
-        # There is only one output key
-        if ref.last_part == 'arn':
-            return 'EventRuleArn'
-        elif ref.last_part == 'id':
-            return 'EventRuleId'
-        return None

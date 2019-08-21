@@ -78,8 +78,11 @@ Resources:
 #      TargetKeyId: !Ref CMK
 
 Outputs:
-  CMK:
+  CMKArn:
     Value: !GetAtt CMK.Arn
+
+  CMKId:
+    Value: !Ref CMK
 
 """
 
@@ -94,12 +97,8 @@ Outputs:
             'key_policy_principal': principal_yaml
         }
 
+        self.register_stack_output_config(kms_config_ref+'.arn', 'CMKArn')
+        self.register_stack_output_config(kms_config_ref+'.id', 'CMKId')
+
         self.set_template(template_fmt.format(template_table))
 
-
-    def validate(self):
-        #self.aim_ctx.log("Validating CodeDeploy Template")
-        super().validate()
-
-    def get_outputs_key_from_ref(self, ref):
-        return "CMK"

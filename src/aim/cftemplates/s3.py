@@ -148,7 +148,8 @@ Resources:
         s3_bucket_table.clear()
         bucket_config = bucket_context['config']
         s3_bucket_table['bucket_name'] = s3_ctl.get_bucket_name(self.s3_context_id)
-        s3_bucket_table['cf_resource_name_prefix'] = self.gen_cf_logical_name(self.bucket_context['id'], '_')
+        cf_name_prefix = self.gen_cf_logical_name(self.bucket_context['id'], '_')
+        s3_bucket_table['cf_resource_name_prefix'] = cf_name_prefix
 
         if bucket_policy_only == False:
             # parameters_yaml += s3_bucket_params_fmt.format(s3_bucket_table)
@@ -156,17 +157,17 @@ Resources:
 
         if bucket_config.cloudfront_origin == True:
             cloudfront_origin_table['bucket_name'] = s3_bucket_table['bucket_name']
-            cloudfront_origin_table['cf_resource_name_prefix'] = s3_bucket_table['cf_resource_name_prefix']
+            cloudfront_origin_table['cf_resource_name_prefix'] = cf_name_prefix
             cloudfront_origin_table['access_id_description'] = self.s3_context_id
             resources_yaml += cloudfront_origin_fmt.format(cloudfront_origin_table)
             outputs_yaml += self.gen_output('CloudFrontOriginAccessIdentity', '!Ref CloudFrontOriginAccessIdentity')
-            self.register_stack_output_config(config_ref, 'CloudFrontOriginAccessIdentity')
+            self.register_stack_output_config(config_ref+'.origin_id', 'CloudFrontOriginAccessIdentity')
         elif len(bucket_config.policy) > 0:
             # Bucket Policy
             if bucket_policy_only == False:
                 s3_policy_table['cf_policy_depends_on'] = s3_policy_depends_on_fmt.format(s3_bucket_table)
 
-            s3_policy_table['cf_resource_name_prefix'] = s3_bucket_table['cf_resource_name_prefix']
+            s3_policy_table['cf_resource_name_prefix'] = cf_name_prefix
             s3_policy_table['bucket_name'] = s3_bucket_table['bucket_name']
             s3_policy_table['policy_statements'] = ""
             # Statement
@@ -226,6 +227,7 @@ Resources:
             resources_yaml += s3_policy_fmt.format(s3_policy_table)
         if bucket_policy_only == False:
             outputs_yaml += s3_bucket_outputs_fmt.format(s3_bucket_table)
+            self.register_stack_output_config(config_ref+'.name', cf_name_prefix+'BucketName')
 
         template_table['parameters_yaml'] = parameters_yaml
         template_table['resources_yaml'] = resources_yaml
@@ -234,20 +236,6 @@ Resources:
         template_table['outputs_yaml'] = outputs_yaml
 
         self.set_template(template_fmt.format(template_table))
-
-    def validate(self):
-        #self.aim_ctx.log("Validating S3 Template")
-        super().validate()
-
-
-    def get_outputs_key_from_ref(self, ref):
-        output_key = None
-        if ref.last_part == "name":
-            output_key = self.gen_cf_logical_name(ref.parts[-2], '_') + "BucketName"
-        elif ref.last_part == 'origin_id':
-            return 'CloudFrontOriginAccessIdentity'
-
-        return output_key
 
     def delete(self):
         s3_ctl = self.aim_ctx.get_controller('S3')

@@ -177,6 +177,8 @@ class EnvironmentContext():
         for stack_grp in self.stack_grps:
             for stack in stack_grp.stacks:
                 config_dict = stack.get_stack_output_config()
+                if config_dict == None:
+                    continue
                 merged_config = dict_of_dicts_merge(merged_config, config_dict)
 
 

@@ -242,12 +242,5 @@ Outputs:
 
         template_fmt_table = {'Listeners': listener_yaml, 'SSLCertificateParameters': ssl_cert_param_yaml}
 
+
         self.set_template(template_fmt.format(template_fmt_table))
-
-    def validate(self):
-        #self.aim_ctx.log("Validating ELB Template")
-        super().validate()
-
-    def get_outputs_key_from_ref(self, ref):
-        # There is only one output key
-        return "LoadBalancer"

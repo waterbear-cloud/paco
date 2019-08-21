@@ -35,6 +35,8 @@ def md5sum(filename=None, str_data=None):
 def dict_of_dicts_merge(x, y):
     """Merge to dictionaries of dictionaries"""
     z = {}
+    if hasattr(x, 'keys') == False or hasattr(y, 'keys') == False:
+        return y
     overlapping_keys = x.keys() & y.keys()
     for key in overlapping_keys:
         z[key] = dict_of_dicts_merge(x[key], y[key])

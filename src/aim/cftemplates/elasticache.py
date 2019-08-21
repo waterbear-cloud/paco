@@ -123,5 +123,3 @@ class ElastiCache(CFTemplate):
 
         self.set_template(template.to_yaml())
 
-    def get_outputs_key_from_ref(self, ref):
-        return None

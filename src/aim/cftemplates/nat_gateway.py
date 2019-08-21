@@ -162,9 +162,3 @@ Outputs:
 
         self.set_template(template_fmt.format(template_table))
 
-    def validate(self):
-        #self.aim_ctx.log("Validating NATGateway Template")
-        super().validate()
-
-    def get_outputs_key_from_ref(self, ref):
-        return None
