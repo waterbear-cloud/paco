@@ -4,7 +4,9 @@ Changelog for aim
 1.4.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Fixed
+
+- snstopic output ref and lambda alarm ref fixes.
 
 
 1.4.0 (2019-08-21)
