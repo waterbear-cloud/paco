@@ -351,4 +351,4 @@ Outputs:
 
     def get_application_name(self):
         return self.application_name
-]
+
