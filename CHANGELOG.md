@@ -6,6 +6,8 @@ Changelog for aim
 
 ### Added
 
+- VPCPeering CloudFormation template added.
+
 - CloudTrail resource adds basic CloudTrail provisioning.
 
 - LogGroups are created for all groups that the CloudWatch Agent will require.
@@ -13,6 +15,15 @@ Changelog for aim
 
 - Added CloudFront application Resource
 
+### Changed
+
+- CloudWatch Alarms get the Dimension as a Parameter from a stack output instead
+  of relying on Outputs/ files.
+
+- Automated cftemplate's get_outputs_key_from_ref() so that it doesn't need to
+  be implemented per-template.
+
+- Added troposphere and awacs as dependencies.
 
 1.3.1 (2019-08-07)
 ------------------
