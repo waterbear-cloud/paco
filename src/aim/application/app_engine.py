@@ -913,5 +913,7 @@ policies:
             ref.sub_part(ref.region, 'us-east-1')
             ref.region = 'us-east-1'
             return acm_ctl.resolve_ref(ref)
+        elif isinstance(ref.resource, models.applications.LBApplication):
+            return self.get_stack_from_ref(ref)
 
         return None

@@ -80,8 +80,8 @@ class VPCPeering(CFTemplate):
 
         # Define the Template
         self.set_template(template.to_yaml())
-        # Config Model AWS resource Ids
-        # vpc_ref: <netenv>.network.vpc
+
         self.register_stack_output_config(vpc_config_ref, 'VPC')
         self.register_stack_output_config(vpc_config_ref + ".internet_gateway", 'InternetGateway')
         self.register_stack_output_config(vpc_config_ref + ".private_hosted_zone.id", 'PrivateHostedZoneId')
+

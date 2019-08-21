@@ -40,6 +40,10 @@ class CWAlarms(CFTemplate):
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'CloudWatch Alarms'
 
+Parameters:
+
+{0[parameters]:s}
+
 Resources:
 
 {0[alarms]:s}
@@ -49,8 +53,9 @@ Outputs:
 {0[outputs]:s}
 """
         template_table = {
-          'alarms': None,
-          'outputs': None,
+            'parameters': None,
+            'alarms': None,
+            'outputs': None,
         }
 
         output_fmt = """
@@ -110,6 +115,14 @@ Outputs:
 
         alarms_yaml = ""
         outputs_yaml = ""
+        parameters_yaml = ""
+        parameters_yaml += self.gen_parameter(
+            param_type='String',
+            name='DimensionResource',
+            description='The resource id or name for the metric dimension.',
+            value='aim.ref {}.name'.format(res_config_ref)
+        )
+
         for alarm_set_id in alarm_sets.keys():
             alarm_set = alarm_sets[alarm_set_id]
             for alarm_id in alarm_set.keys():
@@ -136,7 +149,7 @@ Outputs:
 
                 if len(alarm.dimensions) < 1:
                     dimensions = [
-                        (vocabulary.cloudwatch[res_type]['dimension'], resource.resource_name)
+                        (vocabulary.cloudwatch[res_type]['dimension'], '!Ref DimensionResource')
                     ]
                 else:
                     dimensions = []
@@ -190,6 +203,7 @@ Outputs:
                 output_ref = '.'.join([res_config_ref, 'monitoring', 'alarm_sets', alarm_set_id, alarm_id])
                 self.register_stack_output_config(output_ref, 'Alarm'+alarm_table['id'])
 
+        template_table['parameters'] = parameters_yaml
         template_table['alarms'] = alarms_yaml
         template_table['outputs'] = outputs_yaml
 
