@@ -108,9 +108,8 @@ Outputs:
 
             topics_yaml += topic_fmt.format(topic_table)
             outputs_yaml += output_fmt.format(topic_table)
-            output_ref = '.'.join(['groups', topic.name])
-            self.register_stack_output_config(output_ref, 'SNSTopic' + self.normalize_resource_name(topic.name))
-            self.register_stack_output_config(output_ref+'.id', 'SNSTopic' + self.normalize_resource_name(topic.name))
+            self.register_stack_output_config(res_config_ref, 'SNSTopic' + self.normalize_resource_name(topic.name))
+            self.register_stack_output_config(res_config_ref + '.id', 'SNSTopic' + self.normalize_resource_name(topic.name))
 
         if parameters_yaml != "":
             template_table['parameters'] = "Parameters:\n"

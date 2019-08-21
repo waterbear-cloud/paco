@@ -361,7 +361,7 @@ statement:
         # add alarms if there is monitoring configuration
         if hasattr(res_config, 'monitoring') and len(res_config.monitoring.alarm_sets.values()) > 0:
             aws_name = '-'.join(['Lambda', grp_id, res_id])
-            self.init_alarms(aws_name, res_config, res_config_ref + '.name', StackTags(res_stack_tags))
+            self.init_alarms(aws_name, res_config, res_config_ref, StackTags(res_stack_tags))
 
     def init_acm_resource(self, grp_id, res_id, res_config, res_config_ref, res_stack_tags):
         if res_config.enabled == False:
