@@ -68,6 +68,10 @@ class VPC(CFTemplate):
         template.add_resource(vpc_res)
         template.add_output(vpc_output)
 
+        self.register_stack_output_config(vpc_config_ref, vpc_output.title)
+        self.register_stack_output_config(vpc_config_ref + '.id', vpc_output.title)
+
+
         #---------------------------------------------------------------------
         # Internet gateway
         if vpc_config.enable_internet_gateway == True:
@@ -91,6 +95,7 @@ class VPC(CFTemplate):
             template.add_resource(igw_res)
             template.add_resource(igw_attachment_res)
             template.add_output(igw_output)
+            self.register_stack_output_config(vpc_config_ref + ".internet_gateway", igw_output.title)
 
         #---------------------------------------------------------------------
         # Private Hosted Zone
@@ -121,18 +126,7 @@ class VPC(CFTemplate):
             template.add_resource(private_zone_res)
             template.add_output(private_zone_id_output)
 
+            self.register_stack_output_config(vpc_config_ref + ".private_hosted_zone.id", private_zone_id_output.title)
+
         # Define the Template
         self.set_template(template.to_yaml())
-        # Config Model AWS resource Ids
-        # vpc_ref: <netenv>.network.vpc
-        self.register_stack_output_config(vpc_config_ref, 'VPC')
-        self.register_stack_output_config(vpc_config_ref + ".internet_gateway", 'InternetGateway')
-        self.register_stack_output_config(vpc_config_ref + ".private_hosted_zone.id", 'PrivateHostedZoneId')
-
-    def validate(self):
-        #self.aim_ctx.log("Validating VPC Template")
-        super().validate()
-
-    def get_outputs_key_from_ref(self, ref):
-      if ref.parts[-2] == 'private_hosted_zone' and ref.last_part == 'id':
-          return 'PrivateHostedZoneId'

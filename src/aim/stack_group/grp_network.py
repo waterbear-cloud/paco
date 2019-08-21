@@ -68,6 +68,31 @@ class NetworkStackGroup(StackGroup):
             self.segment_list.append(segment_stack)
             self.add_stack_order(segment_stack, [StackOrder.PROVISION])
 
+        # VPC Stack
+        if vpc_config.peering != None:
+            print("NetworkStackGroup Init: VPC Peering")
+            peering_config = self.env_ctx.peering_config()
+            peering_config_ref = '.'.join([self.config_ref_prefix, "network.vpc.peering"])
+            for peer in peering_config.keys():
+                vpc_config.peering[peer].resolve_ref_obj = self
+            peering_template = aim.cftemplates.VPCPeering(
+                self.aim_ctx,
+                self.account_ctx,
+                self.region,
+                self.env_ctx.netenv_id,
+                self.env_ctx.config.network,
+                peering_config_ref
+            )
+            self.peering_stack = Stack(aim_ctx=self.aim_ctx,
+                                account_ctx=self.account_ctx,
+                                grp_ctx=self,
+                                stack_config=peering_config,
+                                template=peering_template,
+                                aws_region=self.region,
+                                stack_tags=StackTags(self.stack_tags))
+
+            self.add_stack_order(self.peering_stack)
+
         # Security Groups
         print("NetworkStackGroup Init: Security Groups")
         #print("Security Groups -----------")
@@ -153,6 +178,8 @@ class NetworkStackGroup(StackGroup):
         return self.segment_dict[segment_id]
 
     def resolve_ref(self, ref):
+        if ref.raw.endswith('network.vpc.id'):
+            return self.vpc_stack
         if schemas.IPrivateHostedZone.providedBy(ref.resource):
             return self.vpc_stack
         if ref.raw.find('network.vpc.segments') != -1:

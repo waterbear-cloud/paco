@@ -454,6 +454,7 @@ Outputs:
           self.register_stack_output_config(self.alb_config_ref+'.name', 'LoadBalancerName')
           self.register_stack_output_config(self.alb_config_ref+'.fullname', 'LoadBalancerFullName')
           self.register_stack_output_config(self.alb_config_ref+'.canonicalhostedzoneid', 'LoadBalancerCanonicalHostedZoneID')
+          self.register_stack_output_config(self.alb_config_ref+'.canonicalhostedzoneid', 'LoadBalancerCanonicalHostedZoneID')
 
     def validate(self):
         #self.aim_ctx.log("Validating ALB Template")

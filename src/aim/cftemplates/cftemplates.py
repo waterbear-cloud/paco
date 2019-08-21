@@ -384,6 +384,15 @@ class CFTemplate():
 
         return cf_name
 
+    # Finds and return the Key for the ref.
+    def get_outputs_key_from_ref(self, ref):
+        for stack_output_config in self.stack_output_config_list:
+            #print("Outputs: " + stack_output_config.config_ref)
+            #print("       : " + ref.ref)
+            if stack_output_config.config_ref == ref.ref:
+                #print("Returning key: " + stack_output_config.key)
+                return stack_output_config.key
+
     def register_stack_output_config(self,
                                      config_ref,
                                      stack_output_key):

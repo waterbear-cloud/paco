@@ -123,6 +123,9 @@ class EnvironmentContext():
     def vpc_config(self):
         return self.config.network.vpc
 
+    def peering_config(self):
+        return self.config.network.vpc.peering
+
     def segment_ids(self):
         return self.config.network.vpc.segments.keys()
 

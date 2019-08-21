@@ -151,7 +151,7 @@ Outputs:
                     default_route_table['segment'] = segment_id
                     default_route_table['az_id'] = az_id
                     default_route_table['gateway_id'] = gateway_id
-                    self.set_parameter('RouteTable'+segment_id+az_id, segment_ref+".az{0}.route_table_id".format(cur_az))
+                    self.set_parameter('RouteTable'+segment_id+az_id, segment_ref+".az{0}.route_table.id".format(cur_az))
                     template_table['parameters_yaml'] += default_route_params_fmt.format(default_route_table)
                     template_table['resources_yaml'] += default_route_fmt.format(default_route_table)
 

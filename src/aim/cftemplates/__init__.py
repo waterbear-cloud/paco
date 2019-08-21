@@ -26,3 +26,4 @@ from aim.cftemplates.cloudtrail import CloudTrail
 from aim.cftemplates.cloudfront import CloudFront
 from aim.cftemplates.rds import RDS
 from aim.cftemplates.elasticache import ElastiCache
+from aim.cftemplates.vpc_peering import VPCPeering

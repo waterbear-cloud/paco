@@ -424,22 +424,15 @@ Outputs:
 
         self.register_stack_output_config(segment_config_ref+'.subnet_id_list', 'SubnetIdList')
         self.register_stack_output_config(segment_config_ref+'.az1.subnet_id', 'SubnetIdAZ1')
+        self.register_stack_output_config(segment_config_ref+'.az1.route_table.id', 'RouteTableIdAZ1')
         if availability_zones > 1:
-          self.register_stack_output_config(segment_config_ref+'.az2.subnet_id', 'SubnetIdAZ2')
+            self.register_stack_output_config(segment_config_ref+'.az2.subnet_id', 'SubnetIdAZ2')
+            self.register_stack_output_config(segment_config_ref+'.az2.route_table.id', 'RouteTableIdAZ2')
         if availability_zones > 2:
-          self.register_stack_output_config(segment_config_ref+'.az3.subnet_id', 'SubnetIdAZ3')
+            self.register_stack_output_config(segment_config_ref+'.az3.subnet_id', 'SubnetIdAZ3')
+            self.register_stack_output_config(segment_config_ref+'.az3.route_table.id', 'RouteTableIdAZ3')
 
     def validate(self):
         #self.aim_ctx.log("Validating Segment Template")
         super().validate()
 
-    def get_outputs_key_from_ref(self, ref):
-        az_idx = len(ref.parts)-2
-        resource_idx = az_idx + 1
-        if ref.parts[resource_idx] == "subnet_id":
-            return 'SubnetId' + ref.parts[az_idx].upper()
-        elif ref.parts[resource_idx] == "route_table_id":
-            return "RouteTableId" + ref.parts[az_idx].upper()
-        elif ref.last_part == 'subnet_id_list':
-          return 'SubnetIdList'
-        return None
