@@ -153,6 +153,10 @@ Outputs:
     Condition: ALBIsEnabled
     Value: !GetAtt LoadBalancer.CanonicalHostedZoneID
 
+  LoadBalancerDNSName:
+    Condition: ALBIsEnabled
+    Value: !GetAtt LoadBalancer.DNSName
+
 {0[TargetGroupOutputs]:s}
 """
 
@@ -309,7 +313,7 @@ Outputs:
         - Key: 'deregistration_delay.timeout_seconds'
           Value: {0[connection_drain_timeout]:d}
       Matcher:
-        HttpCode: {0[health_check_http_code]:d}
+        HttpCode: {0[health_check_http_code]:s}
       VpcId: !Ref VPC
 """
 
@@ -454,4 +458,4 @@ Outputs:
           self.register_stack_output_config(self.alb_config_ref+'.name', 'LoadBalancerName')
           self.register_stack_output_config(self.alb_config_ref+'.fullname', 'LoadBalancerFullName')
           self.register_stack_output_config(self.alb_config_ref+'.canonicalhostedzoneid', 'LoadBalancerCanonicalHostedZoneID')
-          self.register_stack_output_config(self.alb_config_ref+'.canonicalhostedzoneid', 'LoadBalancerCanonicalHostedZoneID')
+          self.register_stack_output_config(self.alb_config_ref+'.dnsname', 'LoadBalancerDNSName')

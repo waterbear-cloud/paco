@@ -121,7 +121,8 @@ class DNSValidatedACMCertClient():
             for zone in self.route53_zones.get('HostedZones'):
                 if domain_matches_hosted_zone(hosted_zone_domain, zone) == True:
                     return get_zone_id_from_id_string(zone.get('Id'))
-
+            if len(hosted_zone_subdomain_list) == 1:
+                return None
         return None
 
     def get_resource_record_data(self, r):
@@ -169,6 +170,9 @@ class DNSValidatedACMCertClient():
         for change in unique_changes:
             record_name = change.get('ResourceRecordSet').get('Name')
             hosted_zone_id = self.get_hosted_zone_id(record_name)
+            if hosted_zone_id == None:
+                print("ACM: Unable to get Hosted Zone id for: {}".format(record_name))
+                continue
             #print("ACM Changing Hosted Zone Id: " + hosted_zone_id)
             #print(change)
             response = self.route_53_client.change_resource_record_sets(
