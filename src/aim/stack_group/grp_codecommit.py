@@ -111,9 +111,10 @@ class CodeCommitStackGroup(StackGroup):
         cache_data = ""
         for repo_group in config.repository_groups.values():
             for repo_config in repo_group.values():
-                for user_config in repo_config.users.values():
-                    if user_config.public_ssh_key != None:
-                        cache_data += user_config.public_ssh_key
+                if repo_config.users != None:
+                    for user_config in repo_config.users.values():
+                        if user_config.public_ssh_key != None:
+                            cache_data += user_config.public_ssh_key
 
         cache_id = md5sum(str_data=cache_data)
         return cache_id
@@ -122,9 +123,10 @@ class CodeCommitStackGroup(StackGroup):
         iam_client = self.account_ctx.get_aws_client('iam')
         for repo_group in config.repository_groups.values():
             for repo_config in repo_group.values():
-                for user_config in repo_config.users.values():
-                    if user_config.public_ssh_key != None:
-                        self.manage_ssh_key(iam_client, user_config)
+                if repo_config.users != None:
+                    for user_config in repo_config.users.values():
+                        if user_config.public_ssh_key != None:
+                            self.manage_ssh_key(iam_client, user_config)
 
     def validate(self):
         super().validate()

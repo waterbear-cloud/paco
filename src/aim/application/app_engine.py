@@ -414,7 +414,7 @@ statement:
             print("ApplicationEngine: Init: S3: %s *disabled*" % (res_id))
         else:
             print("ApplicationEngine: Init: S3: %s" % (res_id))
-            s3_config_ref = "aim.ref "+self.gen_resource_ref(grp_id, res_id)
+            s3_config_ref = self.gen_resource_ref(grp_id, res_id)
             # Generate s3 bucket name for application deployment
             bucket_name_prefix = '-'.join([self.get_aws_name(), grp_id])
             #print("Application depoloyment bucket name: %s" % new_name)

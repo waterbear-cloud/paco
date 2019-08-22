@@ -396,11 +396,10 @@ class CFTemplate():
     def register_stack_output_config(self,
                                      config_ref,
                                      stack_output_key):
+        if config_ref.startswith('aim.ref'):
+            raise AimException(AimErrorCode.Unknown, message='Registered stack output config reference must not start with aim.ref: '+config_ref)
         stack_output_config = StackOutputConfig(config_ref, stack_output_key)
         self.stack_output_config_list.append(stack_output_config)
-
-
-
 
     def process_stack_output_config(self, stack):
         merged_config = {}

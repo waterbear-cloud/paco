@@ -239,7 +239,7 @@ class S3Controller(Controller):
         for env_id, env_config in s3_env_map.items():
             # Each bucket gets its own stack
             for bucket_id, bucket_config in env_config['buckets']:
-                resource_ref = 's3.buckets.{0}.{1}.{2}'.format(env_config['account_ctx'].get_name(), env_config['region'], bucket_id)
+                resource_ref = 'resource.s3.buckets.{0}.{1}.{2}'.format(env_config['account_ctx'].get_name(), env_config['region'], bucket_id)
                 env_stack_group = S3StackGroup( self.aim_ctx,
                                                 env_config['account_ctx'],
                                                 env_config['region'],
@@ -289,8 +289,13 @@ class S3Controller(Controller):
             self.init_s3_resource(controller_args, stack_tags=None)
 
     def init_context(self, account_ctx, region, resource_ref, stack_group, stack_tags):
+        if resource_ref.startswith('aim.ref '):
+            resource_ref = resource_ref.replace('aim.ref ', '')
         if resource_ref not in self.contexts.keys():
             self.contexts[resource_ref] = S3Context(self.aim_ctx, account_ctx, region, self, stack_group, resource_ref, stack_tags)
+            # Add an 'aim.ref ' key here so that we can take aim.ref's from the yaml
+            # and still do a lookup on them
+            self.contexts['aim.ref '+resource_ref] = self.contexts[resource_ref]
 
     def add_bucket(self, resource_ref, *args, **kwargs):
         return self.contexts[resource_ref].add_bucket(*args, **kwargs)

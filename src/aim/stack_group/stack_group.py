@@ -1,5 +1,6 @@
 import boto3
 import os
+import pathlib
 import sys
 import time
 from aim.core.exception import StackException
@@ -7,8 +8,9 @@ from aim.core.exception import AimException, AimErrorCode
 from botocore.exceptions import ClientError
 from enum import Enum
 from aim.core.yaml import YAML
-from aim.utils import md5sum, str_spc
+from aim.utils import md5sum, str_spc, dict_of_dicts_merge
 from copy import deepcopy
+
 
 yaml=YAML(typ="safe", pure=True)
 yaml.default_flow_sytle = False
@@ -24,6 +26,37 @@ StackOrder = Enum('StackOrder', 'PROVISION WAIT')
 #        self.PROVISION = 0
 #        self.WAIT = 1
 
+class StackOutputsManager():
+    def __init__(self):
+        self.project_folder = None
+        self.outputs_path = None
+        self.outputs_dict = None
+
+    def load(self, project_folder):
+        self.outputs_path = pathlib.Path(os.path.join(project_folder, 'ResourceMap.yaml'))
+        if self.outputs_path.exists():
+            with open(self.outputs_path, "r") as output_fd:
+                self.outputs_dict = yaml.load(output_fd)
+        else:
+            self.outputs_dict = {}
+
+    def save(self):
+        if self.outputs_path == None:
+            raise StackException(AimErrorCode.Unknown, message="Outputs file has not been loaded.")
+
+        with open(self.outputs_path, "w") as output_fd:
+            yaml.dump(self.outputs_dict, output_fd)
+
+    def add(self, project_folder, new_outputs_dict):
+        if 'aim' in new_outputs_dict.keys():
+            breakpoint()
+        if self.project_folder == None:
+            self.load(project_folder)
+        merged_config = dict_of_dicts_merge(self.outputs_dict, new_outputs_dict)
+        self.outputs_dict = merged_config
+        self.save()
+
+stack_outputs_manager = StackOutputsManager()
 
 class StackTags():
     def __init__(self, stack_tags=None):
@@ -257,11 +290,10 @@ class Stack():
                 raise StackException(AimErrorCode.StackDoesNotExist)
             else:
                 raise StackException(AimErrorCode.Unknown, message=e.response['Error']['Message'])
-        #print(key + ": get_outputs_value: " + repr(stack_metadata['Stacks'][0]['Outputs']))
+
         if 'Outputs' not in stack_metadata['Stacks'][0].keys():
-            # We get here sometimes after breaking and then
-            # re-running the aim cli
-            pass
+            raise StackException(AimErrorCode.Unknown, message='No outputs are registered for this stack. This can happen if there are register_stack_output_config() calls in a cftemplate for Outputs that do not exist.')
+
         for output in stack_metadata['Stacks'][0]['Outputs']:
             #print(output['OutputKey'] + " == " + key)
             if output['OutputKey'] == key:
@@ -330,6 +362,17 @@ class Stack():
 
         return False
 
+    def save_stack_outputs(self):
+        self.output_config_dict = self.template.process_stack_output_config(self)
+
+        with open(self.output_filename, "w") as output_fd:
+            yaml.dump(
+                data=self.output_config_dict,
+                stream=output_fd
+            )
+
+        stack_outputs_manager.add(self.aim_ctx.home, self.output_config_dict)
+
     # Actions to perform when a stack has been successfully created or updated
     def stack_success(self):
         if self.action != "delete":
@@ -341,10 +384,7 @@ class Stack():
             #print("Stack success: Created cache file: " + self.cache_filename + ": " + new_cache_id)
 
             # Save stack outputs to yaml
-            self.output_config_dict = self.template.process_stack_output_config(self)
-            with open(self.output_filename, "w") as output_fd:
-                yaml.dump(data=self.output_config_dict,
-                        stream=output_fd)
+            self.save_stack_outputs()
 
     def create_stack(self):
         # Create Stack
