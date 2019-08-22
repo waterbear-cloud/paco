@@ -121,6 +121,13 @@ class ApplicationEngine():
     def gen_iam_role_id(self, res_id, role_id):
         return '-'.join([res_id, role_id])
 
+    def log_resource_init_status(self, res_config):
+        "Logs the init status of a resource"
+        if res_config.is_enabled() == False:
+            print("ApplicationEngine: Init: {}: {} *disabled*".format(res_config.title_or_name, res_config.name))
+        else:
+            print("ApplicationEngine: Init: {}: {}".format(res_config.title_or_name, res_config.name))
+
     def init_alarms(self, aws_name, res_config, res_config_ref, res_stack_tags):
         alarms_template = aim.cftemplates.CWAlarms(
             self.aim_ctx,
@@ -142,6 +149,30 @@ class ApplicationEngine():
             stack_tags=res_stack_tags
         )
         self.stack_group.add_stack_order(alarms_stack)
+
+    def init_apigatewayrestapi_resource(self, grp_id, res_id, res_config, res_config_ref, res_stack_tags):
+        self.log_resource_init_status(res_config)
+        aws_name = "-".join([grp_id, res_id])
+        apigatewayrestapi_template = aim.cftemplates.ApiGatewayRestApi(
+            self.aim_ctx,
+            self.account_ctx,
+            self.aws_region,
+            aws_name,
+            self.app_id,
+            grp_id,
+            res_config,
+            res_config_ref
+        )
+        apigatewayrestapi_stack = Stack(
+            self.aim_ctx,
+            self.account_ctx,
+            self.stack_group,
+            res_config,
+            apigatewayrestapi_template,
+            aws_region=self.aws_region,
+            stack_tags=res_stack_tags
+        )
+        self.stack_group.add_stack_order(apigatewayrestapi_stack)
 
     def init_elasticacheredis_resource(self, grp_id, res_id, res_config, res_config_ref, res_stack_tags):
         if res_config.enabled == False:
