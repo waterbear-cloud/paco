@@ -28,33 +28,38 @@ StackOrder = Enum('StackOrder', 'PROVISION WAIT')
 
 class StackOutputsManager():
     def __init__(self):
-        self.project_folder = None
-        self.outputs_path = None
-        self.outputs_dict = None
+        self.outputs_path = {}
+        self.outputs_dict = {}
 
-    def load(self, project_folder):
-        self.outputs_path = pathlib.Path(os.path.join(project_folder, 'ResourceMap.yaml'))
-        if self.outputs_path.exists():
-            with open(self.outputs_path, "r") as output_fd:
-                self.outputs_dict = yaml.load(output_fd)
+    def load(self, project_folder, key):
+        self.outputs_path[key] = pathlib.Path(
+            os.path.join(
+                project_folder,
+                'Outputs',
+                key+'.yaml'
+            ))
+        if self.outputs_path[key].exists():
+            with open(self.outputs_path[key], "r") as output_fd:
+                self.outputs_dict[key] = yaml.load(output_fd)
         else:
-            self.outputs_dict = {}
+            self.outputs_dict[key] = {}
 
-    def save(self):
-        if self.outputs_path == None:
+    def save(self, key):
+        if self.outputs_path[key] == None:
             raise StackException(AimErrorCode.Unknown, message="Outputs file has not been loaded.")
 
-        with open(self.outputs_path, "w") as output_fd:
-            yaml.dump(self.outputs_dict, output_fd)
+        with open(self.outputs_path[key], "w") as output_fd:
+            yaml.dump(self.outputs_dict[key], output_fd)
 
     def add(self, project_folder, new_outputs_dict):
-        if 'aim' in new_outputs_dict.keys():
-            breakpoint()
-        if self.project_folder == None:
-            self.load(project_folder)
-        merged_config = dict_of_dicts_merge(self.outputs_dict, new_outputs_dict)
-        self.outputs_dict = merged_config
-        self.save()
+        if len(new_outputs_dict.keys()) > 1:
+            raise StackException(AimErrorCode.Unknown, message="Outputs dict should only have one key. Investigate!")
+        if len(new_outputs_dict.keys()) == 0:
+            return
+        key = list(new_outputs_dict.keys())[0]
+        self.load(project_folder, key)
+        self.outputs_dict[key] = dict_of_dicts_merge(self.outputs_dict[key], new_outputs_dict)
+        self.save(key)
 
 stack_outputs_manager = StackOutputsManager()
 
