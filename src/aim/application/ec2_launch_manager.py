@@ -154,7 +154,7 @@ class EC2LaunchManager():
         self.app_id = app_id
         self.account_ctx = account_ctx
         self.aws_region = aws_region
-        self.config_ref = config_ref
+        self.config_ref = '.'.join([config_ref, 'applications', app_id])
         self.stack_group = stack_group
         self.cloudwatch_agent = False
         self.cloudwatch_agent_config = None
