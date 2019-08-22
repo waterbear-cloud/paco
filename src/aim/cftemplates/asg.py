@@ -51,15 +51,7 @@ class ASG(CFTemplate):
           self.set_parameter('LCIamInstanceProfile', role_profile_arn)
 
         # Security Group List
-        # TODO: Use self.gen_ref_list_param()
-        sg_output_param = StackOutputParam('LCSecurityGroupList')
-        for sg_ref in asg_config.security_groups:
-            # TODO: Better name for self.get_stack_outputs_key_from_ref?
-            sg_ref += '.id'
-            sg_output_key = self.get_stack_outputs_key_from_ref(Reference(sg_ref))
-            sg_stack = self.aim_ctx.get_ref(sg_ref)
-            sg_output_param.add_stack_output(sg_stack, sg_output_key)
-        self.set_parameter(sg_output_param)
+        self.set_list_parameter('LCSecurityGroupList', asg_config.security_groups, 'id')
 
         asg_name = normalized_join([self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, grp_id, asg_id], '', True)
         self.set_parameter('ASGName', asg_name)
@@ -82,23 +74,12 @@ class ASG(CFTemplate):
 
         # Load Balancers: A list of aim.ref netenv.to ELBs
         if asg_config.load_balancers != None and len(asg_config.load_balancers) > 0:
-            # TODO: Use self.gen_ref_list_param()
-            lb_param = StackOutputParam('ASGLoadBalancerNames')
-            for load_balancer in asg_config.load_balancers:
-                elb_stack = self.aim_ctx.get_ref(load_balancer)
-                elb_output_key = self.get_stack_outputs_key_from_ref(Reference(load_balancer))
-                lb_param.add_stack_output(elb_stack, elb_output_key)
-            self.set_parameter(lb_param)
+            self.set_list_parameter('ASGLoadBalancerNames', asg_config.load_balancers)
 
         # Target Group Arns
         if asg_config.target_groups != None and len(asg_config.target_groups) > 0:
-            lb_param = StackOutputParam('TargetGroupArns')
-            for target_group_ref in asg_config.target_groups:
-                target_group_ref += '.arn'
-                alb_stack = self.aim_ctx.get_ref(target_group_ref)
-                alb_output_key = self.get_stack_outputs_key_from_ref(Reference(target_group_ref))
-                lb_param.add_stack_output(alb_stack, alb_output_key)
-            self.set_parameter(lb_param)
+            self.set_list_parameter('TargetGroupArns', asg_config.target_groups, 'arn')
+
 
         if asg_config.user_data_script != '':
             user_data_script = ec2_manager_user_data_script

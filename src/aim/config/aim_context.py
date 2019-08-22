@@ -134,7 +134,6 @@ class AimContext(object):
             return None
         return region
 
-
     def load_project(self, project_init=False):
         print("Project: %s" % (self.home))
         self.project_folder = self.home

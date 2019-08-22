@@ -55,19 +55,10 @@ class ALB(CFTemplate):
 
         # Segment SubnetList is a Segment stack Output based on availability zones
         subnet_list_key = 'SubnetList' + str(self.env_ctx.availability_zones())
-
         self.set_parameter(StackOutputParam('SubnetList', segment_stack, subnet_list_key))
 
         # Security Group List
-        sg_output_param = StackOutputParam('SecurityGroupList')
-        for sg_ref in alb_config.security_groups:
-            # TODO: Better name for self.get_stack_outputs_key_from_ref?
-            # print("ALB: SG_REF: " + sg_ref)
-            sg_ref += '.id'
-            sg_output_key = self.get_stack_outputs_key_from_ref(Reference(sg_ref))
-            sg_stack = self.aim_ctx.get_ref(sg_ref)
-            sg_output_param.add_stack_output(sg_stack, sg_output_key)
-        self.set_parameter(sg_output_param)
+        self.set_list_parameter('SecurityGroupList', alb_config.security_groups, 'id')
 
         # Define the Template
         template_fmt = """

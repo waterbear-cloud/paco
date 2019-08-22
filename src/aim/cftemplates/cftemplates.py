@@ -326,6 +326,19 @@ class CFTemplate():
         # Append the parameter to our list
         self.parameters.append(param_entry)
 
+    def set_list_parameter(self, param_name, param_list, ref_att=None):
+        value_list = []
+        for param_ref in param_list:
+            # print("ALB: SG_REF: " + sg_ref)
+            if ref_att:
+                param_ref += '.'+ref_att
+            value = Reference(param_ref).resolve(self.aim_ctx.project)
+            if value == None:
+                raise StackException(AimErrorCode.Unknown, message = 'Unable to resolve reference: ' + param_ref)
+            value_list.append(value)
+
+        self.set_parameter(param_name, ','.join(value_list))
+
     def gen_cache_id(self):
         template_md5 = md5sum(self.get_yaml_path())
         outputs_str = ""
