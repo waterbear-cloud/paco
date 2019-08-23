@@ -147,10 +147,7 @@ class ApplicationEngine():
         self.stack_group.add_stack_order(apigatewayrestapi_stack)
 
     def init_elasticacheredis_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        if res_config.enabled == False:
-            print("ApplicationEngine: Init: ElastiCache Redis: %s *disabled*" % (res_id))
-        else:
-            print("ApplicationEngine: Init: ElastiCache Redis: %s" % (res_id))
+        self.log_resource_init_status(res_config)
 
         # ElastiCache Redis CloudFormation
         aws_name = '-'.join([grp_id, res_id])
@@ -176,10 +173,7 @@ class ApplicationEngine():
         self.stack_group.add_stack_order(elasticache_stack)
 
     def init_rdsmysql_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        if res_config.enabled == False:
-            print("ApplicationEngine: Init: RDS Mysql: %s *disabled*" % (res_id))
-        else:
-            print("ApplicationEngine: Init: RDS Mysql: %s" % (res_id))
+        self.log_resource_init_status(res_config)
 
         # RDS Mysql CloudFormation
         aws_name = '-'.join([grp_id, res_id])
@@ -205,10 +199,7 @@ class ApplicationEngine():
         self.stack_group.add_stack_order(rds_stack)
 
     def init_cloudfront_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        if res_config.enabled == False:
-            print("ApplicationEngine: Init: CloudFront: %s *disabled*" % (res_id))
-        else:
-            print("ApplicationEngine: Init: CloudFront: %s" % (res_id))
+        self.log_resource_init_status(res_config)
 
         for factory_name, factory_config in res_config.factory.items():
             cloudfront_config_ref = res_config.aim_ref_parts + '.factory.' + factory_name
@@ -253,10 +244,7 @@ class ApplicationEngine():
             self.stack_group.add_stack_order(cloudfront_stack)
 
     def init_snstopic_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        if res_config.enabled == False:
-            print("ApplicationEngine: Init: SNSTopic: %s *disabled*" % (res_id))
-        else:
-            print("ApplicationEngine: Init: SNSTopic: %s" % (res_id))
+        self.log_resource_init_status(res_config)
 
         aws_name = '-'.join([grp_id, res_id])
         sns_topics_config = [res_config]
@@ -280,10 +268,7 @@ class ApplicationEngine():
         self.stack_group.add_stack_order(sns_stack)
 
     def init_lambda_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        if res_config.enabled == False:
-            print("ApplicationEngine: Init: Lambda: %s *disabled*" % (res_id))
-        else:
-            print("ApplicationEngine: Init: Lambda: %s" % (res_id))
+        self.log_resource_init_status(res_config)
 
         # Create function execution role
         if res_config.iam_role.enabled == False:
@@ -378,10 +363,8 @@ statement:
             )
 
     def init_s3bucket_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        if res_config.enabled == False:
-            print("ApplicationEngine: Init: S3: %s *disabled*" % (res_id))
-        else:
-            print("ApplicationEngine: Init: S3: %s" % (res_id))
+        self.log_resource_init_status(res_config)
+        if res_config.is_enabled():
             # Generate s3 bucket name for application deployment
             bucket_name_prefix = '-'.join([self.get_aws_name(), grp_id])
             #print("Application depoloyment bucket name: %s" % new_name)
@@ -402,10 +385,8 @@ statement:
             )
 
     def init_lbclassic_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        if res_config.enabled == False:
-            print("ApplicationEngine: Init: LBClassic: %s *disabled*" % (res_id))
-        else:
-            print("ApplicationEngine: Init: LBClassic: %s" % (res_id))
+        self.log_resource_init_status(res_config)
+        if res_config.is_enabled():
             elb_config = res_config[res_id]
             aws_name = '-'.join([grp_id, res_id])
             elb_template = aim.cftemplates.ELB(
@@ -430,10 +411,7 @@ statement:
 
 
     def init_lbapplication_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        if res_config.enabled == False:
-            print("ApplicationEngine: Init: LBApplication: %s *disabled*" % (res_id))
-        else:
-            print("ApplicationEngine: Init: LBApplication: %s" % (res_id))
+        self.log_resource_init_status(res_config)
         # resolve_ref object for TargetGroups
         for target_group in res_config.target_groups.values():
             target_group.resolve_ref_obj = self
@@ -465,10 +443,7 @@ statement:
             self.init_alarms(aws_name, res_config, StackTags(res_stack_tags))
 
     def init_asg_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        if res_config.enabled == False:
-            print("ApplicationEngine: Init: ASG: %s *disabled*" % (res_id))
-        else:
-            print("ApplicationEngine: Init: ASG: " + res_id)
+        self.log_resource_init_status(res_config)
         # Create instance role
         role_profile_arn = None
         if res_config.instance_iam_role.enabled == False:
@@ -552,10 +527,8 @@ role_name: %s""" % ("ASGInstance")
             self.init_alarms(aws_name, res_config, StackTags(res_stack_tags))
 
     def init_ec2_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        if res_config.enabled == False:
-            print("ApplicationEngine: Init: EC2: %s *disabled*" % (res_id))
-        else:
-            print("ApplicationEngine: Init: EC2 Instance")
+        self.log_resource_init_status(res_config)
+        if res_config.is_enabled():
             aws_name = '-'.join([grp_id, res_id])
             ec2_template = aim.cftemplates.EC2(
                 self.aim_ctx,
@@ -580,10 +553,8 @@ role_name: %s""" % ("ASGInstance")
             self.stack_group.add_stack_order(ec2_stack)
 
     def init_codepipebuilddeploy_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        if res_config.enabled == False:
-            print("ApplicationEngine: Init: CodePipeBuildDeploy: %s *disabled*" % (res_id))
-        else:
-            print("ApplicationEngine: Init: CodePipeBuildDeploy: %s" % (res_id))
+        self.log_resource_init_status(res_config)
+        if res_config.is_enabled():
             tools_account_ctx = self.aim_ctx.get_account_context(res_config.tools_account)
             # XXX: Fix Hardcoded!!!
             data_account_ctx = self.aim_ctx.get_account_context("aim.ref accounts.data")
