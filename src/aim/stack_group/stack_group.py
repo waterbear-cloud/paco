@@ -346,7 +346,8 @@ class Stack():
             else:
                 raise e
 
-
+        if new_cache_id == None:
+            return False
         #print("New Cache ID: " + new_cache_id)
         cache_id = "none"
         if os.path.isfile(self.cache_filename):

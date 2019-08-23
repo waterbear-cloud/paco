@@ -328,18 +328,39 @@ class CFTemplate():
 
     def set_list_parameter(self, param_name, param_list, ref_att=None):
         value_list = []
+        is_stack_list = False
         for param_ref in param_list:
             # print("ALB: SG_REF: " + sg_ref)
             if ref_att:
                 param_ref += '.'+ref_att
             value = Reference(param_ref).resolve(self.aim_ctx.project)
+            if isinstance(value, Stack):
+                is_stack_list = True
+            elif is_stack_list == True:
+                raise StackException(AimErrorCode.Unknown, message = 'Cannot have mixed Stacks and non-Stacks in the list: ' + param_ref)
             if value == None:
                 raise StackException(AimErrorCode.Unknown, message = 'Unable to resolve reference: ' + param_ref)
-            value_list.append(value)
 
-        self.set_parameter(param_name, ','.join(value_list))
+            value_list.append([param_ref,value])
+
+        # If this is the first time this stack has been provisioned,
+        # we will need to deferr to the stack outputs
+        if is_stack_list == True:
+            output_param = StackOutputParam(param_name)
+            for param_ref,stack in value_list:
+                output_key = self.get_stack_outputs_key_from_ref(Reference(param_ref))
+                output_param.add_stack_output(stack, output_key)
+            self.set_parameter(output_param)
+        else:
+            param_list = []
+            for param_ref,value in value_list:
+                param_list.append(value)
+            self.set_parameter(param_name, ','.join(param_list))
 
     def gen_cache_id(self):
+        yaml_path = pathlib.Path(self.get_yaml_path())
+        if yaml_path.exists() == False:
+            return None
         template_md5 = md5sum(self.get_yaml_path())
         outputs_str = ""
         for param_entry in self.parameters:
