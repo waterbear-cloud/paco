@@ -9,6 +9,8 @@ class Account(CFTemplate):
     def __init__(self,
                  aim_ctx,
                  account_ctx,
+                 stack_group,
+                 stack_tags,
                  account_id,
                  account_config,
                  account_config_ref):
@@ -17,12 +19,16 @@ class Account(CFTemplate):
         self.account_config = account_config
         self.account_id = account_id
         # Super
-        super().__init__(aim_ctx,
-                         account_ctx,
-                         aws_region=account_config.region,
-                         config_ref=account_config_ref,
-                         aws_name=self.account_id,
-                         iam_capabilities=["CAPABILITY_NAMED_IAM"])
+        super().__init__(
+            aim_ctx,
+            account_ctx,
+            aws_region=account_config.region,
+            config_ref=account_config_ref,
+            aws_name=self.account_id,
+            iam_capabilities=["CAPABILITY_NAMED_IAM"],
+            stack_group=stack_group,
+            stack_tags=stack_tags
+        )
 
         # Define the Template
         template = """

@@ -131,6 +131,7 @@ class CFTemplate():
                  aws_name,
                  stack_group=None,
                  stack_tags=None,
+                 stack_hooks=None,
                  iam_capabilities=[] ):
         self.aim_ctx = aim_ctx
         self.account_ctx = account_ctx
@@ -143,11 +144,13 @@ class CFTemplate():
         self.cf_client = self.account_ctx.get_aws_client('cloudformation')
         self.aws_name = aws_name.replace('_', '-')
         self.config_ref = config_ref
-        self.stack = None
         self.template_file_id = None
-        self.stack_output_config_list = []
+        # Stack
+        self.stack = None
         self.stack_group = stack_group
         self.stack_tags = stack_tags
+        self.stack_hooks = stack_hooks
+        self.stack_output_config_list = []
 
     def set_template_file_id(self, file_id):
         self.template_file_id = file_id
@@ -383,9 +386,10 @@ class CFTemplate():
                 self.aim_ctx,
                 self.account_ctx,
                 self.stack_group,
-                self,
+                self, # template
                 aws_region=self.aws_region,
-                stack_tags=self.stack_tags
+                stack_tags=self.stack_tags,
+                hooks=self.stack_hooks
             )
             self.stack_group.add_stack_order(stack)
 

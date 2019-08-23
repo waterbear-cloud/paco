@@ -11,6 +11,8 @@ class S3(CFTemplate):
                 aim_ctx,
                 account_ctx,
                 aws_region,
+                stack_group,
+                stack_tags,
                 bucket_context,
                 bucket_policy_only,
                 config_ref):
@@ -21,12 +23,16 @@ class S3(CFTemplate):
         if bucket_policy_only == True:
             aws_name += '-policy'
 
-        super().__init__(aim_ctx,
-                         account_ctx,
-                         aws_region,
-                         config_ref=config_ref,
-                         aws_name=aws_name,
-                         iam_capabilities=["CAPABILITY_NAMED_IAM"])
+        super().__init__(
+            aim_ctx,
+            account_ctx,
+            aws_region,
+            config_ref=config_ref,
+            aws_name=aws_name,
+            iam_capabilities=["CAPABILITY_NAMED_IAM"],
+            stack_group=stack_group,
+            stack_tags=stack_tags
+        )
 
         self.s3_context_id = config_ref
         self.bucket_context = bucket_context

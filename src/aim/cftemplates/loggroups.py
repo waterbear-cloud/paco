@@ -17,6 +17,8 @@ class LogGroups(CFTemplate):
         aim_ctx,
         account_ctx,
         aws_region,
+        stack_group,
+        stack_tags,
         aws_name,
         resource,
         res_config_ref
@@ -27,7 +29,9 @@ class LogGroups(CFTemplate):
             account_ctx,
             aws_region,
             config_ref=res_config_ref,
-            aws_name=aws_name
+            aws_name=aws_name,
+            stack_group=stack_group,
+            stack_tags=stack_tags
         )
         self.resource = resource
 

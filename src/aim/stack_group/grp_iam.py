@@ -48,33 +48,29 @@ class IAMStackGroup(StackGroup):
             #iam_config_ref = '.'.join([self.config_ref_prefix, 'iam', self.iam_group_id, 'roles'])
             self.roles_template = IAMRoles(self.aim_ctx,
                                             self.account_ctx,
+                                            self.aws_region,
+                                            self,
+                                            None, # stack_tags
                                             self.iam_context_id,
                                             self.roles_by_order)
 
-            self.roles_stack = Stack(aim_ctx=self.aim_ctx,
-                                        account_ctx=self.account_ctx,
-                                        grp_ctx=self,
-                                        template=self.roles_template,
-                                        aws_region=self.aws_region)
+            self.roles_stack = self.roles_templates.stack
 
             self.stack_list.append(self.roles_stack)
-            self.add_stack_order(self.roles_stack)
 
         # Managed Policies
         if len(self.policies_by_order) > 0:
             self.managed_policies_template = IAMManagedPolicies(self.aim_ctx,
                                                                 self.account_ctx,
+                                                                self.aws_region,
+                                                                self,
+                                                                None, # stack_tags
                                                                 self.iam_context_id,
                                                                 self.policies_by_order)
 
-            self.managed_policies_stack = Stack(aim_ctx=self.aim_ctx,
-                                        account_ctx=self.account_ctx,
-                                        grp_ctx=self,
-                                        template=self.managed_policies_template,
-                                        aws_region=self.aws_region)
+            self.managed_policies_stack = self.managed_policies_template.stack
 
             self.stack_list.append(self.managed_policies_stack)
-            self.add_stack_order(self.managed_policies_stack)
 
     def role_arn(self, role_id):
         role_name = self.roles_template.gen_iam_role_name("Role", role_id)

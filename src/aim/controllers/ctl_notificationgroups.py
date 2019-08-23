@@ -37,23 +37,16 @@ class NotificationGroupsStackGroup(StackGroup):
         "init"
         # create a template
         sns_topics_config = [topic for topic in self.aim_ctx.project['notificationgroups'].values()]
-        ng_sns_template = aim.cftemplates.SNSTopics(
+        aim.cftemplates.SNSTopics(
             self.aim_ctx,
             self.account_ctx,
             self.region,
+            self,
+            StackTags(self.stack_tags),
             'NG',
             sns_topics_config,
             self.resource_ref
         )
-        ng_sns_stack = Stack(
-            self.aim_ctx,
-            self.account_ctx,
-            self,
-            ng_sns_template,
-            aws_region=self.region,
-            stack_tags=StackTags(self.stack_tags)
-        )
-        self.add_stack_order(ng_sns_stack)
 
 class NotificationGroupsController(Controller):
     def __init__(self, aim_ctx):

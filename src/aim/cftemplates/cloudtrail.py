@@ -8,14 +8,16 @@ from awacs.aws import Allow, Action, Principal, Statement, PolicyDocument
 
 
 class CloudTrail(CFTemplate):
-    def __init__(self, aim_ctx, account_ctx, aws_region, trail, s3_bucket_name):
+    def __init__(self, aim_ctx, account_ctx, aws_region, stack_group, stack_tags, trail, s3_bucket_name):
         super().__init__(
             aim_ctx,
             account_ctx,
             aws_region,
             config_ref=None,
             aws_name="CloudTrail",
-            iam_capabilities=["CAPABILITY_IAM"]
+            iam_capabilities=["CAPABILITY_IAM"],
+            stack_group=stack_group,
+            stack_tags=stack_tags
         )
         template = troposphere.Template()
 

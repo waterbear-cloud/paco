@@ -667,7 +667,9 @@ policies:
 
     def get_stack_from_ref(self, ref):
         for stack in self.stack_group.stacks:
-            #print("grp_application: get stack : " + ref.raw + " contains " + stack.template.config_ref)
+            #if ref.ref == 'netenv.aimdemo.dev.us-west-2.applications.app.groups.site.resources.webdemo.name':
+            #    print("grp_application: get stack : " + ref.raw + " contains " + stack.template.config_ref)
+            #    breakpoint()
             if stack.template.config_ref and stack.template.config_ref != '' and ref.raw.find(stack.template.config_ref) != -1:
                 return stack
         return None

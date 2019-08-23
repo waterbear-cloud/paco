@@ -42,23 +42,15 @@ class LambdaController(Controller):
         permission_template = aim.cftemplates.LambdaPermission( self.aim_ctx,
                                                                 account_ctx,
                                                                 aws_region,
+                                                                stack_group,
+                                                                None, # stack_tags
                                                                 function_name,
                                                                 principal,
                                                                 source_account,
                                                                 source_arn,
                                                                 config_ref)
 
-
-
-        permission_stack = Stack(   self.aim_ctx,
-                                    account_ctx,
-                                    stack_group,
-                                    permission_template,
-                                    aws_region=aws_region,
-                                    hooks=None)
-
-        self.permission_stacks[config_ref] = permission_stack
-        stack_group.add_stack_order(permission_stack)
+        self.permission_stacks[config_ref] = permission_template.stack
 
     def validate(self):
         pass

@@ -49,22 +49,18 @@ class PolicyContext():
             'template_params': self.template_params
         }
 
+        policy_stack_tags = StackTags(self.stack_tags)
+        policy_stack_tags.add_tag('AIM-IAM-Resource-Type', 'ManagedPolicy')
         template_name = '-'.join([self.group_id, self.policy_id])
         policy_context['template'] = IAMManagedPolicies(self.aim_ctx,
                                                         self.account_ctx,
                                                         self.region,
+                                                        self.stack_group,
+                                                        policy_stack_tags,
                                                         policy_context,
                                                         template_name)
 
-        policy_stack_tags = StackTags(self.stack_tags)
-        policy_stack_tags.add_tag('AIM-IAM-Resource-Type', 'ManagedPolicy')
-
-        policy_context['stack'] = Stack(aim_ctx=self.aim_ctx,
-                                        account_ctx=self.account_ctx,
-                                        grp_ctx=self.stack_group,
-                                        template=policy_context['template'],
-                                        aws_region=self.region,
-                                        stack_tags=policy_stack_tags)
+        policy_context['stack'] = policy_context['template'].stack
 
         self.name = policy_context['template'].gen_policy_name(self.policy_id)
         self.arn = "arn:aws:iam::{0}:policy/{1}".format(self.account_ctx.get_id(), self.name)
@@ -147,22 +143,18 @@ class RoleContext():
             'template_params': template_params
         }
 
+        policy_stack_tags = StackTags(self.stack_tags)
+        policy_stack_tags.add_tag('AIM-IAM-Resource-Type', 'ManagedPolicy')
         template_name = '-'.join([self.group_id, policy_id])
         policy_context['template'] = IAMManagedPolicies(self.aim_ctx,
                                                         self.account_ctx,
                                                         self.region,
+                                                        self.stack_group,
+                                                        policy_stack_tags,
                                                         policy_context,
                                                         template_name)
 
-        policy_stack_tags = StackTags(self.stack_tags)
-        policy_stack_tags.add_tag('AIM-IAM-Resource-Type', 'ManagedPolicy')
-
-        policy_context['stack'] = Stack(aim_ctx=self.aim_ctx,
-                                        account_ctx=self.account_ctx,
-                                        grp_ctx=self.stack_group,
-                                        template=policy_context['template'],
-                                        aws_region=self.region,
-                                        stack_tags=policy_stack_tags)
+        policy_context['stack'] = policy_context['template'].stack
 
         self.policy_context['name'] = policy_context['template'].gen_policy_name(policy_id)
         self.policy_context['arn'] = "arn:aws:iam::{0}:policy/{1}".format(self.account_ctx.get_id(), self.policy_context['name'])
@@ -171,27 +163,22 @@ class RoleContext():
         self.stack_group.add_stack_order(policy_context['stack'])
 
     def init_role(self):
-
+        role_stack_tags = StackTags(self.stack_tags)
+        role_stack_tags.add_tag('AIM-IAM-Resource-Type', 'Role')
         self.role_config.resolve_ref_obj = self
         template_name = '-'.join([self.group_id, self.role_id])
         self.role_template = IAMRoles(self.aim_ctx,
                                       self.account_ctx,
                                       self.region,
+                                      self.stack_group,
+                                      role_stack_tags,
                                       template_name,
                                       self.role_ref,
                                       self.role_id,
                                       self.role_config,
                                       self.template_params)
 
-        role_stack_tags = StackTags(self.stack_tags)
-        role_stack_tags.add_tag('AIM-IAM-Resource-Type', 'Role')
-        self.role_stack = Stack(aim_ctx=self.aim_ctx,
-                                account_ctx=self.account_ctx,
-                                grp_ctx=self.stack_group,
-                                template=self.role_template,
-                                aws_region=self.region,
-                                stack_tags=role_stack_tags)
-
+        self.role_stack = self.role_template.stack
         self.role_name = self.role_template.gen_iam_role_name("Role", self.role_id)
         self.role_arn = "arn:aws:iam::{0}:role/{1}".format(self.account_ctx.get_id(), self.role_name)
         role_profile_name = self.role_template.gen_iam_role_name("Profile", self.role_id)

@@ -11,18 +11,26 @@ class CodeCommit(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
+                 stack_group,
+                 stack_tags,
+                 stack_hooks,
                  codecommit_config,
                  repo_list):
         #aim_ctx.log("CodeCommit CF Template init")
 
         aws_name = '-'.join(["Repositories"])
 
-        super().__init__(aim_ctx,
-                         account_ctx,
-                         aws_region,
-                         config_ref=None,
-                         aws_name=aws_name,
-                         iam_capabilities=["CAPABILITY_NAMED_IAM"])
+        super().__init__(
+            aim_ctx,
+            account_ctx,
+            aws_region,
+            config_ref=None,
+            aws_name=aws_name,
+            iam_capabilities=["CAPABILITY_NAMED_IAM"],
+            stack_group=stack_group,
+            stack_tags=stack_tags,
+            stack_hooks=stack_hooks
+        )
 
 
         # Define the Template

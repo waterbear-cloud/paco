@@ -60,24 +60,16 @@ class S3Context():
         s3_template = aim.cftemplates.S3(self.aim_ctx,
                                          self.account_ctx,
                                          self.region,
+                                         self.stack_group,
+                                         stack_tags,
                                          self.bucket_context,
                                          bucket_policy_only,
                                          self.resource_ref)
 
-        s3_stack = Stack(self.aim_ctx,
-                        self.account_ctx,
-                        self.stack_group,
-                        s3_template,
-                        aws_region=self.region,
-                        hooks=stack_hooks,
-                        stack_tags=stack_tags)
-
         if bucket_policy_only == False:
             if self.bucket_context['stack'] != None:
                 raise StackException(AimErrorCode.Unknown)
-            self.bucket_context['stack'] = s3_stack
-
-        self.stack_group.add_stack_order(s3_stack)
+            self.bucket_context['stack'] = s3_template.stack
 
     def add_bucket( self,
                     region,

@@ -507,22 +507,16 @@ statement:
 
         # Create the CloudWatch Log Groups so that Retention and MetricFilters can be set
         if monitoring.log_sets:
-            log_group_template = aim.cftemplates.LogGroups(
+            aim.cftemplates.LogGroups(
                 self.aim_ctx,
                 self.account_ctx,
                 self.aws_region,
+                self.stack_group,
+                None, # stack_tags
                 'LG',
                 resource,
                 'some ref?'
             )
-            log_group_stack = Stack(
-                aim_ctx=self.aim_ctx,
-                account_ctx=self.account_ctx,
-                grp_ctx=self.stack_group,
-                template=log_group_template,
-                aws_region=self.aws_region
-            )
-            self.stack_group.add_stack_order(log_group_stack)
 
         # Save Configuration
         self.add_bundle(cw_lb)

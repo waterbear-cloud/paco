@@ -13,17 +13,23 @@ class IAMManagedPolicies(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
+                 stack_group,
+                 stack_tags,
                  policy_context,
                  template_name):
         #aim_ctx.log("IAMManagedPolicies CF Template init")
         aws_name = '-'.join([template_name, "Policy"])
 
-        super().__init__(aim_ctx,
-                         account_ctx,
-                         aws_region,
-                         config_ref="",
-                         aws_name=aws_name,
-                         iam_capabilities=["CAPABILITY_NAMED_IAM"])
+        super().__init__(
+            aim_ctx,
+            account_ctx,
+            aws_region,
+            config_ref="",
+            aws_name=aws_name,
+            iam_capabilities=["CAPABILITY_NAMED_IAM"],
+            stack_group=stack_group,
+            stack_tags=stack_tags
+        )
         self.policy_context = policy_context
         # Define the Template
         template_fmt = """

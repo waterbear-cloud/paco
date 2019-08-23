@@ -13,6 +13,8 @@ class LambdaPermission(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
+                 stack_group,
+                 stack_tags,
                  function_name,
                  principal,
                  source_account,
@@ -22,12 +24,16 @@ class LambdaPermission(CFTemplate):
         #aim_ctx.log("CLoudWatch Alarms CF Template init")
         # Super Init:
         aws_name='-'.join(['LambdaPermission'])
-        super().__init__(aim_ctx,
-                         account_ctx,
-                         aws_region,
-                         config_ref=config_ref,
-                         aws_name=aws_name,
-                         iam_capabilities=["CAPABILITY_NAMED_IAM"])
+        super().__init__(
+            aim_ctx,
+            account_ctx,
+            aws_region,
+            config_ref=config_ref,
+            aws_name=aws_name,
+            iam_capabilities=["CAPABILITY_NAMED_IAM"],
+            stack_group=stack_group,
+            stack_tags=stack_tags
+        )
 
         # Initialize Parameters
         if source_arn == None:

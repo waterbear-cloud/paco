@@ -69,18 +69,12 @@ class CloudTrailStackGroup(StackGroup):
                 self.aim_ctx,
                 self.account_ctx,
                 region,
+                self,
+                None, #stack_tags
                 trail,
                 s3_ctl.get_bucket_name(s3_config_ref)
             )
-            cloudtrail_stack = Stack(
-                self.aim_ctx,
-                self.account_ctx,
-                self,
-                cloudtrail_template,
-                aws_region=region
-            )
-            self.stack_list.append(cloudtrail_stack)
-            self.add_stack_order(cloudtrail_stack)
+            self.stack_list.append(cloudtrail_template.stack)
 
 
 class CloudTrailController(Controller):

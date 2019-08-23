@@ -28,16 +28,6 @@ class CodeCommitStackGroup(StackGroup):
         self.repo_list = repo_list
 
     def init(self):
-        # CodeCommit Cross-Account Delegate Rol
-
-        #self.aim_ctx.log("StackGroup: CodeCommit: init")
-        # CodeCommit Repository
-        codecommit_template = aim.cftemplates.CodeCommit(self.aim_ctx,
-                                                         self.account_ctx,
-                                                         self.aws_region,
-                                                         self.config,
-                                                         self.repo_list)
-
         stack_hooks = StackHooks(self.aim_ctx)
         for hook_action in ['create', 'update']:
             stack_hooks.add(
@@ -48,18 +38,22 @@ class CodeCommitStackGroup(StackGroup):
                 cache_method=self.codecommit_post_stack_hook_cache_id,
                 hook_arg=self.config
             )
+        # CodeCommit Repository
+        codecommit_template = aim.cftemplates.CodeCommit(self.aim_ctx,
+                                                         self.account_ctx,
+                                                         self.aws_region,
+                                                         self,
+                                                         None, # stack_tags
+                                                         stack_hooks,
+                                                         self.config,
+                                                         self.repo_list)
 
-        codecommit_stack = Stack(aim_ctx=self.aim_ctx,
-                                 account_ctx=self.account_ctx,
-                                 grp_ctx=self,
-                                 template=codecommit_template,
-                                 aws_region=self.aws_region,
-                                 hooks=stack_hooks)
+
+
+        codecommit_stack = codecommit_template.stack
         codecommit_stack.set_termination_protection(True)
-
         self.stack_list.append(codecommit_stack)
 
-        self.add_stack_order(codecommit_stack)
 
     def manage_ssh_key(self, iam_client, user_config):
 

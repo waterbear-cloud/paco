@@ -68,19 +68,13 @@ users:{}
             if custom_resource_complete:
                 account_template = aim.cftemplates.Account(self.aim_ctx,
                                                         self.account_ctx,
+                                                        self,
+                                                        self.stack_hooks,
                                                         self.account_id,
                                                         self.account_config,
                                                         self.account_config_ref)
 
-                self.account_stack = Stack(aim_ctx=self.aim_ctx,
-                                            account_ctx=self.account_ctx,
-                                            grp_ctx=self,
-                                            template=account_template,
-                                            aws_region=self.account_config.region,
-                                            hooks=self.stack_hooks,
-                                            do_not_cache=do_not_cache)
-
-                self.add_stack_order(self.account_stack)
+                self.account_stack = account_template.stack
 
         print("Account Group Init: %s: Completed" % self.account_id)
 
