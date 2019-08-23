@@ -29,16 +29,11 @@ class NetworkStackGroup(StackGroup):
         vpc_template = aim.cftemplates.VPC(self.aim_ctx,
                                            self.account_ctx,
                                            self.region,
+                                           self, # stack_group
+                                           StackTags(self.stack_tags),
                                            vpc_config,
                                            vpc_config_ref)
-        self.vpc_stack = Stack(aim_ctx=self.aim_ctx,
-                               account_ctx=self.account_ctx,
-                               grp_ctx=self,
-                               template=vpc_template,
-                               aws_region=self.region,
-                               stack_tags=StackTags(self.stack_tags))
-
-        self.add_stack_order(self.vpc_stack)
+        self.vpc_stack = vpc_template.stack
 
         # Segments
         print("NetworkStackGroup Init: Segments")
@@ -52,43 +47,36 @@ class NetworkStackGroup(StackGroup):
             segment_template = aim.cftemplates.Segment(self.aim_ctx,
                                                        self.account_ctx,
                                                        self.region,
+                                                       self, # stack_group
+                                                       StackTags(self.stack_tags),
+                                                       [StackOrder.PROVISION], # stack_order
                                                        self.env_ctx,
                                                        segment_id,
                                                        segment_config,
                                                        segment_config_ref)
-            segment_stack = Stack(self.aim_ctx,
-                                  self.account_ctx,
-                                  self,
-                                  segment_template,
-                                  aws_region=self.region,
-                                  stack_tags=StackTags(self.stack_tags))
+            segment_stack = segment_template.stack
             self.segment_dict[segment_id] = segment_stack
             self.segment_list.append(segment_stack)
-            self.add_stack_order(segment_stack, [StackOrder.PROVISION])
 
-        # VPC Stack
+        # VPC Peering Stack
         if vpc_config.peering != None:
             print("NetworkStackGroup Init: VPC Peering")
             peering_config = self.env_ctx.peering_config()
             peering_config_ref = '.'.join([self.config_ref_prefix, "network.vpc.peering"])
             for peer in peering_config.keys():
                 vpc_config.peering[peer].resolve_ref_obj = self
+
             peering_template = aim.cftemplates.VPCPeering(
                 self.aim_ctx,
                 self.account_ctx,
                 self.region,
+                self, # stack_order
+                StackTags(self.stack_tags),
                 self.env_ctx.netenv_id,
                 self.env_ctx.config.network,
                 peering_config_ref
             )
-            self.peering_stack = Stack(aim_ctx=self.aim_ctx,
-                                account_ctx=self.account_ctx,
-                                grp_ctx=self,
-                                template=peering_template,
-                                aws_region=self.region,
-                                stack_tags=StackTags(self.stack_tags))
-
-            self.add_stack_order(self.peering_stack)
+            self.peering_stack = peering_template.stack
 
         # Security Groups
         print("NetworkStackGroup Init: Security Groups")
@@ -105,18 +93,14 @@ class NetworkStackGroup(StackGroup):
             sg_template = aim.cftemplates.SecurityGroups( aim_ctx=self.aim_ctx,
                                                           account_ctx=self.account_ctx,
                                                           aws_region=self.region,
+                                                          stack_group=self,
+                                                          stack_tags=StackTags(self.stack_tags),
                                                           env_ctx=self.env_ctx,
                                                           security_groups_config=sg_config[sg_id],
                                                           sg_group_id=sg_id,
                                                           sg_group_config_ref=sg_group_config_ref )
-            sg_stack = Stack(self.aim_ctx,
-                             self.account_ctx,
-                             self,
-                             sg_template,
-                             aws_region=self.region,
-                             stack_tags=StackTags(self.stack_tags))
+            sg_stack = sg_template.stack
             self.sg_list.append(sg_stack)
-            self.add_stack_order(sg_stack, [StackOrder.PROVISION])
             self.sg_dict[sg_id] = sg_stack
 
         # Wait for Segment Stacks
@@ -133,33 +117,21 @@ class NetworkStackGroup(StackGroup):
             nat_template = aim.cftemplates.NATGateway( aim_ctx=self.aim_ctx,
                                                        account_ctx=self.account_ctx,
                                                        aws_region=self.region,
+                                                       stack_group=self,
+                                                       stack_tags=StackTags(self.stack_tags),
+                                                       stack_order=[StackOrder.PROVISION],
                                                        nat_config=nat_config)
-            nat_stack = Stack(self.aim_ctx,
-                              self.account_ctx,
-                              self,
-                              nat_template,
-                              aws_region=self.region,
-                              stack_tags=StackTags(self.stack_tags))
+            nat_stack = nat_template.stack
             self.nat_list.append(nat_stack)
-            self.add_stack_order(nat_stack, [StackOrder.PROVISION])
 
         for nat_stack in self.nat_list:
             self.add_stack_order(nat_stack, [StackOrder.WAIT])
-
-        for sg_stack in self.sg_list:
-            # Wait for Securtiy Group Stacks
-            self.add_stack_order(sg_stack, [StackOrder.WAIT])
 
         print("NetworkStackGroup Init: Completed")
 
     def get_vpc_stack(self):
         return self.vpc_stack
 
-    def get_segment_stack(self, segment_id):
-        for segment_stack in self.segment_list:
-            if segment_stack.template.config_ref.endswith(segment_id):
-                return segment_stack
-        raise StackException(AimErrorCode.Unknown)
 
     def get_security_group_stack(self, sg_id):
         return self.sg_dict[sg_id]

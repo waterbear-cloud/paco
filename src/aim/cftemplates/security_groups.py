@@ -14,6 +14,8 @@ class SecurityGroups(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
+                 stack_group,
+                 stack_tags,
                  env_ctx,
                  security_groups_config,
                  sg_group_id,
@@ -23,11 +25,15 @@ class SecurityGroups(CFTemplate):
 
         self.env_ctx = env_ctx
 
-        super().__init__(aim_ctx,
-                         account_ctx,
-                         aws_region,
-                         config_ref=sg_group_config_ref,
-                         aws_name='-'.join(["SecurityGroups", sg_group_id]))
+        super().__init__(
+            aim_ctx,
+            account_ctx,
+            aws_region,
+            config_ref=sg_group_config_ref,
+            aws_name='-'.join(["SecurityGroups", sg_group_id]),
+            stack_group=stack_group,
+            stack_tags=stack_tags
+        )
 
         vpc_stack = self.env_ctx.get_vpc_stack()
         # Initialize Parameters

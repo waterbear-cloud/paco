@@ -13,16 +13,22 @@ class VPCPeering(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
+                 stack_group,
+                 stack_tags,
                  netenv_name,
                  network_config,
                  vpc_config_ref):
         #aim_ctx.log("VPC CF Template init")
 
-        super().__init__(aim_ctx=aim_ctx,
-                         account_ctx=account_ctx,
-                         aws_region=aws_region,
-                         config_ref=vpc_config_ref,
-                         aws_name='-'.join(["VPCPeering"]))
+        super().__init__(
+            aim_ctx=aim_ctx,
+            account_ctx=account_ctx,
+            aws_region=aws_region,
+            config_ref=vpc_config_ref,
+            aws_name='-'.join(["VPCPeering"]),
+            stack_group=stack_group,
+            stack_tags=stack_tags
+        )
 
         vpc_config = network_config.vpc
         template = troposphere.Template()

@@ -13,15 +13,21 @@ class VPC(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
+                 stack_group,
+                 stack_tags,
                  vpc_config,
                  vpc_config_ref):
         #aim_ctx.log("VPC CF Template init")
 
-        super().__init__(aim_ctx=aim_ctx,
-                         account_ctx=account_ctx,
-                         aws_region=aws_region,
-                         config_ref=vpc_config_ref,
-                         aws_name='-'.join(["VPC"]))
+        super().__init__(
+            aim_ctx=aim_ctx,
+            account_ctx=account_ctx,
+            aws_region=aws_region,
+            config_ref=vpc_config_ref,
+            aws_name='-'.join(["VPC"]),
+            stack_group=stack_group,
+            stack_tags=stack_tags
+        )
 
         template = troposphere.Template()
         template.add_version('2010-09-09')

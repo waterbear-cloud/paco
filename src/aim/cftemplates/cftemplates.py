@@ -6,9 +6,9 @@ import string
 import troposphere
 from enum import Enum
 from aim.core.exception import StackException, AimErrorCode, AimException
-from aim.stack_group import Stack
 from aim.models import references
 from aim.models.references import Reference
+from aim.stack_group import Stack, StackOrder
 from aim.utils import dict_of_dicts_merge
 from aim.utils import md5sum
 from botocore.exceptions import ClientError
@@ -132,6 +132,7 @@ class CFTemplate():
                  stack_group=None,
                  stack_tags=None,
                  stack_hooks=None,
+                 stack_order=None,
                  iam_capabilities=[] ):
         self.aim_ctx = aim_ctx
         self.account_ctx = account_ctx
@@ -150,6 +151,10 @@ class CFTemplate():
         self.stack_group = stack_group
         self.stack_tags = stack_tags
         self.stack_hooks = stack_hooks
+        if stack_order == None:
+            self.stack_order = [StackOrder.PROVISION, StackOrder.WAIT]
+        else:
+            self.stack_order = stack_order
         self.stack_output_config_list = []
 
     def set_template_file_id(self, file_id):
@@ -391,7 +396,7 @@ class CFTemplate():
                 stack_tags=self.stack_tags,
                 hooks=self.stack_hooks
             )
-            self.stack_group.add_stack_order(stack)
+            self.stack_group.add_stack_order(stack, self.stack_order)
 
     # Gets the output key of a project reference
     def get_stack_outputs_key_from_ref(self, ref, stack=None):

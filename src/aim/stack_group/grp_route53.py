@@ -20,19 +20,14 @@ class Route53StackGroup(StackGroup):
         route53_template = aim.cftemplates.Route53(self.aim_ctx,
                                                    self.account_ctx,
                                                    self.aim_ctx.project['credentials'].aws_default_region,
+                                                   self, # stack_group
+                                                   None, # stack_tags
                                                    route53_config,
                                                    config_ref)
 
-        route53_stack = Stack(self.aim_ctx,
-                              self.account_ctx,
-                              self,
-                              route53_template,
-                              aws_region=self.aim_ctx.project['credentials'].aws_default_region)
+        route53_stack = route53_template.stack
         route53_stack.set_termination_protection(True)
         self.stack_list.append(route53_stack)
-
-        self.add_stack_order(route53_stack)
-
 
     def has_zone_id(self, zone_id):
         if self.config.account_has_zone(self.account_ctx.get_name(), zone_id):

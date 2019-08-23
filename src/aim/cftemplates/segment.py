@@ -10,6 +10,9 @@ class Segment(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
+                 stack_group,
+                 stack_tags,
+                 stack_order,
                  env_ctx,
                  segment_id,
                  segment_config,
@@ -18,11 +21,16 @@ class Segment(CFTemplate):
         #aim_ctx.log("Segment CF Template init")
         self.env_ctx = env_ctx
         # Super
-        super().__init__(aim_ctx,
-                         account_ctx,
-                         aws_region,
-                         config_ref=segment_config_ref,
-                         aws_name='-'.join(["Segments", segment_id]))
+        super().__init__(
+            aim_ctx,
+            account_ctx,
+            aws_region,
+            config_ref=segment_config_ref,
+            aws_name='-'.join(["Segments", segment_id]),
+            stack_group=stack_group,
+            stack_tags=stack_tags,
+            stack_order=stack_order
+        )
 
         vpc_stack = self.env_ctx.get_vpc_stack()
         availability_zones = self.env_ctx.availability_zones()

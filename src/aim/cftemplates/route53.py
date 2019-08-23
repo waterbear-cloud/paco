@@ -7,15 +7,19 @@ from enum import Enum
 
 
 class Route53(CFTemplate):
-    def __init__(self, aim_ctx, account_ctx, aws_region, route53_config, config_ref):
+    def __init__(self, aim_ctx, account_ctx, aws_region, stack_group, stack_tags, route53_config, config_ref):
         #aim_ctx.log("Route53 CF Template init")
 
-        super().__init__(aim_ctx,
-                         account_ctx,
-                         aws_region,
-                         config_ref=None,
-                         aws_name="HostedZones",
-                         iam_capabilities=["CAPABILITY_NAMED_IAM"])
+        super().__init__(
+            aim_ctx,
+            account_ctx,
+            aws_region,
+            config_ref=None,
+            aws_name="HostedZones",
+            iam_capabilities=["CAPABILITY_NAMED_IAM"],
+            stack_group=stack_group,
+            stack_tags=stack_tags
+        )
 
 
         # Define the Template
