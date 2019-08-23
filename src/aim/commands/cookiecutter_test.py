@@ -94,7 +94,7 @@ def test_delete_netenv(verbose):
 
 def test_web_server_responds(verbose):
     project = aim.models.load_project_from_yaml('tproj')
-    web_asg = project['ne']['tnet']['dev']['us-west-2'].applications['tapp'].groups['site'].resources['alb']
+    web_asg = project['netenv']['tnet']['dev']['us-west-2'].applications['tapp'].groups['site'].resources['alb']
     aim_ctx = AimContext('tproj')
     aim_ctx.load_project()
     account = aim_ctx.get_account_context(account_name='master')

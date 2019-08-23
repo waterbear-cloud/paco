@@ -59,6 +59,7 @@ class ACMController(Controller):
 
 
     def get_cert_config(self, group_id, cert_id):
+        #print("Get Certificate Config: " + group_id + " " + cert_id)
         for config in self.cert_config_map[group_id]:
             if config['id'] == cert_id:
                 return config

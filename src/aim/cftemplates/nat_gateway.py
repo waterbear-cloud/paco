@@ -2,6 +2,9 @@ import os
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
+from aim.models import schemas
+from aim.models.locations import get_parent_by_interface
+from aim.models.references import Reference
 from io import StringIO
 from enum import Enum
 
@@ -11,21 +14,20 @@ class NATGateway(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
-                 env_ctx,
-                 nat_id,
-                 config_ref):
+                 nat_config):
         #aim_ctx.log("NATGateway CF Template init")
-        self.env_ctx = env_ctx
-        aws_name = '-'.join(["NGW",nat_id])
+        aws_name = '-'.join(["NGW", nat_config.name])
 
         super().__init__(aim_ctx,
                          account_ctx,
                          aws_region,
-                         config_ref=config_ref,
+                         config_ref=nat_config.aim_ref_parts,
                          aws_name=aws_name,
                          iam_capabilities=["CAPABILITY_NAMED_IAM"])
 
-        self.set_parameter('NATGatewayEnabled', self.env_ctx.nat_gateway_enabled(nat_id))
+        network_config = get_parent_by_interface(nat_config, schemas.INetworkEnvironment)
+
+        self.set_parameter('NATGatewayEnabled', nat_config.enabled)
 
         # Define the Template
         template_fmt = """
@@ -111,43 +113,38 @@ Outputs:
             'id': None,
         }
 
-        parameters_yaml = ""
-        resources_yaml = ""
-        outputs_yaml = ""
-
-        nat_az = self.env_ctx.nat_gateway_az(nat_id)
-        num_vpc_azs = self.env_ctx.availability_zones()
-        nat_segment = self.env_ctx.nat_gateway_segment(nat_id)
-        segment_ref = self.env_ctx.gen_ref(segment_id=nat_segment)
-        if nat_az == 'all':
+        num_vpc_azs = network_config.availability_zones
+        segment_ref = nat_config.segment
+        if nat_config.availability_zone == 'all':
             cur_az = 1
         else:
-            cur_az = nat_az
+            cur_az = nat_config.availability_zone
 
         while True:
             unique_id = "AZ{0}".format(cur_az)
             cf_table['id'] = unique_id
-            self.set_parameter('SubnetId'+unique_id, segment_ref+".az{0}.subnet_id".format(cur_az))
+            subnet_id_ref = '{}.az{}.subnet_id'.format(segment_ref, cur_az)
+            self.set_parameter('SubnetId'+unique_id, subnet_id_ref)
             template_table['parameters_yaml'] += net_eip_params_fmt.format(cf_table)
             template_table['resources_yaml'] += nat_eip_fmt.format(cf_table)
             template_table['outputs_yaml'] += outputs_fmt.format(cf_table)
 
-            if nat_az == 'all' and cur_az == num_vpc_azs:
+            if nat_config.availability_zone == 'all' and cur_az == num_vpc_azs:
                 break
-            elif nat_az != 'all':
+            elif nat_config.availability_zone != 'all':
                 break
             cur_az += 1
 
         while True:
-            gateway_id = "AZ{0}".format(nat_az)
+            gateway_id = "AZ{0}".format(nat_config.availability_zone)
             for cur_az in range(1, num_vpc_azs+1):
                 az_id = "AZ{0}".format(cur_az)
-                if nat_az == 'all':
+                if nat_config.availability_zone == 'all':
                     gateway_id = az_id
                 # Default Routes
-                dgw_segments = self.env_ctx.nat_gateway_default_route_segments(nat_id)
-                for segment_id in dgw_segments:
-                    segment_ref = self.env_ctx.gen_ref(segment_id=segment_id)
+                for segment_ref in nat_config.default_route_segments:
+                    aim_ref = Reference(segment_ref)
+                    segment_id = aim_ref.last_part
                     default_route_table['segment'] = segment_id
                     default_route_table['az_id'] = az_id
                     default_route_table['gateway_id'] = gateway_id
@@ -155,9 +152,9 @@ Outputs:
                     template_table['parameters_yaml'] += default_route_params_fmt.format(default_route_table)
                     template_table['resources_yaml'] += default_route_fmt.format(default_route_table)
 
-            if nat_az == 'all' and cur_az == num_vpc_azs:
+            if nat_config.availability_zone == 'all' and cur_az == num_vpc_azs:
                 break
-            elif nat_az != 'all':
+            elif nat_config.availability_zone != 'all':
                 break
 
         self.set_template(template_fmt.format(template_table))

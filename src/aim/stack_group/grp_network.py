@@ -129,20 +129,15 @@ class NetworkStackGroup(StackGroup):
 
         # NAT Gateway
         self.nat_list = []
-        for nat_id in self.env_ctx.nat_gateway_ids():
-            # We now disable the NAT Gatewy in the template sot hat we can delete it and recreate
+        for nat_name in vpc_config.nat_gateway.keys():
+            print("NetworkStackGroup Init: NAT Gateway: %s" % (nat_name))
+            nat_config = vpc_config.nat_gateway[nat_name]
+            # We now disable the NAT Gatewy in the template so that we can delete it and recreate
             # it when disabled.
-            #if self.env_ctx.nat_gateway_enabled(nat_id) == False:
-            #    print("NetworkStackGroup Init: NAT Gateway: %s *disabled*" % (nat_id))
-            #    continue
-            print("NetworkStackGroup Init: NAT Gateway: %s" % (nat_id))
-            nat_config_ref = '.'.join([self.config_ref_prefix, "network.vpc.nat_gateway", nat_id])
             nat_template = aim.cftemplates.NATGateway( aim_ctx=self.aim_ctx,
                                                        account_ctx=self.account_ctx,
                                                        aws_region=self.region,
-                                                       env_ctx=self.env_ctx,
-                                                       nat_id=nat_id,
-                                                       config_ref=nat_config_ref)
+                                                       nat_config=nat_config)
             nat_stack = Stack(self.aim_ctx,
                               self.account_ctx,
                               self,

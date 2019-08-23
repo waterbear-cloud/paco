@@ -120,7 +120,7 @@ Outputs:
             param_type='String',
             name='DimensionResource',
             description='The resource id or name for the metric dimension.',
-            value='aim.ref {}.name'.format(res_config_ref)
+            value=resource.aim_ref + '.name'
         )
 
         for alarm_set_id in alarm_sets.keys():

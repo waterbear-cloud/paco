@@ -45,6 +45,7 @@ class LaunchBundle():
         app_id,
         group_id,
         resource_id,
+        resource_config,
         bucket_id
     ):
         self.aim_ctx = aim_ctx
@@ -53,6 +54,7 @@ class LaunchBundle():
         self.app_id = app_id
         self.group_id = group_id
         self.resource_id = resource_id
+        self.resource_config = resource_config
         self.bucket_id = bucket_id
         self.build_path = os.path.join(
             self.manager.build_path,
@@ -120,11 +122,8 @@ class LaunchBundle():
             self.manager.config_ref, 'groups', self.group_id, 'resources',
             self.resource_id, self.manager.id, 'bucket'
         ])
-        instance_iam_role_arn_ref = self.manager.app_engine.gen_ref(
-            grp_id=self.group_id,
-            res_id=self.resource_id,
-            attribute='instance_iam_role.arn'
-        )
+
+        instance_iam_role_arn_ref = self.resource_config.aim_ref + '.instance_iam_role.arn'
         self.instance_iam_role_arn = self.aim_ctx.get_ref(instance_iam_role_arn_ref)
         if self.instance_iam_role_arn == None:
             raise StackException(
@@ -479,11 +478,8 @@ statement:
     resource:
       - '*'
 """
-        policy_ref = self.app_engine.gen_resource_ref(
-            grp_id=group_name,
-            res_id=resource.name,
-            attribute=self.id+".cloudwatchagent.policy"
-        )
+
+        policy_ref = '{}.{}.cloudwatchagent.policy'.format(resource.aim_ref_parts, self.id)
         policy_id = '-'.join([resource.name, 'cloudwatchagent'])
         iam_ctl = self.aim_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
@@ -503,6 +499,7 @@ statement:
             app_name,
             group_name,
             resource.name,
+            resource,
             self.bucket_id(resource.name)
         )
         cw_lb.set_launch_script(launch_script)
@@ -574,11 +571,7 @@ statement:
     resource:
       - '*'
 """
-        policy_ref = self.app_engine.gen_resource_ref(
-            grp_id=group_id,
-            res_id=resource_id,
-            attribute=self.id+".ssmagent.policy"
-        )
+        policy_ref = '{}.{}.ssmagent.policy'.format(resource_config.aim_ref_parts, self.id)
         policy_id = '-'.join([resource_id, 'ssmagent-policy'])
         iam_ctl = self.aim_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
@@ -591,7 +584,7 @@ statement:
         )
 
         # Create the Launch Bundle and configure it
-        ssm_lb = LaunchBundle(self.aim_ctx, "SSMAgent", self, app_id, group_id, resource_id, self.bucket_id(resource_id))
+        ssm_lb = LaunchBundle(self.aim_ctx, "SSMAgent", self, app_id, group_id, resource_id, res_config, self.bucket_id(resource_id))
         ssm_lb.set_launch_script(launch_script)
 
         # Save Configuration

@@ -47,12 +47,7 @@ class CodeDeploy(CFTemplate):
         self.set_parameter('CodeDeployStyleOption', deploy_config.deploy_style_option)
         self.set_parameter('CodeDeployConfigValue', deploy_config.deploy_config_value)
         self.set_parameter('ToolsAccountId', deploy_config.tools_account)
-        deploy_kms_ref = self.env_ctx.gen_ref(
-            app_id=app_id,
-            grp_id=grp_id,
-            res_id=res_id,
-            attribute='kms.arn'
-        )
+        deploy_kms_ref = deploy_config.aim_ref + '.kms.arn'
         self.set_parameter('CMKArn', deploy_kms_ref)
         self.set_parameter('TargetInstanceRoleName', deploy_config.deploy_instance_role+'.name')
 

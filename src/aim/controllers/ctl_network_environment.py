@@ -219,6 +219,7 @@ class EnvironmentContext():
                                 Name=image_name)
 
 
+
     def gen_ref(self,
                 app_id=None,
                 grp_id=None,
@@ -228,6 +229,7 @@ class EnvironmentContext():
                 segment_id=None,
                 attribute=None,
                 seperator='.'):
+        raise StackException(AimErrorCode.Unknown, message="This method is being deprecated.")
         netenv_ref = 'aim.ref netenv.{0}.{1}.{2}'.format(self.netenv_id, self.env_id, self.region)
         if app_id != None:
             netenv_ref = seperator.join([netenv_ref, 'applications', app_id])
@@ -282,7 +284,7 @@ class NetEnvController(Controller):
         env_id = controller_args['arg_2']
         region = controller_args['arg_3']
 
-        self.config = self.aim_ctx.project['ne'][self.netenv_id]
+        self.config = self.aim_ctx.project['netenv'][self.netenv_id]
 
         print("NetEnv: {}: Init: Starting".format(self.netenv_id))
         if env_id != None:
@@ -305,7 +307,7 @@ class NetEnvController(Controller):
     def provision(self):
         for env_id in self.sub_envs.keys():
             for region in self.sub_envs[env_id].keys():
-                env_region = self.aim_ctx.project['ne'][self.netenv_id][env_id][region]
+                env_region = self.aim_ctx.project['netenv'][self.netenv_id][env_id][region]
                 if env_region.is_enabled():
                     self.sub_envs[env_id][region].provision()
 

@@ -23,6 +23,6 @@ def describe_command(ctx, home='.'):
         print(' - {} - {}'.format(ne.name, ne.title))
     print()
     print('Network Environments')
-    for ne in project['ne'].values():
+    for ne in project['netenv'].values():
         print(' - {} - {}'.format(ne.name, ne.title))
     print()

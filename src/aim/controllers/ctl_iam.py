@@ -205,7 +205,7 @@ class RoleContext():
         return self.role_arn
 
     def resolve_ref(self, ref):
-        if ref.raw.startswith(self.role_ref):
+        if ref.ref.startswith(self.role_ref):
             if ref.resource_ref == 'profile.arn':
                 return self.role_profile_arn
             elif ref.resource_ref == 'arn':
@@ -214,7 +214,7 @@ class RoleContext():
                 return self.role_name
         else:
             for policy_ref in self.policy_context.keys():
-                if ref.raw.startswith(policy_ref) == False:
+                if ref.ref.startswith(policy_ref) == False:
                     continue
                 if ref.resource_ref == 'arn':
                     return self.policy_context[policy_ref]['arn']
@@ -274,8 +274,10 @@ class IAMController(Controller):
             raise StackException(AimErrorCode.Unknown)
 
     def role_arn(self, role_ref):
+        role_ref = role_ref.replace('aim.ref ', '')
         return self.role_context[role_ref].role_arn
 
     def role_profile_arn(self, role_ref):
+        role_ref = role_ref.replace('aim.ref ', '')
         return self.role_context[role_ref].role_profile_arn
 
