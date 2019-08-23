@@ -52,7 +52,6 @@ class CodeCommitStackGroup(StackGroup):
         codecommit_stack = Stack(aim_ctx=self.aim_ctx,
                                  account_ctx=self.account_ctx,
                                  grp_ctx=self,
-                                 stack_config=self.config,
                                  template=codecommit_template,
                                  aws_region=self.aws_region,
                                  hooks=stack_hooks)

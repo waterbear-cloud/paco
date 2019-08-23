@@ -153,12 +153,18 @@ class StackHooks():
         return cache_id
 
 class Stack():
-    def __init__(self, aim_ctx, account_ctx, grp_ctx, stack_config, template,
-                 stack_suffix=None,
-                 aws_region=None,
-                 hooks=None,
-                 do_not_cache=False,
-                 stack_tags=None):
+    def __init__(
+        self,
+        aim_ctx,
+        account_ctx,
+        grp_ctx,
+        template,
+        stack_suffix=None,
+        aws_region=None,
+        hooks=None,
+        do_not_cache=False,
+        stack_tags=None
+    ):
         self.aim_ctx = aim_ctx
         self.account_ctx = account_ctx
         self.grp_ctx = grp_ctx
@@ -173,7 +179,6 @@ class Stack():
         # Load the template
         template.stack = self
         self.template = template
-        #self.config = stack_config
         self.status = StackStatus.NONE
         self.stack_id = None
         self.cached = False
@@ -187,15 +192,24 @@ class Stack():
         self.tags.add_tag('AIM-Stack', 'true')
         self.tags.add_tag('AIM-Stack-Name', self.get_name())
 
-        self.cache_filename = self.template.get_yaml_path() + ".cache"
-        self.output_filename = self.template.get_yaml_path() + ".output"
-
         self.outputs_value_cache = {}
 
         if hooks == None:
             self.hooks = StackHooks(self.aim_ctx)
         else:
             self.hooks = hooks
+
+    #--------------------------------------------------------
+    # Use properties here for just-in-time processing as the
+    # template's yaml path may change if a template uses
+    # the set_template_file_id() method
+    @property
+    def cache_filename(self):
+        return self.template.get_yaml_path() + ".cache"
+    @property
+    def output_filename(self):
+        return self.template.get_yaml_path() + ".output"
+    #--------------------------------------------------------
 
     def set_template(self, template):
         self.template = template
@@ -340,7 +354,6 @@ class Stack():
         try:
             new_cache_id = self.gen_cache_id()
         except AimException as e:
-            #AimErrorCode.StackDoesNotExist:
             if e.code == AimErrorCode.StackDoesNotExist:
                 return False
             else:
@@ -348,13 +361,12 @@ class Stack():
 
         if new_cache_id == None:
             return False
-        #print("New Cache ID: " + new_cache_id)
+
         cache_id = "none"
         if os.path.isfile(self.cache_filename):
             with open(self.cache_filename, "r") as cache_fd:
                 cache_id = cache_fd.read()
 
-        #print("!!!!!!!!!! Cache ID check: new: {0} == old: {1}".format(new_cache_id, cache_id))
         if cache_id == new_cache_id:
             self.cached = True
             # Load Stack Outputs

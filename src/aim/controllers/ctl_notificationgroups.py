@@ -49,7 +49,6 @@ class NotificationGroupsStackGroup(StackGroup):
             self.aim_ctx,
             self.account_ctx,
             self,
-            None, # deprecated
             ng_sns_template,
             aws_region=self.region,
             stack_tags=StackTags(self.stack_tags)

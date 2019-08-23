@@ -519,7 +519,6 @@ statement:
                 aim_ctx=self.aim_ctx,
                 account_ctx=self.account_ctx,
                 grp_ctx=self.stack_group,
-                stack_config=None,
                 template=log_group_template,
                 aws_region=self.aws_region
             )

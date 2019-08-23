@@ -34,7 +34,6 @@ class NetworkStackGroup(StackGroup):
         self.vpc_stack = Stack(aim_ctx=self.aim_ctx,
                                account_ctx=self.account_ctx,
                                grp_ctx=self,
-                               stack_config=vpc_config,
                                template=vpc_template,
                                aws_region=self.region,
                                stack_tags=StackTags(self.stack_tags))
@@ -60,7 +59,6 @@ class NetworkStackGroup(StackGroup):
             segment_stack = Stack(self.aim_ctx,
                                   self.account_ctx,
                                   self,
-                                  segment_config,
                                   segment_template,
                                   aws_region=self.region,
                                   stack_tags=StackTags(self.stack_tags))
@@ -86,7 +84,6 @@ class NetworkStackGroup(StackGroup):
             self.peering_stack = Stack(aim_ctx=self.aim_ctx,
                                 account_ctx=self.account_ctx,
                                 grp_ctx=self,
-                                stack_config=peering_config,
                                 template=peering_template,
                                 aws_region=self.region,
                                 stack_tags=StackTags(self.stack_tags))
@@ -115,7 +112,6 @@ class NetworkStackGroup(StackGroup):
             sg_stack = Stack(self.aim_ctx,
                              self.account_ctx,
                              self,
-                             None, #self.netenv_config,
                              sg_template,
                              aws_region=self.region,
                              stack_tags=StackTags(self.stack_tags))
@@ -141,7 +137,6 @@ class NetworkStackGroup(StackGroup):
             nat_stack = Stack(self.aim_ctx,
                               self.account_ctx,
                               self,
-                              None, #self.netenv_config,
                               nat_template,
                               aws_region=self.region,
                               stack_tags=StackTags(self.stack_tags))

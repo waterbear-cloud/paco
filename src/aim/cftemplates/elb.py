@@ -12,6 +12,8 @@ class ELB(CFTemplate):
     def __init__(self, aim_ctx,
                  account_ctx,
                  aws_region,
+                 stack_group,
+                 stack_tags,
                  env_ctx,
                  app_id,
                  elb_id,
@@ -27,7 +29,9 @@ class ELB(CFTemplate):
                          account_ctx=account_ctx,
                          aws_region=aws_region,
                          config_ref=elb_config_ref,
-                         aws_name='-'.join([ "ELB", aws_name]))
+                         aws_name='-'.join([ "ELB", aws_name]),
+                         stack_group=stack_group,
+                         stack_tags=stack_tags)
 
 
         # Initialize Parameters

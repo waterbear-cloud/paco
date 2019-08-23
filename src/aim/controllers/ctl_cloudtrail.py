@@ -76,7 +76,6 @@ class CloudTrailStackGroup(StackGroup):
                 self.aim_ctx,
                 self.account_ctx,
                 self,
-                trail,
                 cloudtrail_template,
                 aws_region=region
             )

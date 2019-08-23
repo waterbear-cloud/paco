@@ -16,6 +16,8 @@ class SNSTopics(CFTemplate):
         aim_ctx,
         account_ctx,
         aws_region,
+        stack_group,
+        stack_tags,
         aws_name,
         config,
         res_config_ref
@@ -26,7 +28,9 @@ class SNSTopics(CFTemplate):
             account_ctx,
             aws_region,
             config_ref=res_config_ref,
-            aws_name=aws_name
+            aws_name=aws_name,
+            stack_group=stack_group,
+            stack_tags=stack_tags
         )
         self.config = config
 

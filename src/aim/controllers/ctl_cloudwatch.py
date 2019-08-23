@@ -40,34 +40,26 @@ class CloudWatchController(Controller):
                             target_arn,
                             target_id,
                             config_ref):
-        event_template = aim.cftemplates.CWEventRule( self.aim_ctx,
-                                                      account_ctx,
-                                                      aws_region,
-                                                      event_description,
-                                                      schedule_expression,
-                                                      target_arn,
-                                                      target_id,
-                                                      config_ref)
+        event_rule_template = aim.cftemplates.CWEventRule(
+            self.aim_ctx,
+            account_ctx,
+            aws_region,
+            stack_group,
+            None, # stack_tags
+            event_description,
+            schedule_expression,
+            target_arn,
+            target_id,
+            config_ref
+        )
 
-
-        event_stack = Stack(self.aim_ctx,
-                            account_ctx,
-                            stack_group,
-                            self,
-                            event_template,
-                            aws_region=aws_region,
-                            hooks=None)
-
-        self.event_stacks[config_ref] = event_stack
-        stack_group.add_stack_order(event_stack)
+        self.event_stacks[config_ref] = event_rule_template.stack
 
     def validate(self):
-        for stack_grp in self.stack_grps:
-            stack_grp.validate()
+        pass
 
     def provision(self):
-        for stack_grp in self.stack_grps:
-            stack_grp.provision()
+        pass
 
     def delete(self):
         pass

@@ -12,6 +12,8 @@ class CodePipeBuild(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
+                 stack_group,
+                 stack_tags,
                  env_ctx,
                  aws_name,
                  app_id,
@@ -28,7 +30,9 @@ class CodePipeBuild(CFTemplate):
                          aws_region,
                          config_ref=cpbd_config_ref,
                          aws_name='-'.join(["CPBD-PipeBuild", aws_name]),
-                         iam_capabilities=["CAPABILITY_NAMED_IAM"])
+                         iam_capabilities=["CAPABILITY_NAMED_IAM"],
+                         stack_group=stack_group,
+                         stack_tags=stack_tags)
 
 
         self.ResourceName = normalized_join([env_ctx.get_aws_name(), app_id, grp_id, res_id], '-', False)

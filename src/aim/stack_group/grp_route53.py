@@ -26,7 +26,6 @@ class Route53StackGroup(StackGroup):
         route53_stack = Stack(self.aim_ctx,
                               self.account_ctx,
                               self,
-                              route53_config,
                               route53_template,
                               aws_region=self.aim_ctx.project['credentials'].aws_default_region)
         route53_stack.set_termination_protection(True)

@@ -13,6 +13,8 @@ class EC2(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
+                 stack_group,
+                 stack_tags,
                  env_id,
                  aws_name,
                  app_id,
@@ -26,7 +28,9 @@ class EC2(CFTemplate):
                          account_ctx,
                          aws_region,
                          config_ref=ec2_config_ref,
-                         aws_name=aws_name)
+                         aws_name=aws_name,
+                         stack_group=stack_group,
+                         stack_tags=stack_tags)
 
         # Initialize Parameters
         instance_name = normalized_join([self.env_ctx.netenv_id, env_id, app_id, ec2_id],

@@ -45,10 +45,10 @@ class ApplicationEngine():
         self.ref_type = ref_type
         self.env_ctx = env_ctx
         self.iam_contexts = []
-        self.cpbd_codepipebuild_stack = None
+        self.cpbd_codepipebuild_template = None
         self.cpbd_codecommit_role_template = None
-        self.cpbd_kms_stack = None
-        self.cpbd_codedeploy_stack = None
+        self.cpbd_kms_template = None
+        self.cpbd_codedeploy_template = None
         self.stack_tags = stack_tags
         self.stack_tags.add_tag( 'AIM-Application-Name', self.app_id )
 
@@ -101,102 +101,72 @@ class ApplicationEngine():
             print("ApplicationEngine: Init: {}: {}".format(res_config.title_or_name, res_config.name))
 
     def init_alarms(self, aws_name, res_config, res_stack_tags):
-        alarms_template = aim.cftemplates.CWAlarms(
+        aim.cftemplates.CWAlarms(
             self.aim_ctx,
             self.account_ctx,
             self.aws_region,
+            self.stack_group,
+            res_stack_tags,
+
             res_config.monitoring.alarm_sets,
             res_config.type,
             res_config.aim_ref_parts,
             res_config,
             aws_name
         )
-        alarms_stack = Stack(
-            self.aim_ctx,
-            self.account_ctx,
-            self.stack_group,
-            res_config,
-            alarms_template,
-            aws_region=self.aws_region,
-            stack_tags=res_stack_tags
-        )
-        self.stack_group.add_stack_order(alarms_stack)
 
     def init_apigatewayrestapi_resource(self, grp_id, res_id, res_config, res_stack_tags):
         self.log_resource_init_status(res_config)
         aws_name = "-".join([grp_id, res_id])
-        apigatewayrestapi_template = aim.cftemplates.ApiGatewayRestApi(
+        aim.cftemplates.ApiGatewayRestApi(
             self.aim_ctx,
             self.account_ctx,
             self.aws_region,
+            self.stack_group,
+            res_stack_tags,
             aws_name,
             self.app_id,
             grp_id,
             res_config,
             res_config.aim_ref_parts
         )
-        apigatewayrestapi_stack = Stack(
-            self.aim_ctx,
-            self.account_ctx,
-            self.stack_group,
-            res_config,
-            apigatewayrestapi_template,
-            aws_region=self.aws_region,
-            stack_tags=res_stack_tags
-        )
-        self.stack_group.add_stack_order(apigatewayrestapi_stack)
 
     def init_elasticacheredis_resource(self, grp_id, res_id, res_config, res_stack_tags):
         self.log_resource_init_status(res_config)
 
         # ElastiCache Redis CloudFormation
         aws_name = '-'.join([grp_id, res_id])
-        elasticache_template = aim.cftemplates.ElastiCache(
+        aim.cftemplates.ElastiCache(
             self.aim_ctx,
             self.account_ctx,
             self.aws_region,
+            self.stack_group,
+            res_stack_tags,
+
             aws_name,
             self.app_id,
             grp_id,
             res_config,
             res_config.aim_ref_parts
         )
-        elasticache_stack = Stack(
-            self.aim_ctx,
-            self.account_ctx,
-            self.stack_group,
-            res_config,
-            elasticache_template,
-            aws_region=self.aws_region,
-            stack_tags=res_stack_tags
-        )
-        self.stack_group.add_stack_order(elasticache_stack)
 
     def init_rdsmysql_resource(self, grp_id, res_id, res_config, res_stack_tags):
         self.log_resource_init_status(res_config)
 
         # RDS Mysql CloudFormation
         aws_name = '-'.join([grp_id, res_id])
-        rds_template = aim.cftemplates.RDS(
+        aim.cftemplates.RDS(
             self.aim_ctx,
             self.account_ctx,
             self.aws_region,
+            self.stack_group,
+            res_stack_tags,
             aws_name,
             self.app_id,
             grp_id,
             res_config,
             res_config.aim_ref_parts
         )
-        rds_stack = Stack(
-            self.aim_ctx,
-            self.account_ctx,
-            self.stack_group,
-            res_config,
-            rds_template,
-            aws_region=self.aws_region,
-            stack_tags=res_stack_tags
-        )
-        self.stack_group.add_stack_order(rds_stack)
 
     def init_cloudfront_resource(self, grp_id, res_id, res_config, res_stack_tags):
         self.log_resource_init_status(res_config)
@@ -222,50 +192,34 @@ class ApplicationEngine():
             factory_config.viewer_certificate.resolve_ref_obj = self
             # CloudFront CloudFormation
             aws_name = '-'.join([grp_id, res_id, factory_name])
-            cloudfront_template = aim.cftemplates.CloudFront(
+            aim.cftemplates.CloudFront(
                 self.aim_ctx,
                 self.account_ctx,
                 self.aws_region,
+                self.stack_group,
+                res_stack_tags,
                 aws_name,
                 self.app_id,
                 grp_id,
                 res_config,
                 cloudfront_config_ref
             )
-            cloudfront_stack = Stack(
-                self.aim_ctx,
-                self.account_ctx,
-                self.stack_group,
-                res_config,
-                cloudfront_template,
-                aws_region=self.aws_region,
-                stack_tags=res_stack_tags
-            )
-            self.stack_group.add_stack_order(cloudfront_stack)
 
     def init_snstopic_resource(self, grp_id, res_id, res_config, res_stack_tags):
         self.log_resource_init_status(res_config)
 
         aws_name = '-'.join([grp_id, res_id])
         sns_topics_config = [res_config]
-        sns_template = aim.cftemplates.SNSTopics(
+        aim.cftemplates.SNSTopics(
             self.aim_ctx,
             self.account_ctx,
             self.aws_region,
+            self.stack_group,
+            res_stack_tags,
             aws_name,
             sns_topics_config,
             res_config.aim_ref_parts
         )
-        sns_stack = Stack(
-            self.aim_ctx,
-            self.account_ctx,
-            self.stack_group,
-            res_config,
-            sns_template,
-            aws_region=self.aws_region,
-            stack_tags=res_stack_tags
-        )
-        self.stack_group.add_stack_order(sns_stack)
 
     def init_lambda_resource(self, grp_id, res_id, res_config, res_stack_tags):
         self.log_resource_init_status(res_config)
@@ -324,24 +278,16 @@ statement:
         )
 
         aws_name = '-'.join([grp_id, res_id])
-        lambda_template = aim.cftemplates.Lambda(
+        aim.cftemplates.Lambda(
             self.aim_ctx,
             self.account_ctx,
             self.aws_region,
+            self.stack_group,
+            res_stack_tags,
             aws_name,
             res_config,
             res_config.aim_ref_parts
         )
-        lambda_stack = Stack(
-            self.aim_ctx,
-            self.account_ctx,
-            self.stack_group,
-            res_config,
-            lambda_template,
-            aws_region=self.aws_region,
-            stack_tags=res_stack_tags
-        )
-        self.stack_group.add_stack_order(lambda_stack)
         # add alarms if there is monitoring configuration
         if hasattr(res_config, 'monitoring') and len(res_config.monitoring.alarm_sets.values()) > 0:
             aws_name = '-'.join(['Lambda', grp_id, res_id])
@@ -389,10 +335,12 @@ statement:
         if res_config.is_enabled():
             elb_config = res_config[res_id]
             aws_name = '-'.join([grp_id, res_id])
-            elb_template = aim.cftemplates.ELB(
+            aim.cftemplates.ELB(
                 self.aim_ctx,
                 self.account_ctx,
                 self.aws_region,
+                self.stack_group,
+                res_stack_tags,
                 self.env_ctx,
                 self.app_id,
                 res_id,
@@ -400,15 +348,6 @@ statement:
                 elb_config,
                 res_config.aim_ref_parts
             )
-            elb_stack = Stack(
-                self.aim_ctx, self.account_ctx, self.stack_group,
-                res_config[res_id],
-                elb_template,
-                aws_region=self.aws_region,
-                stack_tags=res_stack_tags
-            )
-            self.stack_group.add_stack_order(elb_stack)
-
 
     def init_lbapplication_resource(self, grp_id, res_id, res_config, res_stack_tags):
         self.log_resource_init_status(res_config)
@@ -416,10 +355,12 @@ statement:
         for target_group in res_config.target_groups.values():
             target_group.resolve_ref_obj = self
         aws_name = '-'.join([grp_id, res_id])
-        alb_template = aim.cftemplates.ALB(
+        aim.cftemplates.ALB(
             self.aim_ctx,
             self.account_ctx,
             self.aws_region,
+            self.stack_group,
+            res_stack_tags,
             self.env_ctx,
             aws_name,
             self.app_id,
@@ -427,16 +368,6 @@ statement:
             res_config,
             res_config.aim_ref_parts
         )
-        alb_stack = Stack(
-            self.aim_ctx,
-            self.account_ctx,
-            self.stack_group,
-            res_config,
-            alb_template,
-            aws_region=self.aws_region,
-            stack_tags=res_stack_tags
-        )
-        self.stack_group.add_stack_order(alb_stack)
         # add alarms if there is monitoring configuration
         if hasattr(res_config, 'monitoring') and len(res_config.monitoring.alarm_sets.values()) > 0:
             aws_name = '-'.join(['ALB', grp_id, res_id])
@@ -496,10 +427,13 @@ role_name: %s""" % ("ASGInstance")
                 res_config
             )
         aws_name = '-'.join([grp_id, res_id])
-        asg_template = aim.cftemplates.ASG(
+        aim.cftemplates.ASG(
             self.aim_ctx,
             self.account_ctx,
             self.aws_region,
+            self.stack_group,
+            res_stack_tags,
+
             self.env_ctx,
             aws_name,
             self.app_id,
@@ -511,16 +445,6 @@ role_name: %s""" % ("ASGInstance")
             self.ec2_launch_manager.user_data_script(self.app_id, grp_id, res_id),
             self.ec2_launch_manager.get_cache_id(self.app_id, grp_id, res_id)
         )
-        asg_stack = Stack(
-            self.aim_ctx,
-            self.account_ctx,
-            self.stack_group,
-            res_config,
-            asg_template,
-            aws_region=self.aws_region,
-            stack_tags=res_stack_tags
-        )
-        self.stack_group.add_stack_order(asg_stack)
 
         if res_config.monitoring and len(res_config.monitoring.alarm_sets.values()) > 0:
             aws_name = '-'.join(['ASG', grp_id, res_id])
@@ -530,10 +454,12 @@ role_name: %s""" % ("ASGInstance")
         self.log_resource_init_status(res_config)
         if res_config.is_enabled():
             aws_name = '-'.join([grp_id, res_id])
-            ec2_template = aim.cftemplates.EC2(
+            aim.cftemplates.EC2(
                 self.aim_ctx,
                 self.account_ctx,
                 self.aws_region,
+                self.stack_group,
+                res_stack_tags,
                 self.env_id,
                 aws_name,
                 self.app_id,
@@ -541,16 +467,6 @@ role_name: %s""" % ("ASGInstance")
                 res_config,
                 res_config.aim_ref_parts
             )
-            ec2_stack = Stack(
-                self.aim_ctx,
-                self.account_ctx,
-                self.stack_group,
-                resources_config[res_id],
-                ec2_template,
-                aws_region=self.aws_region,
-                stack_tags=res_stack_tags
-            )
-            self.stack_group.add_stack_order(ec2_stack)
 
     def init_codepipebuilddeploy_resource(self, grp_id, res_id, res_config, res_stack_tags):
         self.log_resource_init_status(res_config)
@@ -586,25 +502,16 @@ role_name: %s""" % ("ASGInstance")
             }
             aws_name = '-'.join([grp_id, res_id])
             kms_config_ref = res_config.aim_ref_parts + '.kms'
-            kms_template = aim.cftemplates.KMS(
+            self.cpbd_kms_template = aim.cftemplates.KMS(
                 self.aim_ctx,
                 tools_account_ctx,
                 self.aws_region,
+                self.stack_group,
+                res_stack_tags,
                 aws_name,
                 kms_config_ref,
                 kms_config_dict
             )
-            kms_stack_pre = Stack(
-                self.aim_ctx,
-                tools_account_ctx,
-                self.stack_group,
-                None,
-                kms_template,
-                aws_region=self.aws_region,
-                stack_tags=res_stack_tags
-            )
-            self.cpbd_kms_stack = kms_stack_pre
-            self.stack_group.add_stack_order(kms_stack_pre)
 
             # -------------------------------------------
             # CodeCommit Delegate Role
@@ -682,10 +589,12 @@ policies:
             # Code Deploy
             codedeploy_config_ref = res_config.aim_ref_parts + '.deploy'
             aws_name = '-'.join([grp_id, res_id])
-            codedeploy_template = aim.cftemplates.CodeDeploy(
+            self.cpbd_codedeploy_template = aim.cftemplates.CodeDeploy(
                 self.aim_ctx,
                 self.account_ctx,
                 self.aws_region,
+                self.stack_group,
+                res_stack_tags,
                 self.env_ctx,
                 aws_name,
                 self.app_id,
@@ -695,25 +604,16 @@ policies:
                 s3_artifacts_bucket_name,
                 codedeploy_config_ref
             )
-            codedeploy_stack = Stack(
-                self.aim_ctx,
-                self.account_ctx,
-                self.stack_group,
-                None,
-                codedeploy_template,
-                aws_region=self.aws_region,
-                stack_tags=res_stack_tags
-            )
-            self.cpbd_codedeploy_stack = codedeploy_stack
-            self.stack_group.add_stack_order(codedeploy_stack)
 
             # PipeBuild
             codepipebuild_config_ref = res_config.aim_ref_parts + '.pipebuild'
             aws_name = '-'.join([grp_id, res_id])
-            codepipebuild_template = aim.cftemplates.CodePipeBuild(
+            self.cpbd_codepipebuild_template = aim.cftemplates.CodePipeBuild(
                 self.aim_ctx,
                 tools_account_ctx,
                 self.aws_region,
+                self.stack_group,
+                res_stack_tags,
                 self.env_ctx,
                 aws_name,
                 self.app_id,
@@ -721,19 +621,9 @@ policies:
                 res_id,
                 res_config,
                 s3_artifacts_bucket_name,
-                codedeploy_template.get_tools_delegate_role_arn(),
+                self.cpbd_codedeploy_template.get_tools_delegate_role_arn(),
                 codepipebuild_config_ref
             )
-            self.cpbd_codepipebuild_stack = Stack(
-                self.aim_ctx,
-                tools_account_ctx,
-                self.stack_group,
-                None,
-                codepipebuild_template,
-                aws_region=self.aws_region,
-                stack_tags=res_stack_tags
-            )
-            self.stack_group.add_stack_order(self.cpbd_codepipebuild_stack)
 
             # Add CodeBuild Role ARN to KMS Key principal now that the role is created
             codebuild_arn_ref = res_config.aim_ref + '.codebuild_role.arn'
@@ -743,6 +633,8 @@ policies:
                 self.aim_ctx,
                 tools_account_ctx,
                 self.aws_region,
+                self.stack_group,
+                res_stack_tags,
                 aws_name,
                 kms_config_ref,
                 kms_config_dict
@@ -751,16 +643,6 @@ policies:
             # the first one. This is needed as we need to update the KMS policy with the
             # Codebuild Arn after the Codebuild has been created.
             kms_template.set_template_file_id("codebuild")
-            kms_stack_post = Stack(
-                self.aim_ctx,
-                tools_account_ctx,
-                self.stack_group,
-                None,
-                kms_template,
-                aws_region=self.aws_region,
-                stack_tags=res_stack_tags
-            )
-            self.stack_group.add_stack_order(kms_stack_post)
 
             # Get the ASG Instance Role ARN
             asg_instance_role_ref = res_config.asg+'.instance_iam_role.arn'
@@ -801,19 +683,19 @@ policies:
                 codecommit_ref = ref.resource.codecommit_repository
                 return self.aim_ctx.get_ref(codecommit_ref+".arn")
             elif ref.resource_ref == 'codebuild_role.arn':
-                # self.cpbd_codepipebuild_stack will fail if there are two deployments
+                # self.cpbd_codepipebuild_template will fail if there are two deployments
                 # this application... corner case, but might happen?
-                return self.cpbd_codepipebuild_stack.template.get_codebuild_role_arn()
+                return self.cpbd_codepipebuild_template.get_codebuild_role_arn()
             elif ref.resource_ref == 'codepipeline_role.arn':
-                return self.cpbd_codepipebuild_stack.template.get_codepipeline_role_arn()
+                return self.cpbd_codepipebuild_template.get_codepipeline_role_arn()
             elif ref.resource_ref == 'codedeploy_tools_delegate_role.arn':
-                return self.cpbd_codedeploy_stack.template.get_tools_delegate_role_arn()
+                return self.cpbd_codedeploy_template.get_tools_delegate_role_arn()
             elif ref.resource_ref.startswith('kms.'):
-                return self.cpbd_kms_stack
+                return self.cpbd_kms_template.stack
             elif ref.resource_ref == 'codedeploy_application_name':
-                return self.cpbd_codedeploy_stack.template.get_application_name()
+                return self.cpbd_codedeploy_template.get_application_name()
             elif ref.resource_ref == 'deploy.deployment_group.name':
-                return self.cpbd_codedeploy_stack
+                return self.cpbd_codedeploy_template.stack
         elif isinstance(ref.resource, models.applications.TargetGroup):
             return self.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.ASG):

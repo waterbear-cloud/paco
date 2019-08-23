@@ -10,20 +10,25 @@ import base64
 
 
 class ASG(CFTemplate):
-    def __init__(self,
-                 aim_ctx,
-                 account_ctx,
-                 aws_region,
-                 env_ctx,
-                 aws_name,
-                 app_id,
-                 grp_id,
-                 asg_id,
-                 asg_config,
-                 asg_config_ref,
-                 role_profile_arn,
-                 ec2_manager_user_data_script,
-                 ec2_manager_cache_id ):
+    def __init__(
+        self,
+        aim_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
+
+        env_ctx,
+        aws_name,
+        app_id,
+        grp_id,
+        asg_id,
+        asg_config,
+        asg_config_ref,
+        role_profile_arn,
+        ec2_manager_user_data_script,
+        ec2_manager_cache_id
+    ):
 
         #aim_ctx.log("ASG CF Template init")
         self.env_ctx = env_ctx
@@ -36,7 +41,9 @@ class ASG(CFTemplate):
                          account_ctx,
                          aws_region,
                          config_ref=asg_config_ref,
-                         aws_name=aws_name)
+                         aws_name=aws_name,
+                         stack_group=stack_group,
+                         stack_tags=stack_tags)
 
         self.asg_config = asg_config
 
@@ -330,5 +337,6 @@ Outputs:
         #    asg_table['target_group_arns'] = "!Ref TargetGroupArns"
 
         self.set_template(template_fmt.format(asg_table))
+
 
 

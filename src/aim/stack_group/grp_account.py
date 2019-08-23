@@ -75,7 +75,6 @@ users:{}
                 self.account_stack = Stack(aim_ctx=self.aim_ctx,
                                             account_ctx=self.account_ctx,
                                             grp_ctx=self,
-                                            stack_config=self.account_config,
                                             template=account_template,
                                             aws_region=self.account_config.region,
                                             hooks=self.stack_hooks,

@@ -62,7 +62,6 @@ class PolicyContext():
         policy_context['stack'] = Stack(aim_ctx=self.aim_ctx,
                                         account_ctx=self.account_ctx,
                                         grp_ctx=self.stack_group,
-                                        stack_config=self.policy_config,
                                         template=policy_context['template'],
                                         aws_region=self.region,
                                         stack_tags=policy_stack_tags)
@@ -161,7 +160,6 @@ class RoleContext():
         policy_context['stack'] = Stack(aim_ctx=self.aim_ctx,
                                         account_ctx=self.account_ctx,
                                         grp_ctx=self.stack_group,
-                                        stack_config=self.policy_context,
                                         template=policy_context['template'],
                                         aws_region=self.region,
                                         stack_tags=policy_stack_tags)
@@ -190,7 +188,6 @@ class RoleContext():
         self.role_stack = Stack(aim_ctx=self.aim_ctx,
                                 account_ctx=self.account_ctx,
                                 grp_ctx=self.stack_group,
-                                stack_config=self.role_config,
                                 template=self.role_template,
                                 aws_region=self.region,
                                 stack_tags=role_stack_tags)

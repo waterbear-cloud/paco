@@ -41,7 +41,6 @@ class MonitoringStackGroup(StackGroup):
                 lambda_stack = Stack(aim_ctx=self.aim_ctx,
                                 account_ctx=self.account_ctx,
                                 grp_ctx=self,
-                                stack_config=self.config,
                                 template=lambda_template,
                                 aws_region=self.aws_region)
 

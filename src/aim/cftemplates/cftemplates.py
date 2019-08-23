@@ -129,6 +129,8 @@ class CFTemplate():
                  aws_region,
                  config_ref,
                  aws_name,
+                 stack_group=None,
+                 stack_tags=None,
                  iam_capabilities=[] ):
         self.aim_ctx = aim_ctx
         self.account_ctx = account_ctx
@@ -144,6 +146,8 @@ class CFTemplate():
         self.stack = None
         self.template_file_id = None
         self.stack_output_config_list = []
+        self.stack_group = stack_group
+        self.stack_tags = stack_tags
 
     def set_template_file_id(self, file_id):
         self.template_file_id = file_id
@@ -374,6 +378,16 @@ class CFTemplate():
 
     def set_template(self, template_body):
         self.body = template_body
+        if self.stack_group != None:
+            stack = Stack(
+                self.aim_ctx,
+                self.account_ctx,
+                self.stack_group,
+                self,
+                aws_region=self.aws_region,
+                stack_tags=self.stack_tags
+            )
+            self.stack_group.add_stack_order(stack)
 
     # Gets the output key of a project reference
     def get_stack_outputs_key_from_ref(self, ref, stack=None):

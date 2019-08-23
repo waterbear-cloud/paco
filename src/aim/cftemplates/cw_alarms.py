@@ -18,6 +18,9 @@ class CWAlarms(CFTemplate):
         aim_ctx,
         account_ctx,
         aws_region,
+        stack_group,
+        stack_tags,
+
         alarm_sets,
         res_type,
         res_config_ref,
@@ -30,7 +33,9 @@ class CWAlarms(CFTemplate):
             account_ctx,
             aws_region,
             config_ref=res_config_ref,
-            aws_name=aws_name
+            aws_name=aws_name,
+            stack_group=stack_group,
+            stack_tags=stack_tags
         )
         self.alarm_sets = alarm_sets
         self.dimension = vocabulary.cloudwatch[res_type]['dimension']

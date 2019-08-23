@@ -47,7 +47,6 @@ class S3StackGroup(StackGroup):
         s3_stack = Stack(self.aim_ctx,
                          self.account_ctx,
                          self,
-                         self.buckets,
                          s3_template,
                          aws_region=self.region,
                          hooks=self.stack_hooks)

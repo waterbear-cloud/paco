@@ -14,6 +14,8 @@ class CloudFront(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
+                 stack_group,
+                 stack_tags,
                  aws_name,
                  app_id,
                  grp_id,
@@ -26,7 +28,9 @@ class CloudFront(CFTemplate):
                          account_ctx,
                          aws_region,
                          config_ref=config_ref,
-                         aws_name=aws_name)
+                         aws_name=aws_name,
+                         stack_group=stack_group,
+                         stack_tags=stack_tags)
 
         template_fmt = """
 ---

@@ -6,7 +6,17 @@ from io import StringIO
 from enum import Enum
 
 class Lambda(CFTemplate):
-    def __init__(self, aim_ctx, account_ctx, aws_region, aws_name, lambda_config, lambda_config_ref):
+    def __init__(
+        self,
+        aim_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
+        aws_name,
+        lambda_config,
+        lambda_config_ref
+    ):
         #aim_ctx.log("Lambda CF Template init")
         aws_name += '-Lambda'
 
@@ -15,7 +25,9 @@ class Lambda(CFTemplate):
                          aws_region,
                          config_ref=lambda_config_ref,
                          aws_name=aws_name,
-                         iam_capabilities=["CAPABILITY_NAMED_IAM"])
+                         iam_capabilities=["CAPABILITY_NAMED_IAM"],
+                         stack_group=stack_group,
+                         stack_tags=stack_tags)
 
         self.set_parameter('FunctionDescription', lambda_config.description)
         self.set_parameter('Handler', lambda_config.handler)

@@ -54,7 +54,6 @@ class IAMStackGroup(StackGroup):
             self.roles_stack = Stack(aim_ctx=self.aim_ctx,
                                         account_ctx=self.account_ctx,
                                         grp_ctx=self,
-                                        stack_config=self.roles_by_order,
                                         template=self.roles_template,
                                         aws_region=self.aws_region)
 
@@ -71,7 +70,6 @@ class IAMStackGroup(StackGroup):
             self.managed_policies_stack = Stack(aim_ctx=self.aim_ctx,
                                         account_ctx=self.account_ctx,
                                         grp_ctx=self,
-                                        stack_config=self.policies_by_order,
                                         template=self.managed_policies_template,
                                         aws_region=self.aws_region)
 

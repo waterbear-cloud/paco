@@ -18,6 +18,8 @@ class ApiGatewayRestApi(CFTemplate):
         aim_ctx,
         account_ctx,
         aws_region,
+        stack_group,
+        stack_tags,
         aws_name,
         app_id,
         grp_id,
@@ -30,13 +32,15 @@ class ApiGatewayRestApi(CFTemplate):
             account_ctx,
             aws_region,
             config_ref=config_ref,
-            aws_name=aws_name
+            aws_name=aws_name,
+            stack_group=stack_group,
+            stack_tags=stack_tags
         )
         self.apigatewayrestapi = apigatewayrestapi
         template = troposphere.Template()
         template.add_version('2010-09-09')
         template.add_description(apigatewayrestapi.title)
-        
+
         template.add_resource(
             troposphere.apigateway.RestApi.from_dict(
                 'ApiGatewayRestApi',

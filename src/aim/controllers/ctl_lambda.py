@@ -53,7 +53,6 @@ class LambdaController(Controller):
         permission_stack = Stack(   self.aim_ctx,
                                     account_ctx,
                                     stack_group,
-                                    self,
                                     permission_template,
                                     aws_region=aws_region,
                                     hooks=None)

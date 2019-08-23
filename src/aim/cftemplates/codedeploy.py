@@ -12,6 +12,8 @@ class CodeDeploy(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
+                 stack_group,
+                 stack_tags,
                  env_ctx,
                  aws_name,
                  app_id,
@@ -23,12 +25,16 @@ class CodeDeploy(CFTemplate):
 
         #aim_ctx.log("S3 CF Template init")
         self.env_ctx = env_ctx
-        super().__init__(aim_ctx,
-                         account_ctx,
-                         aws_region,
-                         config_ref=cpbd_config_ref,
-                         aws_name='-'.join(["CPBD-Deploy", aws_name]),
-                         iam_capabilities=["CAPABILITY_NAMED_IAM"])
+        super().__init__(
+            aim_ctx,
+            account_ctx,
+            aws_region,
+            config_ref=cpbd_config_ref,
+            aws_name='-'.join(["CPBD-Deploy", aws_name]),
+            iam_capabilities=["CAPABILITY_NAMED_IAM"],
+            stack_group=stack_group,
+            stack_tags=stack_tags
+        )
 
         self.resource_name = normalized_join([self.env_ctx.get_aws_name(), app_id, grp_id, res_id],
                                                      '-',

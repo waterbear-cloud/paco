@@ -13,6 +13,8 @@ class ALB(CFTemplate):
     def __init__(self, aim_ctx,
                  account_ctx,
                  aws_region,
+                 stack_group,
+                 stack_tags,
                  env_ctx,
                  aws_name,
                  app_id,
@@ -28,7 +30,9 @@ class ALB(CFTemplate):
                          account_ctx=account_ctx,
                          aws_region=aws_region,
                          config_ref=alb_config_ref,
-                         aws_name='-'.join([ "ALB", aws_name]))
+                         aws_name='-'.join([ "ALB", aws_name]),
+                         stack_group=stack_group,
+                         stack_tags=stack_tags)
 
 
         # Initialize Parameters

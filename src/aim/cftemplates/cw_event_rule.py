@@ -13,6 +13,8 @@ class CWEventRule(CFTemplate):
                  aim_ctx,
                  account_ctx,
                  aws_region,
+                 stack_group,
+                 stack_tags,
                  event_description,
                  schedule_expression,
                  target_arn,
@@ -22,12 +24,16 @@ class CWEventRule(CFTemplate):
         #aim_ctx.log("CLoudWatch Alarms CF Template init")
         # Super Init:
         aws_name='-'.join(['EventRule'])
-        super().__init__(aim_ctx,
-                         account_ctx,
-                         aws_region,
-                         config_ref=config_ref,
-                         aws_name=aws_name,
-                         iam_capabilities=["CAPABILITY_NAMED_IAM"])
+        super().__init__(
+            aim_ctx,
+            account_ctx,
+            aws_region,
+            config_ref=config_ref,
+            aws_name=aws_name,
+            iam_capabilities=["CAPABILITY_NAMED_IAM"],
+            stack_group=stack_group,
+            stack_tags=stack_tags
+        )
 
         # Initialize Parameters
         self.set_parameter('ScheduleExpression', schedule_expression)

@@ -67,7 +67,6 @@ class S3Context():
         s3_stack = Stack(self.aim_ctx,
                         self.account_ctx,
                         self.stack_group,
-                        self.bucket_context,
                         s3_template,
                         aws_region=self.region,
                         hooks=stack_hooks,
