@@ -215,10 +215,29 @@ class IAMController(Controller):
 
         self.role_context = {}
         self.policy_context = {}
+        self.iam_config = self.aim_ctx.project['iam']
         #self.aim_ctx.log("IAM Service: Configuration: %s" % (name))
 
+    def init_users(self):
+        for user_name in self.iam_config.users.keys():
+            user_config = self.iam_config.users[user_name]
+            # Create IAMUser
+            #   - Access Key
+            #   - Console Access: Enough to be able to login and set MFA
+            #   - user_config.accounts: Create cross account access roles
+            #   - Prompt for and set password
+            #
+            # Iterate through permissions
+            #   - CodeCommit
+            #     - Get repository account and create a policy and attach
+            #       it to the user's account delegatge role
+            #     - Manage SSH keys
+
     def init(self, controller_args):
-        pass
+        if controller_args == None:
+            return
+        if controller_args['arg_1'] == 'users':
+            self.init_users()
 
     def create_managed_policy(self, aim_ctx, account_ctx, region, group_id, policy_id, policy_ref, policy_config_yaml, parent_config, stack_group, template_params, stack_tags):
         if policy_ref not in self.policy_context.keys():
@@ -264,4 +283,7 @@ class IAMController(Controller):
     def role_profile_arn(self, role_ref):
         role_ref = role_ref.replace('aim.ref ', '')
         return self.role_context[role_ref].role_profile_arn
+
+    def validate(self):
+        pass
 
