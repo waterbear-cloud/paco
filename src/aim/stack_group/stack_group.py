@@ -299,12 +299,15 @@ class Stack():
         except ClientError as e:
             if e.response['Error']['Code'] == 'ValidationError' and e.response['Error']['Message'].find("does not exist") != -1:
                 # Debug how we got here and what to do about it
-                print("Error: Stack does not exist: %s")
+                print("Error: Stack does not exist: {}".format(self.stack_id))
                 print("  If it was manually deleted from the AWS Web Console, then this error is caused")
                 print("  because the stack.cache file still exists.\n")
                 print("  Try this and re-run aim:\n")
                 print("  rm %s" % (self.cache_filename))
-                os.remove(self.cache_filename)
+                try:
+                    os.remove(self.cache_filename)
+                except FileNotFoundError:
+                    pass
                 sys.exit(255)
                 raise StackException(AimErrorCode.StackDoesNotExist)
             else:
