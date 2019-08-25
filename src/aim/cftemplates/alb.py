@@ -336,6 +336,9 @@ Outputs:
 
   TargetGroupName{0[id]:s}:
     Value: !GetAtt TargetGroup{0[id]:s}.TargetGroupName
+
+  TargetGroupFullName{0[id]:s}:
+    Value: !GetAtt TargetGroup{0[id]:s}.TargetGroupFullName
 """
 
         #print("------------------")
@@ -424,6 +427,7 @@ Outputs:
             self.register_stack_output_config(target_group_arn_ref, 'TargetGroupArn'+target_group_table['id'])
             target_group_name_ref = '.'.join([target_group_ref, 'name'])
             self.register_stack_output_config(target_group_name_ref, 'TargetGroupName'+target_group_table['id'])
+            self.register_stack_output_config(target_group_ref + '.fullname', 'TargetGroupFullName'+target_group_table['id'])
             target_group_outputs_yaml += target_group_outputs_fmt.format(target_group_table)
 
         # Record Sets
