@@ -2,13 +2,13 @@ import click
 import os
 import time
 import aim
+from aim.cftemplates import IAMRoles, IAMManagedPolicies,IAMUsers, IAMUserAccountDelegates
+from aim.controllers.controllers import Controller
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
-from aim.controllers.controllers import Controller
-from aim.stack_group import IAMStackGroup
-from aim.cftemplates import IAMRoles, IAMManagedPolicies,IAMUsers, IAMUserAccountDelegates
-from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackTags
 from aim.core.yaml import YAML
+from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackTags, StackHooks
+from aim.utils import md5sum
 
 yaml=YAML()
 yaml.default_flow_sytle = False
@@ -227,6 +227,7 @@ class IAMController(Controller):
         self.policy_context = {}
         self.iam_config = self.aim_ctx.project['iam']
         self.iam_user_stack_groups = {}
+        self.iam_user_access_keys_sdb_domain = 'AIM-IAM-Users-Access-Keys-Meta'
         #self.aim_ctx.log("IAM Service: Configuration: %s" % (name))
 
     # CodeCommit
@@ -249,6 +250,212 @@ class IAMController(Controller):
         for account_name in accounts:
             permissions_by_account[account_name].append(permission_config)
 
+    def get_sdb_attribute_value(self, sdb_client, sdb_domain, item_name, attribute_name):
+        attributes = sdb_client.get_attributes(
+            DomainName=sdb_domain,
+            ItemName=item_name,
+            AttributeNames=[ attribute_name ],
+            ConsistentRead=True
+        )
+        #print("SDB: Get: {}: {}: {}".format(sdb_domain, item_name, attribute_name))
+        if attributes == None or 'Attributes' not in attributes.keys():
+            return None
+
+        for attribute in attributes['Attributes']:
+            if attribute['Name'] == attribute_name:
+                return attribute['Value']
+        return None
+
+    def put_sdb_attribute(self, sdb_client, sdb_domain, item_name, attribute_name, value):
+        sdb_client.put_attributes(
+            DomainName=sdb_domain,
+            ItemName=item_name,
+            Attributes=[
+                {
+                    'Name': attribute_name,
+                    'Value': str(value),
+                    'Replace': True
+                }
+            ]
+        )
+        #print("SDB: Put: {}: {}: {}: {}".format(sdb_domain, item_name, attribute_name, str(value)))
+
+    def delete_sdb_attribute(self, sdb_client, sdb_domain, item_name, attribute_name, value):
+        sdb_client.delete_attributes(
+            DomainName=sdb_domain,
+            ItemName=item_name,
+            Attributes=[
+                {
+                    'Name': attribute_name,
+                    'Value': str(value)
+                }
+            ]
+        )
+        #print("SDB: Delete: {}".format(attribute_name))
+
+    def iam_user_create_access_key(self, username, key_num, key_version, iam_client, sdb_client):
+        sdb_item_name = md5sum(str_data=username)
+        access_key_meta = iam_client.create_access_key(
+            UserName=username
+        )
+        access_key_id = access_key_meta['AccessKey']['AccessKeyId']
+        secret_key = access_key_meta['AccessKey']['SecretAccessKey']
+        version_attribute = access_key_meta['AccessKey']['AccessKeyId']+'Version'
+        key_num_attribute = access_key_meta['AccessKey']['AccessKeyId']+'KeyNum'
+
+        self.put_sdb_attribute(
+            sdb_client,
+            self.iam_user_access_keys_sdb_domain,
+            sdb_item_name,
+            version_attribute,
+            key_version
+        )
+        self.put_sdb_attribute(
+            sdb_client,
+            self.iam_user_access_keys_sdb_domain,
+            sdb_item_name,
+            key_num_attribute,
+            key_num
+        )
+        print("{}: Created Access Key {}: Key Id    : {}".format(username, key_num, access_key_id))
+        print("{}:                    {}: Secret Key: {}".format(username, key_num, secret_key))
+
+    def iam_user_delete_access_key(self, username, key_config, iam_client, sdb_client):
+        access_key_id = key_config['access_key_id']
+        sdb_item_name = md5sum(str_data=username)
+        iam_client.delete_access_key(
+            UserName=username,
+            AccessKeyId=access_key_id,
+        )
+
+        version_attribute = [access_key_id+'Version', key_config['version']]
+        key_num_attribute = [access_key_id+'KeyNum', key_config['key_num']]
+
+        for attribute_conf in [version_attribute, key_num_attribute]:
+            self.delete_sdb_attribute(
+                sdb_client,
+                self.iam_user_access_keys_sdb_domain,
+                sdb_item_name,
+                attribute_conf[0],
+                attribute_conf[1],
+            )
+
+        print("{}: Deleted Access Key {}: Key Id    : {}".format(username, key_config['key_num'], access_key_id))
+
+    def iam_user_rotate_access_key(self, username, new_key_version, old_key_config, iam_client, sdb_client):
+        key_num = old_key_config['key_num']
+        print("{}: Rotating Access Key {}: Begin".format(username, key_num))
+        self.iam_user_delete_access_key(username, old_key_config, iam_client, sdb_client)
+        self.iam_user_create_access_key(username, key_num, new_key_version, iam_client, sdb_client)
+        print("{}: Rotating Access Key {}: End".format(username, key_num))
+
+    def iam_user_enable_access_keys(self, iam_client, user_config):
+        keys_meta = iam_client.list_access_keys(
+            UserName=user_config.username
+        )
+        for key_meta in keys_meta['AccessKeyMetadata']:
+            if key_meta['Status'] == 'Inactive':
+                print("{}: Modifying Access Key Status to: Active: {}".format(user_config.username, key_meta['AccessKeyId']))
+                iam_client.update_access_key(
+                    UserName=user_config.username,
+                    AccessKeyId=key_meta['AccessKeyId'],
+                    Status='Active'
+                )
+
+
+    def iam_user_disable_access_keys(self, iam_client, user_config):
+        keys_meta = iam_client.list_access_keys(
+            UserName=user_config.username
+        )
+        for key_meta in keys_meta['AccessKeyMetadata']:
+            if key_meta['Status'] == 'Active':
+                print("{}: Modifying Access Key Status to: Inctive: {}".format(user_config.username, key_meta['AccessKeyId']))
+                iam_client.update_access_key(
+                    UserName=user_config.username,
+                    AccessKeyId=key_meta['AccessKeyId'],
+                    Status='Inactive'
+                )
+
+    def iam_user_access_keys_hook(self, hook, user_config):
+        # Access Keys
+        master_account_ctx = self.aim_ctx.get_account_context(account_ref='aim.ref accounts.master')
+        iam_client = master_account_ctx.get_aws_client('iam')
+        access_key_config = user_config.programmatic_access
+        if access_key_config and access_key_config.enabled == True:
+            self.iam_user_enable_access_keys(iam_client, user_config)
+            # Create SDB Domain for Account wide access keys
+            sdb_client = master_account_ctx.get_aws_client('sdb')
+            sdb_domain = self.iam_user_access_keys_sdb_domain
+            sdb_item_name = md5sum(str_data=user_config.username)
+            sdb_client.create_domain(
+                DomainName=sdb_domain
+            )
+            # Get list of access keys and load their versions
+            keys_meta = iam_client.list_access_keys(
+                UserName=user_config.username
+            )
+            old_keys = {
+                '1': None,
+                '2': None
+            }
+            for key_meta in keys_meta['AccessKeyMetadata']:
+                key_num = self.get_sdb_attribute_value(sdb_client, sdb_domain, sdb_item_name, key_meta['AccessKeyId']+'KeyNum')
+                if key_num == None:
+                    print("Error: Unable to locate Access Key Num for key: {}".format(key_meta['AccessKeyId']+'KeyNum'))
+                key_version = self.get_sdb_attribute_value(sdb_client, sdb_domain, sdb_item_name, key_meta['AccessKeyId']+'Version')
+                if key_version == None:
+                    print("Error: Unable to locate Access Key Version for key: {}".format(key_meta['AccessKeyId']+'Version'))
+                if key_num == None or key_version == None:
+                    continue
+                key_config = {
+                    'access_key_id': key_meta['AccessKeyId'],
+                    'version': int(key_version),
+                    'key_num': key_num
+                }
+                if old_keys[key_num] != None:
+                    print("Error: Cur keys have already been set.")
+                    raise StackException(AimErrorCode.Unknown, message='Cur keys have already been set')
+                old_keys[key_num] = key_config
+
+            # Loop through user configuration and update keys
+            for key_num in ['1', '2']:
+                new_key_version = getattr(access_key_config, 'access_key_{}_version'.format(key_num))
+                if old_keys[key_num] == None and new_key_version > 0:
+                    self.iam_user_create_access_key(
+                        user_config.username,
+                        key_num, new_key_version,
+                        iam_client,
+                        sdb_client
+                    )
+                elif old_keys[key_num] != None and new_key_version == 0:
+                    self.iam_user_delete_access_key(
+                        user_config.username,
+                        old_keys[key_num],
+                        iam_client,
+                        sdb_client
+                    )
+                elif old_keys[key_num] != None and old_keys[key_num]['version'] != new_key_version:
+                    self.iam_user_rotate_access_key(
+                        user_config.username,
+                        new_key_version,
+                        old_keys[key_num],
+                        iam_client,
+                        sdb_client,
+                    )
+        else:
+            self.iam_user_disable_access_keys(iam_client, user_config)
+
+    def iam_user_access_keys_hook_cache_id(self, hook, user_config):
+        cache_data = "AccessKeysCacheId"
+        if user_config.programmatic_access != None:
+            access_config = user_config.programmatic_access
+            cache_data += str(access_config.enabled)
+            cache_data += str(access_config.access_key_1_version)
+            cache_data += str(access_config.access_key_2_version)
+
+        cache_id = md5sum(str_data=cache_data)
+        return cache_id
+
     def init_users(self):
         master_account_ctx = self.aim_ctx.get_account_context(account_ref='aim.ref accounts.master')
         for user_name in self.iam_config.users.keys():
@@ -269,7 +476,9 @@ class IAMController(Controller):
             for account_name in self.aim_ctx.project['accounts'].keys():
                 account_ctx = self.aim_ctx.get_account_context('aim.ref accounts.'+account_name)
                 config_ref = 'resource.iam.users.'+user_name
+                # StackGroup
                 self.iam_user_stack_groups[account_name] = IAMUserStackGroup(self.aim_ctx, account_ctx, account_name, self)
+                # Template and stack
                 IAMUserAccountDelegates(
                     self.aim_ctx,
                     account_ctx,
@@ -281,6 +490,18 @@ class IAMController(Controller):
                     config_ref
                 )
 
+
+        # Stack hooks for managing access keys
+        stack_hooks = StackHooks(self.aim_ctx)
+        for hook_action in ['create', 'update']:
+            stack_hooks.add(
+                name='IAMUserAccessKeys',
+                stack_action=hook_action,
+                stack_timing='post',
+                hook_method=self.iam_user_access_keys_hook,
+                cache_method=self.iam_user_access_keys_hook_cache_id,
+                hook_arg=user_config
+            )
         config_ref = 'resource.iam.users'
         IAMUsers(
             self.aim_ctx,
@@ -288,6 +509,7 @@ class IAMController(Controller):
             master_account_ctx.config.region,
             self.iam_user_stack_groups['master'],
             None, # stack_tags,
+            stack_hooks,
             self.iam_config.users,
             config_ref
         )

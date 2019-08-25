@@ -19,6 +19,7 @@ class IAMUsers(CFTemplate):
                  aws_region,
                  stack_group,
                  stack_tags,
+                 stack_hooks,
 
                  iam_users_config,
                  config_ref):
@@ -34,6 +35,7 @@ class IAMUsers(CFTemplate):
             aws_name=aws_name,
             stack_group=stack_group,
             stack_tags=stack_tags,
+            stack_hooks=stack_hooks,
             iam_capabilities=['CAPABILITY_NAMED_IAM']
         )
 
