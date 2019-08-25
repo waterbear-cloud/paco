@@ -53,8 +53,18 @@ class IAMUserAccountDelegates(CFTemplate):
             troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
         )
 
+        # Restrict account access here so that we can create an empty CloudFormation
+        # template which will then delete permissions that have been revoked.
+        if account_ctx.get_name() in user_config.account_whitelist:
+            self.user_delegate_role_and_policies(user_config, permissions_list)
+
+        # Generate the Template
+        self.set_template(self.template.to_yaml())
+
+    def user_delegate_role_and_policies(self, user_config, permissions_list):
         # Iterate over permissions and create a delegate role and policices
         for permission_config in permissions_list:
+            user_arn = 'arn:aws:iam::{}:user/{}'.format(self.master_account_id, user_config.username)
             assume_role_res = troposphere.iam.Role(
                 "UserAccountDelegateRole",
                 RoleName="IAM-User-Account-Delegate-Role-{}".format(
@@ -66,7 +76,7 @@ class IAMUserAccountDelegates(CFTemplate):
                         Statement(
                             Effect=Allow,
                             Action=[ AssumeRole ],
-                            Principal=Principal("AWS", [self.master_account_id]),
+                            Principal=Principal("AWS", [user_arn]),
                             Condition=Condition(
                                 [
                                     AWACSBool({
@@ -78,7 +88,6 @@ class IAMUserAccountDelegates(CFTemplate):
                     ]
                 )
             )
-            self.template.add_resource(assume_role_res)
 
             self.template.add_output(troposphere.Output(
                 title='SigninUrl',
@@ -88,9 +97,12 @@ class IAMUserAccountDelegates(CFTemplate):
             init_method = getattr(self, "init_{}_permission".format(permission_config.type.lower()))
             init_method(permission_config, assume_role_res)
 
+            self.template.add_resource(assume_role_res)
 
-        # Generate the Template
-        self.set_template(self.template.to_yaml())
+    def init_administrator_permission(self, permission_config, assume_role_res):
+        if 'ManagedPolicyArns' not in assume_role_res.properties.keys():
+            assume_role_res.properties['ManagedPolicyArns'] = []
+        assume_role_res.properties['ManagedPolicyArns'].append('arn:aws:iam::aws:policy/AdministratorAccess')
 
     def init_codecommit_permission(self, permission_config, assume_role_res):
 

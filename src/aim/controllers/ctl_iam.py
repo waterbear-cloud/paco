@@ -229,6 +229,7 @@ class IAMController(Controller):
         self.iam_user_stack_groups = {}
         #self.aim_ctx.log("IAM Service: Configuration: %s" % (name))
 
+    # CodeCommit
     def init_codecommit_permission(self, permission_config, permissions_by_account):
         for repo_config in permission_config.repositories:
             # Account Delegate Role
@@ -239,6 +240,15 @@ class IAMController(Controller):
                     account_name = self.aim_ctx.get_ref(account_ref+'.name')
                     permissions_by_account[account_name].append(permission_config)
 
+    # Adminsitrator
+    def init_administrator_permission(self, permission_config, permissions_by_account):
+        accounts = permission_config.accounts
+        if 'all' in accounts:
+            accounts = self.aim_ctx.project['accounts'].keys()
+
+        for account_name in accounts:
+            permissions_by_account[account_name].append(permission_config)
+
     def init_users(self):
         master_account_ctx = self.aim_ctx.get_account_context(account_ref='aim.ref accounts.master')
         for user_name in self.iam_config.users.keys():
@@ -246,13 +256,16 @@ class IAMController(Controller):
 
             # Build a list of permissions for each account
             permissions_by_account = {}
+            # Initialize permission_by_account for all accounts
             for account_name in self.aim_ctx.project['accounts'].keys():
                 permissions_by_account[account_name] = []
+
             for permission_name in user_config.permissions.keys():
                 permission_config = user_config.permissions[permission_name]
                 init_method = getattr(self, "init_{}_permission".format(permission_config.type.lower()))
                 init_method(permission_config, permissions_by_account)
 
+            # Give access to accounts the user has explicitly access to
             for account_name in self.aim_ctx.project['accounts'].keys():
                 account_ctx = self.aim_ctx.get_account_context('aim.ref accounts.'+account_name)
                 config_ref = 'resource.iam.users.'+user_name

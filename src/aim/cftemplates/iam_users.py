@@ -104,7 +104,11 @@ class IAMUsers(CFTemplate):
         # Account Delegate Assume Role
         #   - A list of account delegate roles in each of the accounts
         assume_role_arn_list = []
-        for account_ref in iam_user_config.accounts:
+        account_list = iam_user_config.account_whitelist
+        if iam_user_config.account_whitelist[0] == 'all':
+            account_list = self.aim_ctx.project['accounts'].keys()
+        for account_name in account_list:
+            account_ref = 'aim.ref accounts.'+account_name
             account_id = self.aim_ctx.get_ref(account_ref+'.id')
             delegate_role_arn = "arn:aws:iam::{}:role/IAM-User-Account-Delegate-Role-{}".format(
                 account_id,
@@ -132,6 +136,7 @@ class IAMUsers(CFTemplate):
                                     Action('iam', 'GetAccountPasswordPolicy'),
                                     Action('iam', 'GetAccountSummary'),
                                     Action('iam', 'ListVirtualMFADevices'),
+                                    Action('iam', 'ListUsers'),
                                 ],
                                 Resource=['*']
                             ),
@@ -175,6 +180,7 @@ class IAMUsers(CFTemplate):
                                     Action('iam', 'ListVirtualMFADevices'),
                                     Action('iam', 'ResyncMFADevice'),
                                     Action('sts', 'GetSessionToken'),
+                                    Action('iam', 'ListUsers'),
                                 ],
                                 Resource=['*'],
                                 Condition=Condition(
