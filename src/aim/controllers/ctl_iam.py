@@ -6,12 +6,22 @@ from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.controllers.controllers import Controller
 from aim.stack_group import IAMStackGroup
-from aim.cftemplates import IAMRoles, IAMManagedPolicies
+from aim.cftemplates import IAMRoles, IAMManagedPolicies,IAMUsers, IAMUserAccountDelegates
 from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackTags
 from aim.core.yaml import YAML
 
 yaml=YAML()
 yaml.default_flow_sytle = False
+
+class IAMUserStackGroup(StackGroup):
+    def __init__(self, aim_ctx, account_ctx, group_name, controller):
+        super().__init__(
+            aim_ctx,
+            account_ctx,
+            group_name,
+            'User',
+            controller
+        )
 
 class PolicyContext():
     def __init__(self, aim_ctx, account_ctx, region, group_id, policy_id, policy_ref, policy_config_yaml, parent_config, stack_group, template_params, stack_tags):
@@ -210,17 +220,67 @@ class RoleContext():
 class IAMController(Controller):
     def __init__(self, aim_ctx):
         super().__init__(aim_ctx,
-                         "Service",
+                         "Resource",
                          "IAM")
 
         self.role_context = {}
         self.policy_context = {}
         self.iam_config = self.aim_ctx.project['iam']
+        self.iam_user_stack_groups = {}
         #self.aim_ctx.log("IAM Service: Configuration: %s" % (name))
 
+    def init_codecommit_permission(self, permission_config, permissions_by_account):
+        for repo_config in permission_config.repositories:
+            # Account Delegate Role
+            if repo_config.console_access_enabled == True:
+                codecommit_config = self.aim_ctx.get_ref(repo_config.codecommit)
+                if codecommit_config.enabled:
+                    account_ref = codecommit_config.account
+                    account_name = self.aim_ctx.get_ref(account_ref+'.name')
+                    permissions_by_account[account_name].append(permission_config)
+
     def init_users(self):
+        master_account_ctx = self.aim_ctx.get_account_context(account_ref='aim.ref accounts.master')
         for user_name in self.iam_config.users.keys():
             user_config = self.iam_config.users[user_name]
+
+            # Build a list of permissions for each account
+            permissions_by_account = {}
+            for account_name in self.aim_ctx.project['accounts'].keys():
+                permissions_by_account[account_name] = []
+            for permission_name in user_config.permissions.keys():
+                permission_config = user_config.permissions[permission_name]
+                init_method = getattr(self, "init_{}_permission".format(permission_config.type.lower()))
+                init_method(permission_config, permissions_by_account)
+
+            for account_name in self.aim_ctx.project['accounts'].keys():
+                account_ctx = self.aim_ctx.get_account_context('aim.ref accounts.'+account_name)
+                config_ref = 'resource.iam.users.'+user_name
+                self.iam_user_stack_groups[account_name] = IAMUserStackGroup(self.aim_ctx, account_ctx, account_name, self)
+                IAMUserAccountDelegates(
+                    self.aim_ctx,
+                    account_ctx,
+                    master_account_ctx.config.region,
+                    self.iam_user_stack_groups[account_name],
+                    None, # stack_tags
+                    user_config,
+                    permissions_by_account[account_name],
+                    config_ref
+                )
+
+        config_ref = 'resource.iam.users'
+        IAMUsers(
+            self.aim_ctx,
+            master_account_ctx,
+            master_account_ctx.config.region,
+            self.iam_user_stack_groups['master'],
+            None, # stack_tags,
+            self.iam_config.users,
+            config_ref
+        )
+
+        # Create the IAM Users
+        #iam_user(self.iam_config.users)
             # Create IAMUser
             #   - Access Key
             #   - Console Access: Enough to be able to login and set MFA
@@ -232,6 +292,9 @@ class IAMController(Controller):
             #     - Get repository account and create a policy and attach
             #       it to the user's account delegatge role
             #     - Manage SSH keys
+
+
+
 
     def init(self, controller_args):
         if controller_args == None:
@@ -285,5 +348,13 @@ class IAMController(Controller):
         return self.role_context[role_ref].role_profile_arn
 
     def validate(self):
-        pass
+        for account_name in self.iam_user_stack_groups.keys():
+            stack_group = self.iam_user_stack_groups[account_name]
+            stack_group.validate()
+
+    def provision(self):
+        for account_name in self.iam_user_stack_groups.keys():
+            stack_group = self.iam_user_stack_groups[account_name]
+            stack_group.provision()
+
 

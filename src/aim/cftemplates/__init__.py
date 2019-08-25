@@ -28,3 +28,5 @@ from aim.cftemplates.rds import RDS
 from aim.cftemplates.elasticache import ElastiCache
 from aim.cftemplates.vpc_peering import VPCPeering
 from aim.cftemplates.apigateway import ApiGatewayRestApi
+from aim.cftemplates.iam_users import IAMUsers
+from aim.cftemplates.iam_user_account_delegates import IAMUserAccountDelegates

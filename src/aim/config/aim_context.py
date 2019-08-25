@@ -67,6 +67,10 @@ class AccountContext(object):
 
         return self.aws_session.get_temporary_session()
 
+    @property
+    def id(self):
+        return self.config.account_id
+
     def get_id(self):
         return self.config.account_id
 
