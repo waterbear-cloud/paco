@@ -8,6 +8,24 @@ Changelog for aim
 
 - snstopic output ref and lambda alarm ref fixes.
 
+- Added IAM Users feature for creating IAM Users and configuring console access
+  assigning permissions, and access keys.
+
+### Added
+
+- Moved aim reference generation into the Model. Model objects now have .aim_ref and
+  .aim_ref_parts properties which contain their aim.ref reference.
+
+- Added StackOutputsManger(). This now creates and maintains $AIM_HOME/ResourceMap.yaml
+  which will include a complete list of all stack outputs that are referenced using the
+  yaml dictionary path of the resource.
+
+### Changed
+
+- Automated CloudFront Parameter lists for things like security group and target arn lists.
+
+- Consolidated CFTemplates and Stack's and other Stack cleanups.
+
 
 1.4.0 (2019-08-21)
 ------------------
