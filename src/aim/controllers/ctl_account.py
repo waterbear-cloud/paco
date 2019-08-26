@@ -116,7 +116,7 @@ class AccountController(Controller):
                 # Ask for Each Account Input
                 account_config = {
                     'account_type': 'AWS',
-                    'admin_delegate_role_name': 'WaterbearCloud-AIM-Adminsitrator-Access-Role',
+                    'admin_delegate_role_name': 'WaterbearCloud-AIM-Administrator-Access-Role',
                     'region': None,
                     'name': None,
                     'title': None,

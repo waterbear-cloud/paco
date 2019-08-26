@@ -241,7 +241,7 @@ class IAMController(Controller):
                     account_name = self.aim_ctx.get_ref(account_ref+'.name')
                     permissions_by_account[account_name].append(permission_config)
 
-    # Adminsitrator
+    # Administrator
     def init_administrator_permission(self, permission_config, permissions_by_account):
         accounts = permission_config.accounts
         if 'all' in accounts:

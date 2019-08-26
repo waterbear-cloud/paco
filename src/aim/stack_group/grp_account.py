@@ -23,7 +23,7 @@ class AccountStackGroup(StackGroup):
     def init(self, do_not_cache=False):
 
         if self.account_config.is_master == True:
-            # Create Managed Policy to allow the Adminsitrator to switch to this org accounts delegagte role
+            # Create Managed Policy to allow the Administrator to switch to this org accounts delegagte role
             resource_list = ""
             for org_account_name in self.account_config.organization_account_ids:
                 org_account_ctx = self.aim_ctx.get_account_context(account_name=org_account_name)
