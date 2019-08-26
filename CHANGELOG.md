@@ -24,6 +24,10 @@ Changelog for aim
 
 - Minimal APIGatewayRestApi template.
 
+- Added external_resource support to the ACM
+
+- Added ReadOnly support to the Administrator IAMUserPermission
+
 ### Changed
 
 - Automated CloudFront Parameter lists for things like security group and target arn lists.
