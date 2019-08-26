@@ -20,11 +20,17 @@ Changelog for aim
   which will include a complete list of all stack outputs that are referenced using the
   yaml dictionary path of the resource.
 
+- ALB Outputs includes TargetGroup Fullname.
+
+- Minimal APIGatewayRestApi template.
+
 ### Changed
 
 - Automated CloudFront Parameter lists for things like security group and target arn lists.
 
 - Consolidated CFTemplates and Stack's and other Stack cleanups.
+
+- CloudWatch Alarms multi-Dimension Alarms now expect an aim.ref. CloudWatch Alarms are now Troposphere.
 
 
 1.4.0 (2019-08-21)
