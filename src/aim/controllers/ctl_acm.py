@@ -36,6 +36,8 @@ class ACMController(Controller):
         # self.validate()
         for acm_config in self.cert_config_list:
             cert_config = acm_config['config']
+            if cert_config.external_resource == True:
+                return
             cert_domain = cert_config.domain_name
             #aws_session = acm_config.account_ctx.get_session()
             acm_client = DNSValidatedACMCertClient(acm_config['account_ctx'], cert_domain, acm_config['region'])
@@ -76,7 +78,8 @@ class ACMController(Controller):
                 if cert_arn == None:
                     self.provision()
                     cert_arn = acm_client.get_certificate_arn()
-                acm_client.wait_for_certificate_validation( cert_arn )
+                if res_config['config'].external_resource == False:
+                    acm_client.wait_for_certificate_validation( cert_arn )
                 # print("Certificate ARN: " + cert_domain + ": " + cert_arn)
                 return cert_arn
             else:

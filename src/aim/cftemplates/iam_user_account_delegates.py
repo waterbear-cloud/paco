@@ -103,7 +103,12 @@ class IAMUserAccountDelegates(CFTemplate):
     def init_administrator_permission(self, permission_config, assume_role_res):
         if 'ManagedPolicyArns' not in assume_role_res.properties.keys():
             assume_role_res.properties['ManagedPolicyArns'] = []
-        assume_role_res.properties['ManagedPolicyArns'].append('arn:aws:iam::aws:policy/AdministratorAccess')
+        if permission_config.read_only == True:
+            policy_arn = 'arn:aws:iam::aws:policy/ReadOnlyAccess'
+        else:
+            policy_arn = 'arn:aws:iam::aws:policy/AdministratorAccess'
+        assume_role_res.properties['ManagedPolicyArns'].append(policy_arn)
+
 
     def init_codecommit_permission(self, permission_config, assume_role_res):
 
