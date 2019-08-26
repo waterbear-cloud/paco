@@ -182,7 +182,7 @@ class Stack():
         self.status = StackStatus.NONE
         self.stack_id = None
         self.cached = False
-        self.max_account_name_size = 7
+        self.max_account_name_size = 12
         self.max_action_name_size = 8
         self.output_config_dict = None
         self.action = None

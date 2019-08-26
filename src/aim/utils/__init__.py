@@ -11,7 +11,7 @@ Here be utils.
 """
 
 import hashlib
-from aim.core.exception import StackException
+from aim.core.exception import StackException, AimErrorCode
 from aim.models import schemas
 from aim.models.locations import get_parent_by_interface
 from copy import deepcopy
