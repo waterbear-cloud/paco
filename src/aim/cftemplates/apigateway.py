@@ -37,15 +37,40 @@ class ApiGatewayRestApi(CFTemplate):
             stack_tags=stack_tags
         )
         self.apigatewayrestapi = apigatewayrestapi
+
+        # ---------------------------------------------------------------------------
+        # Troposphere Template Initialization
+
         template = troposphere.Template()
         template.add_version('2010-09-09')
         template.add_description(apigatewayrestapi.title)
 
-        template.add_resource(
-            troposphere.apigateway.RestApi.from_dict(
-                'ApiGatewayRestApi',
-                self.apigatewayrestapi.cfn_export_dict
-            )
+        # ---------------------------------------------------------------------------
+        # Resources
+        restapi_logical_id = 'ApiGatewayRestApi'
+        restapi_resource = troposphere.apigateway.RestApi.from_dict(
+            restapi_logical_id,
+            self.apigatewayrestapi.cfn_export_dict
         )
+        template.add_resource(restapi_resource)
 
+        # Resource
+        for resource in self.apigatewayrestapi.resources.values():
+            resource_id = 'ApiGatewayResource' + self.normalize_resource_name(resource.name)
+            cfn_export_dict = resource.cfn_export_dict
+            if resource.parent_id == "RootResourceId":
+                cfn_export_dict["ParentId"] = troposphere.GetAtt(restapi_resource, "RootResourceId")
+                cfn_export_dict["RestApiId"] = troposphere.Ref(restapi_resource)
+            else:
+                raise NotImplemented("ToDo: handle nested resources")
+            resource_resource = troposphere.apigateway.Resource.from_dict(resource_id, cfn_export_dict)
+            resource_resource.DependsOn = restapi_logical_id
+            template.add_resource(resource_resource)
+
+        # Method
+        # Model
+        # Stage
+        # Deployment
+
+        # Generate the Template
         self.set_template(template.to_yaml())
