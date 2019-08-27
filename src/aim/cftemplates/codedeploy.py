@@ -29,6 +29,7 @@ class CodeDeploy(CFTemplate):
             aim_ctx,
             account_ctx,
             aws_region,
+            enabled=deploy_config.is_enabled(),
             config_ref=cpbd_config_ref,
             aws_name='-'.join(["CPBD-Deploy", aws_name]),
             iam_capabilities=["CAPABILITY_NAMED_IAM"],

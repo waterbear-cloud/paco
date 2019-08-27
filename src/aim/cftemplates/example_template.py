@@ -23,6 +23,7 @@ class Example(CFTemplate):
             aim_ctx,
             account_ctx,
             aws_region,
+            enabled=example_config.is_enabled(),
             config_ref=config_ref,
             aws_name=aws_name,
             stack_group=stack_group,
@@ -36,7 +37,7 @@ class Example(CFTemplate):
         template = troposphere.Template()
         template.add_version('2010-09-09')
         template.add_description('Example Template')
-        self.template.add_resource(
+        template.add_resource(
             troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
         )
 

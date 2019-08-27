@@ -74,7 +74,7 @@ class NotificationGroupsController(Controller):
             self.config.region,
             'SNS',
             self,
-            'monitor.ref notificationgroups',
+            'notificationgroups',
             self.config,
             StackTags(stack_tags)
         )

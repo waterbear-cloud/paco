@@ -5,7 +5,7 @@ from aim.stack_group import StackGroup
 from aim.controllers.controllers import Controller
 from botocore.exceptions import ClientError
 from aim.models import vocabulary
-from aim import models
+from aim import models, utils
 import aim.cftemplates
 from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks, StackTags
 import copy
@@ -49,6 +49,8 @@ class S3Context():
         }
 
     def add_stack_hooks(self, stack_hooks):
+        if self.bucket_context['stack'] == None:
+            return
         self.bucket_context['stack'].add_hooks(stack_hooks)
 
     def add_stack(  self,
@@ -56,12 +58,12 @@ class S3Context():
                     stack_hooks=None,
                     new_stack=True,
                     stack_tags=None):
-
         s3_template = aim.cftemplates.S3(self.aim_ctx,
                                          self.account_ctx,
                                          self.region,
                                          self.stack_group,
                                          stack_tags,
+                                         stack_hooks,
                                          self.bucket_context,
                                          bucket_policy_only,
                                          self.resource_ref)
@@ -99,17 +101,18 @@ class S3Context():
         bucket_config.resolve_ref_obj = self
 
         # If the bucket already exists, do not create a stack for it
-        if bucket_config.external_resource == False:
+        if self.bucket_context['config'].external_resource == False:
             # S3 Delete on Stack Delete hook
+            utils.log_action("Init", "S3: Bucket: {}: {}".format(bucket_id, self.get_bucket_name()))
             if stack_hooks == None:
                 stack_hooks = StackHooks(self.aim_ctx)
-
             stack_hooks.add('S3StackGroup', 'delete', 'post',
                             self.stack_hook_post_delete, None, self.bucket_context)
-
             self.add_stack(bucket_policy_only=False,
                             stack_hooks=stack_hooks,
                             stack_tags=self.stack_tags)
+        else:
+            utils.log_action("Init", "S3: External Bucket: {}: {}".format(bucket_id, self.get_bucket_name()))
 
 
     def add_bucket_policy(self, policy_dict, stack_hooks=None, new_stack=True):
@@ -158,7 +161,6 @@ class S3Context():
 
     def stack_hook_post_delete(self, hook, hook_arg):
         # Empty the S3 Bucket if enabled
-        buckets = hook_arg
         bucket_context = hook_arg
         s3_config = bucket_context['config']
         s3_resource = self.account_ctx.get_aws_resource('s3', self.region)
@@ -256,6 +258,7 @@ class S3Controller(Controller):
     def init_s3_resource(self, controller_args, stack_tags):
         if self.init_s3_resource_done == True:
             return
+        utils.log_action("Init", "S3")
         self.init_s3_resource_done = True
         s3_env_map = {}
         for bucket_id in self.aim_ctx.project['s3'].buckets.keys():
@@ -274,6 +277,7 @@ class S3Controller(Controller):
             s3_env_map[s3_env_id]['buckets'].append([bucket_id, bucket_config])
 
         self.init_bucket_environments(s3_env_map, stack_tags)
+        utils.log_action("Init", "S3: Completed")
 
     def init(self, controller_args):
         if controller_args != None:

@@ -1,4 +1,5 @@
 import os
+from aim import utils
 from aim.stack_group import Route53StackGroup
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
@@ -28,7 +29,9 @@ class Route53Controller(Controller):
             return
         self.config.resolve_ref_obj = self
         self.init_done = True
+        utils.log_action("Init", "Route53")
         self.init_stack_groups()
+        utils.log_action("Init", "Route53: Completed")
 
     def init_stack_groups(self):
         # TODO: Fixed above now with init done flag?

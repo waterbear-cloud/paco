@@ -158,9 +158,10 @@ class AimContext(object):
         service_plugins = aim.models.services.list_service_plugins()
         for plugin_name, plugin_module in service_plugins.items():
             try:
+                print("Init: Service Plugin: %s" % (plugin_name))
                 service = plugin_module.instantiate_class(self, self.project[plugin_name.lower()])
                 self.services[plugin_name.lower()] = service
-                print("Initialized Service Plugin: %s" % (plugin_name))
+                print("Init: Service Plugin: %s: Completed" % (plugin_name))
             except KeyError:
                 # ignore if no config files for a registered service
                 print("Skipping Service: {}".format(plugin_name))

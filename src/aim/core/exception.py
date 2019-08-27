@@ -1,6 +1,6 @@
 from enum import Enum
 
-AimErrorCode = Enum('AimErrorCode', 'Unknown TemplateValidationError InvalidNumberOfArguments StackInProgress BadConfigFiles StackDoesNotExist')
+AimErrorCode = Enum('AimErrorCode', 'Unknown TemplateValidationError InvalidNumberOfArguments StackInProgress BadConfigFiles StackDoesNotExist StackOutputsEmpty')
 
 class AimException(Exception):
     def __init__(self, code, message=None):

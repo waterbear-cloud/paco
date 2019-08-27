@@ -1,15 +1,13 @@
 import click
 import os
 import pathlib
+from aim import utils
 from aim.controllers.controllers import Controller
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.core.yaml import YAML
-from aim.stack_group import NetworkStackGroup
-from aim.stack_group import ApplicationStackGroup, StackTags
-from aim.stack_group import IAMStackGroup
-from aim.utils import dict_of_dicts_merge
-
+from aim.stack_group import NetworkStackGroup, ApplicationStackGroup
+from aim.stack_group import StackTags, stack_group
 
 yaml=YAML(typ="safe", pure=True)
 yaml.default_flow_sytle = False
@@ -37,7 +35,6 @@ class EnvironmentContext():
             ])
 
         # Network Stack Group
-        self.aim_ctx.log("Environment: %s" % (self.env_id))
         self.init_done = False
         self.resource_yaml_filename = "{}-{}-{}.yaml".format(self.netenv_id,
                                                              self.env_id,
@@ -54,7 +51,7 @@ class EnvironmentContext():
         if self.init_done:
             return
         self.init_done = True
-        print("Environment Init: Starting")
+        print("Init: Environment: {}.{}".format(self.env_id, self.region))
         # Network Stack: VPC, Subnets, Etc
         self.network_stack_grp = NetworkStackGroup(self.aim_ctx,
                                                    self.account_ctx,
@@ -89,7 +86,7 @@ class EnvironmentContext():
             self.stack_grps.append(application_stack_grp)
             application_stack_grp.init()
 
-        print("Environment Init: Complete")
+        print("Init: Environment: {}.{}: Completed".format(self.env_id, self.region))
 
     def get_aws_name(self):
         aws_name = '-'.join([self.netenv_ctl.get_aws_name(),
@@ -179,24 +176,30 @@ class EnvironmentContext():
                 config_dict = stack.get_stack_output_config()
                 if config_dict == None:
                     continue
-                merged_config = dict_of_dicts_merge(merged_config, config_dict)
+                merged_config = utils.dict_of_dicts_merge(merged_config, config_dict)
 
 
         # Save merged_config to yaml file
-        pathlib.Path(self.resource_yaml_path).mkdir(parents=True, exist_ok=True)
-        with open(self.resource_yaml, "w") as output_fd:
-            yaml.dump(data=merged_config['netenv'][self.netenv_id][self.env_id][self.region],
-                      stream=output_fd)
+        if 'netenv' in merged_config.keys():
+            pathlib.Path(self.resource_yaml_path).mkdir(parents=True, exist_ok=True)
+            with open(self.resource_yaml, "w") as output_fd:
+                yaml.dump(data=merged_config['netenv'][self.netenv_id][self.env_id][self.region],
+                        stream=output_fd)
 
     def validate(self):
         for stack_grp in self.stack_grps:
             stack_grp.validate()
 
     def provision(self):
-        for stack_grp in self.stack_grps:
-            stack_grp.provision()
-
-        self.save_stack_output_config()
+        utils.log_action("Provision", "Environment: {}.{}".format(self.env_id, self.region))
+        if len(self.stack_grps) > 0:
+            stack_group.log_next_header = "Provision"
+            for stack_grp in self.stack_grps:
+                stack_grp.provision()
+            self.save_stack_output_config()
+        else:
+            utils.log_action("Provision", "Nothing to provision.")
+        utils.log_action("Provision", "Environment: {}.{}: Completed".format(self.env_id, self.region))
 
     def delete(self):
         for stack_grp in reversed(self.stack_grps):
@@ -254,7 +257,6 @@ class NetEnvController(Controller):
                          "NE",
                          None)
 
-        self.aim_ctx.log("Network Environment")
         self.sub_envs = {}
         self.netenv_id = None
         self.config = None
@@ -286,7 +288,7 @@ class NetEnvController(Controller):
 
         self.config = self.aim_ctx.project['netenv'][self.netenv_id]
 
-        print("NetEnv: {}: Init: Starting".format(self.netenv_id))
+        utils.log_action("Init", "NetworkEnvironment: {}".format(self.netenv_id))
         if env_id != None:
             if region == None:
                 raise StackException(
@@ -296,7 +298,7 @@ class NetEnvController(Controller):
             self.init_sub_env(env_id, region)
         else:
             self.init_all_sub_envs()
-        print("NetEnv: {}: Init: Complete".format(self.netenv_id))
+        utils.log_action("Init", "NetworkEnvironment: {}: Complete".format(self.netenv_id))
 
     def validate(self):
         for env_id in self.sub_envs.keys():
@@ -305,11 +307,11 @@ class NetEnvController(Controller):
                 self.sub_envs[env_id][region].validate()
 
     def provision(self):
+        utils.log_action("Provision", "Network Environment: {}".format(self.netenv_id))
         for env_id in self.sub_envs.keys():
             for region in self.sub_envs[env_id].keys():
-                env_region = self.aim_ctx.project['netenv'][self.netenv_id][env_id][region]
-                if env_region.is_enabled():
-                    self.sub_envs[env_id][region].provision()
+                self.sub_envs[env_id][region].provision()
+        utils.log_action("Provision", "Network Environment: {}: Completed".format(self.netenv_id))
 
     def backup(self, config_arg):
         env_ctx = self.sub_envs[config_arg['env_id']][config_arg['region']]

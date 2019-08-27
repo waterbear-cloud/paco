@@ -96,3 +96,10 @@ def prefixed_name(resource, name):
     group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
 
     return '-'.join([env_name, app_name, group_name, resource.name, name])
+
+def log_action(action, message, return_it=False):
+    log_message = action+": "+message
+    if return_it == False:
+        print(log_message)
+    else:
+        return log_message

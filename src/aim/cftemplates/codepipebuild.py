@@ -28,6 +28,7 @@ class CodePipeBuild(CFTemplate):
         super().__init__(aim_ctx,
                          account_ctx,
                          aws_region,
+                         enabled=res_config.is_enabled(),
                          config_ref=cpbd_config_ref,
                          aws_name='-'.join(["CPBD-PipeBuild", aws_name]),
                          iam_capabilities=["CAPABILITY_NAMED_IAM"],

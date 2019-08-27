@@ -25,6 +25,7 @@ class NATGateway(CFTemplate):
             aim_ctx,
             account_ctx,
             aws_region,
+            enabled=nat_config.is_enabled(),
             config_ref=nat_config.aim_ref_parts,
             aws_name=aws_name,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
@@ -35,7 +36,7 @@ class NATGateway(CFTemplate):
 
         network_config = get_parent_by_interface(nat_config, schemas.INetworkEnvironment)
 
-        self.set_parameter('NATGatewayEnabled', nat_config.enabled)
+        self.set_parameter('NATGatewayEnabled', nat_config.is_enabled())
 
         # Define the Template
         template_fmt = """
