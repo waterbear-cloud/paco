@@ -25,6 +25,7 @@ class Segment(CFTemplate):
             aim_ctx,
             account_ctx,
             aws_region,
+            enabled=segment_config.is_enabled(),
             config_ref=segment_config_ref,
             aws_name='-'.join(["Segments", segment_id]),
             stack_group=stack_group,

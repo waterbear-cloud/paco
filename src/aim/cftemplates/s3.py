@@ -13,6 +13,7 @@ class S3(CFTemplate):
                 aws_region,
                 stack_group,
                 stack_tags,
+                stack_hooks,
                 bucket_context,
                 bucket_policy_only,
                 config_ref):
@@ -27,11 +28,13 @@ class S3(CFTemplate):
             aim_ctx,
             account_ctx,
             aws_region,
+            enabled=bucket_context['config'].is_enabled(),
             config_ref=config_ref,
             aws_name=aws_name,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
             stack_group=stack_group,
-            stack_tags=stack_tags
+            stack_tags=stack_tags,
+            stack_hooks=stack_hooks,
         )
 
         self.s3_context_id = config_ref
@@ -47,6 +50,10 @@ Description: 'S3 Buckets'
 
 Resources:
 {0[resources_yaml]:s}
+
+# Dummy Resource
+  DummyResource:
+    Type: AWS::CloudFormation::WaitConditionHandle
 
 {0[outputs_yaml]:s}
 """

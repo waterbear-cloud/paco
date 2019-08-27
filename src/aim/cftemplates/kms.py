@@ -14,6 +14,7 @@ class KMS(CFTemplate):
                  stack_group,
                  stack_tags,
                  aws_name,
+                 res_config,
                  kms_config_ref,
                  kms_config_dict):
 
@@ -21,6 +22,7 @@ class KMS(CFTemplate):
         super().__init__(aim_ctx,
                          account_ctx,
                          aws_region,
+                         enabled=res_config.is_enabled(),
                          config_ref=kms_config_ref,
                          aws_name='-'.join(["KMS", aws_name]),
                          iam_capabilities=["CAPABILITY_NAMED_IAM"],

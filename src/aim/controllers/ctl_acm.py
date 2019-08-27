@@ -28,14 +28,10 @@ class ACMController(Controller):
         pass
 
     def provision(self):
-        #print("ACM Service Controller: provision")
-        #if self.config.enabled() == False:
-        #    print("ACM Service: provision: disabled")
-        #    return
-#        print("ACM Provision")
-        # self.validate()
         for acm_config in self.cert_config_list:
             cert_config = acm_config['config']
+            if cert_config.is_enabled() == False:
+                continue
             if cert_config.external_resource == True:
                 return
             cert_domain = cert_config.domain_name

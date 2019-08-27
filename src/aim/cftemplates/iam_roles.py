@@ -26,6 +26,7 @@ class IAMRoles(CFTemplate):
             aim_ctx,
             account_ctx,
             aws_region,
+            enabled=role_config.is_enabled(),
             config_ref="",
             aws_name=aws_name,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
@@ -117,6 +118,7 @@ Outputs:
      Type: {0[type]:s}
      Description: {0[description]:s}
 """
+
         iam_role_table.clear()
         if template_params:
             for param_table in template_params:
@@ -148,7 +150,7 @@ Outputs:
             pass
         iam_role_table['assume_role_principal'] = principal_yaml
 
-        if role_config.policies:
+        if role_config.policies and role_config.is_enabled():
             iam_role_table['inline_policies'] = self.gen_role_policies(role_config.policies)
         else:
             iam_role_table['inline_policies'] = ""

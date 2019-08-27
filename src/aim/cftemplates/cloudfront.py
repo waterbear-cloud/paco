@@ -27,6 +27,7 @@ class CloudFront(CFTemplate):
         super().__init__(aim_ctx,
                          account_ctx,
                          aws_region,
+                         enabled=cloudfront_config.is_enabled(),
                          config_ref=config_ref,
                          aws_name=aws_name,
                          stack_group=stack_group,
@@ -51,6 +52,7 @@ Parameters:
 
 Conditions:
   OriginAccessIdentityIsEnabled: !Equals [ OriginAccessIdentityEnabled, 'true' ]
+  DistributionIsEnabled: !Equals [ !Ref DistributionEnabled, 'true' ]
 
 Resources:
 
@@ -119,7 +121,7 @@ Outputs:
           param_type='String',
           name='DistributionEnabled',
           description='Boolean indicating whether the distribution is enabled or not',
-          value=cloudfront_config.enabled
+          value=cloudfront_config.is_enabled()
         )
         # Price Class
         parameters_yaml += self.gen_parameter(
@@ -195,6 +197,7 @@ Outputs:
     Type: AWS::Route53::RecordSet
     DependsOn:
       - Distribution
+    Condition: DistributionIsEnabled
     Properties:
       HostedZoneId: !Ref {0[zone_param_name]:s}
       Name: !Ref {0[domain_name_param]:s}

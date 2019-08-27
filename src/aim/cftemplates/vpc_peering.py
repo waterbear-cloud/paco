@@ -34,6 +34,9 @@ class VPCPeering(CFTemplate):
         template = troposphere.Template()
         template.add_version('2010-09-09')
         template.add_description('VPC Peering')
+        template.add_resource(
+            troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
+        )
 
 
         #---------------------------------------------------------------------
@@ -48,9 +51,13 @@ class VPCPeering(CFTemplate):
         template.add_parameter(vpc_id_param)
 
         # Peer
+        any_peering_enabled = False
         for peer in vpc_config.peering.keys():
             peer_config = vpc_config.peering[peer]
-
+            if peer_config.is_enabled():
+                any_peering_enabled = True
+            else:
+                continue
             vpc_peering_connection_res = troposphere.ec2.VPCPeeringConnection(
                 'VPCPeeringConnection' + peer.title(),
                 PeerOwnerId = peer_config.peer_account_id,
@@ -83,6 +90,8 @@ class VPCPeering(CFTemplate):
                     )
                     template.add_parameter(route_table_param)
                     template.add_resource(peer_route_res)
+
+        self.enabled = any_peering_enabled
 
         # Define the Template
         self.set_template(template.to_yaml())

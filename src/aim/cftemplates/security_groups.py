@@ -81,8 +81,11 @@ Resources:
         template_outputs = ""
 
         # Security Group and Ingress/Egress Resources
+        is_sg_enabled = False
         for sg_name in sorted(security_groups_config.keys()):
             sg_config = security_groups_config[sg_name]
+            if sg_config.is_enabled():
+                is_sg_enabled = True
             sg_table = { 'cf_sg_name': '',
                          'group_name': '',
                          'group_description': '' }
@@ -103,6 +106,9 @@ Resources:
 
             # Security Group Ingress and Egress rules
             for sg_rule_type in ['Ingress', 'Egress']:
+                # Remove Ingress/Egress rules when disabled
+                if sg_config.is_enabled() == False:
+                    break
                 if sg_rule_type == 'Ingress':
                     sg_rule_list = sg_config.ingress
                 elif sg_rule_type == 'Egress':
@@ -153,6 +159,9 @@ Resources:
 Outputs:
 """
         template_yaml += template_outputs
+
+        self.enabled = is_sg_enabled
+
         self.set_template(template_yaml)
 
     def get_local_sg_ref(self, aim_ref):

@@ -1,6 +1,7 @@
 import click
 import os
-from aim.stack_group import CodeCommitStackGroup
+from aim import utils
+from aim.stack_group import CodeCommitStackGroup, stack_group
 from aim.stack_group import IAMStackGroup
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
@@ -28,7 +29,8 @@ class CodeCommitController(Controller):
         if self.init_done:
             return
         self.init_done = True
-
+        utils.log_action("Init", "CodeCommit")
+        stack_group.log_next_header = "Init"
         if controller_args:
             self.name = controller_args['arg_1']
         self.config = self.aim_ctx.project['codecommit']
@@ -37,6 +39,7 @@ class CodeCommitController(Controller):
         if self.config != None:
             self.config.resolve_ref_obj = self
             self.init_stack_groups()
+        utils.log_action("Init", "CodeCommit: Completed")
 
     def init_stack_groups(self):
         # CodeCommit Repository

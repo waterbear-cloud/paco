@@ -23,6 +23,7 @@ class VPC(CFTemplate):
             aim_ctx=aim_ctx,
             account_ctx=account_ctx,
             aws_region=aws_region,
+            enabled=vpc_config.is_enabled(),
             config_ref=vpc_config_ref,
             aws_name='-'.join(["VPC"]),
             stack_group=stack_group,

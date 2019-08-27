@@ -43,9 +43,10 @@ Description: 'SNS Topics'
 
 Resources:
 
-{0[topics]:s}
+  DummyResource:
+    Type: AWS::CloudFormation::WaitConditionHandle
 
-Outputs:
+{0[topics]:s}
 
 {0[outputs]:s}
 """
@@ -80,7 +81,12 @@ Outputs:
         parameters_yaml = ""
         topics_yaml = ""
         outputs_yaml = ""
+        any_topic_enabled = False
         for topic in self.config:
+            if topic.is_enabled() == False:
+                continue
+            else:
+                any_topic_enabled = True
             topic_table['name'] = self.normalize_resource_name(topic.name)
             topic_table['display_name'] = ""
             topic_table['subscription'] = ""
@@ -112,12 +118,19 @@ Outputs:
 
             topics_yaml += topic_fmt.format(topic_table)
             outputs_yaml += output_fmt.format(topic_table)
-            self.register_stack_output_config(res_config_ref, 'SNSTopic' + self.normalize_resource_name(topic.name))
-            self.register_stack_output_config(res_config_ref + '.id', 'SNSTopic' + self.normalize_resource_name(topic.name))
+            group_config_ref = res_config_ref+'.groups.'+topic.name
+            self.register_stack_output_config(group_config_ref, 'SNSTopic' + self.normalize_resource_name(topic.name))
+            self.register_stack_output_config(group_config_ref + '.name', 'SNSTopic' + self.normalize_resource_name(topic.name))
+            self.register_stack_output_config(group_config_ref + '.id', 'SNSTopic' + self.normalize_resource_name(topic.name))
 
         if parameters_yaml != "":
             template_table['parameters'] = "Parameters:\n"
         template_table['parameters'] += parameters_yaml
         template_table['topics'] = topics_yaml
+        if outputs_yaml != "":
+            outputs_yaml = "Outputs:\n" + outputs_yaml
         template_table['outputs'] = outputs_yaml
+
+        self.enabled = any_topic_enabled
+
         self.set_template(template_fmt.format(template_table))

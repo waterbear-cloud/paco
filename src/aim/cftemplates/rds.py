@@ -25,6 +25,7 @@ class RDS(CFTemplate):
         super().__init__(aim_ctx,
                          account_ctx,
                          aws_region,
+                         enabled=rds_config.is_enabled(),
                          config_ref=config_ref,
                          aws_name=aws_name,
                          stack_group=stack_group,
@@ -40,6 +41,7 @@ Parameters:
 {0[parameters]:s}
 
 Conditions:
+  RDSIsEnabled: !Equals [!Ref RDSEnabled, 'true']
   EncryptionIsEnabled: !Not [!Equals [!Ref KMSKeyId, '']]
   DBSnapshopExists: !Not [!Equals [!Ref DBSnapshotIdentifier, '']]
   EncryptionEnabledAndNotDBSnapshopExists: !And [!Condition EncryptionIsEnabled, !Not [!Condition DBSnapshopExists]]
@@ -91,6 +93,7 @@ Resources:
 
   DBCluster:
     Type: 'AWS::RDS::DBCluster'
+    Condition: RDSIsEnabled
     DeletionPolicy: Snapshot
     UpdateReplacePolicy: Snapshot
     Properties:
@@ -105,6 +108,7 @@ Resources:
         db_instance_fmt = """
   DBInstance{0[db_position]:s}:
     Type: 'AWS::RDS::DBInstance'
+    Condition: RDSIsEnabled
     Properties:
       {0[db_cluster_properties]:s}
       {0[db_instance_properties]}
@@ -147,6 +151,7 @@ Resources:
         record_set_fmt = """
   {0[db_position]:s}RecordSet:
     Type: AWS::Route53::RecordSet
+    Condition: RDSIsEnabled
     Properties:
       Comment: 'RDS Internal {0[db_position]:s} DNS'
       HostedZoneId: !Ref {0[db_position]:s}HostedZoneId
@@ -169,7 +174,13 @@ Resources:
         resources_yaml = ""
 
         # ---------------------------------------------------------------------
-        # DistributionEnabled
+        # Parameters
+        parameters_yaml += self.gen_parameter(
+          param_type='String',
+          name='RDSEnabled',
+          description='Boolean indicating whether RDS is enabled or not. Disabled will remove existing databases.',
+          value=rds_config.is_enabled()
+        )
         parameters_yaml += self.gen_parameter(
           param_type='String',
           name='Engine',

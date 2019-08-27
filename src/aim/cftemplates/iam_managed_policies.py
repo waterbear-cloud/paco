@@ -24,6 +24,7 @@ class IAMManagedPolicies(CFTemplate):
             aim_ctx,
             account_ctx,
             aws_region,
+            enabled=policy_context['config'].is_enabled(),
             config_ref="",
             aws_name=aws_name,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
@@ -59,17 +60,21 @@ Outputs:
       #  - String
       ManagedPolicyName: {0[name]:s}
       Path: {0[path]:s}
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-{0[statement]:s}
+{0[policy_document]}
+{0[statement]}
 {0[roles]}
 {0[users]}
 """
+        policy_document = """
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:"""
+
         policy_table = {
             'name': None,
             'path': None,
             'cf_resource_name_prefix': None,
+            'policy_document': None,
             'statement': None,
             'roles': None,
             'users': None
@@ -106,27 +111,36 @@ Outputs:
         # Name
         policy_table['name'] = self.gen_policy_name(policy_id)
         policy_table['cf_resource_name_prefix'] = self.get_cf_resource_name_prefix(policy_id)
-
-        # Roles
-        policy_table['roles'] = ""
-        if policy_config.roles and len(policy_config.roles) > 0:
-            policy_table['roles'] = """      Roles:
-"""
-            for role in policy_config.roles:
-                policy_table['roles'] += role_fmt % (role)
-
-        # Users
-        policy_table['users'] = ""
-        if policy_config.users and len(policy_config.users) > 0:
-            policy_table['users'] = """      Users:
-"""
-            for user in policy_config.users:
-                policy_table['users'] += user_fmt % (user)
-
         # Path
         policy_table['path'] = policy_config.path
-        # Statement
-        policy_table['statement'] = self.gen_statement_yaml(policy_config.statement)
+
+        # Policy Document
+        if policy_config.is_enabled() == True:
+            # Roles
+            policy_table['roles'] = ""
+            if policy_config.roles and len(policy_config.roles) > 0:
+                policy_table['roles'] = """      Roles:
+    """
+                for role in policy_config.roles:
+                    policy_table['roles'] += role_fmt % (role)
+
+            # Users
+            policy_table['users'] = ""
+            if policy_config.users and len(policy_config.users) > 0:
+                policy_table['users'] = """      Users:
+    """
+                for user in policy_config.users:
+                    policy_table['users'] += user_fmt % (user)
+
+            policy_table['policy_document'] = policy_document
+            # Statement
+            policy_table['statement'] = self.gen_statement_yaml(policy_config.statement)
+        else:
+            policy_table['statement'] = ""
+            policy_table['policy_document'] = ""
+            policy_table['roles'] = ""
+            policy_table['users'] = ""
+
         # Initialize Parameters
         # Resources
         resources_yaml += policy_fmt.format(policy_table)

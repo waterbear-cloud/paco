@@ -32,6 +32,7 @@ class CWAlarms(CFTemplate):
             aim_ctx,
             account_ctx,
             aws_region,
+            enabled=resource.is_enabled(),
             config_ref=res_config_ref,
             aws_name=aws_name,
             stack_group=stack_group,
@@ -55,7 +56,33 @@ class CWAlarms(CFTemplate):
         template = troposphere.Template()
         template.add_version('2010-09-09')
         template.add_description('CloudWatch Alarms')
+        template.add_resource(
+            troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
+        )
 
+        if resource.is_enabled() and resource.monitoring.enabled:
+            self.add_alarms(
+                template,
+                alarms,
+                resource,
+                res_type,
+                res_config_ref,
+                alarm_id,
+                alarm_set_id,
+            )
+
+        self.set_template(template.to_yaml())
+
+    def add_alarms(
+            self,
+            template,
+            alarms,
+            resource,
+            res_type,
+            res_config_ref,
+            alarm_id,
+            alarm_set_id,
+        ):
         # Add Parameters
         dimension_param = self.gen_parameter(
             param_type = 'String',
@@ -118,5 +145,3 @@ class CWAlarms(CFTemplate):
                 Value=troposphere.Ref(alarm_resource)
             )
             template.add_output(alarm_output)
-
-        self.set_template(template.to_yaml())

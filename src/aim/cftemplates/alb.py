@@ -29,6 +29,7 @@ class ALB(CFTemplate):
         super().__init__(aim_ctx=aim_ctx,
                          account_ctx=account_ctx,
                          aws_region=aws_region,
+                         enabled=alb_config.is_enabled(),
                          config_ref=alb_config_ref,
                          aws_name='-'.join([ "ALB", aws_name]),
                          stack_group=stack_group,
@@ -36,7 +37,7 @@ class ALB(CFTemplate):
 
 
         # Initialize Parameters
-        self.set_parameter('ALBEnabled', alb_config.enabled)
+        self.set_parameter('ALBEnabled', alb_config.is_enabled())
         vpc_stack = self.env_ctx.get_vpc_stack()
         self.set_parameter(StackOutputParam('VPC', vpc_stack, 'VPC'))
         alb_region = env_ctx.region
@@ -364,7 +365,7 @@ Outputs:
             listener_table['ssl_certificates'] = ""
             listener_table['listener_certificate'] = ""
             listener_table['ssl_listener_cert_list'] = ""
-            if len(listener.ssl_certificates) > 0 and alb_config.enabled:
+            if len(listener.ssl_certificates) > 0 and alb_config.is_enabled():
                 listener_table['ssl_certificates'] = ssl_certificate_fmt
                 ssl_certificate_table['cert_idx'] = 0
                 ssl_certificate_table['listener_name'] = listener_name
@@ -452,9 +453,9 @@ Outputs:
         }
 
         self.set_template(template_fmt.format(template_fmt_table))
-        if alb_config.enabled:
-          self.register_stack_output_config(self.alb_config_ref+'.arn', 'LoadBalancerArn')
-          self.register_stack_output_config(self.alb_config_ref+'.name', 'LoadBalancerName')
-          self.register_stack_output_config(self.alb_config_ref+'.fullname', 'LoadBalancerFullName')
-          self.register_stack_output_config(self.alb_config_ref+'.canonicalhostedzoneid', 'LoadBalancerCanonicalHostedZoneID')
-          self.register_stack_output_config(self.alb_config_ref+'.dnsname', 'LoadBalancerDNSName')
+        if alb_config.is_enabled():
+            self.register_stack_output_config(self.alb_config_ref+'.arn', 'LoadBalancerArn')
+            self.register_stack_output_config(self.alb_config_ref+'.name', 'LoadBalancerName')
+            self.register_stack_output_config(self.alb_config_ref+'.fullname', 'LoadBalancerFullName')
+            self.register_stack_output_config(self.alb_config_ref+'.canonicalhostedzoneid', 'LoadBalancerCanonicalHostedZoneID')
+            self.register_stack_output_config(self.alb_config_ref+'.dnsname', 'LoadBalancerDNSName')

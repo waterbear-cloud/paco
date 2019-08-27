@@ -28,6 +28,7 @@ class ELB(CFTemplate):
         super().__init__(aim_ctx=aim_ctx,
                          account_ctx=account_ctx,
                          aws_region=aws_region,
+                         enabled=elb_config.is_enabled(),
                          config_ref=elb_config_ref,
                          aws_name='-'.join([ "ELB", aws_name]),
                          stack_group=stack_group,
@@ -61,6 +62,7 @@ class ELB(CFTemplate):
         load_balancer_name = normalized_join([self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, elb_id],
                                                      '',
                                                      True)
+        self.set_parameter('LoadBalancerEnabled', elb_config.is_enabled())
         self.set_parameter('LoadBalancerName', load_balancer_name)
 
         self.set_parameter('Scheme', elb_config['scheme'])
@@ -85,6 +87,13 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Elastic Load Balancer'
 
 Parameters:
+
+  LoadBalancerEnabled:
+    Description: Boolean indicating whether the load balancer is enabled or not.
+    Type: String
+    AllowedValues:
+      - true
+      - false
 
   HealthyThreshold:
     Description: Specifies the number of consecutive health probe successes required before moving the instance to the Healthy state.
@@ -161,7 +170,11 @@ Parameters:
 {0[SSLCertificateParameters]:s}
 
 Conditions:
-  CustomDomainIsEnabled: !Not [!Equals [!Ref CustomDomainName, ""] ]
+  IsEnabled: !Equals [!Ref LoadBalancerEnabled, "true"]
+  CustomDomainExists: !Not [!Equals [!Ref CustomDomainName, ""] ]
+  CustomDomainIsEnabled: !And
+    - !Condition CustomDomainExists
+    - !Condition IsEnabled
 
 Resources:
 
@@ -169,6 +182,7 @@ Resources:
 
   ClassicLoadBalancer:
     Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Condition: IsEnabled
     Properties:
       LoadBalancerName: !Ref LoadBalancerName
       Subnets: !Ref SubnetList

@@ -54,7 +54,9 @@ class StackOutputParam():
         comma = ''
         for entry in self.entry_list:
             for output_key in entry['output_keys']:
-                output_value = entry['stack'].get_outputs_value(output_key)
+                output_value = entry['stack'].get_outputs_value(
+                    output_key
+                )
                 param_value += comma + output_value
                 comma = ','
 
@@ -129,11 +131,15 @@ class CFTemplate():
                  aws_region,
                  config_ref,
                  aws_name,
+                 enabled=True,
                  stack_group=None,
                  stack_tags=None,
                  stack_hooks=None,
                  stack_order=None,
-                 iam_capabilities=[] ):
+                 iam_capabilities=[]
+                ):
+        self.update_only = False
+        self.enabled = enabled
         self.aim_ctx = aim_ctx
         self.account_ctx = account_ctx
         self.aws_region = aws_region
@@ -156,6 +162,18 @@ class CFTemplate():
         else:
             self.stack_order = stack_order
         self.stack_output_config_list = []
+
+    @property
+    def enabled(self):
+        return self._enabled
+
+    @enabled.setter
+    def enabled(self, value):
+        if value == False:
+            self.update_only = True
+        else:
+            self.update_only = False
+        self._enabled = value
 
     def set_template_file_id(self, file_id):
         self.template_file_id = file_id
@@ -394,7 +412,8 @@ class CFTemplate():
                 self, # template
                 aws_region=self.aws_region,
                 stack_tags=self.stack_tags,
-                hooks=self.stack_hooks
+                hooks=self.stack_hooks,
+                update_only=self.update_only
             )
             self.stack_group.add_stack_order(stack, self.stack_order)
 

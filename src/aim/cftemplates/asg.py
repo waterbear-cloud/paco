@@ -40,6 +40,7 @@ class ASG(CFTemplate):
         super().__init__(aim_ctx,
                          account_ctx,
                          aws_region,
+                         enabled=asg_config.is_enabled(),
                          config_ref=asg_config_ref,
                          aws_name=aws_name,
                          stack_group=stack_group,
@@ -62,11 +63,13 @@ class ASG(CFTemplate):
 
         asg_name = normalized_join([self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, grp_id, asg_id], '', True)
         self.set_parameter('ASGName', asg_name)
-        self.set_parameter('ASGDesiredCapacity', asg_config.desired_capacity)
+        desired_capacity = asg_config.desired_capacity if asg_config.is_enabled() else 0
+        self.set_parameter('ASGDesiredCapacity', desired_capacity)
         self.set_parameter('ASGHealthCheckGracePeriodSecs', asg_config.health_check_grace_period_secs)
         self.set_parameter('ASGHealthCheckType', asg_config.health_check_type)
         self.set_parameter('ASGMaxSize', asg_config.max_instances)
-        self.set_parameter('ASGMinSize', asg_config.min_instances)
+        min_instances = asg_config.min_instances if asg_config.is_enabled() else 0
+        self.set_parameter('ASGMinSize', min_instances)
         self.set_parameter('ASGCooldownSecs', asg_config.cooldown_secs)
 
         # Termination Policies List
@@ -95,7 +98,7 @@ class ASG(CFTemplate):
             self.set_parameter('UserDataScript', user_data_64.decode('ascii'))
 
         enable_metrics_collection = False
-        if asg_config.monitoring != None and asg_config.monitoring.enabled == True and len(asg_config.monitoring.asg_metrics) > 0:
+        if asg_config.monitoring != None and asg_config.monitoring.is_enabled() == True and len(asg_config.monitoring.asg_metrics) > 0:
             enable_metrics_collection = True
             self.set_parameter('MetricsCollectionList', asg_config.monitoring.asg_metrics)
         self.set_parameter('EnableMetricsCollection', enable_metrics_collection)

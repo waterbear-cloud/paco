@@ -177,6 +177,7 @@ class IAMUsers(CFTemplate):
                                 NotAction=[
                                     Action('iam', 'CreateVirtualMFADevice'),
                                     Action('iam', 'EnableMFADevice'),
+                                    Action('iam', 'ChangePassword'),
                                     Action('iam', 'GetUser'),
                                     Action('iam', 'ListMFADevices'),
                                     Action('iam', 'ListVirtualMFADevices'),

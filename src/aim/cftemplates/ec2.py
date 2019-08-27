@@ -27,6 +27,7 @@ class EC2(CFTemplate):
         super().__init__(aim_ctx,
                          account_ctx,
                          aws_region,
+                         enabled=ec2_config.is_enabled(),
                          config_ref=ec2_config_ref,
                          aws_name=aws_name,
                          stack_group=stack_group,
