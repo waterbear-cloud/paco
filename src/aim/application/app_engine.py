@@ -289,7 +289,7 @@ statement:
             res_config.aim_ref_parts
         )
         # add alarms if there is monitoring configuration
-        if hasattr(res_config, 'monitoring') and len(res_config.monitoring.alarm_sets.values()) > 0:
+        if getattr(res_config, 'monitoring', None) and len(res_config.monitoring.alarm_sets.values()) > 0:
             aws_name = '-'.join(['Lambda', grp_id, res_id])
             self.init_alarms(aws_name, res_config, StackTags(res_stack_tags))
 

@@ -45,6 +45,23 @@ class ApiGatewayRestApi(CFTemplate):
         template.add_version('2010-09-09')
         template.add_description(apigatewayrestapi.title)
 
+
+        # ---------------------------------------------------------------------------
+        # Parameters
+
+        method_params = []
+        for method in self.apigatewayrestapi.methods.values():
+            param_name = 'MethodArn' + self.normalize_resource_name(method.name)
+            lambda_arn_param = self.gen_parameter(
+                name=param_name,
+                param_type='String',
+                description='Lambda ARN parameter.',
+                value=method.integration_lambda,
+                use_troposphere=True
+            )
+            method.parameter_ref = troposphere.Ref(param_name)
+            template.add_parameter(lambda_arn_param)
+
         # ---------------------------------------------------------------------------
         # Resources
         restapi_logical_id = 'ApiGatewayRestApi'
@@ -64,13 +81,27 @@ class ApiGatewayRestApi(CFTemplate):
             else:
                 raise NotImplemented("ToDo: handle nested resources")
             resource_resource = troposphere.apigateway.Resource.from_dict(resource_id, cfn_export_dict)
+            resource.resource = resource_resource
             resource_resource.DependsOn = restapi_logical_id
             template.add_resource(resource_resource)
 
         # Method
+        for method in self.apigatewayrestapi.methods.values():
+            method_id = 'ApiGatewayMethod' + self.normalize_resource_name(method.name)
+            cfn_export_dict = method.cfn_export_dict
+            for resource in self.apigatewayrestapi.resources.values():
+                if resource.name == method.resource_id:
+                    cfn_export_dict["ResourceId"] = troposphere.Ref(resource.resource)
+                    cfn_export_dict["RestApiId"] = troposphere.Ref(restapi_resource)
+                    uri = troposphere.Join('', ["arn:aws:apigateway:", method.region_name, ":lambda:path/2015-03-31/functions/", method.parameter_ref, "/invocations"])
+                    cfn_export_dict["Integration"]["Uri"] = uri
+            method_resource = troposphere.apigateway.Method.from_dict(method_id, cfn_export_dict)
+            method_resource.DependsOn = restapi_logical_id
+            template.add_resource(method_resource)
+
         # Model
         # Stage
         # Deployment
-
+        breakpoint()
         # Generate the Template
         self.set_template(template.to_yaml())
