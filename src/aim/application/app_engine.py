@@ -202,6 +202,9 @@ class ApplicationEngine():
     def init_snstopic_resource(self, grp_id, res_id, res_config, res_stack_tags):
         aws_name = '-'.join([grp_id, res_id])
         sns_topics_config = [res_config]
+        # Strip the last part as SNSTopics loops thorugh a list and will
+        # append the name to ref when it needs.
+        res_config_ref = '.'.join(res_config.aim_ref_parts.split('.')[:-1])
         aim.cftemplates.SNSTopics(
             self.aim_ctx,
             self.account_ctx,
@@ -210,7 +213,7 @@ class ApplicationEngine():
             res_stack_tags,
             aws_name,
             sns_topics_config,
-            res_config.aim_ref_parts
+            res_config_ref
         )
 
     def init_lambda_resource(self, grp_id, res_id, res_config, res_stack_tags):
@@ -280,7 +283,9 @@ statement:
             res_config.aim_ref_parts
         )
         # add alarms if there is monitoring configuration
-        if getattr(res_config, 'monitoring', None) and len(res_config.monitoring.alarm_sets.values()) > 0:
+        if getattr(res_config, 'monitoring', None) != None and \
+            getattr(res_config.monitoring, 'alarm_sets', None) != None and \
+                len(res_config.monitoring.alarm_sets.values()) > 0:
             aws_name = '-'.join(['Lambda', grp_id, res_id])
             self.init_alarms(aws_name, res_config, StackTags(res_stack_tags))
 
@@ -400,7 +405,6 @@ role_name: %s""" % ("ASGInstance")
             stack_tags=res_stack_tags
         )
         role_profile_arn = iam_ctl.role_profile_arn(instance_iam_role_ref)
-
         if res_config.monitoring != None and res_config.monitoring.enabled != False:
             self.ec2_launch_manager.lb_add_cloudwatch_agent(instance_iam_role_ref, res_config)
         # SSM Agent
@@ -432,6 +436,8 @@ role_name: %s""" % ("ASGInstance")
             self.ec2_launch_manager.get_cache_id(self.app_id, grp_id, res_id)
         )
 
+        #if res_config.name == 'webdemo':
+        #    breakpoint()
         if res_config.monitoring and len(res_config.monitoring.alarm_sets.values()) > 0:
             aws_name = '-'.join(['ASG', grp_id, res_id])
             self.init_alarms(aws_name, res_config, StackTags(res_stack_tags))

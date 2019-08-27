@@ -8,6 +8,7 @@ import troposphere
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.models import schemas
 from aim.models import vocabulary
+from aim import utils
 
 
 class CWAlarms(CFTemplate):
@@ -59,7 +60,8 @@ class CWAlarms(CFTemplate):
         template.add_resource(
             troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
         )
-
+        #breakpoint()
+        self.alarm_action_param_map = {}
         if resource.is_enabled() and resource.monitoring.enabled:
             self.add_alarms(
                 template,
@@ -106,9 +108,29 @@ class CWAlarms(CFTemplate):
 
         # Add Alarm resources
         for alarm in alarms:
-
             # compute dynamic attributes for cfn_export_dict
             alarm_export_dict = alarm.cfn_export_dict
+            #if self.aws_name.find('ASG') != -1:
+            #    breakpoint()
+            alarm_action_list = []
+            for alarm_action in alarm.get_alarm_actions():
+                # Create parameter
+                param_name = 'AlarmAction{}'.format(utils.md5sum(str_data=alarm_action))
+                if param_name in self.alarm_action_param_map.keys():
+                    alarm_action_param = self.alarm_action_param_map[param_name]
+                else:
+                    alarm_action_param = self.gen_parameter(
+                        param_type = 'String',
+                        name = param_name,
+                        description = 'The resource id or name for the metric dimension.',
+                        value = alarm_action,
+                        use_troposphere = True
+                    )
+                    template.add_parameter(alarm_action_param)
+                    self.alarm_action_param_map[param_name] = alarm_action_param
+                alarm_action_list.append(troposphere.Ref(alarm_action_param))
+
+            alarm_export_dict['AlarmActions'] = alarm_action_list
 
             # Namespace - if not supplied default to the Namespace for the Resource type
             if 'Namespace' not in alarm_export_dict:

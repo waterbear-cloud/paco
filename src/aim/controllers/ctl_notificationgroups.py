@@ -66,6 +66,7 @@ class NotificationGroupsController(Controller):
         stack_tags = StackTags()
         self.config = self.aim_ctx.project['notificationgroups']
         self.account_ctx = self.aim_ctx.get_account_context(account_ref=self.config.account)
+        self.config_ref = 'service.notificationgroups'
 
         # create a stack group
         self.ng_stackgroup = NotificationGroupsStackGroup(
@@ -74,7 +75,7 @@ class NotificationGroupsController(Controller):
             self.config.region,
             'SNS',
             self,
-            'notificationgroups',
+            self.config_ref,
             self.config,
             StackTags(stack_tags)
         )

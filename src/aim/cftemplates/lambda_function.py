@@ -383,7 +383,7 @@ Outputs:
                 param_type='String',
                 name=param_name,
                 description='An SNS Topic ARN to grant permission to.',
-                value=sns_topic_arn
+                value=sns_topic_arn+'.arn'
             )
             # Lambda Permissions
             permission_table['name'] = param_name
