@@ -88,6 +88,7 @@ class ApiGatewayRestApi(CFTemplate):
         # Method
         for method in self.apigatewayrestapi.methods.values():
             method_id = 'ApiGatewayMethod' + self.normalize_resource_name(method.name)
+            method.logical_id = method_id
             cfn_export_dict = method.cfn_export_dict
             for resource in self.apigatewayrestapi.resources.values():
                 if resource.name == method.resource_id:
@@ -100,8 +101,32 @@ class ApiGatewayRestApi(CFTemplate):
             template.add_resource(method_resource)
 
         # Model
-        # Stage
+        model = troposphere.apigateway.Model.from_dict(
+            'ApiGatewayModel',
+            {'Schema': {},
+            'RestApiId': troposphere.Ref(restapi_resource)
+            }
+        )
+
         # Deployment
-        breakpoint()
+        deployment_resource = troposphere.apigateway.Deployment.from_dict(
+            'ApiGatewayDeployment',
+            {'Description': 'Deployment',
+             'RestApiId': troposphere.Ref(restapi_resource) }
+        )
+        # ToDo: Deployment depends upon all Methods
+        for method in self.apigatewayrestapi.methods.values():
+            deployment_resource.DependsOn = method.logical_id
+        template.add_resource(deployment_resource)
+
+        # Stage
+        for stage in self.apigatewayrestapi.stages.values():
+            stage_id = 'ApiGatewayStage' + self.normalize_resource_name(stage.name)
+            cfn_export_dict = stage.cfn_export_dict
+            cfn_export_dict["RestApiId"] = troposphere.Ref(restapi_resource)
+            cfn_export_dict["DeploymentId"] = troposphere.Ref(deployment_resource)
+            stage_resource = troposphere.apigateway.Stage.from_dict(stage_id, cfn_export_dict)
+            template.add_resource(stage_resource)
+
         # Generate the Template
         self.set_template(template.to_yaml())

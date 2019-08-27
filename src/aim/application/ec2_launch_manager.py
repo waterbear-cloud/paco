@@ -462,6 +462,7 @@ cd ${{LB_DIR}}
         # Create instance managed policy for the agent
         policy_config_yaml = """
 name: 'CloudWatchAgent'
+enabled: true
 statement:
   - effect: Allow
     action:
