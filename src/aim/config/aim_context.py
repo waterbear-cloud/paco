@@ -154,22 +154,24 @@ class AimContext(object):
         # Set Default AWS Region
         os.environ['AWS_DEFAULT_REGION'] = self.project['credentials'].aws_default_region
 
+        # Initialize Controllers so they can initiaize their
+        # resolve_ref_obj's to allow reference lookups
+        self.get_controller('Route53')
+        self.get_controller('CodeCommit')
+        self.get_controller('S3').init({'name': 'buckets'})
+
         # Load the Service Plugins
         service_plugins = aim.models.services.list_service_plugins()
         for plugin_name, plugin_module in service_plugins.items():
             try:
                 print("Init: Service Plugin: %s" % (plugin_name))
-                service = plugin_module.instantiate_class(self, self.project[plugin_name.lower()])
+                service = plugin_module.instantiate_class(self, self.project['service'][plugin_name.lower()])
+                service.init(None)
                 self.services[plugin_name.lower()] = service
                 print("Init: Service Plugin: %s: Completed" % (plugin_name))
             except KeyError:
                 # ignore if no config files for a registered service
                 print("Skipping Service: {}".format(plugin_name))
-        # Initialize Service Controllers so they can initiaize their
-        # resolve_ref_obj's to allow reference lookups
-        self.get_controller('Route53')
-        self.get_controller('CodeCommit')
-        self.get_controller('S3').init({'name': 'buckets'})
 
     def get_controller(self, controller_type, controller_args=None):
         """Gets a controller by name and calls .init() on it with any controller args"""

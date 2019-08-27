@@ -56,8 +56,11 @@ Resources:
           'outputs': ""
         }
         output_fmt = """
-  SNSTopic{0[name]:s}:
+  SNSTopicArn{0[name]:s}:
     Value: !Ref Topic{0[name]:s}
+
+  SNSTopicName{0[name]:s}:
+    Value: !GetAtt Topic{0[name]:s}.TopicName
 """
 
         topic_fmt = """
@@ -118,10 +121,10 @@ Resources:
 
             topics_yaml += topic_fmt.format(topic_table)
             outputs_yaml += output_fmt.format(topic_table)
-            group_config_ref = res_config_ref+'.groups.'+topic.name
-            self.register_stack_output_config(group_config_ref, 'SNSTopic' + self.normalize_resource_name(topic.name))
-            self.register_stack_output_config(group_config_ref + '.name', 'SNSTopic' + self.normalize_resource_name(topic.name))
-            self.register_stack_output_config(group_config_ref + '.id', 'SNSTopic' + self.normalize_resource_name(topic.name))
+            #self.register_stack_output_config(res_config_ref, 'SNSTopic' + self.normalize_resource_name(topic.name))
+            output_ref = '.'.join([res_config_ref, topic.name])
+            self.register_stack_output_config(output_ref + '.name', 'SNSTopicName' + self.normalize_resource_name(topic.name))
+            self.register_stack_output_config(output_ref + '.arn', 'SNSTopicArn' + self.normalize_resource_name(topic.name))
 
         if parameters_yaml != "":
             template_table['parameters'] = "Parameters:\n"
