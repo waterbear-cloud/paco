@@ -90,3 +90,12 @@ def log_action(action, message, return_it=False):
         print(log_message)
     else:
         return log_message
+
+def list_to_comma_string(self, list_to_convert):
+    "Converts a list to a comma-seperated string"
+    comma=''
+    str_list = ""
+    for item in list_to_convert:
+        str_list += comma + item
+        comma = ','
+    return str_list
