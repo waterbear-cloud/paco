@@ -27,7 +27,11 @@ class IAMUserAccountDelegates(CFTemplate):
 
         # ---------------------------------------------------------------------------
         # CFTemplate Initialization
-        aws_name = '-'.join(['Account-Delegates',user_config.name])
+        aws_name = self.create_resource_name_join(
+            name_list=['Account', 'Delegates', user_config.name],
+            separator='-',
+            camel_case=True
+        )
         super().__init__(
             aim_ctx,
             account_ctx,
@@ -70,7 +74,7 @@ class IAMUserAccountDelegates(CFTemplate):
             assume_role_res = troposphere.iam.Role(
                 "UserAccountDelegateRole",
                 RoleName="IAM-User-Account-Delegate-Role-{}".format(
-                    utils.normalize_name(user_config.name, '-', True)
+                    self.create_resource_name(user_config.name, filter_id='IAM.Role.RoleName')
                 ),
                 AssumeRolePolicyDocument=PolicyDocument(
                     Version="2012-10-17",

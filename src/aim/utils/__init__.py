@@ -60,32 +60,19 @@ def str_spc(str_data, size):
         new_str += " "
     return new_str
 
-def normalize_name(name, replace_sep, camel_case):
-    normalized_name = ""
-    name_list = name.split("_")
-    first = True
-    for name_item in name_list:
-        if camel_case == True:
-            name_item = name_item.title()
-        if first == False:
-            normalized_name += replace_sep
-        first = False
-        normalized_name += name_item
-
-    return normalized_name
-
-def normalized_join(str_list, replace_sep, camel_case):
-    new_str = replace_sep.join(str_list)
-    normalized_str = ""
+def big_join(str_list, separator_ch, camel_case=False):
+    # No Camel Case
+    if camel_case == False:
+        return separator_ch.join(str_list)
+    # Camel Case
+    camel_str = ""
     first = True
     for str_item in str_list:
-        str_item = normalize_name(str_item, replace_sep, camel_case)
         if first == False:
-            normalized_str += replace_sep
+            camel_str += separator_ch
+        camel_str += str_item[0].upper()+str_item[1:]
         first = False
-        normalized_str += str_item
-
-    return normalized_str
+    return camel_str
 
 def prefixed_name(resource, name):
     """Returns a name prefixed to be unique:

@@ -51,7 +51,7 @@ class ApiGatewayRestApi(CFTemplate):
 
         method_params = []
         for method in self.apigatewayrestapi.methods.values():
-            param_name = 'MethodArn' + self.normalize_resource_name(method.name)
+            param_name = 'MethodArn' + self.create_cfn_logical_id(method.name)
             lambda_arn_param = self.gen_parameter(
                 name=param_name,
                 param_type='String',
@@ -73,7 +73,7 @@ class ApiGatewayRestApi(CFTemplate):
 
         # Resource
         for resource in self.apigatewayrestapi.resources.values():
-            resource_id = 'ApiGatewayResource' + self.normalize_resource_name(resource.name)
+            resource_id = 'ApiGatewayResource' + self.create_cfn_logical_id(resource.name)
             cfn_export_dict = resource.cfn_export_dict
             if resource.parent_id == "RootResourceId":
                 cfn_export_dict["ParentId"] = troposphere.GetAtt(restapi_resource, "RootResourceId")
@@ -87,7 +87,7 @@ class ApiGatewayRestApi(CFTemplate):
 
         # Method
         for method in self.apigatewayrestapi.methods.values():
-            method_id = 'ApiGatewayMethod' + self.normalize_resource_name(method.name)
+            method_id = 'ApiGatewayMethod' + self.create_cfn_logical_id(method.name)
             cfn_export_dict = method.cfn_export_dict
             for resource in self.apigatewayrestapi.resources.values():
                 if resource.name == method.resource_id:

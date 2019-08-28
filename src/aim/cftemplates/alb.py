@@ -3,7 +3,6 @@ from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
 from aim.models.references import Reference
-from aim.utils import normalized_join
 from io import StringIO
 from enum import Enum
 from pprint import pprint
@@ -49,11 +48,12 @@ class ALB(CFTemplate):
         # Name collision risk:, if unique identifying characrtes are truncated
         #   - Add a hash?
         #   - Check for duplicates with validating template
-        # TODO: Make a method for this
-        #load_balancer_name = aim_ctx.project_ctx.name + "-" + aim_ctx.env_ctx.name + "-" + stack_group_ctx.application_name + "-" + alb_id
-        load_balancer_name = normalized_join([self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, alb_id],
-                                                     '',
-                                                     True)
+        load_balancer_name = self.create_resource_name_join(
+            name_list=[self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, alb_id],
+            separator='',
+            camel_case=True,
+            filter_id='EC2.ElasticLoadBalancingV2.LoadBalancer.Name'
+        )
         self.set_parameter('LoadBalancerName', load_balancer_name)
 
         self.set_parameter('Scheme', alb_config.scheme)
@@ -347,7 +347,7 @@ Outputs:
         ssl_cert_param_yaml = ""
         for listener_id in alb_config.listeners.keys():
             listener = alb_config.listeners[listener_id]
-            listener_name = self.normalize_resource_name(listener_id)
+            listener_name = self.create_cfn_logical_id(listener_id)
             listener_table['name'] = listener_name
             listener_table['port'] = listener.port
             listener_table['protocol'] = listener.protocol
@@ -386,7 +386,7 @@ Outputs:
                     rule = listener.rules[rule_id]
                     if rule.enabled == False:
                       continue
-                    rule_name = self.normalize_resource_name(rule_id)
+                    rule_name = self.create_cfn_logical_id(rule_id)
                     if rule.rule_type == "forward":
                         listener_forward_rule_table['listener_name'] = listener_name
                         listener_forward_rule_table['target_group_id'] = rule.target_group
@@ -410,8 +410,13 @@ Outputs:
         target_group_outputs_yaml = ""
         for target_group_id in sorted(alb_config.target_groups.keys()):
             target_config = alb_config.target_groups[target_group_id]
-            target_group_table['id'] = self.normalize_resource_name(target_group_id)
-            target_group_table['name'] = load_balancer_name + target_group_id
+            target_group_table['id'] = self.create_cfn_logical_id(target_group_id)
+            target_group_table['name'] = self.create_resource_name_join(
+                name_list=[load_balancer_name, target_group_id],
+                separator='',
+                camel_case=True,
+                filter_id='EC2.ElasticLoadBalancingV2.TargetGroup.Name'
+            )
             target_group_table['port'] = target_config.port
             target_group_table['protocol'] = target_config.protocol
             target_group_table['health_check_path'] = target_config.health_check_path

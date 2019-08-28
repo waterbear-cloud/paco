@@ -80,7 +80,7 @@ class CloudTrail(CFTemplate):
             trail_dict['CloudWatchLogsRoleArn'] = troposphere.GetAtt(trail_role_resource, "Arn")
 
         trail_resource = troposphere.cloudtrail.Trail.from_dict(
-            'CloudTrail' + self.normalize_resource_name(trail.name),
+            'CloudTrail' + self.create_cfn_logical_id(trail.name),
             trail_dict
         )
         trail_resource.DependsOn = 'CloudTrailLogDeliveryRole'

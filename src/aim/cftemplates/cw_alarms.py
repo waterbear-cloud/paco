@@ -47,8 +47,8 @@ class CWAlarms(CFTemplate):
             alarm_set = alarm_sets[alarm_set_id]
             for alarm_id in alarm_set.keys():
                 cfn_resource_name = 'Alarm{}{}'.format(
-                    self.normalize_resource_name(alarm_set_id),
-                    self.normalize_resource_name(alarm_id)
+                    self.create_cfn_logical_id(alarm_set_id),
+                    self.create_cfn_logical_id(alarm_id)
                 )
                 alarm_set[alarm_id].cfn_resource_name = cfn_resource_name
                 alarms.append(alarm_set[alarm_id])

@@ -63,7 +63,7 @@ Resources:
         default_retention = cw_logging.expire_events_after_days
         for log_group in self.resource.monitoring.log_sets.get_all_log_groups():
             log_group_name = log_group.get_log_group_name()
-            loggroup_table['name'] = self.normalize_resource_name(log_group_name)
+            loggroup_table['name'] = self.create_cfn_logical_id(log_group_name)
             loggroup_table['properties'] = "Properties:\n"
             loggroup_table['log_group_name'] = "      LogGroupName: '{}'".format(prefixed_name(resource, log_group_name))
 

@@ -1,8 +1,7 @@
 import os
-from aim.cftemplates.cftemplates import CFTemplate
-from aim.cftemplates.cftemplates import Parameter
-from aim.cftemplates.cftemplates import StackOutputParam
-from aim.utils import md5sum, normalize_name
+from aim.cftemplates.cftemplates import CFTemplate, Parameter, StackOutputParam
+from aim.utils import md5sum
+from aim import utils
 from io import StringIO
 from enum import Enum
 import sys
@@ -52,7 +51,7 @@ Outputs:
         }
 
         policy_fmt = """
-  {0[cf_resource_name_prefix]:s}ManagedPolicy:
+  {0[cfn_logical_id_prefix]:s}ManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       #Description: String
@@ -73,7 +72,7 @@ Outputs:
         policy_table = {
             'name': None,
             'path': None,
-            'cf_resource_name_prefix': None,
+            'cfn_logical_id_prefix': None,
             'policy_document': None,
             'statement': None,
             'roles': None,
@@ -86,8 +85,8 @@ Outputs:
 """
 
         policy_outputs_fmt = """
-  {0[cf_resource_name_prefix]:s}ManagedPolicy:
-    Value: !Ref {0[cf_resource_name_prefix]:s}ManagedPolicy
+  {0[cfn_logical_id_prefix]:s}ManagedPolicy:
+    Value: !Ref {0[cfn_logical_id_prefix]:s}ManagedPolicy
 """
 
         parameters_yaml = ""
@@ -110,7 +109,7 @@ Outputs:
         policy_id = policy_context['id']
         # Name
         policy_table['name'] = self.gen_policy_name(policy_id)
-        policy_table['cf_resource_name_prefix'] = self.get_cf_resource_name_prefix(policy_id)
+        policy_table['cfn_logical_id_prefix'] = self.create_cfn_logical_id(policy_id)
         # Path
         policy_table['path'] = policy_config.path
 
@@ -160,13 +159,13 @@ Outputs:
     # Generate a name valid in CloudFormation
     def gen_policy_name(self, policy_id):
         policy_context_hash = md5sum(str_data=self.policy_context['ref'])[:8].upper()
-        policy_name = '-'.join([policy_context_hash, policy_id])
-        policy_name = normalize_name(policy_name, '-', False)
+        policy_name = self.create_resource_name_join(
+            name_list=[policy_context_hash, policy_id],
+            separator='-',
+            camel_case=False,
+            filter_id='IAM.ManagedPolicy.ManagedPolicyName'
+        )
         return policy_name
-
-    def get_cf_resource_name_prefix(self, resource_name):
-        norm_res_name = normalize_name(resource_name, '', True)
-        return norm_res_name.replace('-', '')
 
     # TODO: This shares the same code in iam_roles.py. This should
     # be consolidated in cftemplates.py...

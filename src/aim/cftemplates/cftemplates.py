@@ -9,8 +9,7 @@ from aim.core.exception import StackException, AimErrorCode, AimException
 from aim.models import references
 from aim.models.references import Reference
 from aim.stack_group import Stack, StackOrder
-from aim.utils import dict_of_dicts_merge
-from aim.utils import md5sum
+from aim.utils import dict_of_dicts_merge, md5sum, big_join
 from botocore.exceptions import ClientError
 from pprint import pprint
 
@@ -536,12 +535,96 @@ class CFTemplate():
         else:
             raise AimException(AimErrorCode.Unknown)
 
-    def normalize_resource_name(self, name):
-        name = name.replace('-', '')
-        name = name.replace('_', '')
-        name = name.replace('.', '')
-        name = name.replace('@', '')
+    def resource_name_filter(self, name, filter_id):
+        message = None
+        if filter_id in [
+            'EC2.ElasticLoadBalancingV2.LoadBalancer.Name',
+            'EC2.ElasticLoadBalancingV2.TargetGroup.Name']:
+            if len(name) > 32:
+                message = "Name must not be longer than 32 characters.",
+            elif filter_id.find('LoadBalancer') != -1 and name.startswith('internal-'):
+                message = "Name must not start with 'internal-'"
+            elif name[-1] == '-' or name[0] == '-':
+                message = "Name must not begin or end with a dash."
+        elif filter_id in [
+            'IAM.Role.RoleName',
+            'IAM.ManagedPolicy.ManagedPolicyName']:
+            if len(name) > 255:
+                message = "Name must not be longer than 255 characters."
+        elif filter_id == 'SecurityGroup.GroupName':
+            pass
+        else:
+            message = 'Unknown filter_id'
+
+        if message != None:
+            raise StackException(
+                AimErrorCode.Unknown,
+                    message="{}: {}: {}: {}".format(
+                        filter_id,
+                        self.config_ref,
+                        message,
+                        name,
+                    ))
         return name
+
+
+    def resource_char_filter(self, ch, filter_id, remove_invalids=False):
+        # Universal check
+        if ch.isalnum() == True:
+            return ch
+        # SecurityGroup Group Name
+        # Constraints for EC2-VPC: a-z, A-Z, 0-9, spaces, and ._-:/()#,@[]+=&;{}!$*
+        if filter_id == 'SecurityGroup.GroupName':
+            if ch in ' ._-:/()#,@[]+=&;{}!$*':
+                return ch
+        elif filter_id in [
+            'IAM.Role.RoleName',
+            'IAM.ManagedPolicy.ManagedPolicyName']:
+            if ch in '_+=,.@-.':
+                return ch
+        elif filter_id in [
+            'EC2.ElasticLoadBalancingV2.LoadBalancer.Name',
+            'EC2.ElasticLoadBalancingV2.TargetGroup.Name']:
+            # Only alphanum and dases are allowed
+            pass
+        else:
+            raise StackException(AimErrorCode.Unknown, message="Invalid filter Id: "+filter_id)
+
+        if remove_invalids == True:
+            return ''
+
+        # By default return a '-' for invalid characters
+        return '-'
+
+   # Resource names
+    # Alphanumberic (A-Za-z0-9) and dashes.
+    # Invalid characters are removed or changed into a dash.
+    def create_resource_name(self, name, remove_invalids=False, filter_id=None):
+        if name.isalnum() == True:
+            return name
+        new_name = ""
+        for ch in name:
+            if filter_id != None:
+                new_name += self.resource_char_filter(ch, filter_id, remove_invalids)
+            elif ch.isalnum() == True:
+                new_name += ch
+            elif remove_invalids == False:
+                new_name += '-'
+        if filter_id != None:
+            new_name = self.resource_name_filter(new_name, filter_id)
+        return new_name
+
+    def create_resource_name_join(self, name_list, separator, camel_case=False, filter_id=None):
+        name = big_join(name_list, separator, camel_case)
+        return self.create_resource_name(name, filter_id=filter_id)
+
+    # The logical ID must be alphanumeric (A-Za-z0-9) and unique within the template.
+    def create_cfn_logical_id(self, name):
+        return self.create_resource_name(name, remove_invalids=True).replace('-', '')
+
+    def create_cfn_logical_id_join(self, str_list, camel_case=False):
+        logical_id = big_join(str_list, '', camel_case)
+        return self.create_cfn_logical_id(logical_id)
 
     def gen_parameter(self, param_type, name, description, value, default=None, noecho=False, use_troposphere=False):
         if default == '':

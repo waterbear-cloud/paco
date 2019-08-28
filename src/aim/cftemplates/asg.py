@@ -3,7 +3,6 @@ from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
 from aim.models.references import Reference
-from aim.utils import normalized_join
 from io import StringIO
 from enum import Enum
 import base64
@@ -61,7 +60,11 @@ class ASG(CFTemplate):
         # Security Group List
         self.set_list_parameter('LCSecurityGroupList', asg_config.security_groups, 'id')
 
-        asg_name = normalized_join([self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, grp_id, asg_id], '', True)
+        asg_name = self.create_resource_name_join(
+            name_list=[self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, grp_id, asg_id],
+            separator='-',
+            camel_case=True
+        )
         self.set_parameter('ASGName', asg_name)
         desired_capacity = asg_config.desired_capacity if asg_config.is_enabled() else 0
         self.set_parameter('ASGDesiredCapacity', desired_capacity)

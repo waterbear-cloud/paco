@@ -90,7 +90,7 @@ Resources:
                 continue
             else:
                 any_topic_enabled = True
-            topic_table['name'] = self.normalize_resource_name(topic.name)
+            topic_table['name'] = self.create_cfn_logical_id(topic.name)
             topic_table['display_name'] = ""
             topic_table['subscription'] = ""
             topic_table['properties'] = ""
@@ -121,10 +121,10 @@ Resources:
 
             topics_yaml += topic_fmt.format(topic_table)
             outputs_yaml += output_fmt.format(topic_table)
-            #self.register_stack_output_config(res_config_ref, 'SNSTopic' + self.normalize_resource_name(topic.name))
+            #self.register_stack_output_config(res_config_ref, 'SNSTopic' + self.create_cfn_logical_id(topic.name))
             output_ref = '.'.join([res_config_ref, topic.name])
-            self.register_stack_output_config(output_ref + '.name', 'SNSTopicName' + self.normalize_resource_name(topic.name))
-            self.register_stack_output_config(output_ref + '.arn', 'SNSTopicArn' + self.normalize_resource_name(topic.name))
+            self.register_stack_output_config(output_ref + '.name', 'SNSTopicName' + self.create_cfn_logical_id(topic.name))
+            self.register_stack_output_config(output_ref + '.arn', 'SNSTopicArn' + self.create_cfn_logical_id(topic.name))
 
         if parameters_yaml != "":
             template_table['parameters'] = "Parameters:\n"

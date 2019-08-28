@@ -3,7 +3,6 @@ from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
 from aim.models.references import Reference
-from aim.utils import normalized_join
 from io import StringIO
 from enum import Enum
 
@@ -59,9 +58,11 @@ class ELB(CFTemplate):
         #   - Check for duplicates with validating template
         # TODO: Make a method for this
         #load_balancer_name = aim_ctx.project_ctx.name + "-" + aim_ctx.env_ctx.name + "-" + stack_group_ctx.application_name + "-" + elb_id
-        load_balancer_name = normalized_join([self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, elb_id],
-                                                     '',
-                                                     True)
+        load_balancer_name = self.create_resource_name_join(
+            name_list=[self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, elb_id],
+            separator='',
+            camel_case=True
+        )
         self.set_parameter('LoadBalancerEnabled', elb_config.is_enabled())
         self.set_parameter('LoadBalancerName', load_balancer_name)
 

@@ -2,7 +2,6 @@ import os
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
-from aim.utils import normalized_join
 from enum import Enum
 from io import StringIO
 
@@ -37,9 +36,11 @@ class CodeDeploy(CFTemplate):
             stack_tags=stack_tags
         )
 
-        self.resource_name = normalized_join([self.env_ctx.get_aws_name(), app_id, grp_id, res_id],
-                                                     '-',
-                                                     False)
+        self.resource_name = self.create_resource_name_join(
+            name_list=[self.env_ctx.get_aws_name(), app_id, grp_id, res_id],
+            separator='-',
+            camel_case=True
+          )
         self.application_name = self.resource_name
 
         # Initialize Parameters

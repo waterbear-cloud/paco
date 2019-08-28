@@ -232,13 +232,33 @@ class Stack():
     def get_stack_output_config(self):
         return self.output_config_dict
 
+    def create_stack_name(self, name):
+        """
+        Must contain only letters, numbers, dashes and start with an alpha character.
+        """
+        if name.isalnum():
+            return name
+
+        new_name = ""
+        for ch in name:
+            if ch.isalnum() == False:
+                ch = '-'
+            new_name += ch
+
+        return new_name
+
     def get_name(self):
         name = '-'.join([ self.grp_ctx.get_aws_name(),
                           self.template.aws_name])
         if self.stack_suffix != None:
             name = name + '-' + self.stack_suffix
 
-        return name
+        new_name = self.create_stack_name(name)
+
+        if new_name[0].isalpha() == False:
+            raise StackException(AimErrorCode.InvalidStackName)
+
+        return new_name
 
 
     def validate(self):
@@ -317,7 +337,7 @@ class Stack():
                 raise StackException(AimErrorCode.Unknown, message=e.response['Error']['Message'])
 
         if 'Outputs' not in stack_metadata['Stacks'][0].keys():
-            raise StackException(AimErrorCode.StackOutputsEmpty, message='No outputs are registered for this stack. This can happen if there are register_stack_output_config() calls in a cftemplate for Outputs that do not exist.')
+            raise StackException(AimErrorCode.StackOutputMissing, message='No outputs are registered for this stack. This can happen if there are register_stack_output_config() calls in a cftemplate for Outputs that do not exist.')
 
         for output in stack_metadata['Stacks'][0]['Outputs']:
             if output['OutputKey'] == key:
@@ -325,7 +345,7 @@ class Stack():
                 return self.outputs_value_cache[key]
 
         raise StackException(
-            AimErrorCode.Unknown,
+            AimErrorCode.StackOutputMissing,
             message="Could not find Stack Output {} in stack_metadata:\n\n{}".format(key, stack_metadata)
         )
 
@@ -360,7 +380,7 @@ class Stack():
         except AimException as e:
             if e.code == AimErrorCode.StackDoesNotExist:
                 return False
-            elif e.code == AimErrorCode.StackOutputsEmpty:
+            elif e.code == AimErrorCode.StackOutputMissing:
                 return False
             else:
                 raise e
@@ -412,7 +432,7 @@ class Stack():
     def create_stack(self):
         # Create Stack
         if self.update_only == True:
-            self.log_action("Provision", "UpdateOnly")
+            self.log_action("Provision", "Disabled")
             return
         self.action = "create"
         self.log_action("Provision", "Create")

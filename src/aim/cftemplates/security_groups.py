@@ -4,7 +4,6 @@ from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
 from aim.models.references import Reference
 from aim.core.exception import StackException, AimErrorCode
-from aim.utils import normalized_join
 from io import StringIO
 from enum import Enum
 
@@ -93,12 +92,12 @@ Resources:
             sg_table['cf_sg_name'] = sg_name
             # Controller Name, Network Environment Name
             #sg_table['group_name'] = aim_ctx.config_controller.aws_name() + "-" + self.stack_group_ctx.aws_name + "-" + sg_name
-            group_name = normalized_join([self.env_ctx.netenv_id,
-                                                  self.env_ctx.env_id,
-                                                  sg_group_id,
-                                                  sg_name],
-                                                     '',
-                                                     True)
+            group_name = self.create_resource_name_join(
+                [self.env_ctx.netenv_id, self.env_ctx.env_id,sg_group_id, sg_name],
+                separator='-',
+                camel_case=True,
+                filter_id='SecurityGroup.GroupName'
+            )
             sg_table['group_name'] = group_name
             sg_table['group_description'] = "AIM generated Security Group"
 

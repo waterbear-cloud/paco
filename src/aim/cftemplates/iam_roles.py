@@ -1,9 +1,8 @@
 import os
 import sys
-from aim.cftemplates.cftemplates import CFTemplate
-from aim.cftemplates.cftemplates import Parameter
-from aim.cftemplates.cftemplates import StackOutputParam
-from aim.utils import md5sum, normalize_name
+from aim.cftemplates.cftemplates import CFTemplate, Parameter, StackOutputParam
+from aim import utils
+from aim.utils import md5sum
 from enum import Enum
 from io import StringIO
 
@@ -179,13 +178,20 @@ Outputs:
     # Generate a name valid in CloudFormation
     def gen_iam_role_name(self, role_type, role_id):
         iam_context_hash = md5sum(str_data=self.role_ref)[:8].upper()
-        role_name = '-'.join([iam_context_hash, role_type[0], role_id])
-        role_name = normalize_name(role_name, '-', False)
+        role_name = self.create_resource_name_join(
+            name_list=[iam_context_hash, role_type[0], role_id],
+            separator='-',
+            camel_case=True,
+            filter_id='IAM.Role.RoleName'
+        )
         return role_name
 
     def get_cf_resource_name_prefix(self, resource_name):
-        norm_res_name = normalize_name(resource_name, '', True)
-        return norm_res_name.replace('-', '')
+        norm_res_name = self.create_resource_name(resource_name)
+        new_name = ""
+        for name in norm_res_name.split('-'):
+            new_name += name[0].upper() + name[1:]
+        return new_name
 
     def gen_role_policies(self, policies):
 

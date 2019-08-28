@@ -98,7 +98,7 @@ class IAMUsers(CFTemplate):
             }
 
         iam_user_res = troposphere.iam.User.from_dict(
-            self.normalize_resource_name('IAMUser'+iam_user_config.name),
+            self.create_cfn_logical_id('IAMUser'+iam_user_config.name),
             iam_user_dict
         )
         self.template.add_resource(iam_user_res)
@@ -114,14 +114,14 @@ class IAMUsers(CFTemplate):
             account_id = self.aim_ctx.get_ref(account_ref+'.id')
             delegate_role_arn = "arn:aws:iam::{}:role/IAM-User-Account-Delegate-Role-{}".format(
                 account_id,
-                utils.normalize_name(iam_user_config.name, '-', True)
+                self.create_resource_name(iam_user_config.name, filter_id='IAM.Role.RoleName')
             )
             assume_role_arn_list.append(delegate_role_arn)
 
         if len(assume_role_arn_list) > 0:
             user_policy_dict = {
                 'ManagedPolicyName': 'IAM-User-AssumeRole-Policy-{}'.format(
-                    utils.normalize_name(iam_user_config.name, '-', True)
+                    self.create_resource_name(iam_user_config.name, '-').capitalize()
                 ),
                 'PolicyDocument': PolicyDocument(
                         Version="2012-10-17",
@@ -199,7 +199,7 @@ class IAMUsers(CFTemplate):
             }
             # Policy
             user_policy_res = troposphere.iam.ManagedPolicy.from_dict(
-                self.normalize_resource_name('IAMUserPolicy'+iam_user_config.name),
+                self.create_cfn_logical_id('IAMUserPolicy'+iam_user_config.name),
                 user_policy_dict
             )
             self.template.add_resource(user_policy_res)
