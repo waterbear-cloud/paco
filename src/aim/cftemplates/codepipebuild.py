@@ -67,7 +67,7 @@ class CodePipeBuild(CFTemplate):
         self.set_parameter('CodeDeployRegion', codedeploy_aws_region)
         self.set_parameter('CodeDeployToolsDelegateRoleArn', codedeploy_tools_delegate_role_arn)
         self.set_parameter('ArtifactsBucketName', artifacts_bucket_name)
-        self.set_parameter('DeploymentEnvironment', res_config.deployment_environment)
+        self.set_parameter('DeploymentEnvironmentName', res_config.deployment_environment)
         self.set_parameter('DeploymentBranchName', res_config.deployment_branch_name)
         self.set_parameter('ManualApprovalEnabled', res_config.manual_approval_enabled)
         self.set_parameter('ManualApprovalNotificationEmail', res_config.manual_approval_notification_email)
@@ -77,6 +77,10 @@ class CodePipeBuild(CFTemplate):
 
         kms_ref = res_config.aim_ref + '.kms.arn'
         self.set_parameter('CMKArn', kms_ref)
+
+        # CodeBuild
+        self.set_parameter('CodeBuildComputeType', res_config.codebuild_compute_type)
+        self.set_parameter('CodeBuildImage', res_config.codebuild_image)
 
         # Define the Template
         self.set_template("""
@@ -121,7 +125,7 @@ Parameters:
     Description: The bname of the S3 Bucket to create that will hold deployment artifacts
     Type: String
 
-  DeploymentEnvironment:
+  DeploymentEnvironmentName:
     Description: The name of the environment codebuild will be deploying into.
     Type: String
 
@@ -148,6 +152,14 @@ Parameters:
 
   CMKArn:
     Description: The KMS CMK Arn of the key used to encrypt deployment artifacts
+    Type: String
+
+  CodeBuildComputeType:
+    Description: The type of compute environment. This determines the number of CPU cores and memory the build environment uses.
+    Type: String
+
+  CodeBuildImage:
+    Description: The image tag or image digest that identifies the Docker image to use for this build project.
     Type: String
 
 Conditions:
@@ -220,15 +232,13 @@ Resources:
         Type: CODEPIPELINE
       Environment:
         Type: linuxContainer
-        ComputeType: BUILD_GENERAL1_SMALL
-        #ComputeType: BUILD_GENERAL1_MEDIUM
-        #ComputeType: BUILD_GENERAL1_LARGE
-        Image: aws/codebuild/nodejs:6.3.1
+        ComputeType: !Ref CodeBuildComputeType
+        Image: !Ref CodeBuildImage
         EnvironmentVariables:
           - Name: ArtifactsBucket
             Value: !Ref ArtifactsBucketName
-          - Name: DeploymentEnvironment
-            Value: !Ref DeploymentEnvironment
+          - Name: DeploymentEnvironmentName
+            Value: !Ref DeploymentEnvironmentName
           - Name: KMSKey
             Value: !Ref CMKArn
       Source:
