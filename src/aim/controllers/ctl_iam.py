@@ -236,10 +236,11 @@ class IAMController(Controller):
             # Account Delegate Role
             if repo_config.console_access_enabled == True:
                 codecommit_config = self.aim_ctx.get_ref(repo_config.codecommit)
-                if codecommit_config.enabled:
+                if codecommit_config.is_enabled():
                     account_ref = codecommit_config.account
                     account_name = self.aim_ctx.get_ref(account_ref+'.name')
-                    permissions_by_account[account_name].append(permission_config)
+                    if permission_config not in permissions_by_account[account_name]:
+                        permissions_by_account[account_name].append(permission_config)
 
     # Administrator
     def init_administrator_permission(self, permission_config, permissions_by_account):

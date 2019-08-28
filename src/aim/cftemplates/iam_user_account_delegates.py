@@ -59,7 +59,6 @@ class IAMUserAccountDelegates(CFTemplate):
 
         # Restrict account access here so that we can create an empty CloudFormation
         # template which will then delete permissions that have been revoked.
-
         if user_config.account_whitelist[0] == 'all' or account_ctx.get_name() in user_config.account_whitelist:
             self.user_delegate_role_and_policies(user_config, permissions_list)
 
@@ -67,43 +66,42 @@ class IAMUserAccountDelegates(CFTemplate):
         self.set_template(self.template.to_yaml())
 
     def user_delegate_role_and_policies(self, user_config, permissions_list):
+        #user_arn = 'arn:aws:iam::{}:user/{}'.format(self.master_account_id, user_config.username)
+        user_arn = 'arn:aws:iam::{}:root'.format(self.master_account_id)
+        assume_role_res = troposphere.iam.Role(
+            "UserAccountDelegateRole",
+            RoleName="IAM-User-Account-Delegate-Role-{}".format(
+                self.create_resource_name(user_config.name, filter_id='IAM.Role.RoleName')
+            ),
+            AssumeRolePolicyDocument=PolicyDocument(
+                Version="2012-10-17",
+                Statement=[
+                    Statement(
+                        Effect=Allow,
+                        Action=[ AssumeRole ],
+                        Principal=Principal("AWS", [user_arn]),
+                        #Condition=Condition(
+                        #    [
+                        #        AWACSBool({
+                        #            MultiFactorAuthPresent: True
+                        #        })
+                        #    ]
+                        #)
+                    )
+                ]
+            )
+        )
         # Iterate over permissions and create a delegate role and policices
         for permission_config in permissions_list:
-            #user_arn = 'arn:aws:iam::{}:user/{}'.format(self.master_account_id, user_config.username)
-            user_arn = 'arn:aws:iam::{}:root'.format(self.master_account_id)
-            assume_role_res = troposphere.iam.Role(
-                "UserAccountDelegateRole",
-                RoleName="IAM-User-Account-Delegate-Role-{}".format(
-                    self.create_resource_name(user_config.name, filter_id='IAM.Role.RoleName')
-                ),
-                AssumeRolePolicyDocument=PolicyDocument(
-                    Version="2012-10-17",
-                    Statement=[
-                        Statement(
-                            Effect=Allow,
-                            Action=[ AssumeRole ],
-                            Principal=Principal("AWS", [user_arn]),
-                            #Condition=Condition(
-                            #    [
-                            #        AWACSBool({
-                            #            MultiFactorAuthPresent: True
-                            #        })
-                            #    ]
-                            #)
-                        )
-                    ]
-                )
-            )
-
-            self.template.add_output(troposphere.Output(
-                title='SigninUrl',
-                Value=troposphere.Sub('https://signin.aws.amazon.com/switchrole?account=${AWS::AccountId}&roleName=${UserAccountDelegateRole}')
-            ))
-
             init_method = getattr(self, "init_{}_permission".format(permission_config.type.lower()))
             init_method(permission_config, assume_role_res)
 
-            self.template.add_resource(assume_role_res)
+        self.template.add_resource(assume_role_res)
+        self.template.add_output(troposphere.Output(
+            title='SigninUrl',
+            Value=troposphere.Sub('https://signin.aws.amazon.com/switchrole?account=${AWS::AccountId}&roleName=${UserAccountDelegateRole}')
+        ))
+
 
     def init_administrator_permission(self, permission_config, assume_role_res):
         if 'ManagedPolicyArns' not in assume_role_res.properties.keys():
@@ -117,6 +115,20 @@ class IAMUserAccountDelegates(CFTemplate):
 
     def init_codecommit_permission(self, permission_config, assume_role_res):
 
+        statement_list = []
+        readwrite_repo_arns = []
+        readonly_repo_arns = []
+
+        readonly_codecommit_actions = [
+            Action('codecommit', 'BatchGet*'),
+            Action('codecommit', 'BatchDescribe*'),
+            Action('codecommit', 'List*'),
+            Action('codecommit', 'GitPull*')
+        ]
+
+        readwrite_codecommit_actions = [
+            Action('codecommit', '*'),
+        ]
         for repo_config in permission_config.repositories:
             repo_account_id = self.aim_ctx.get_ref(repo_config.codecommit+'.account_id')
             if repo_account_id != self.account_id:
@@ -124,37 +136,52 @@ class IAMUserAccountDelegates(CFTemplate):
 
             codecommit_repo_arn = self.aim_ctx.get_ref(repo_config.codecommit+'.arn')
 
-            if repo_config.permission == 'ReadOnly':
-                codecommit_actions = [
-                    Action('codecommit', 'BatchGet*'),
-                    Action('codecommit', 'BatchDescribe*'),
-                    Action('codecommit', 'List*'),
-                    Action('codecommit', 'GitPull*')
-                ]
-            elif repo_config.permission == 'ReadWrite':
-                codecommit_actions = [
-                    Action('codecommit', '*'),
-                ]
-            managed_policy_res = troposphere.iam.ManagedPolicy(
-                "CodeCommitPolicy",
-                PolicyDocument=PolicyDocument(
-                    Version="2012-10-17",
-                    Statement=[
-                        Statement(
-                            Effect=Allow,
-                            Action=codecommit_actions,
-                            Resource=[ codecommit_repo_arn ]
-                        ),
-                        Statement(
-                            Effect=Allow,
-                            Action=[Action('codecommit', 'ListRepositories')],
-                            Resource=['*']
-                        )
-                    ]
-                ),
-                Roles=[ troposphere.Ref(assume_role_res) ]
+            if repo_config.permission == 'ReadWrite':
+                if codecommit_repo_arn not in readwrite_repo_arns:
+                    readwrite_repo_arns.append(codecommit_repo_arn)
+            elif repo_config.permission == 'ReadOnly':
+                if codecommit_repo_arn not in readonly_repo_arns:
+                    readonly_repo_arns.append(codecommit_repo_arn)
+
+
+        if len(readwrite_repo_arns) > 0:
+            statement_list.append(
+                Statement(
+                    Sid='CodeCommitReadWrite',
+                    Effect=Allow,
+                    Action=readwrite_codecommit_actions,
+                    Resource=readwrite_repo_arns
+                )
             )
-            self.template.add_resource(managed_policy_res)
+        if len(readonly_repo_arns) > 0:
+            statement_list.append(
+                Statement(
+                    Sid='CodeCommitReadOnly',
+                    Effect=Allow,
+                    Action=readonly_codecommit_actions,
+                    Resource=readonly_repo_arns
+                )
+            )
+
+        statement_list.append(
+            Statement(
+                Effect=Allow,
+                Action=[Action('codecommit', 'ListRepositories')],
+                Resource=['*']
+            )
+        )
+
+        managed_policy_res = troposphere.iam.ManagedPolicy(
+            title=self.create_cfn_logical_id(
+                "CodeCommitPolicy"
+            ),
+            PolicyDocument=PolicyDocument(
+                Version="2012-10-17",
+                Statement=statement_list
+            ),
+            Roles=[ troposphere.Ref(assume_role_res) ]
+        )
+        self.template.add_resource(managed_policy_res)
 
 
         # ---------------------------------------------------------------------------
