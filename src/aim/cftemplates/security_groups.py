@@ -89,7 +89,7 @@ Resources:
                          'group_name': '',
                          'group_description': '' }
             # Security Group
-            sg_table['cf_sg_name'] = sg_name
+            sg_table['cf_sg_name'] = self.create_cfn_logical_id(sg_name)
             # Controller Name, Network Environment Name
             #sg_table['group_name'] = aim_ctx.config_controller.aws_name() + "-" + self.stack_group_ctx.aws_name + "-" + sg_name
             group_name = self.create_resource_name_join(
@@ -124,7 +124,7 @@ Resources:
                                       'to_port': '',
                                       'source': '' }
 
-                    sg_rule_table['cf_sg_rule_name'] = sg_name + sg_rule_type + sg_rule_config.name
+                    sg_rule_table['cf_sg_rule_name'] = self.create_cfn_logical_id(sg_name + sg_rule_type + sg_rule_config.name)
                     sg_rule_table['cf_sg_name'] = sg_table['cf_sg_name']
                     sg_rule_table['cf_rule_type'] = sg_rule_type
                     sg_rule_table['protocol'] = str(sg_rule_config.protocol)

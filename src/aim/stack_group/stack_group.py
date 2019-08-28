@@ -483,9 +483,15 @@ class Stack():
                     self.log_action("Provision", "Done")
                     self.stack_success()
                 else:
-                    raise StackException(AimErrorCode.Unknown, message = e.response['Error']['Message'])
+                    message = "Validation Error: {}\nStack: {}\nTemplate: {}\n".format(
+                        e.response['Error']['Message'],
+                        self.get_name(),
+                        self.template.get_yaml_path()
+                    )
+                    raise StackException(AimErrorCode.Unknown, message = message)
             else:
-                raise StackException(AimErrorCode.Unknown, message = e.response['Error']['Message'])
+                message = "Stack: {}\nError: {}\n".format(self.get_name(), e.response['Error']['Message'])
+                raise StackException(AimErrorCode.Unknown, message = message)
 
         self.cf_client.update_termination_protection(
             EnableTerminationProtection=self.termination_protection,

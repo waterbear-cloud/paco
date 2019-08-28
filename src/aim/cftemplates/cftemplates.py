@@ -271,11 +271,15 @@ class CFTemplate():
         self.generate_template()
         self.aim_ctx.log("Validate template: " + self.get_yaml_path())
         try:
-            response = self.cf_client.validate_template(TemplateBody=self.body)
+            self.cf_client.validate_template(TemplateBody=self.body)
         except ClientError as e:
             if e.response['Error']['Code'] == 'ValidationError':
-                self.aim_ctx.log("Validation error: " + e.response['Error']['Message'])
-                raise StackException(AimErrorCode.TemplateValidationError)
+                message = "Validation Error: {}\nStack: {}\nTemplate: {}\n".format(
+                    e.response['Error']['Message'],
+                    self.stack.get_name(),
+                    self.get_yaml_path()
+                )
+                raise StackException(AimErrorCode.TemplateValidationError, message=message)
         #self.aim_ctx.log("Validation successful")
 
     def provision(self):
