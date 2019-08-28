@@ -357,17 +357,16 @@ Outputs:
                 if s3_config.cloudfront_origin == False:
                     origin_table['origin_access_id'] = "''"
                 else:
-                    origin_table['sub_origin_access_id'] = "!Ref OriginAccessIdentiy"+domain_hash
+                    param_name = "OriginAccessIdentiy"+domain_hash
+                    origin_table['sub_origin_access_id'] = "!Ref "+param_name
                     access_id_ref = origin.s3_bucket+'.origin_id'
                     parameters_yaml += self.gen_parameter(
                       param_type='String',
-                      name=origin_table['parameter_name'],
+                      name=param_name,
                       description='Origin Access Identity',
                       value=access_id_ref
                     )
                     origin_table['origin_access_id'] = s3_origin_access_id_fmt.format(origin_table)
-
-
                 origin_table['s3_origin_config'] = s3_origin_config_fmt.format(origin_table)
             origins_yaml += origin_fmt.format(origin_table)
         # ---------------------------------------------------------------------
