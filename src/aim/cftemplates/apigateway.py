@@ -57,7 +57,7 @@ class ApiGatewayRestApi(CFTemplate):
         method_params = []
         for method in self.apigatewayrestapi.methods.values():
             param_name = 'MethodArn' + self.create_cfn_logical_id(method.name)
-            lambda_arn_param = self.gen_parameter(
+            lambda_arn_param = self.create_cfn_parameter(
                 name=param_name,
                 param_type='String',
                 description='Lambda ARN parameter.',

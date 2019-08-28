@@ -73,7 +73,7 @@ class ELB(CFTemplate):
         self.set_parameter(StackOutputParam('SubnetList', segment_stack, subnet_list_key))
 
         # Security Group List
-        # TODO: Use self.gen_ref_list_param()
+        # TODO: Use self.create_cfn_ref_list_param()
         sg_output_param = StackOutputParam('SecurityGroupList')
         for sg_ref in elb_config['security_groups']:
             # TODO: Better name for self.get_stack_outputs_key_from_ref?

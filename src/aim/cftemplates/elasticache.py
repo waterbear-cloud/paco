@@ -45,7 +45,7 @@ class ElastiCache(CFTemplate):
             for sg_ref in elasticache_config.security_groups:
                 ref = Reference(sg_ref)
                 sg_param_name = 'SecurityGroupId'+ref.parts[-2]+ref.parts[-1]
-                sg_param = self.gen_parameter(
+                sg_param = self.create_cfn_parameter(
                     name=sg_param_name,
                     param_type='String',
                     description='VPC Security Group Id',
@@ -56,7 +56,7 @@ class ElastiCache(CFTemplate):
                 vpc_sg_list.append(troposphere.Ref(sg_param))
 
             # Subnet Ids
-            subnet_ids_param = self.gen_parameter(
+            subnet_ids_param = self.create_cfn_parameter(
                 name='SubnetIdList',
                 param_type='List<String>',
                 description='List of Subnet Ids to provision ElastiCache nodes',

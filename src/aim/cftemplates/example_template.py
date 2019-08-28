@@ -44,7 +44,7 @@ class Example(CFTemplate):
         # ---------------------------------------------------------------------------
         # Parameters
 
-        example_param = self.gen_parameter(
+        example_param = self.create_cfn_parameter(
             name='ExampleParameterName',
             param_type='String',
             description='Example parameter.',

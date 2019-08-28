@@ -105,7 +105,7 @@ Resources:
                 endpoint = ""
                 if references.is_ref(subscription.endpoint):
                     param_name = 'Endpoint%s' % topic_table['name']
-                    parameters_yaml += self.gen_parameter(
+                    parameters_yaml += self.create_cfn_parameter(
                         param_type='String',
                         name=param_name,
                         description='SNSTopic Endpoint value.',

@@ -86,7 +86,7 @@ class CWAlarms(CFTemplate):
             alarm_set_id,
         ):
         # Add Parameters
-        dimension_param = self.gen_parameter(
+        dimension_param = self.create_cfn_parameter(
             param_type = 'String',
             name = 'DimensionResource',
             description = 'The resource id or name for the metric dimension.',
@@ -97,7 +97,7 @@ class CWAlarms(CFTemplate):
         for alarm in alarms:
             if len(alarm.dimensions) > 1:
                 for dimension in alarm.dimensions:
-                    dimension.parameter = self.gen_parameter(
+                    dimension.parameter = self.create_cfn_parameter(
                         param_type = 'String',
                         name = 'DimensionResource{}{}'.format(alarm.cfn_resource_name, dimension.name),
                         description = 'The resource id or name for the metric dimension.',
@@ -119,7 +119,7 @@ class CWAlarms(CFTemplate):
                 if param_name in self.alarm_action_param_map.keys():
                     alarm_action_param = self.alarm_action_param_map[param_name]
                 else:
-                    alarm_action_param = self.gen_parameter(
+                    alarm_action_param = self.create_cfn_parameter(
                         param_type = 'String',
                         name = param_name,
                         description = 'The resource id or name for the metric dimension.',

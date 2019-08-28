@@ -41,7 +41,7 @@ class VPCPeering(CFTemplate):
 
         #---------------------------------------------------------------------
         # VPC Peering
-        vpc_id_param = self.gen_parameter(
+        vpc_id_param = self.create_cfn_parameter(
             name='VpcId',
             param_type='AWS::EC2::VPC::Id',
             description='The VPC Id',
@@ -75,7 +75,7 @@ class VPCPeering(CFTemplate):
                 for az in range(0, network_config.availability_zones):
                     az_str = str(az+1)
                     resource_name_suffix = peer.title() + 'AZ' + az_str
-                    route_table_param = self.gen_parameter(
+                    route_table_param = self.create_cfn_parameter(
                         name='PeerRouteTableId' + resource_name_suffix,
                         param_type='String',
                         description='The route table ID for AZ {}.'.format(az_str),

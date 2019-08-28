@@ -117,35 +117,35 @@ Outputs:
 
         # ---------------------------------------------------------------------
         # DistributionEnabled
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='DistributionEnabled',
           description='Boolean indicating whether the distribution is enabled or not',
           value=cloudfront_config.is_enabled()
         )
         # Price Class
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='PriceClass',
           description='CloudFront Price Class',
           value='PriceClass_'+cloudfront_config.price_class
         )
         # Default Target Origin ID
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='DefaultTargetOriginId',
           description='Default Target Origin Id',
           value=cloudfront_config.default_cache_behavior.target_origin
         )
          # Default Target Origin ID
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='ViewerProtocolPolicy',
           description='Default Viewer Protocol Policy',
           value=cloudfront_config.default_cache_behavior.viewer_protocol_policy
         )
         # Default TTL
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='DefaultTTL',
           description='Default TTL',
@@ -156,21 +156,21 @@ Outputs:
         # created in the app_engine with an aim reference of:
         #
         viewer_cert_ref = 'aim.ref '+self.config_ref+'.viewer_certificate.arn'
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='ViewerCertificate',
           description='SSL Viewer Certificate',
           value=viewer_cert_ref
         )
         # Viewer Certificate SSL Supported Method
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='ViewerCertSSLSupportedMethod',
           description='SSL Viewer Certificate SSL Supported Method',
           value=cloudfront_config.viewer_certificate.ssl_supported_method
         )
         # Viewer Certificate SSL Supported Method
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='ViewerCertMinimumProtocolVersion',
           description='SSL Viewer Certificate Minimum Protocol Version',
@@ -180,7 +180,7 @@ Outputs:
         webacl_id_yaml = ""
         if cloudfront_config.webacl_id != None:
             webacl_id_yaml = "        WebACLId: !Ref WAFWebACLId"
-            parameters_yaml += self.gen_parameter(
+            parameters_yaml += self.create_cfn_parameter(
               param_type='String',
               name='WebAclId',
               description='WAF Web Acl ID',
@@ -217,7 +217,7 @@ Outputs:
             alias_hash = md5sum(str_data=alias.domain_name)
             # DomainAlias
             domain_name_param = 'DomainAlias' + alias_hash
-            parameters_yaml += self.gen_parameter(
+            parameters_yaml += self.create_cfn_parameter(
                 param_type='String',
                 name=domain_name_param,
                 description='Domain Alias CNAME',
@@ -226,7 +226,7 @@ Outputs:
             domain_aliases_yaml += aliases_fmt.format(aliases_table)
             # RecordSet
             zone_param_name = 'AliasHostedZoneId' + alias_hash
-            parameters_yaml += self.gen_parameter(
+            parameters_yaml += self.create_cfn_parameter(
                 param_type='String',
                 name=zone_param_name,
                 description='Domain Alias Hosted Zone Id',
@@ -328,7 +328,7 @@ Outputs:
                 domain_hash = md5sum(str_data=origin.domain_name)
                 origin_domain_name = origin.domain_name
             param_name = 'OriginDomain' + domain_hash
-            parameters_yaml += self.gen_parameter(
+            parameters_yaml += self.create_cfn_parameter(
                 param_type='String',
                 name=param_name,
                 description='Origin Domain Name',
@@ -360,7 +360,7 @@ Outputs:
                     param_name = "OriginAccessIdentiy"+domain_hash
                     origin_table['sub_origin_access_id'] = "!Ref "+param_name
                     access_id_ref = origin.s3_bucket+'.origin_id'
-                    parameters_yaml += self.gen_parameter(
+                    parameters_yaml += self.create_cfn_parameter(
                       param_type='String',
                       name=param_name,
                       description='Origin Access Identity',

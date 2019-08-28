@@ -630,7 +630,7 @@ class CFTemplate():
         logical_id = big_join(str_list, '', camel_case)
         return self.create_cfn_logical_id(logical_id)
 
-    def gen_parameter(self, param_type, name, description, value, default=None, noecho=False, use_troposphere=False):
+    def create_cfn_parameter(self, param_type, name, description, value, default=None, noecho=False, use_troposphere=False):
         if default == '':
             default = "''"
         if value == None:
@@ -670,7 +670,7 @@ class CFTemplate():
                 param_dict
             )
 
-    def gen_ref_list_param(self, param_type, name, description, value, ref_attribute=None, default=None, noecho=False, use_troposphere=False):
+    def create_cfn_ref_list_param(self, param_type, name, description, value, ref_attribute=None, default=None, noecho=False, use_troposphere=False):
         stack_output_param = StackOutputParam(name)
         for item_ref in value:
             if ref_attribute != None:
@@ -682,7 +682,7 @@ class CFTemplate():
             stack_output_param.add_stack_output(stack, stack_output_key)
 
 
-        return self.gen_parameter(param_type, name, description, stack_output_param, default, noecho, use_troposphere)
+        return self.create_cfn_parameter(param_type, name, description, stack_output_param, default, noecho, use_troposphere)
 
     def gen_output(self, name, value):
         return """

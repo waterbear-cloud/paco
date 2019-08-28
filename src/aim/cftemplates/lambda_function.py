@@ -379,7 +379,7 @@ Outputs:
         for sns_topic_arn in lambda_config.sns_topics:
             # SNS Topic Arn parameters
             param_name = 'SNSTopicArn%d' % idx
-            parameters_yaml += self.gen_parameter(
+            parameters_yaml += self.create_cfn_parameter(
                 param_type='String',
                 name=param_name,
                 description='An SNS Topic ARN to grant permission to.',

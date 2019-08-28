@@ -36,21 +36,21 @@ class VPC(CFTemplate):
 
         #---------------------------------------------------------------------
         # VPC
-        cidr_block_param = self.gen_parameter(
+        cidr_block_param = self.create_cfn_parameter(
             name='CidrBlock',
             param_type='String',
             description='The VPC CIDR block',
             value=vpc_config.cidr,
             use_troposphere=True
         )
-        enable_dns_support_param = self.gen_parameter(
+        enable_dns_support_param = self.create_cfn_parameter(
             name='EnableDnsSupport',
             param_type='String',
             description='Indicates whether the DNS resolution is supported for the VPC.',
             value=vpc_config.enable_dns_support,
             use_troposphere=True
         )
-        enable_dns_hostname_param = self.gen_parameter(
+        enable_dns_hostname_param = self.create_cfn_parameter(
             name='EnableDnsHostnames',
             param_type='String',
             description='Indicates whether the instances launched in the VPC get DNS hostnames.',
@@ -107,7 +107,7 @@ class VPC(CFTemplate):
         #---------------------------------------------------------------------
         # Private Hosted Zone
         if vpc_config.private_hosted_zone.enabled == True:
-            internal_domain_name_param = self.gen_parameter(
+            internal_domain_name_param = self.create_cfn_parameter(
                 name='PrivateZoneDomainName',
                 param_type='String',
                 description='The name of the private hosted zone domain.',

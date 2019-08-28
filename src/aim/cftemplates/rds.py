@@ -175,84 +175,84 @@ Resources:
 
         # ---------------------------------------------------------------------
         # Parameters
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='RDSEnabled',
           description='Boolean indicating whether RDS is enabled or not. Disabled will remove existing databases.',
           value=rds_config.is_enabled()
         )
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='Engine',
           description='RDS Engine',
           value=rds_config.engine
         )
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='EngineVersion',
           description='RDS Engine Version',
           value=rds_config.engine_version
         )
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='BackupRetentionPeriod',
           description='Backup retention period in days.',
           value=rds_config.backup_retention_period
         )
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='KMSKeyId',
           description='Specify a KMS Key Id to enable encryption at rest.',
           default='',
           value=rds_config.kms_key_id
         )
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='MasterUsername',
           description='The master username to use when creating a new database instance.',
           value=rds_config.master_username
         )
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='MasterUserPassword',
           description='The master user password.',
           value=rds_config.master_user_password,
           noecho=True
         )
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='Port',
           description='The database port.',
           value=rds_config.port
         )
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='PreferredBackupWindow',
           description='The preferred backup window.',
           value=rds_config.backup_preferred_window
         )
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='PreferredMaintenanceWindow',
           description='The preferred maintenance window.',
           value=rds_config.maintenance_preferred_window
         )
 
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='PrimaryDomainName',
           description='The primary domain name of the database',
           value=rds_config.primary_domain_name
         )
 
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='PrimaryHostedZoneId',
           description='The primary domain name hosted zone id.',
           value=rds_config.primary_hosted_zone+'.id'
         )
 
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='DBSnapshotIdentifier',
           description='The primary domain name hosted zone id.',
@@ -260,7 +260,7 @@ Resources:
           default=''
         )
 
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='DBInstanceClass',
           description='The database instance class type',
@@ -269,19 +269,19 @@ Resources:
 
         major_version = '.'.join(rds_config.engine_version.split('.')[0:2])
         param_group_family = vocabulary.rds_engine_versions[rds_config.engine][major_version]['param_group_family']
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='ParameterGroupFamily',
           description='The database parameter group family.',
           value=param_group_family
         )
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='AllowMajorVersionUpgrade',
           description='Allow automated major version upgrades.',
           value=rds_config.allow_major_version_upgrade
         )
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='AllowMinorVersionUpgrade',
           description='Allow automated minor version upgrades.',
@@ -289,7 +289,7 @@ Resources:
         )
 
         # Subnet IDs
-        parameters_yaml += self.gen_parameter(
+        parameters_yaml += self.create_cfn_parameter(
           param_type='List<AWS::EC2::Subnet::Id>',
           name='DBSubnetIdList',
           description='The list of subnet IDs where this database will be provisioned.',
@@ -297,13 +297,13 @@ Resources:
         )
 
         if schemas.IRDSMysql.providedBy(rds_config):
-            parameters_yaml += self.gen_parameter(
+            parameters_yaml += self.create_cfn_parameter(
                 param_type='String',
                 name='MultiAZ',
                 description='Enabled MultiAZ boolean.',
                 value=rds_config.multi_az
             )
-            parameters_yaml += self.gen_parameter(
+            parameters_yaml += self.create_cfn_parameter(
                 param_type='String',
                 name='AllocatedStorage',
                 description='The amount of storage to allocate on database creation in gigabytes.',
