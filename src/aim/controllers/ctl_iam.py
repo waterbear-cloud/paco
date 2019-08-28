@@ -592,4 +592,9 @@ class IAMController(Controller):
             stack_group = self.iam_user_stack_groups[account_name]
             stack_group.provision()
 
+    def delete(self):
+        for account_name in self.iam_user_stack_groups.keys():
+            stack_group = self.iam_user_stack_groups[account_name]
+            stack_group.delete()
+
 
