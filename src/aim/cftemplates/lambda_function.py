@@ -37,9 +37,34 @@ class Lambda(CFTemplate):
         self.set_parameter('MemorySize', lambda_config.memory_size)
         self.set_parameter('ReservedConcurrentExecutions', lambda_config.reserved_concurrent_executions)
         self.set_parameter('Timeout', lambda_config.timeout)
-        self.set_parameter('CodeS3Bucket', lambda_config.code.s3_bucket + ".name")
-        self.set_parameter('CodeS3Key', lambda_config.code.s3_key)
         self.set_parameter('EnableSDBCache', lambda_config.sdb_cache)
+
+        # Code object: S3 Bucket or inline ZipFile?
+        s3_code = ""
+        code_resource = ""
+        if lambda_config.code.s3_bucket:
+            self.set_parameter('CodeS3Bucket', lambda_config.code.s3_bucket + ".name")
+            self.set_parameter('CodeS3Key', lambda_config.code.s3_key)
+            code_resource = """
+        S3Bucket: !Ref CodeS3Bucket
+        S3Key: !Ref CodeS3Key
+"""
+            s3_code = """
+  CodeS3Bucket:
+    Description: "An Amazon S3 bucket in the same AWS Region as your function. The bucket can be in a different AWS account."
+    Type: String
+
+  CodeS3Key:
+    Description: "The Amazon S3 key of the deployment package."
+    Type: String
+"""
+        else:
+            padding = "          "
+            code_resource = """
+        ZipFile: |
+"""
+            for line in lambda_config.code.zipfile.split('\n'):
+                code_resource += padding + line + '\n'
 
         # Define the Template
         template_fmt = """
@@ -79,14 +104,7 @@ Parameters:
   Timeout:
     Description: "The amount of time that Lambda allows a function to run before stopping it. "
     Type: Number
-
-  CodeS3Bucket:
-    Description: "An Amazon S3 bucket in the same AWS Region as your function. The bucket can be in a different AWS account."
-    Type: String
-
-  CodeS3Key:
-    Description: "The Amazon S3 key of the deployment package."
-    Type: String
+{0[s3_code]:s}
 
   EnableSDBCache:
     Description: "Boolean indicating whether an SDB Domain will be created to be used as a cache."
@@ -170,8 +188,7 @@ Resources:
       # FunctionName: # We will allow CloudFormation to choose the name as it will
       #                 already be based on the stack name.
       Code:
-        S3Bucket: !Ref CodeS3Bucket
-        S3Key: !Ref CodeS3Key
+{0[code_resource]:s}
       Handler: !Ref Handler
       Role: !Ref RoleArn
       Runtime: !Ref Runtime
@@ -292,7 +309,9 @@ Outputs:
             'environment': "",
             'outputs': "",
             'sdb_dependency': sdb_dependency,
-            'permissions': ""
+            'permissions': "",
+            's3_code': s3_code,
+            'code_resource': code_resource
         }
 
         env_header = """
