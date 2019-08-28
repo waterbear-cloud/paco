@@ -106,9 +106,7 @@ class ApiGatewayRestApi(CFTemplate):
             # IAM Role - allows API Gateway to invoke Lambda
             # ToDo: enable Api Gateway to invoke things other than Lambda ...
             iam_role_resource = troposphere.iam.Role(
-                'ApiGatewayIamRole' + self.normalize_resource_name(
-                    self.apigatewayrestapi.name + method.name
-                ),
+                self.create_cfn_logical_id('ApiGatewayIamRole' + self.apigatewayrestapi.name + method.name),
                 Path='/',
                 AssumeRolePolicyDocument=Policy(
                     Version='2012-10-17',
@@ -122,9 +120,7 @@ class ApiGatewayRestApi(CFTemplate):
                 ),
                 Policies=[
                     troposphere.iam.Policy(
-                        PolicyName='LambdaAccessApiGateway' + self.normalize_resource_name(
-                            self.apigatewayrestapi.name + method.name
-                        ),
+                        PolicyName=self.create_cfn_logical_id('LambdaAccessApiGateway' + self.apigatewayrestapi.name + method.name),
                         PolicyDocument=Policy(
                             Version='2012-10-17',
                             Statement=[
@@ -169,7 +165,7 @@ class ApiGatewayRestApi(CFTemplate):
 
         # Stage
         for stage in self.apigatewayrestapi.stages.values():
-            stage_id = 'ApiGatewayStage' + self.normalize_resource_name(stage.name)
+            stage_id = self.create_cfn_logical_id('ApiGatewayStage' + stage.name)
             cfn_export_dict = stage.cfn_export_dict
             cfn_export_dict["RestApiId"] = troposphere.Ref(restapi_resource)
             cfn_export_dict["DeploymentId"] = troposphere.Ref(deployment_resource)

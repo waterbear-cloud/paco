@@ -9,7 +9,7 @@ from aim.core.exception import StackException, AimErrorCode, AimException
 from aim.models import references
 from aim.models.references import Reference
 from aim.stack_group import Stack, StackOrder
-from aim.utils import dict_of_dicts_merge, md5sum, big_join
+from aim.utils import dict_of_dicts_merge, md5sum, big_join, list_to_comma_string
 from botocore.exceptions import ClientError
 from pprint import pprint
 
@@ -290,7 +290,7 @@ class CFTemplate():
         pass
 
     def generate_template(self):
-        #print("Generating template: " + self.get_yaml_path())
+        "Write template to the filesystem"
         self.aim_sub()
         # Create folder and write template body to file
         pathlib.Path(self.build_folder).mkdir(parents=True, exist_ok=True)
@@ -298,10 +298,10 @@ class CFTemplate():
         stream.write(self.body)
         stream.close()
 
-    # Sets Scheduled output parameters to be collected from one stacks Outputs
-    #   - This is called after a stacks status has been polled
     def generate_stack_parameters(self):
-        #print("Generating Stack Parameters")
+        """Sets Scheduled output parameters to be collected from one stacks Outputs.
+        This is called after a stacks status has been polled.
+        """
         parameter_list = []
         for param_entry in self.parameters:
             parameter = param_entry.gen_parameter()
@@ -311,31 +311,29 @@ class CFTemplate():
                 'UsePreviousValue': parameter.use_previous_value,
                 'ResolvedValue': parameter.resolved_value  # For resolving SSM Parameters
             }
-
             parameter_list.append(stack_param_entry)
 
-        #pprint(repr(parameter_list))
         return parameter_list
 
-    # Adds a parameter to the template's stack
-    #   output_param_key:  If string: Grabs the value of the key from the stacks oututs
-    #                      If list: Grabs the values of each key in the list and forms a single comma delimited string as the value
-    def set_parameter( self,
-                       param_key,
-                       param_value=None,
-                       use_previous_param_value=False,
-                       resolved_ssm_value=""):
-
+    def set_parameter(
+        self,
+        param_key,
+        param_value=None,
+        use_previous_param_value=False,
+        resolved_ssm_value=""
+    ):
+        """Adds a parameter to the template's stack.
+        If param_key is a string, grabs the value of the key from the stack outputs,
+        if a list, grabs the values of each key in the list and forms a single comma delimited string as the value.
+        """
         param_entry = None
         if type(param_key) == StackOutputParam:
-            #print("Type: StackOutput")
             param_entry = param_key
         elif type(param_key) == Parameter:
-            #print("Type: Parameter")
             param_entry = param_key
         elif isinstance(param_value, list):
             # Security Group List
-            param_entry = Parameter(param_key, self.list_to_string(param_value))
+            param_entry = Parameter(param_key, list_to_comma_string(param_value))
         elif isinstance(param_value, str) and references.is_ref(param_value):
             param_value = param_value.replace("<account>", self.account_ctx.get_name())
             param_value = param_value.replace("<region>", self.aws_region)
@@ -360,10 +358,10 @@ class CFTemplate():
         self.parameters.append(param_entry)
 
     def set_list_parameter(self, param_name, param_list, ref_att=None):
+        "Sets a parameter from a list as a comma-separated value"
         value_list = []
         is_stack_list = False
         for param_ref in param_list:
-            # print("ALB: SG_REF: " + sg_ref)
             if ref_att:
                 param_ref += '.'+ref_att
             value = Reference(param_ref).resolve(self.aim_ctx.project)
@@ -373,24 +371,24 @@ class CFTemplate():
                 raise StackException(AimErrorCode.Unknown, message = 'Cannot have mixed Stacks and non-Stacks in the list: ' + param_ref)
             if value == None:
                 raise StackException(AimErrorCode.Unknown, message = 'Unable to resolve reference: ' + param_ref)
-
             value_list.append([param_ref,value])
 
         # If this is the first time this stack has been provisioned,
         # we will need to deferr to the stack outputs
         if is_stack_list == True:
             output_param = StackOutputParam(param_name)
-            for param_ref,stack in value_list:
+            for param_ref, stack in value_list:
                 output_key = self.get_stack_outputs_key_from_ref(Reference(param_ref))
                 output_param.add_stack_output(stack, output_key)
             self.set_parameter(output_param)
         else:
             param_list = []
-            for param_ref,value in value_list:
+            for param_ref, value in value_list:
                 param_list.append(value)
             self.set_parameter(param_name, ','.join(param_list))
 
     def gen_cache_id(self):
+        "Create and return an MD5 cache id of the template"
         yaml_path = pathlib.Path(self.get_yaml_path())
         if yaml_path.exists() == False:
             return None
@@ -406,6 +404,8 @@ class CFTemplate():
 
 
     def set_template(self, template_body):
+        """Sets the template and if there is not already a stack_group,
+        creates a Stack and adds it to the stack_group."""
         self.body = template_body
         if self.stack_group != None:
             stack = Stack(
@@ -420,14 +420,12 @@ class CFTemplate():
             )
             self.stack_group.add_stack_order(stack, self.stack_order)
 
-    # Gets the output key of a project reference
     def get_stack_outputs_key_from_ref(self, ref, stack=None):
+        "Gets the output key of a project reference"
         if isinstance(ref, Reference) == False:
             raise StackException(
                 AimErrorCode.Unknown,
                 message="Invalid Reference object")
-
-
         if stack == None:
             stack = ref.resolve(self.aim_ctx.project)
         output_key = stack.get_outputs_key_from_ref(ref)
@@ -437,17 +435,8 @@ class CFTemplate():
                 message="Unable to find outputkey for ref: %s" % ref.raw)
         return output_key
 
-
-    # TODO: Put in a common place
-    def list_to_string(self, list_to_convert):
-        comma=''
-        str_list = ""
-        for item in list_to_convert:
-            str_list += comma + item
-            comma = ','
-        return str_list
-
     def gen_cf_logical_name(self, name, sep=None):
+        "Create a CloudFormation safe Logical name"
         sep_list = ['_','-','@','.']
         if sep != None:
             sep_list = [sep]
@@ -463,24 +452,25 @@ class CFTemplate():
 
         return cf_name
 
-    # Finds and return the Key for the ref.
     def get_outputs_key_from_ref(self, ref):
+        "Finds and return the Key for the ref"
         for stack_output_config in self.stack_output_config_list:
-            #print("Outputs: " + stack_output_config.config_ref)
-            #print("       : " + ref.ref)
             if stack_output_config.config_ref == ref.ref:
-                #print("Returning key: " + stack_output_config.key)
                 return stack_output_config.key
 
-    def register_stack_output_config(self,
-                                     config_ref,
-                                     stack_output_key):
+    def register_stack_output_config(
+        self,
+        config_ref,
+        stack_output_key
+    ):
+        "Register stack output config"
         if config_ref.startswith('aim.ref'):
             raise AimException(AimErrorCode.Unknown, message='Registered stack output config reference must not start with aim.ref: '+config_ref)
         stack_output_config = StackOutputConfig(config_ref, stack_output_key)
         self.stack_output_config_list.append(stack_output_config)
 
     def process_stack_output_config(self, stack):
+        "Process stack output config"
         merged_config = {}
         for output_config in self.stack_output_config_list:
             config_dict = output_config.get_config_dict(stack)
@@ -540,6 +530,7 @@ class CFTemplate():
             raise AimException(AimErrorCode.Unknown)
 
     def resource_name_filter(self, name, filter_id):
+        "Checks a name against a filter and raises a StackException if it is not a valid AWS name"
         message = None
         if filter_id in [
             'EC2.ElasticLoadBalancingV2.LoadBalancer.Name',
@@ -600,10 +591,12 @@ class CFTemplate():
         # By default return a '-' for invalid characters
         return '-'
 
-   # Resource names
-    # Alphanumberic (A-Za-z0-9) and dashes.
-    # Invalid characters are removed or changed into a dash.
+
     def create_resource_name(self, name, remove_invalids=False, filter_id=None):
+        """
+        Resource names are only alphanumberic (A-Za-z0-9) and dashes.
+        Invalid characters are removed or changed into a dash.
+        """
         if name.isalnum() == True:
             return name
         new_name = ""
@@ -622,8 +615,8 @@ class CFTemplate():
         name = big_join(name_list, separator, camel_case)
         return self.create_resource_name(name, filter_id=filter_id)
 
-    # The logical ID must be alphanumeric (A-Za-z0-9) and unique within the template.
     def create_cfn_logical_id(self, name):
+        "The logical ID must be alphanumeric (A-Za-z0-9) and unique within the template."
         return self.create_resource_name(name, remove_invalids=True).replace('-', '')
 
     def create_cfn_logical_id_join(self, str_list, camel_case=False):
@@ -631,6 +624,8 @@ class CFTemplate():
         return self.create_cfn_logical_id(logical_id)
 
     def create_cfn_parameter(self, param_type, name, description, value, default=None, noecho=False, use_troposphere=False):
+        """Return a CloudFormation Parameter
+        """
         if default == '':
             default = "''"
         if value == None:
@@ -681,10 +676,10 @@ class CFTemplate():
             stack_output_key = self.get_stack_outputs_key_from_ref(Reference(item_ref))
             stack_output_param.add_stack_output(stack, stack_output_key)
 
-
         return self.create_cfn_parameter(param_type, name, description, stack_output_param, default, noecho, use_troposphere)
 
     def gen_output(self, name, value):
+        "Return name and value as a CFN YAML formatted string"
         return """
   {}:
     Value: {}
