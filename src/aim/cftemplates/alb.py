@@ -458,9 +458,9 @@ Outputs:
         }
 
         self.set_template(template_fmt.format(template_fmt_table))
-        if alb_config.is_enabled():
-            self.register_stack_output_config(self.alb_config_ref+'.arn', 'LoadBalancerArn')
-            self.register_stack_output_config(self.alb_config_ref+'.name', 'LoadBalancerName')
-            self.register_stack_output_config(self.alb_config_ref+'.fullname', 'LoadBalancerFullName')
-            self.register_stack_output_config(self.alb_config_ref+'.canonicalhostedzoneid', 'LoadBalancerCanonicalHostedZoneID')
-            self.register_stack_output_config(self.alb_config_ref+'.dnsname', 'LoadBalancerDNSName')
+
+        self.register_stack_output_config(self.alb_config_ref+'.arn', 'LoadBalancerArn')
+        self.register_stack_output_config(self.alb_config_ref+'.name', 'LoadBalancerName')
+        self.register_stack_output_config(self.alb_config_ref+'.fullname', 'LoadBalancerFullName')
+        self.register_stack_output_config(self.alb_config_ref+'.canonicalhostedzoneid', 'LoadBalancerCanonicalHostedZoneID')
+        self.register_stack_output_config(self.alb_config_ref+'.dnsname', 'LoadBalancerDNSName')

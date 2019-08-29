@@ -334,7 +334,7 @@ class CFTemplate():
         elif isinstance(param_value, list):
             # Security Group List
             param_entry = Parameter(param_key, list_to_comma_string(param_value))
-        elif isinstance(param_value, str) and references.is_ref(param_value):
+        elif isinstance(param_value, str) and references.is_ref(param_value) and self.enabled:
             param_value = param_value.replace("<account>", self.account_ctx.get_name())
             param_value = param_value.replace("<region>", self.aws_region)
             ref = Reference(param_value)
@@ -359,6 +359,9 @@ class CFTemplate():
 
     def set_list_parameter(self, param_name, param_list, ref_att=None):
         "Sets a parameter from a list as a comma-separated value"
+        # If we are not enabled, do not try to
+        if self.enabled == False:
+            return
         value_list = []
         is_stack_list = False
         for param_ref in param_list:
@@ -418,7 +421,8 @@ class CFTemplate():
                 hooks=self.stack_hooks,
                 update_only=self.update_only
             )
-            self.stack_group.add_stack_order(stack, self.stack_order)
+            if self.enabled == True:
+                self.stack_group.add_stack_order(stack, self.stack_order)
 
     def get_stack_outputs_key_from_ref(self, ref, stack=None):
         "Gets the output key of a project reference"

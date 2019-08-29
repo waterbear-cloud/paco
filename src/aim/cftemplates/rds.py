@@ -43,8 +43,9 @@ Parameters:
 Conditions:
   RDSIsEnabled: !Equals [!Ref RDSEnabled, 'true']
   EncryptionIsEnabled: !Not [!Equals [!Ref KMSKeyId, '']]
-  DBSnapshopExists: !Not [!Equals [!Ref DBSnapshotIdentifier, '']]
-  EncryptionEnabledAndNotDBSnapshopExists: !And [!Condition EncryptionIsEnabled, !Not [!Condition DBSnapshopExists]]
+  DBSnapshotExists: !Not [!Equals [!Ref DBSnapshotIdentifier, '']]
+  EncryptionEnabledAndNotDBSnapshotExists: !And [!Condition EncryptionIsEnabled, !Not [!Condition DBSnapshotExists]]
+  OptionGroupIsEnabled: !Equals [!Ref OptionGroupEnabled, 'true']
 
 Resources:
 
@@ -60,6 +61,15 @@ Resources:
       Description: !Ref 'AWS::StackName'
       Family: !Ref ParameterGroupFamily
 
+  OptionGroup:
+    Type: AWS::RDS::OptionGroup
+    Condition: OptionGroupIsEnabled
+    Properties:
+      EngineName: !Ref Engine
+      MajorEngineVersion: !Ref EngineMajorVersion
+      OptionConfigurations:{0[option_configurations]}
+      OptionGroupDescription: !Ref 'AWS::StackName'
+
 {0[resources]:s}
 
 #Outputs:
@@ -72,6 +82,7 @@ Resources:
             'engine_version': None,
             'parameters': None,
             'resources': None,
+            'option_configurations': None,
             'outputs': None
         }
 
@@ -98,10 +109,10 @@ Resources:
     UpdateReplacePolicy: Snapshot
     Properties:
       {0[common_db_properties]:s}
-      #DatabaseName: !If [DBSnapshopExists, !Ref 'AWS::NoValue', !Ref DatabaseName]
+      #DatabaseName: !If [DBSnapshotExists, !Ref 'AWS::NoValue', !Ref DatabaseName]
       DBClusterParameterGroupName: !Ref DBClusterParameterGroup
       EngineMode: provisioned
-      SnapshotIdentifier: !If [DBSnapshopExists, !Ref DBSnapshotIdentifier, !Ref 'AWS::NoValue']
+      SnapshotIdentifier: !If [DBSnapshotExists, !Ref DBSnapshotIdentifier, !Ref 'AWS::NoValue']
       VpcSecurityGroupIds: {0[security_group_ids]:s}
 """
 
@@ -132,6 +143,9 @@ Resources:
 """
         db_instance_properties = """
       AllocatedStorage: !Ref AllocatedStorage
+      DBSnapshotIdentifier: !If [DBSnapshotExists, !Ref DBSnapshotIdentifier, !Ref 'AWS::NoValue']
+      StorageType: !Ref StorageType
+      OptionGroupName: !If [OptionGroupIsEnabled, !Ref OptionGroup, !Ref 'AWS::NoValue']
 """
 
         db_common_properties_fmt = """
@@ -139,13 +153,13 @@ Resources:
       EngineVersion: !Ref EngineVersion
       BackupRetentionPeriod: !Ref BackupRetentionPeriod
       DBSubnetGroupName: !Ref DBSubnetGroup
-      KmsKeyId: !If [EncryptionEnabledAndNotDBSnapshopExists, !Ref KMSKeyId, !Ref 'AWS::NoValue']
-      MasterUsername: !If [DBSnapshopExists, !Ref 'AWS::NoValue', !Ref MasterUsername]
-      MasterUserPassword: !If [DBSnapshopExists, !Ref 'AWS::NoValue', !Ref MasterUserPassword]
+      KmsKeyId: !If [EncryptionEnabledAndNotDBSnapshotExists, !Ref KMSKeyId, !Ref 'AWS::NoValue']
+      MasterUsername: !If [DBSnapshotExists, !Ref 'AWS::NoValue', !Ref MasterUsername]
+      MasterUserPassword: !If [DBSnapshotExists, !Ref 'AWS::NoValue', !Ref MasterUserPassword]
       Port: !Ref Port
       PreferredBackupWindow: !Ref PreferredBackupWindow
       PreferredMaintenanceWindow: !Ref PreferredMaintenanceWindow
-      StorageEncrypted: !If [DBSnapshopExists, !Ref 'AWS::NoValue', !If [EncryptionIsEnabled, true, false]]
+      StorageEncrypted: !If [DBSnapshotExists, !Ref 'AWS::NoValue', !If [EncryptionIsEnabled, true, false]]
 """
 
         record_set_fmt = """
@@ -169,7 +183,6 @@ Resources:
           'db_cluster_properties': None
         }
 
-        template_yaml = ""
         parameters_yaml = ""
         resources_yaml = ""
 
@@ -192,6 +205,12 @@ Resources:
           name='EngineVersion',
           description='RDS Engine Version',
           value=rds_config.engine_version
+        )
+        parameters_yaml += self.create_cfn_parameter(
+          param_type='String',
+          name='EngineMajorVersion',
+          description='RDS Engine Major Version',
+          value='.'.join(rds_config.engine_version.split('.')[0:2])
         )
         parameters_yaml += self.create_cfn_parameter(
           param_type='String',
@@ -255,8 +274,8 @@ Resources:
         parameters_yaml += self.create_cfn_parameter(
           param_type='String',
           name='DBSnapshotIdentifier',
-          description='The primary domain name hosted zone id.',
-          value=None,
+          description='The DB Snapshot Identifier or ARN to create a database from.',
+          value=rds_config.db_snapshot_identifier,
           default=''
         )
 
@@ -296,6 +315,18 @@ Resources:
           value=rds_config.segment+'.subnet_id_list'
         )
 
+        # Options Group
+        options_group_enabled = False
+        if len(rds_config.option_configurations) > 0:
+            options_group_enabled = True
+        parameters_yaml += self.create_cfn_parameter(
+          param_type='String',
+          name='OptionGroupEnabled',
+          description='Boolean indicating whether to create and link to an OptionGroup.',
+          value=options_group_enabled
+        )
+
+        # RDS Mysql
         if schemas.IRDSMysql.providedBy(rds_config):
             parameters_yaml += self.create_cfn_parameter(
                 param_type='String',
@@ -309,6 +340,12 @@ Resources:
                 description='The amount of storage to allocate on database creation in gigabytes.',
                 value=rds_config.storage_size_gb
             )
+            parameters_yaml += self.create_cfn_parameter(
+                param_type='String',
+                name='StorageType',
+                description='The storage type must be one of standard, gp2, or io1.',
+                value=rds_config.storage_type
+            )
 
             db_table['db_position'] = 'Primary'
             db_table['db_instance_properties'] = db_common_properties_fmt + db_instance_properties
@@ -319,12 +356,22 @@ Resources:
                 resources_yaml += record_set_fmt.format(db_table)
 
 
+        option_configurations_yaml = ""
+        for option_config in rds_config.option_configurations:
+            option_configurations_yaml += '\n        - OptionName: ' + option_config.option_name
+            if len(option_config.option_settings) > 0:
+                option_configurations_yaml += '\n          OptionSettings:'
+            for option_setting in option_config.option_settings:
+                option_configurations_yaml += "\n            - Name: " + option_setting.name
+                option_configurations_yaml += "\n              Value: '" + option_setting.value + "'"
+
                   #self.register_stack_output_config(config_ref, 'OutoutKeyName')
 
         template_table['parameters'] = parameters_yaml
         template_table['resources'] = resources_yaml
         template_table['engine'] = rds_config.engine
         template_table['engine_version'] = rds_config.engine_version
+        template_table['option_configurations'] = option_configurations_yaml
         template_table['outputs'] = ""
 
         self.set_template(template_yaml_fmt.format(template_table))
