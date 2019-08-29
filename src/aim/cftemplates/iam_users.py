@@ -62,7 +62,7 @@ class IAMUsers(CFTemplate):
         # Parameters
 
         username_param = self.create_cfn_parameter(
-            name='Username',
+            name=self.create_cfn_logical_id('Username'+utils.md5sum(str_data=iam_user_config.username)),
             param_type='String',
             description='The name of the user.',
             value=iam_user_config.username,
@@ -74,7 +74,7 @@ class IAMUsers(CFTemplate):
             user_password = utils.md5sum(str_data=iam_user_config.username)[:8]
             print("{}: default password: {}".format(iam_user_config.username, user_password))
             password_param = self.create_cfn_parameter(
-                name='Password',
+                name=self.create_cfn_logical_id('Password'+utils.md5sum(str_data=user_password)),
                 param_type='String',
                 description='The password to assign of the user',
                 noecho=True,

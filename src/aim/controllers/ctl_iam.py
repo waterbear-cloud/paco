@@ -228,6 +228,7 @@ class IAMController(Controller):
         self.iam_config = self.aim_ctx.project['iam']
         self.iam_user_stack_groups = {}
         self.iam_user_access_keys_sdb_domain = 'AIM-IAM-Users-Access-Keys-Meta'
+        self.init_done = False
         #self.aim_ctx.log("IAM Service: Configuration: %s" % (name))
 
     # CodeCommit
@@ -459,6 +460,11 @@ class IAMController(Controller):
 
     def init_users(self):
         master_account_ctx = self.aim_ctx.get_account_context(account_ref='aim.ref accounts.master')
+        # StackGroup
+        for account_name in self.aim_ctx.project['accounts'].keys():
+            account_ctx = self.aim_ctx.get_account_context('aim.ref accounts.'+account_name)
+            self.iam_user_stack_groups[account_name] = IAMUserStackGroup(self.aim_ctx, account_ctx, account_name, self)
+
         for user_name in self.iam_config.users.keys():
             user_config = self.iam_config.users[user_name]
 
@@ -473,12 +479,11 @@ class IAMController(Controller):
                 init_method = getattr(self, "init_{}_permission".format(permission_config.type.lower()))
                 init_method(permission_config, permissions_by_account)
 
-            # Give access to accounts the user has explicitly access to
+            # Give access to accounts the user has explicit access to
+
             for account_name in self.aim_ctx.project['accounts'].keys():
                 account_ctx = self.aim_ctx.get_account_context('aim.ref accounts.'+account_name)
                 config_ref = 'resource.iam.users.'+user_name
-                # StackGroup
-                self.iam_user_stack_groups[account_name] = IAMUserStackGroup(self.aim_ctx, account_ctx, account_name, self)
                 # Template and stack
                 IAMUserAccountDelegates(
                     self.aim_ctx,
@@ -535,6 +540,9 @@ class IAMController(Controller):
     def init(self, controller_args):
         if controller_args == None:
             return
+        if self.init_done == True:
+            return
+        self.init_done = True
         if controller_args['arg_1'] == 'users':
             self.init_users()
 
