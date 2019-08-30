@@ -705,7 +705,7 @@ policies:
                 asg_response = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
                 instance_id = asg_response['AutoScalingGroups'][0]['Instances'][0]['InstanceId']
                 ssm_client = self.account_ctx.get_aws_client('ssm')
-                response = ssm_client.start_session(Target=instance_id)
+                ssm_client.start_session(Target=instance_id)
             else:
                 return self.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.Lambda):

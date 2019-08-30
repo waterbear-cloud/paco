@@ -550,6 +550,9 @@ class CFTemplate():
             'IAM.ManagedPolicy.ManagedPolicyName']:
             if len(name) > 255:
                 message = "Name must not be longer than 255 characters."
+        elif filter_id == 'IAM.Policy.PolicyName':
+            if len(name) > 128:
+                message = "Name must not be longer than 128 characters."
         elif filter_id == 'SecurityGroup.GroupName':
             pass
         else:
@@ -578,7 +581,8 @@ class CFTemplate():
                 return ch
         elif filter_id in [
             'IAM.Role.RoleName',
-            'IAM.ManagedPolicy.ManagedPolicyName']:
+            'IAM.ManagedPolicy.ManagedPolicyName',
+            'IAM.Policy.PolicyName']:
             if ch in '_+=,.@-.':
                 return ch
         elif filter_id in [
@@ -627,7 +631,10 @@ class CFTemplate():
         logical_id = big_join(str_list, '', camel_case)
         return self.create_cfn_logical_id(logical_id)
 
-    def create_cfn_parameter(self, param_type, name, description, value, default=None, noecho=False, use_troposphere=False):
+    def create_cfn_parameter(
+        self, param_type, name, description, value,
+        default=None, noecho=False, use_troposphere=False,
+        troposphere_template=None):
         """Return a CloudFormation Parameter
         """
         if default == '':
@@ -664,10 +671,13 @@ class CFTemplate():
             if noecho == True:
                 param_dict['NoEcho'] = True
 
-            return troposphere.Parameter.from_dict(
+            param = troposphere.Parameter.from_dict(
                 name,
                 param_dict
             )
+            if troposphere_template != None:
+                troposphere_template.add_parameter(param)
+            return param
 
     def create_cfn_ref_list_param(self, param_type, name, description, value, ref_attribute=None, default=None, noecho=False, use_troposphere=False):
         stack_output_param = StackOutputParam(name)
