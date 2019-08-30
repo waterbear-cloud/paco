@@ -45,6 +45,8 @@ class StackOutputsManager():
         if self.outputs_path[key] == None:
             raise StackException(AimErrorCode.Unknown, message="Outputs file has not been loaded.")
 
+        self.outputs_path[key].parent.mkdir(parents=True, exist_ok=True)
+
         with open(self.outputs_path[key], "w") as output_fd:
             yaml.dump(self.outputs_dict[key], output_fd)
 
@@ -112,6 +114,8 @@ class StackHooks():
         }
 
     def log_hooks(self):
+        if self.stack == None or self.stack.template.enabled == False:
+            return
         for stack_action_id in self.hooks.keys():
             action_config = self.hooks[stack_action_id]
             for timing_id in action_config.keys():
@@ -130,7 +134,8 @@ class StackHooks():
         }
         self.hooks[stack_action][stack_timing].append(hook)
         if self.stack != None:
-            self.stack.log_action("Init", "Hook", message=": {}: {}: {}".format(name, stack_action, stack_timing))
+            if self.stack.template.enabled == True:
+                self.stack.log_action("Init", "Hook", message=": {}: {}: {}".format(name, stack_action, stack_timing))
 
     def merge(self, new_hooks):
         if new_hooks == None:
@@ -353,9 +358,13 @@ class Stack():
 
         key = self.template.get_outputs_key_from_ref(ref)
         if key == None:
+            breakpoint()
+            message= "Error: Unable to find outputs key for ref: " + ref.raw
+            message+= 'Stack: '+self.get_name()
+            message+= 'Template: '+self.template.get_yaml_path()
             raise StackException(
                 AimErrorCode.Unknown,
-                message="Unable to find outputs key for ref: %s" % ref.raw)
+                message=message)
         return key
 
     def gen_cache_id(self):
