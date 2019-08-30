@@ -6,6 +6,7 @@ import awacs.sts
 import awacs.awslambda
 import troposphere
 import troposphere.apigateway
+import troposphere.awslambda
 import troposphere.iam
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.models import references
@@ -99,46 +100,61 @@ class ApiGatewayRestApi(CFTemplate):
             for resource in self.apigatewayrestapi.resources.values():
                 if resource.name == method.resource_id:
                     cfn_export_dict["ResourceId"] = troposphere.Ref(resource.resource)
+            if 'ResourceId' not in cfn_export_dict:
+                cfn_export_dict["ResourceId"] = troposphere.GetAtt(restapi_resource, 'RootResourceId')
             cfn_export_dict["RestApiId"] = troposphere.Ref(restapi_resource)
             uri = troposphere.Join('', ["arn:aws:apigateway:", method.region_name, ":lambda:path/2015-03-31/functions/", method.parameter_arn_ref, "/invocations"])
             cfn_export_dict["Integration"]["Uri"] = uri
 
-            # IAM Role - allows API Gateway to invoke Lambda
-            # ToDo: enable Api Gateway to invoke things other than Lambda ...
-            iam_role_resource = troposphere.iam.Role(
-                self.create_cfn_logical_id('ApiGatewayIamRole' + self.apigatewayrestapi.name + method.name),
-                Path='/',
-                AssumeRolePolicyDocument=Policy(
-                    Version='2012-10-17',
-                    Statement=[
-                        Statement(
-                            Effect=Allow,
-                            Action=[awacs.sts.AssumeRole],
-                            Principal=Principal('Service',['apigateway.amazonaws.com'])
+            if method.integration_type == 'AWS_PROXY':
+                # IAM Role - allows API Gateway to invoke Lambda
+                # ToDo: enable Api Gateway to invoke things other than Lambda ...
+                iam_role_resource = troposphere.iam.Role(
+                    self.create_cfn_logical_id('ApiGatewayIamRole' + self.apigatewayrestapi.name + method.name),
+                    Path='/',
+                    AssumeRolePolicyDocument=Policy(
+                        Version='2012-10-17',
+                        Statement=[
+                            Statement(
+                                Effect=Allow,
+                                Action=[awacs.sts.AssumeRole],
+                                Principal=Principal('Service',['apigateway.amazonaws.com'])
+                            )
+                        ],
+                    ),
+                    Policies=[
+                        troposphere.iam.Policy(
+                            PolicyName=self.create_cfn_logical_id('LambdaAccessApiGateway' + self.apigatewayrestapi.name + method.name),
+                            PolicyDocument=Policy(
+                                Version='2012-10-17',
+                                Statement=[
+                                    Statement(
+                                        Effect=Allow,
+                                        Action=[awacs.awslambda.InvokeFunction],
+                                        Resource=[method.parameter_arn_ref],
+                                    )
+                                ]
+                            )
                         )
-                    ],
-                ),
-                Policies=[
-                    troposphere.iam.Policy(
-                        PolicyName=self.create_cfn_logical_id('LambdaAccessApiGateway' + self.apigatewayrestapi.name + method.name),
-                        PolicyDocument=Policy(
-                            Version='2012-10-17',
-                            Statement=[
-                                Statement(
-                                    Effect=Allow,
-                                    Action=[awacs.awslambda.InvokeFunction],
-                                    Resource=[method.parameter_arn_ref],
-                                )
-                            ]
+                    ]
+                )
+                template.add_resource(iam_role_resource)
+                cfn_export_dict["Integration"]["Credentials"] = troposphere.GetAtt(iam_role_resource, "Arn")
+
+            elif method.integration_type == 'AWS':
+                # Enable Lambda (custom) integration
+                lambda_permission_resource = troposphere.awslambda.Permission(
+                    self.create_cfn_logical_id('LambdaPermissionApiGateway' + method.name),
+                    Action = 'lambda:InvokeFunction',
+                    FunctionName = method.parameter_arn_ref,
+                    Principal = 'apigateway.amazonaws.com',
+                    SourceArn = troposphere.Sub(
+                        "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${%s}/*/%s/" % (
+                            restapi_logical_id, method.http_method
                         )
                     )
-                ]
-            )
-            template.add_resource(iam_role_resource)
-
-            # if this is value is not supplied, give method ability to assume ApiGateway role
-            if not cfn_export_dict["Integration"]["Credentials"]:
-                cfn_export_dict["Integration"]["Credentials"] = troposphere.GetAtt(iam_role_resource, "Arn")
+                )
+                template.add_resource(lambda_permission_resource)
 
             method_resource = troposphere.apigateway.Method.from_dict(method_id, cfn_export_dict)
             method_resource.DependsOn = restapi_logical_id
