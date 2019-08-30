@@ -1,10 +1,11 @@
 Changelog for aim
 =================
 
-2.0.1 (unreleased)
+2.1.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- API Gateway REST API can now have models, methods and stages. It supports Lambda integration
+  with either 'AWS_PROXY' via an assumed Role or 'AWS' via a Lambda Permission.
 
 
 2.0.0 (2019-08-26)
