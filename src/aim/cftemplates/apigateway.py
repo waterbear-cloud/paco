@@ -62,7 +62,7 @@ class ApiGatewayRestApi(CFTemplate):
                 name=param_name,
                 param_type='String',
                 description='Lambda ARN parameter.',
-                value=method.integration_lambda,
+                value=method.integration.integration_lambda + '.arn',
                 use_troposphere=True
             )
             method.parameter_arn_ref = troposphere.Ref(param_name)
@@ -77,6 +77,17 @@ class ApiGatewayRestApi(CFTemplate):
             self.apigatewayrestapi.cfn_export_dict
         )
         template.add_resource(restapi_resource)
+
+        # Model
+        for model in self.apigatewayrestapi.models.values():
+            model.logical_id = self.create_cfn_logical_id('ApiGatewayModel' + model.name)
+            cfn_export_dict = model.cfn_export_dict
+            cfn_export_dict['RestApiId'] = troposphere.Ref(restapi_resource)
+            if 'Schema' not in cfn_export_dict:
+                cfn_export_dict['Schema'] = {}
+            model_resource = troposphere.apigateway.Model.from_dict(model.logical_id, cfn_export_dict)
+            model.resource = model_resource
+            template.add_resource(model_resource)
 
         # Resource
         for resource in self.apigatewayrestapi.resources.values():
@@ -106,7 +117,7 @@ class ApiGatewayRestApi(CFTemplate):
             uri = troposphere.Join('', ["arn:aws:apigateway:", method.region_name, ":lambda:path/2015-03-31/functions/", method.parameter_arn_ref, "/invocations"])
             cfn_export_dict["Integration"]["Uri"] = uri
 
-            if method.integration_type == 'AWS_PROXY':
+            if method.integration.integration_type == 'AWS_PROXY':
                 # IAM Role - allows API Gateway to invoke Lambda
                 # ToDo: enable Api Gateway to invoke things other than Lambda ...
                 iam_role_resource = troposphere.iam.Role(
@@ -141,8 +152,11 @@ class ApiGatewayRestApi(CFTemplate):
                 template.add_resource(iam_role_resource)
                 cfn_export_dict["Integration"]["Credentials"] = troposphere.GetAtt(iam_role_resource, "Arn")
 
-            elif method.integration_type == 'AWS':
+            elif method.integration.integration_type == 'AWS':
                 # Enable Lambda (custom) integration
+                # When send to a Lambda (Custom) the HTTP Method must always be POST regardless of
+                # the HttpMethod
+                cfn_export_dict["Integration"]["IntegrationHttpMethod"] = "POST"
                 lambda_permission_resource = troposphere.awslambda.Permission(
                     self.create_cfn_logical_id('LambdaPermissionApiGateway' + method.name),
                     Action = 'lambda:InvokeFunction',
@@ -156,17 +170,23 @@ class ApiGatewayRestApi(CFTemplate):
                 )
                 template.add_resource(lambda_permission_resource)
 
+            # look-up the method_names and assign a Ref to the model resource
+            # ToDo: validate model_names in the model
+            responses = []
+            for method_response in method.method_responses:
+                response_dict = {"StatusCode": method_response.status_code}
+                if method_response.response_models:
+                    response_dict["ResponseModels"] = {}
+                    for response_model in method_response.response_models:
+                        for model in self.apigatewayrestapi.models.values():
+                            if model.name == response_model.model_name:
+                                response_dict["ResponseModels"][response_model.content_type] = troposphere.Ref(model.resource)
+                responses.append(response_dict)
+            cfn_export_dict["MethodResponses"] = responses
+
             method_resource = troposphere.apigateway.Method.from_dict(method_id, cfn_export_dict)
             method_resource.DependsOn = restapi_logical_id
             template.add_resource(method_resource)
-
-        # Model
-        model = troposphere.apigateway.Model.from_dict(
-            'ApiGatewayModel',
-            {'Schema': {},
-            'RestApiId': troposphere.Ref(restapi_resource)
-            }
-        )
 
         # Deployment
         deployment_resource = troposphere.apigateway.Deployment.from_dict(
