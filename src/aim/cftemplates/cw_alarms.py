@@ -60,7 +60,7 @@ class CWAlarms(CFTemplate):
         template.add_resource(
             troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
         )
-        #breakpoint()
+
         self.alarm_action_param_map = {}
         if resource.is_enabled() and resource.monitoring.enabled:
             self.add_alarms(
@@ -110,8 +110,6 @@ class CWAlarms(CFTemplate):
         for alarm in alarms:
             # compute dynamic attributes for cfn_export_dict
             alarm_export_dict = alarm.cfn_export_dict
-            #if self.aws_name.find('ASG') != -1:
-            #    breakpoint()
             alarm_action_list = []
             for alarm_action in alarm.get_alarm_actions():
                 # Create parameter

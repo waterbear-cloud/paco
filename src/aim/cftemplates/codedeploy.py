@@ -136,6 +136,10 @@ Resources:
 
   ToolsDelegateRole:
     Type: AWS::IAM::Role
+    DependsOn:
+      - CodeDeployGroup
+      - CodeDeployConfiguration
+      - CodeDeployApplication
     Properties:
       RoleName: !Sub '${ResourceNamePrefix}-CodeDeploy-Tools-Delegate'
       AssumeRolePolicyDocument:
@@ -161,9 +165,9 @@ Resources:
                   - 'codedeploy:GetApplicationRevision'
                   - 'codedeploy:RegisterApplicationRevision'
                 Resource:
-                  - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:${ResourceNamePrefix}/*'
-                  - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:application:${ResourceNamePrefix}'
-                  - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:${ResourceNamePrefix}'
+                  - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:${CodeDeployApplication}/${CodeDeployGroup}'
+                  - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:application:${CodeDeployApplication}'
+                  - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:${CodeDeployConfiguration}'
               - Sid: KMSCMK
                 Effect: Allow
                 Action:

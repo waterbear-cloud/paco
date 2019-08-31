@@ -32,7 +32,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             action_config = stage_config[action_name]
             action_config.resolve_ref_obj = self
             method_name = 'init_stage_action_' + action_config.type.replace('.', '_').lower()
-            print("Loading DeploymentPipeline Stage: "+action_name+": {}".format(type(action_config)))
+            #print("Loading DeploymentPipeline Stage: "+action_name+": {}".format(type(action_config)))
             method = getattr(self, method_name)
             method(action_config)
 
@@ -310,30 +310,3 @@ policies:
                 # self.cpbd_codepipebuild_template will fail if there are two deployments
                 # this application... corner case, but might happen?
                 return ref.resource._template.get_project_arn()
-
-
-        breakpoint()
-        if ref.resource_ref.startswith('kms.'):
-            return self.kms_template.stack
-        elif ref.resource_ref == 'codecommit_role.arn':
-            iam_ctl = self.aim_ctx.get_controller("IAM")
-            return iam_ctl.role_arn(ref.raw[:-4])
-        elif ref.resource_ref == 'codecommit.arn':
-            codecommit_ref = ref.resource.codecommit_repository
-            return self.aim_ctx.get_ref(codecommit_ref+".arn")
-        elif ref.resource_ref == 'codebuild_role.arn':
-            # self.cpbd_codepipebuild_template will fail if there are two deployments
-            # this application... corner case, but might happen?
-            return ref.resource._template.get_codebuild_role_arn()
-        elif ref.resource_ref == 'codepipeline_role.arn':
-            return ref.resource._template.get_codepipeline_role_arn()
-        elif ref.resource_ref == 'codedeploy_tools_delegate_role.arn':
-            return ref.resource._template.get_tools_delegate_role_arn()
-        elif ref.resource_ref.startswith('kms.'):
-            return self.kms_template.stack
-        elif ref.resource_ref == 'codedeploy_application_name':
-            return ref.resource._template.get_application_name()
-        elif ref.resource_ref == 'deploy.deployment_group.name':
-            return ref.resource._template.stack
-        else:
-            breakpoint()

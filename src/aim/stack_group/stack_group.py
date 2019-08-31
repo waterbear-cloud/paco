@@ -358,7 +358,6 @@ class Stack():
 
         key = self.template.get_outputs_key_from_ref(ref)
         if key == None:
-            breakpoint()
             message= "Error: Unable to find outputs key for ref: " + ref.raw
             message+= 'Stack: '+self.get_name()
             message+= 'Template: '+self.template.get_yaml_path()

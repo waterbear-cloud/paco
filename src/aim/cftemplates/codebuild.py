@@ -233,4 +233,4 @@ class CodeBuild(CFTemplate):
         return "arn:aws:iam::{0}:role/".format(self.account_ctx.get_id()) + self.res_name_prefix + "-CodeBuild"
 
     def get_project_arn(self):
-        return "arn:aws:codebuild::{0}:project/".format(self.account_ctx.get_id()) + self.res_name_prefix
+        return "arn:aws:codebuild:{}:{}:project/".format(self.aws_region, self.account_ctx.get_id()) + self.res_name_prefix

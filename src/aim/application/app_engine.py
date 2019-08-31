@@ -85,16 +85,6 @@ class ApplicationEngine():
 
         print("Init: Application: %s: Completed" % (self.app_id))
 
-    def gen_iam_context_id(self, aws_region, iam_id=None):
-        """Generate an IAM context id"""
-        breakpoint()
-        iam_context_id = '-'.join([self.get_aws_name(), vocabulary.aws_regions[aws_region]['short_name']])
-        if iam_id != None:
-            iam_context_id += '-' + iam_id
-        if iam_context_id not in self.iam_contexts:
-            self.iam_contexts.append(iam_context_id)
-        return iam_context_id
-
 
     def gen_iam_role_id(self, res_id, role_id):
         return '-'.join([res_id, role_id])
@@ -424,8 +414,6 @@ role_name: %s""" % ("ASGInstance")
             self.ec2_launch_manager.get_cache_id(self.app_id, grp_id, res_id)
         )
 
-        #if res_config.name == 'webdemo':
-        #    breakpoint()
         if res_config.monitoring and len(res_config.monitoring.alarm_sets.values()) > 0:
             aws_name = '-'.join(['ASG', grp_id, res_id])
             self.init_alarms(aws_name, res_config, StackTags(res_stack_tags))
