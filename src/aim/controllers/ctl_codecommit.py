@@ -137,6 +137,8 @@ policies:
             account_ref = repo_config.account
             account_ctx = self.aim_ctx.get_account_context(account_ref)
             return account_ctx.get_id()
+        elif ref.last_part == 'account':
+            return repo_config.account
         else:
             if ref.ref == 'resource.codecommit.{}.{}'.format(group_id, repo_id):
                 return repo_config

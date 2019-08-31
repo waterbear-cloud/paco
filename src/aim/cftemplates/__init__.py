@@ -10,7 +10,8 @@ from aim.cftemplates.iam_managed_policies import IAMManagedPolicies
 from aim.cftemplates.s3 import S3
 from aim.cftemplates.codecommit import CodeCommit
 from aim.cftemplates.codedeploy import CodeDeploy
-from aim.cftemplates.codepipebuild import CodePipeBuild
+from aim.cftemplates.codebuild import CodeBuild
+from aim.cftemplates.codepipeline import CodePipeline
 from aim.cftemplates.route53 import Route53
 from aim.cftemplates.ec2 import EC2
 from aim.cftemplates.nat_gateway import NATGateway
@@ -30,3 +31,4 @@ from aim.cftemplates.vpc_peering import VPCPeering
 from aim.cftemplates.apigateway import ApiGatewayRestApi
 from aim.cftemplates.iam_users import IAMUsers
 from aim.cftemplates.iam_user_account_delegates import IAMUserAccountDelegates
+

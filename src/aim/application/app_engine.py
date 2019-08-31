@@ -75,14 +75,19 @@ class ApplicationEngine():
                 res_stack_tags.add_tag('AIM-Application-Group-Name', grp_id)
                 res_stack_tags.add_tag('AIM-Application-Resource-Name', res_id)
                 res_config.resolve_ref_obj = self
-                init_method = getattr(self, "init_{}_resource".format(res_config.type.lower()))
+                init_method = getattr(self, "init_{}_resource".format(res_config.type.lower()), None)
                 self.log_resource_init_status(res_config)
-                init_method(grp_id, res_id, res_config, StackTags(res_stack_tags))
+                if init_method == None:
+                    reseng_class = getattr(aim.application, res_config.type+'ResourceEngine', None)(self)
+                    reseng_class.init_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
+                else:
+                    init_method(grp_id, res_id, res_config, StackTags(res_stack_tags))
 
         print("Init: Application: %s: Completed" % (self.app_id))
 
     def gen_iam_context_id(self, aws_region, iam_id=None):
         """Generate an IAM context id"""
+        breakpoint()
         iam_context_id = '-'.join([self.get_aws_name(), vocabulary.aws_regions[aws_region]['short_name']])
         if iam_id != None:
             iam_context_id += '-' + iam_id
@@ -124,23 +129,6 @@ class ApplicationEngine():
             self.aws_region,
             self.stack_group,
             res_stack_tags,
-            aws_name,
-            self.app_id,
-            grp_id,
-            res_config,
-            res_config.aim_ref_parts
-        )
-
-    def init_elasticacheredis_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        # ElastiCache Redis CloudFormation
-        aws_name = '-'.join([grp_id, res_id])
-        aim.cftemplates.ElastiCache(
-            self.aim_ctx,
-            self.account_ctx,
-            self.aws_region,
-            self.stack_group,
-            res_stack_tags,
-
             aws_name,
             self.app_id,
             grp_id,
@@ -669,27 +657,8 @@ policies:
     def resolve_ref(self, ref):
         if isinstance(ref.resource, models.applications.SNSTopic):
             return self.get_stack_from_ref(ref)
-        elif isinstance(ref.resource, models.applications.CodePipeBuildDeploy):
-            if ref.resource_ref == 'codecommit_role.arn':
-                iam_ctl = self.aim_ctx.get_controller("IAM")
-                return iam_ctl.role_arn(ref.raw[:-4])
-            elif ref.resource_ref == 'codecommit.arn':
-                codecommit_ref = ref.resource.codecommit_repository
-                return self.aim_ctx.get_ref(codecommit_ref+".arn")
-            elif ref.resource_ref == 'codebuild_role.arn':
-                # self.cpbd_codepipebuild_template will fail if there are two deployments
-                # this application... corner case, but might happen?
-                return self.cpbd_codepipebuild_template.get_codebuild_role_arn()
-            elif ref.resource_ref == 'codepipeline_role.arn':
-                return self.cpbd_codepipebuild_template.get_codepipeline_role_arn()
-            elif ref.resource_ref == 'codedeploy_tools_delegate_role.arn':
-                return self.cpbd_codedeploy_template.get_tools_delegate_role_arn()
-            elif ref.resource_ref.startswith('kms.'):
-                return self.cpbd_kms_template.stack
-            elif ref.resource_ref == 'codedeploy_application_name':
-                return self.cpbd_codedeploy_template.get_application_name()
-            elif ref.resource_ref == 'deploy.deployment_group.name':
-                return self.cpbd_codedeploy_template.stack
+        elif isinstance(ref.resource, models.applications.DeploymentPipeline):
+            pass
         elif isinstance(ref.resource, models.applications.TargetGroup):
             return self.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.ASG):

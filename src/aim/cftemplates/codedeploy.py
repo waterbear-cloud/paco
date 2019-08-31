@@ -18,7 +18,8 @@ class CodeDeploy(CFTemplate):
                  app_id,
                  grp_id,
                  res_id,
-                 deploy_config,
+                 pipeline_config,
+                 action_config,
                  artifacts_bucket_name,
                  cpbd_config_ref):
 
@@ -28,9 +29,9 @@ class CodeDeploy(CFTemplate):
             aim_ctx,
             account_ctx,
             aws_region,
-            enabled=deploy_config.is_enabled(),
+            enabled=action_config.is_enabled(),
             config_ref=cpbd_config_ref,
-            aws_name='-'.join(["CPBD-Deploy", aws_name]),
+            aws_name='-'.join(["CodeDeploy", aws_name]),
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
             stack_group=stack_group,
             stack_tags=stack_tags
@@ -46,18 +47,18 @@ class CodeDeploy(CFTemplate):
         # Initialize Parameters
         self.set_parameter('ResourceNamePrefix', self.resource_name)
         self.set_parameter('ApplicationName', self.application_name)
-        self.set_parameter('CodeDeployASGName', deploy_config.asg+'.name')
-        self.set_parameter('ELBName', deploy_config.elb_name)
-        self.set_parameter('ALBTargetGroupName', deploy_config.alb_target_group+'.name')
+        self.set_parameter('CodeDeployASGName', action_config.auto_scaling_group+'.name')
+        self.set_parameter('ELBName', action_config.elb_name)
+        self.set_parameter('ALBTargetGroupName', action_config.alb_target_group+'.name')
         self.set_parameter('ArtifactsBucketName', artifacts_bucket_name)
-        self.set_parameter('CodeDeployAutoRollbackEnabled', deploy_config.auto_rollback_enabled)
-        self.set_parameter('CodeDeployConfigType', deploy_config.deploy_config_type)
-        self.set_parameter('CodeDeployStyleOption', deploy_config.deploy_style_option)
-        self.set_parameter('CodeDeployConfigValue', deploy_config.deploy_config_value)
-        self.set_parameter('ToolsAccountId', deploy_config.tools_account)
-        deploy_kms_ref = deploy_config.aim_ref + '.kms.arn'
+        self.set_parameter('CodeDeployAutoRollbackEnabled', action_config.auto_rollback_enabled)
+        self.set_parameter('CodeDeployStyleOption', action_config.deploy_style_option)
+        self.set_parameter('CodeDeployConfigType', action_config.minimum_healthy_hosts.type)
+        self.set_parameter('CodeDeployConfigValue', action_config.minimum_healthy_hosts.value)
+        self.set_parameter('ToolsAccountId', pipeline_config.configuration.account+'.id')
+        deploy_kms_ref = pipeline_config.aim_ref + '.kms.arn'
         self.set_parameter('CMKArn', deploy_kms_ref)
-        self.set_parameter('TargetInstanceRoleName', deploy_config.deploy_instance_role+'.name')
+        self.set_parameter('TargetInstanceRoleName', action_config.auto_scaling_group+'.instance_iam_role.name')
 
         # Define the Template
         template_fmt = """
