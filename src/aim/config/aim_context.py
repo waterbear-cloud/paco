@@ -32,8 +32,13 @@ class AccountContext(object):
         self.cli_cache = os.path.join(os.path.expanduser('~'),
                                       '.aws/cli/cache',
                                       cache_filename)
+        admin_creds = self.aim_ctx.project['credentials']
+        self.admin_iam_role_arn = 'arn:aws:iam::{}:role/{}'.format(
+                admin_creds.master_account_id,
+                admin_creds.admin_iam_role_name
+            )
         if name == "master":
-            self.get_mfa_session(self.aim_ctx.project['credentials'])
+            self.get_mfa_session(admin_creds)
 
     def get_name(self):
         return self.name
@@ -48,10 +53,10 @@ class AccountContext(object):
         if self.aws_session == None:
             self.aws_session = aim.config.aws_credentials.Sts(
                 self,
-                role_arn=self.config.admin_delegate_role_arn,
                 temporary_credentials_path=self.cli_cache,
                 mfa_arn=admin_creds.mfa_role_arn,
-                admin_creds=admin_creds
+                admin_creds=admin_creds,
+                admin_iam_role_arn=self.admin_iam_role_arn
             )
 
         return self.aws_session.get_temporary_session()
@@ -60,9 +65,9 @@ class AccountContext(object):
         if self.aws_session == None:
             self.aws_session = aim.config.aws_credentials.Sts(
                     self,
-                    role_arn=self.config.admin_delegate_role_arn,
                     temporary_credentials_path=self.cli_cache,
-                    mfa_account=self.mfa_account
+                    mfa_account=self.mfa_account,
+                    admin_iam_role_arn=self.admin_iam_role_arn
             )
 
         return self.aws_session.get_temporary_session()

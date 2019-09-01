@@ -17,20 +17,20 @@ class Sts(object):
 
     def __init__(   self,
                     account_ctx=None,
-                    role_arn=None,
                     temporary_credentials_path=None,
                     mfa_arn=None,
                     admin_creds=None,
+                    admin_iam_role_arn=None,
                     mfa_account=None
                 ):
         self.sts_token_expiry_seconds = 3500 # Limited to 1 hour until we use
         self.temp_creds_path = temporary_credentials_path
         self.credentails = None
         self.mfa_arn = mfa_arn
-        self.role_arn = role_arn
         self.account_ctx = account_ctx
         self.mfa_account = mfa_account
         self.admin_creds = admin_creds
+        self.admin_iam_role_arn = admin_iam_role_arn
         self.session = None
 
 
@@ -64,7 +64,7 @@ class Sts(object):
                 token_code = input('MFA Token: {0}: '.format(self.account_ctx.get_name()))
                 response = session.client('sts').assume_role(
                     DurationSeconds=self.sts_token_expiry_seconds,
-                    RoleArn=self.role_arn,
+                    RoleArn=self.admin_iam_role_arn,
                     RoleSessionName='aim-multiaccount-session',
                     SerialNumber=self.mfa_arn,
                     TokenCode=token_code)
@@ -75,7 +75,7 @@ class Sts(object):
                                         aws_session_token=mfa_creds['SessionToken'])
                 response = session.client('sts').assume_role(
                     DurationSeconds=self.sts_token_expiry_seconds,
-                    RoleArn=self.role_arn,
+                    RoleArn=self.admin_iam_role_arn,
                     RoleSessionName='aim-multiaccount-session')
             credentials = response['Credentials']
             with open(self.temp_creds_path, 'w') as tmp_creds:
