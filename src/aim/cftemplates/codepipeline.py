@@ -258,6 +258,77 @@ class CodePipeline(CFTemplate):
                     troposphere.Ref('AWS::NoValue')
                 )
                 deploy_stage_actions.append(if_manual_deploy_action)
+
+            # S3.Deploy
+            s3_deploy_assume_role_statement = None
+            if action_config.type == 'S3.Deploy':
+                s3_deploy_bucket_name_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name='S3DeployBucketName',
+                    description='The name of the S3 bucket to deploy to.',
+                    value=action_config.bucket+'.name',
+                    use_troposphere=True,
+                    troposphere_template=template
+                )
+                s3_deploy_extract_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name='S3DeployExtract',
+                    description='Boolean indicating whether the deployment artifact will be extracted.',
+                    value=action_config.extract,
+                    use_troposphere=True,
+                    troposphere_template=template
+                )
+                s3_deploy_object_key_param = 'AWS::NoValue'
+                if action_config.object_key != None:
+                    s3_deploy_object_key_param = self.create_cfn_parameter(
+                        param_type='String',
+                        name='S3DeployObjectKey',
+                        description='S3 object key to store the deployment artifact as.',
+                        value=action_config.object_key,
+                        use_troposphere=True,
+                        troposphere_template=template
+                    )
+                s3_deploy_delegate_role_arn_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name='S3DeployDelegateRoleArn',
+                    description='The Arn of the IAM Role CodePipeline will assume to gain access to the deployment bucket.',
+                    value=action_config._delegate_role_arn,
+                    use_troposphere=True,
+                    troposphere_template=template
+                )
+                # CodeDeploy Deploy Action
+                s3_deploy_action = troposphere.codepipeline.Actions(
+                    Name='S3',
+                    ActionTypeId = troposphere.codepipeline.ActionTypeId(
+                        Category = 'Deploy',
+                        Owner = 'AWS',
+                        Version = '1',
+                        Provider = 'S3'
+                    ),
+                    Configuration = {
+                        'BucketName': troposphere.Ref(s3_deploy_bucket_name_param),
+                        'Extract': troposphere.Ref(s3_deploy_extract_param),
+                        'ObjectKey': troposphere.Ref(s3_deploy_object_key_param),
+                    },
+                    InputArtifacts = [
+                        troposphere.codepipeline.InputArtifacts(
+                            Name = 'CodeBuildArtifact'
+                        )
+                    ],
+                    RoleArn = troposphere.Ref(s3_deploy_delegate_role_arn_param),
+                    RunOrder = troposphere.If('ManualApprovalIsEnabled', 2, 1)
+                )
+                s3_deploy_assume_role_statement = Statement(
+                    Sid='S3AssumeRole',
+                    Effect=Allow,
+                    Action=[
+                        Action('sts', 'AssumeRole'),
+                    ],
+                    Resource=[ troposphere.Ref(s3_deploy_delegate_role_arn_param) ]
+                )
+                deploy_stage_actions.append(s3_deploy_action)
+
+            codedeploy_deploy_assume_role_statement = None
             if action_config.type == 'CodeDeploy.Deploy':
                 codedeploy_tools_delegate_role_arn_param = self.create_cfn_parameter(
                     param_type='String',
@@ -314,6 +385,14 @@ class CodePipeline(CFTemplate):
                     Region = troposphere.Ref(codedeploy_region_param),
                     RunOrder = troposphere.If('ManualApprovalIsEnabled', 2, 1)
                 )
+                codedeploy_deploy_assume_role_statement = Statement(
+                    Sid='CodeDeployAssumeRole',
+                    Effect=Allow,
+                    Action=[
+                        Action('sts', 'AssumeRole'),
+                    ],
+                    Resource=[ troposphere.Ref(codedeploy_tools_delegate_role_arn_param) ]
+                )
                 deploy_stage_actions.append(codedeploy_deploy_action)
         deploy_stage = troposphere.codepipeline.Stages(
             Name="Deploy",
@@ -336,88 +415,86 @@ class CodePipeline(CFTemplate):
                 ]
             )
         )
+        pipeline_policy_statement_list = [
+            Statement(
+                Sid='CodeCommitAccess',
+                Effect=Allow,
+                Action=[
+                    Action('codecommit', 'List*'),
+                    Action('codecommit', 'Get*'),
+                    Action('codecommit', 'GitPull'),
+                    Action('codecommit', 'UploadArchive'),
+                    Action('codecommit', 'CancelUploadArchive'),
+                ],
+                Resource=[
+                    troposphere.Ref(codecommit_repo_arn_param),
+                ]
+            ),
+            Statement(
+                Sid='CodePipelineAccess',
+                Effect=Allow,
+                Action=[
+                    Action('codepipeline', '*'),
+                    Action('sns', 'Publish'),
+                    Action('s3', 'ListAllMyBuckets'),
+                    Action('s3', 'GetBucketLocation'),
+                    Action('iam', 'ListRoles'),
+                    Action('iam', 'PassRole'),
+                ],
+                Resource=[ '*' ]
+            ),
+            Statement(
+                Sid='CodeBuildAccess',
+                Effect=Allow,
+                Action=[
+                    Action('codebuild', 'BatchGetBuilds'),
+                    Action('codebuild', 'StartBuild')
+                ],
+                Resource=[ troposphere.Ref(codebuild_project_arn_param) ]
+            ),
+            Statement(
+                Sid='S3Access',
+                Effect=Allow,
+                Action=[
+                    Action('s3', 'PutObject'),
+                    Action('s3', 'GetBucketPolicy'),
+                    Action('s3', 'GetObject'),
+                    Action('s3', 'ListBucket'),
+                ],
+                Resource=[
+                    troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}/*'),
+                    troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}')
+                ]
+            ),
+            Statement(
+                Sid='KMSCMK',
+                Effect=Allow,
+                Action=[
+                    Action('kms', 'Decrypt'),
+                ],
+                Resource=[ troposphere.Ref(self.cmk_arn_param) ]
+            ),
+            Statement(
+                Sid='CodeCommitAssumeRole',
+                Effect=Allow,
+                Action=[
+                    Action('sts', 'AssumeRole'),
+                ],
+                Resource=[ troposphere.Ref(codecommit_role_arn_param) ]
+            ),
+        ]
+
+        if codedeploy_deploy_assume_role_statement != None:
+            pipeline_policy_statement_list.append(codedeploy_deploy_assume_role_statement)
+        if s3_deploy_assume_role_statement != None:
+            pipeline_policy_statement_list.append(s3_deploy_assume_role_statement)
         troposphere.iam.PolicyType(
             title='CodePipelinePolicy',
             template = template,
             DependsOn = 'CodePipelineServiceRole',
             PolicyName=troposphere.Sub('${ResourceNamePrefix}-CodePipeline-Policy'),
             PolicyDocument=PolicyDocument(
-                Statement=[
-                    Statement(
-                        Sid='CodeCommitAccess',
-                        Effect=Allow,
-                        Action=[
-                            Action('codecommit', 'List*'),
-                            Action('codecommit', 'Get*'),
-                            Action('codecommit', 'GitPull'),
-                            Action('codecommit', 'UploadArchive'),
-                            Action('codecommit', 'CancelUploadArchive'),
-                        ],
-                        Resource=[
-                            troposphere.Ref(codecommit_repo_arn_param),
-                        ]
-                    ),
-                    Statement(
-                        Sid='CodePipelineAccess',
-                        Effect=Allow,
-                        Action=[
-                            Action('codepipeline', '*'),
-                            Action('sns', 'Publish'),
-                            Action('s3', 'ListAllMyBuckets'),
-                            Action('s3', 'GetBucketLocation'),
-                            Action('iam', 'ListRoles'),
-                            Action('iam', 'PassRole'),
-                        ],
-                        Resource=[ '*' ]
-                    ),
-                    Statement(
-                        Sid='CodeBuildAccess',
-                        Effect=Allow,
-                        Action=[
-                            Action('codebuild', 'BatchGetBuilds'),
-                            Action('codebuild', 'StartBuild')
-                        ],
-                        Resource=[ troposphere.Ref(codebuild_project_arn_param) ]
-                    ),
-                    Statement(
-                        Sid='S3Access',
-                        Effect=Allow,
-                        Action=[
-                            Action('s3', 'PutObject'),
-                            Action('s3', 'GetBucketPolicy'),
-                            Action('s3', 'GetObject'),
-                            Action('s3', 'ListBucket'),
-                        ],
-                        Resource=[
-                            troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}/*'),
-                            troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}')
-                        ]
-                    ),
-                    Statement(
-                        Sid='KMSCMK',
-                        Effect=Allow,
-                        Action=[
-                            Action('kms', 'Decrypt'),
-                        ],
-                        Resource=[ troposphere.Ref(self.cmk_arn_param) ]
-                    ),
-                    Statement(
-                        Sid='CodeDeployAssumeRole',
-                        Effect=Allow,
-                        Action=[
-                            Action('sts', 'AssumeRole'),
-                        ],
-                        Resource=[ troposphere.Ref(codedeploy_tools_delegate_role_arn_param) ]
-                    ),
-                    Statement(
-                        Sid='CodeCommitAssumeRole',
-                        Effect=Allow,
-                        Action=[
-                            Action('sts', 'AssumeRole'),
-                        ],
-                        Resource=[ troposphere.Ref(codecommit_role_arn_param) ]
-                    ),
-                ],
+                Statement=pipeline_policy_statement_list,
             ),
             Roles=[troposphere.Ref(pipeline_service_role_res)]
         )

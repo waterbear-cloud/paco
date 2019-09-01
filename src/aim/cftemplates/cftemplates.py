@@ -161,6 +161,9 @@ class CFTemplate():
         else:
             self.stack_order = stack_order
         self.stack_output_config_list = []
+        # Dependencies
+        self.dependency_template = None
+        self.dependency_group = False
 
     @property
     def enabled(self):
@@ -177,6 +180,20 @@ class CFTemplate():
     def set_template_file_id(self, file_id):
         self.template_file_id = file_id
         self.yaml_path = None
+
+    def set_dependency(self, template, dependency_name):
+        """
+        Makes a template dependent on another.
+        This is used when a template needs to be created with an initial
+        configuration, and then updated later when new information becomes
+        available. This is used by KMS in the DeploymentPipeline app engine.
+        """
+        self.dependency_template = template
+        self.dependency_group = True
+        if template.dependency_template == None:
+            template.set_template_file_id('parent-'+dependency_name)
+            template.dependency_group = True
+
 
     def get_yaml_path(self):
         if self.yaml_path == None:

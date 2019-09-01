@@ -174,7 +174,8 @@ class ApplicationEngine():
                 self.app_id,
                 grp_id,
                 res_config,
-                cloudfront_config_ref
+                cloudfront_config_ref,
+                [StackOrder.PROVISION, StackOrder.WAITLAST]
             )
 
     def init_snstopic_resource(self, grp_id, res_id, res_config, res_stack_tags):
@@ -435,205 +436,6 @@ role_name: %s""" % ("ASGInstance")
             res_config.aim_ref_parts
         )
 
-    def init_codepipebuilddeploy_resource(self, grp_id, res_id, res_config, res_stack_tags):
-
-        tools_account_ctx = self.aim_ctx.get_account_context(res_config.tools_account)
-        # XXX: Fix Hardcoded!!!
-        data_account_ctx = self.aim_ctx.get_account_context("aim.ref accounts.data")
-
-        # -----------------
-        # S3 Artifacts Bucket:
-        s3_ctl = self.aim_ctx.get_controller('S3')
-        s3_artifacts_bucket_ref = res_config.artifacts_bucket
-        s3_artifacts_bucket_arn = s3_ctl.get_bucket_arn(s3_artifacts_bucket_ref)
-        s3_artifacts_bucket_name = s3_ctl.get_bucket_name(s3_artifacts_bucket_ref)
-
-        # ----------------
-        # KMS Key
-        #
-        aws_account_ref = 'aim.ref ' + self.parent_config_ref + '.network.aws_account'
-        kms_config_dict = {
-            'admin_principal': {
-                'aws': [ "!Sub 'arn:aws:iam::${{AWS::AccountId}}:root'" ]
-            },
-            'crypto_principal': {
-                'aws': [
-                    # Sub-Environment account
-                    "aim.sub 'arn:aws:iam::${%s}:root'" % (self.aim_ctx.get_ref(aws_account_ref)),
-                    # CodeCommit Account
-                    "aim.sub 'arn:aws:iam::${aim.ref accounts.data}:root'",
-                    # Tools Account
-                ]
-            }
-        }
-        aws_name = '-'.join([grp_id, res_id])
-        kms_config_ref = res_config.aim_ref_parts + '.kms'
-        self.cpbd_kms_template = aim.cftemplates.KMS(
-            self.aim_ctx,
-            tools_account_ctx,
-            self.aws_region,
-            self.stack_group,
-            res_stack_tags,
-            aws_name,
-            res_config,
-            kms_config_ref,
-            kms_config_dict
-        )
-
-        # -------------------------------------------
-        # CodeCommit Delegate Role
-        role_yaml = """
-assume_role_policy:
-  effect: Allow
-  aws:
-    - '{0[tools_account_id]:s}'
-instance_profile: false
-path: /
-role_name: CodeCommit
-policies:
-  - name: CPBD
-    statement:
-      - effect: Allow
-        action:
-          - codecommit:BatchGetRepositories
-          - codecommit:Get*
-          - codecommit:GitPull
-          - codecommit:List*
-          - codecommit:CancelUploadArchive
-          - codecommit:UploadArchive
-        resource:
-          - {0[codecommit_ref]:s}
-      - effect: Allow
-        action:
-          - 's3:*'
-        resource:
-          - {0[artifact_bucket_arn]:s}
-          - {0[artifact_bucket_arn]:s}/*
-      - effect: Allow
-        action:
-          - 'kms:*'
-        resource:
-          - "!Ref CMKArn"
-"""
-        codecommit_ref = res_config.codecommit_repository
-        role_table = {
-            'codecommit_account_id': "aim.sub '${{{0}.account_id}}'".format(codecommit_ref),
-            'tools_account_id': tools_account_ctx.get_id(),
-            'codecommit_ref': "aim.sub '${{{0}.arn}}'".format(codecommit_ref),
-            'artifact_bucket_arn': s3_artifacts_bucket_arn
-        }
-        role_config_dict = yaml.load(role_yaml.format(role_table))
-        codecommit_iam_role_config = models.iam.Role()
-        codecommit_iam_role_config.apply_config(role_config_dict)
-        codecommit_iam_role_config.enabled = res_config.is_enabled()
-
-        iam_ctl = self.aim_ctx.get_controller('IAM')
-        # The ID to give this role is: group.resource.instance_iam_role
-        codecommit_iam_role_ref = res_config.aim_ref_parts + '.codecommit_role'
-        codecommit_iam_role_id = self.gen_iam_role_id(res_id, 'codecommit_role')
-        # IAM Roles Parameters
-        iam_role_params = [
-            {
-                'key': 'CMKArn',
-                'value': res_config.aim_ref + '.kms.arn',
-                'type': 'String',
-                'description': 'CPBD KMS Key Arn'
-            }
-        ]
-        iam_ctl.add_role(
-            aim_ctx=self.aim_ctx,
-            account_ctx=data_account_ctx,
-            region=self.aws_region,
-            group_id=grp_id,
-            role_id=codecommit_iam_role_id,
-            role_ref=codecommit_iam_role_ref,
-            role_config=codecommit_iam_role_config,
-            stack_group=self.stack_group,
-            template_params=iam_role_params,
-            stack_tags=res_stack_tags
-        )
-
-        # ----------------------------------------------------------
-        # Code Deploy
-        codedeploy_config_ref = res_config.aim_ref_parts + '.deploy'
-        aws_name = '-'.join([grp_id, res_id])
-        self.cpbd_codedeploy_template = aim.cftemplates.CodeDeploy(
-            self.aim_ctx,
-            self.account_ctx,
-            self.aws_region,
-            self.stack_group,
-            res_stack_tags,
-            self.env_ctx,
-            aws_name,
-            self.app_id,
-            grp_id,
-            res_id,
-            res_config,
-            s3_artifacts_bucket_name,
-            codedeploy_config_ref
-        )
-
-        # PipeBuild
-        codepipebuild_config_ref = res_config.aim_ref_parts + '.pipebuild'
-        aws_name = '-'.join([grp_id, res_id])
-        self.cpbd_codepipebuild_template = aim.cftemplates.CodePipeBuild(
-            self.aim_ctx,
-            tools_account_ctx,
-            self.aws_region,
-            self.stack_group,
-            res_stack_tags,
-            self.env_ctx,
-            aws_name,
-            self.app_id,
-            grp_id,
-            res_id,
-            res_config,
-            s3_artifacts_bucket_name,
-            self.cpbd_codedeploy_template.get_tools_delegate_role_arn(),
-            codepipebuild_config_ref
-        )
-
-        # Add CodeBuild Role ARN to KMS Key principal now that the role is created
-        codebuild_arn_ref = res_config.aim_ref + '.codebuild_role.arn'
-        kms_config_dict['crypto_principal']['aws'].append("aim.sub '${{{0}}}'".format(codebuild_arn_ref))
-        aws_name = '-'.join([grp_id, res_id])
-        kms_template = aim.cftemplates.KMS(
-            self.aim_ctx,
-            tools_account_ctx,
-            self.aws_region,
-            self.stack_group,
-            res_stack_tags,
-            aws_name,
-            res_config,
-            kms_config_ref,
-            kms_config_dict
-        )
-        # Adding a file id allows us to generate a second template without overwritting
-        # the first one. This is needed as we need to update the KMS policy with the
-        # Codebuild Arn after the Codebuild has been created.
-        kms_template.set_template_file_id("codebuild")
-
-        # Get the ASG Instance Role ARN
-        asg_instance_role_ref = res_config.asg+'.instance_iam_role.arn'
-        codebuild_role_ref = res_config.aim_ref_parts + '.codebuild_role.arn'
-        codepipeline_role_ref = res_config.aim_ref_parts + '.codepipeline_role.arn'
-        codedeploy_tools_delegate_role_ref = res_config.aim_ref_parts + '.codedeploy_tools_delegate_role.arn'
-        codecommit_role_ref = res_config.aim_ref_parts + '.codecommit_role.arn'
-        cpbd_s3_bucket_policy = {
-            'aws': [
-                "aim.sub '${{aim.ref {0}}}'".format(codebuild_role_ref),
-                "aim.sub '${{aim.ref {0}}}'".format(codepipeline_role_ref),
-                "aim.sub '${{aim.ref {0}}}'".format(codedeploy_tools_delegate_role_ref),
-                "aim.sub '${{aim.ref {0}}}'".format(codecommit_role_ref),
-                "aim.sub '${{{0}}}'".format(asg_instance_role_ref)
-            ],
-            'action': [ 's3:*' ],
-            'effect': 'Allow',
-            'resource_suffix': [ '/*', '' ]
-        }
-        s3_ctl.add_bucket_policy(s3_artifacts_bucket_ref, cpbd_s3_bucket_policy)
-
-
     def get_stack_from_ref(self, ref):
         for stack in self.stack_group.stacks:
             #if ref.ref == 'netenv.aimdemo.dev.us-west-2.applications.app.groups.site.resources.webdemo.name':
@@ -645,8 +447,6 @@ policies:
     def resolve_ref(self, ref):
         if isinstance(ref.resource, models.applications.SNSTopic):
             return self.get_stack_from_ref(ref)
-        elif isinstance(ref.resource, models.applications.DeploymentPipeline):
-            pass
         elif isinstance(ref.resource, models.applications.TargetGroup):
             return self.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.ASG):

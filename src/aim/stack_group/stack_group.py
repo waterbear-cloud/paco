@@ -21,7 +21,7 @@ StackEnum = Enum('StackEnum', 'vpc segment')
 
 StackStatus = Enum('StackStatus', 'NONE DOES_NOT_EXIST CREATE_IN_PROGRESS CREATE_FAILED CREATE_COMPLETE ROLLBACK_IN_PROGRESS ROLLBACK_FAILED ROLLBACK_COMPLETE DELETE_IN_PROGRESS DELETE_FAILED DELETE_COMPLETE UPDATE_IN_PROGRESS UPDATE_COMPLETE_CLEANUP_IN_PROGRESS UPDATE_COMPLETE UPDATE_ROLLBACK_IN_PROGRESS UPDATE_ROLLBACK_FAILED UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS UPDATE_ROLLBACK_COMPLETE REVIEW_IN_PROGRESS')
 
-StackOrder = Enum('StackOrder', 'PROVISION WAIT')
+StackOrder = Enum('StackOrder', 'PROVISION WAIT WAITLAST')
 
 class StackOutputsManager():
     def __init__(self):
@@ -288,6 +288,8 @@ class Stack():
             else:
                 self.status = StackStatus[stack_list['Stacks'][0]['StackStatus']]
                 self.stack_id = stack_list['Stacks'][0]['StackId']
+                self.cfn_stack_describe = stack_list['Stacks'][0]
+
             break
 
     def is_creating(self):
@@ -383,6 +385,16 @@ class Stack():
     def is_stack_cached(self):
         if self.aim_ctx.nocache or self.do_not_cache:
             return False
+            # XXX: Make this work
+            if self.template.dependency_group == True:
+                self.get_status()
+                if self.status == StackStatus.DOES_NOT_EXIST:
+                    return False
+                elif self.template.template_file_id != None:
+                    if self.template.template_file_id.startswith('parent-') == False:
+                        return False
+            else:
+                return False
         try:
             new_cache_id = self.gen_cache_id()
         except AimException as e:
@@ -464,6 +476,11 @@ class Stack():
         )
         self.stack_id = response['StackId']
 
+        self.cf_client.update_termination_protection(
+            EnableTerminationProtection=True,
+            StackName=self.get_name()
+        )
+
     def update_stack(self):
         # Update Stack
         self.action = "update"
@@ -501,13 +518,25 @@ class Stack():
                 message = "Stack: {}\nError: {}\n".format(self.get_name(), e.response['Error']['Message'])
                 raise StackException(AimErrorCode.Unknown, message = message)
 
-        self.cf_client.update_termination_protection(
-            EnableTerminationProtection=self.termination_protection,
-            StackName=self.get_name()
-        )
+        if self.cfn_stack_describe['EnableTerminationProtection'] == False:
+            self.cf_client.update_termination_protection(
+                EnableTerminationProtection=True,
+                StackName=self.get_name()
+            )
 
     def delete_stack(self):
         # Delete Stack
+        if self.termination_protection == True:
+            print("\n!! This Stack has 'Termination Protection' enabled.")
+            print("\n!! Stack Name: {}\n".format(self.get_name()))
+            answer = self.aim_ctx.input("Destroy this stack forever?", yes_no_prompt=True)
+            if answer == False:
+                print("Destruction aborted. Allowing stack to exist.")
+                return
+        self.cf_client.update_termination_protection(
+            EnableTerminationProtection=False,
+            StackName=self.get_name()
+        )
         self.action = "delete"
         self.log_action("Provision", "Delete")
         self.hooks.run("delete", "pre", self)
@@ -577,6 +606,8 @@ class Stack():
             msg_stack_name = self.get_name()
         else:
             msg_stack_name = stack_name
+        if self.template.template_file_id != None:
+            msg_stack_name += ' - fileid - ' + template.template_file_id
         stack_message = msg_account_name+stack_action+msg_stack_name
         if message != None:
             stack_message += message
@@ -709,8 +740,8 @@ class StackGroup():
                         cur_state['regions'][idx],
                         cur_state['stack_names'][idx]
                     )
-                    # TODO: Wait for the stacks
 
+                    # TODO: Wait for the stacks
 
         with open(self.state_filepath, "w") as output_fd:
                 yaml.dump(  data=new_state,
@@ -724,12 +755,20 @@ class StackGroup():
 
     def provision(self):
         # Loop through stacks and provision each one
+        wait_last_list = []
         for order_item in self.stack_orders:
             if order_item.order == StackOrder.PROVISION:
                 order_item.stack.provision()
             elif order_item.order == StackOrder.WAIT:
                 if order_item.stack.cached == False:
                     order_item.stack.wait_for_complete(verbose=False)
+            elif order_item.order == StackOrder.WAITLAST:
+                wait_last_list.append(order_item)
+
+        for order_item in wait_last_list:
+            if order_item.stack.cached == False:
+                order_item.stack.wait_for_complete(verbose=False)
+
         self.update_state()
 
     def delete(self):

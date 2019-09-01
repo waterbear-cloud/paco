@@ -127,7 +127,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         # Adding a file id allows us to generate a second template without overwritting
         # the first one. This is needed as we need to update the KMS policy with the
         # Codebuild Arn after the Codebuild has been created.
-        kms_template.set_template_file_id("post-pipeline")
+        kms_template.set_dependency(self.kms_template, 'post-pipeline')
 
         # Get the ASG Instance Role ARN
         #asg_instance_role_ref = pipeline_config.asg+'.instance_iam_role.arn'
@@ -227,6 +227,81 @@ policies:
             stack_tags=self.res_stack_tags
         )
 
+    # S3 Deploy
+    def init_stage_action_s3_deploy(self, action_config):
+        # Create a role to allow access to the S3 Bucket
+        role_yaml = """
+assume_role_policy:
+  effect: Allow
+  aws:
+    - '{0[codepipeline_account_id]}'
+instance_profile: false
+path: /
+role_name: S3
+policies:
+  - name: DeploymentPipeline
+    statement:
+      - effect: Allow
+        action:
+          - s3:*
+        resource:
+          - {0[bucket_arn]}
+          - {0[bucket_arn]}/*
+      - effect: Allow
+        action:
+          - 's3:*'
+        resource:
+          - {0[artifact_bucket_arn]:s}
+          - {0[artifact_bucket_arn]:s}/*
+      - effect: Allow
+        action:
+          - 'kms:*'
+        resource:
+          - "!Ref CMKArn"
+"""
+        bucket_config = self.aim_ctx.get_ref(action_config.bucket)
+        role_table = {
+            'codepipeline_account_id': self.pipeline_account_ctx.get_id(),
+            'bucket_account_id': self.account_ctx.get_id(),
+            'bucket_arn': self.aim_ctx.get_ref(bucket_config.aim_ref +'.arn'),
+            'artifact_bucket_arn': self.artifacts_bucket_meta['arn']
+        }
+
+        role_config_dict = yaml.load(role_yaml.format(role_table))
+        role_config = models.iam.Role()
+        role_config.apply_config(role_config_dict)
+        role_config.enabled = action_config.is_enabled()
+
+        iam_ctl = self.aim_ctx.get_controller('IAM')
+        # The ID to give this role is: group.resource.instance_iam_role
+        role_id = self.gen_iam_role_id(self.res_id, 'delegate')
+        self.artifacts_bucket_policy_resource_arns.append("aim.sub '${%s}'" % (action_config.aim_ref + '.delegate_role.arn'))
+        # IAM Roles Parameters
+        iam_role_params = [
+            {
+                'key': 'CMKArn',
+                'value': self.pipeline_config.aim_ref + '.kms.arn',
+                'type': 'String',
+                'description': 'DeploymentPipeline KMS Key Arn'
+            }
+        ]
+        bucket_account_ctx = self.aim_ctx.get_account_context(bucket_config.account)
+        role_ref = '{}.delegate_role'.format(action_config.aim_ref_parts)
+        iam_ctl.add_role(
+            aim_ctx=self.aim_ctx,
+            account_ctx=bucket_account_ctx,
+            region=self.aws_region,
+            group_id=self.grp_id,
+            role_id=role_id,
+            role_ref=role_ref,
+            role_config=role_config,
+            stack_group=self.stack_group,
+            template_params=iam_role_params,
+            stack_tags=self.res_stack_tags
+        )
+        action_config._delegate_role_arn = iam_ctl.role_arn(role_ref)
+
+
     # Code Deploy
     def init_stage_action_codedeploy_deploy(self, action_config):
         self.artifacts_bucket_policy_resource_arns.append("aim.sub '${%s}'" % (action_config.aim_ref + '.codedeploy_tools_delegate_role.arn'))
@@ -276,6 +351,10 @@ policies:
         pass
 
     def resolve_ref(self, ref):
+        if schemas.IDeploymentPipelineDeployS3.providedBy(ref.resource):
+            if ref.resource_ref == 'delegate_role.arn':
+                iam_ctl = self.aim_ctx.get_controller("IAM")
+                return iam_ctl.role_arn(ref.raw[:-4])
         if schemas.IDeploymentPipelineDeployCodeDeploy.providedBy(ref.resource):
             # CodeDeploy
             if ref.resource_ref == 'deployment_group.name':

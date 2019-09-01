@@ -20,7 +20,8 @@ class CloudFront(CFTemplate):
                  app_id,
                  grp_id,
                  cloudfront_config,
-                 config_ref):
+                 config_ref,
+                 stack_order):
 
         # Super Init:
         aws_name='-'.join(["CloudFront", aws_name])
@@ -31,7 +32,8 @@ class CloudFront(CFTemplate):
                          config_ref=config_ref,
                          aws_name=aws_name,
                          stack_group=stack_group,
-                         stack_tags=stack_tags)
+                         stack_tags=stack_tags,
+                         stack_order=stack_order)
 
         template_fmt = """
 ---
@@ -75,7 +77,7 @@ Resources:
           DefaultTTL: !Ref DefaultTTL
           TargetOriginId: !Ref DefaultTargetOriginId
           ViewerProtocolPolicy: !Ref ViewerProtocolPolicy
-        # DefaultRootObject: !Ref DefaultRootObject
+        DefaultRootObject: !Ref DefaultRootObject
         HttpVersion: http1.1
         Origins:{0[origins]:s}
         PriceClass: !Ref PriceClass
@@ -186,6 +188,13 @@ Outputs:
               description='WAF Web Acl ID',
               value=cloudfront_config.webacl_id
             )
+        # Default Root Object: example: index.html
+        parameters_yaml += self.create_cfn_parameter(
+          param_type='String',
+          name='DefaultRootObject',
+          description='The default path to load from the origin.',
+          value=cloudfront_config.default_root_object
+        )
         # ---------------------------------------------------------------------
         # Domain Aliases
         aliases_fmt = "\n          - !Ref {0[domain_name_param]:s}"
