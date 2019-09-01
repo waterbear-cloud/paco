@@ -22,10 +22,7 @@ class AccountContext(object):
         self.client_cache = {}
         self.resource_cache = {}
         self.aim_ctx = aim_ctx
-        if name in aim_ctx.project['accounts'].keys():
-            self.config = aim_ctx.project['accounts'][name]
-        else:
-            self.config = None
+        self.config = aim_ctx.project['accounts'][name]
         self.mfa_account = mfa_account
         self.aws_session = None
         cache_filename = '-'.join(['aim', aim_ctx.project.name, 'account', self.name])
@@ -34,7 +31,7 @@ class AccountContext(object):
                                       cache_filename)
         admin_creds = self.aim_ctx.project['credentials']
         self.admin_iam_role_arn = 'arn:aws:iam::{}:role/{}'.format(
-                admin_creds.master_account_id,
+                self.config.account_id,
                 admin_creds.admin_iam_role_name
             )
         if name == "master":
