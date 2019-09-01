@@ -37,15 +37,19 @@ class CodeDeploy(CFTemplate):
             stack_tags=stack_tags
         )
 
-        self.resource_name = self.create_resource_name_join(
+        self.res_name_prefix = self.create_resource_name_join(
             name_list=[self.env_ctx.get_aws_name(), app_id, grp_id, res_id],
             separator='-',
             camel_case=True
           )
-        self.application_name = self.resource_name
+
+        self.codedeploy_tools_delegate_role_name = self.get_tools_delegate_role_name()
+        self.codedeploy_service_role_name = self.get_role_name()
+
+        self.application_name = self.res_name_prefix
 
         # Initialize Parameters
-        self.set_parameter('ResourceNamePrefix', self.resource_name)
+        self.set_parameter('ResourceNamePrefix', self.res_name_prefix)
         self.set_parameter('ApplicationName', self.application_name)
         self.set_parameter('CodeDeployASGName', action_config.auto_scaling_group+'.name')
         self.set_parameter('ELBName', action_config.elb_name)
@@ -141,7 +145,7 @@ Resources:
       - CodeDeployConfiguration
       - CodeDeployApplication
     Properties:
-      RoleName: !Sub '${ResourceNamePrefix}-CodeDeploy-Tools-Delegate'
+      RoleName: %s
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -189,7 +193,7 @@ Resources:
   CodeDeployServiceRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${ResourceNamePrefix}-CodeDeploy-Service'
+      RoleName: %s
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -346,16 +350,39 @@ Outputs:
      Value: !Ref CodeDeployGroup
 
 """
+
         self.register_stack_output_config(cpbd_config_ref+'.deployment_group.name', 'DeploymentGroupName')
-        self.set_template(template_fmt)
+        self.set_template(template_fmt % (
+            self.codedeploy_tools_delegate_role_name,
+            self.codedeploy_service_role_name
+        ))
+
+    def get_role_name(self):
+        return self.create_iam_resource_name(
+            name_list=[self.res_name_prefix, 'CodeDeploy-Service'],
+            filter_id='IAM.Role.RoleName'
+        )
 
     def get_role_arn(self):
         account_id = self.account_ctx.get_id()
-        return "arn:aws:iam::{0}:role/{1}-CodeDeploy-Service'".format(account_id, self.resource_name)
+
+        return "arn:aws:iam::{0}:role/{1}".format(
+            account_id,
+            self.codedeploy_service_role_name
+        )
+
+    def get_tools_delegate_role_name(self):
+        return self.create_iam_resource_name(
+            name_list=[self.res_name_prefix, 'CodeDeploy-Tools-Delegate'],
+            filter_id='IAM.Role.RoleName'
+        )
 
     def get_tools_delegate_role_arn(self):
         account_id = self.account_ctx.get_id()
-        return "arn:aws:iam::{0}:role/{1}-CodeDeploy-Tools-Delegate".format(account_id, self.resource_name)
+        return "arn:aws:iam::{0}:role/{1}".format(
+            account_id,
+            self.codedeploy_tools_delegate_role_name
+        )
 
     def get_application_name(self):
         return self.application_name

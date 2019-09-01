@@ -201,9 +201,11 @@ class CodePipeline(CFTemplate):
         )
         # Deploy Action
         deploy_stage_actions = []
+        manual_approval_is_enabled = False
         for action_name in res_config.deploy.keys():
             action_config = res_config.deploy[action_name]
             if action_config.type == 'ManualApproval.Deploy':
+                manual_approval_is_enabled = action_config.is_enabled()
                 # Manual Approval Deploy Action
                 manual_approval_notification_email_param = self.create_cfn_parameter(
                     param_type='String',
@@ -212,19 +214,6 @@ class CodePipeline(CFTemplate):
                     value=action_config.manual_approval_notification_email,
                     use_troposphere=True,
                     troposphere_template=template,
-                )
-                manual_approval_enabled_param = self.create_cfn_parameter(
-                    param_type='String',
-                    name='ManualApprovalEnabled',
-                    description='Boolean indicating whether a manual approval is enabled or not.',
-                    value=action_config.is_enabled(),
-                    use_troposphere=True,
-                    troposphere_template=template,
-                )
-
-                template.add_condition(
-                    'ManualApprovalIsEnabled',
-                    troposphere.Equals(troposphere.Ref(manual_approval_enabled_param), 'true')
                 )
 
                 manual_approval_sns_res = troposphere.sns.Topic(
@@ -399,11 +388,30 @@ class CodePipeline(CFTemplate):
             Actions = deploy_stage_actions
         )
 
+        # Manual Deploy Enabled/Disable
+        manual_approval_enabled_param = self.create_cfn_parameter(
+            param_type='String',
+            name='ManualApprovalEnabled',
+            description='Boolean indicating whether a manual approval is enabled or not.',
+            value=manual_approval_is_enabled,
+            use_troposphere=True,
+            troposphere_template=template,
+        )
+
+        template.add_condition(
+            'ManualApprovalIsEnabled',
+            troposphere.Equals(troposphere.Ref(manual_approval_enabled_param), 'true')
+        )
+
         # CodePipeline Role and Policy
+        self.pipeline_service_role_name = self.create_iam_resource_name(
+            name_list=[self.res_name_prefix, 'CodePipeline-Service'],
+            filter_id='IAM.Role.RoleName'
+        )
         pipeline_service_role_res = troposphere.iam.Role(
             title='CodePipelineServiceRole',
             template = template,
-            RoleName=troposphere.Sub('${ResourceNamePrefix}-CodePipeline-Service'),
+            RoleName=self.pipeline_service_role_name,
             AssumeRolePolicyDocument=PolicyDocument(
                 Version="2012-10-17",
                 Statement=[
@@ -525,5 +533,8 @@ class CodePipeline(CFTemplate):
         return pipeline_res
 
     def get_codepipeline_role_arn(self):
-        return "arn:aws:iam::{0}:role/".format(self.account_ctx.get_id()) + self.res_name_prefix + "-CodePipeline-Service"
+        return "arn:aws:iam::{}:role/{}".format(
+            self.account_ctx.get_id(),
+            self.pipeline_service_role_name
+        )
 

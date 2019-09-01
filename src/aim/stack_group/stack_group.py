@@ -607,7 +607,7 @@ class Stack():
         else:
             msg_stack_name = stack_name
         if self.template.template_file_id != None:
-            msg_stack_name += ' - fileid - ' + template.template_file_id
+            msg_stack_name += ' - fileid - ' + self.template.template_file_id
         stack_message = msg_account_name+stack_action+msg_stack_name
         if message != None:
             stack_message += message

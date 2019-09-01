@@ -119,10 +119,14 @@ class CodeBuild(CFTemplate):
             troposphere_template=template,
         )
 
+        self.project_role_name = self.create_iam_resource_name(
+            name_list=[self.res_name_prefix, 'CodeBuild-Project'],
+            filter_id='IAM.Role.RoleName'
+        )
         project_role_res = troposphere.iam.Role(
             title='CodeBuildProjectRole',
             template=template,
-            RoleName=troposphere.Sub('${ResourceNamePrefix}-CodeBuild'),
+            RoleName=self.project_role_name,
             AssumeRolePolicyDocument=PolicyDocument(
                 Version="2012-10-17",
                 Statement=[
@@ -135,9 +139,13 @@ class CodeBuild(CFTemplate):
             )
         )
 
+        project_policy_name = self.create_iam_resource_name(
+            name_list=[self.res_name_prefix, 'CodeBuild-Project'],
+            filter_id='IAM.Policy.PolicyName'
+        )
         project_policy_res = troposphere.iam.PolicyType(
             title='CodeBuildProjectPolicy',
-            PolicyName=troposphere.Sub('${ResourceNamePrefix}-CodeBuildProject-Policy'),
+            PolicyName=project_policy_name,
             PolicyDocument=PolicyDocument(
                 Statement=[
                     Statement(
@@ -230,7 +238,10 @@ class CodeBuild(CFTemplate):
         return project_res
 
     def get_project_role_arn(self):
-        return "arn:aws:iam::{0}:role/".format(self.account_ctx.get_id()) + self.res_name_prefix + "-CodeBuild"
+        return "arn:aws:iam::{}:role/{}".format(
+            self.account_ctx.get_id(),
+            self.project_role_name
+        )
 
     def get_project_arn(self):
         return "arn:aws:codebuild:{}:{}:project/".format(self.aws_region, self.account_ctx.get_id()) + self.res_name_prefix

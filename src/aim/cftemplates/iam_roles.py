@@ -20,7 +20,8 @@ class IAMRoles(CFTemplate):
                  role_config,
                  template_params):
         #aim_ctx.log("IAMRoles CF Template init")
-        aws_name = '-'.join([template_name, "Role"])
+        aws_name = '-'.join(['Role', template_name])
+        #aws_name = '-'.join([template_name, 'Role'])
         super().__init__(
             aim_ctx,
             account_ctx,

@@ -17,7 +17,8 @@ class IAMManagedPolicies(CFTemplate):
                  policy_context,
                  template_name):
         #aim_ctx.log("IAMManagedPolicies CF Template init")
-        aws_name = '-'.join([template_name, "Policy"])
+        aws_name = '-'.join(['Policy', template_name])
+        #aws_name = '-'.join([template_name, 'Policy'])
 
         super().__init__(
             aim_ctx,

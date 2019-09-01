@@ -715,3 +715,21 @@ class CFTemplate():
   {}:
     Value: {}
 """.format(name, value)
+
+    # Role and Policy names must not be longer than 64 charcters
+    def create_iam_resource_name(self, name_list, filter_id=None):
+        role_name = self.create_resource_name_join(
+            name_list=name_list,
+            separator='-',
+            camel_case=True,
+            filter_id=filter_id
+        )
+        if len(role_name) > 64:
+            name_hash = md5sum(str_data=role_name)[:8].upper()
+            # len('AABBCCDD-')
+            name_hash_len = len(name_hash+'-')+1
+            max_role_name_len = 64
+
+            role_name = name_hash + '-' + role_name[-(max_role_name_len-name_hash_len):]
+
+        return role_name
