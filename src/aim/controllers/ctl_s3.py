@@ -103,7 +103,7 @@ class S3Context():
         # If the bucket already exists, do not create a stack for it
         if self.bucket_context['config'].external_resource == False:
             # S3 Delete on Stack Delete hook
-            utils.log_action("Init", "S3: Bucket: {}: {}".format(bucket_id, self.get_bucket_name()))
+            utils.log_action("Init", "S3: Bucket: {}: {}".format(bucket_id, self.get_bucket_name()), False, bucket_config.is_enabled())
             if stack_hooks == None:
                 stack_hooks = StackHooks(self.aim_ctx)
             stack_hooks.add('S3StackGroup', 'delete', 'post',
@@ -112,7 +112,7 @@ class S3Context():
                             stack_hooks=stack_hooks,
                             stack_tags=self.stack_tags)
         else:
-            utils.log_action("Init", "S3: External Bucket: {}: {}".format(bucket_id, self.get_bucket_name()))
+            utils.log_action("Init", "S3: External Bucket: {}: {}".format(bucket_id, self.get_bucket_name()), False, bucket_config.is_enabled())
 
 
     def add_bucket_policy(self, policy_dict, stack_hooks=None, new_stack=True):

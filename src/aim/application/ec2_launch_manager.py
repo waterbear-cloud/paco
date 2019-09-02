@@ -234,6 +234,7 @@ class EC2LaunchManager():
         bucket_config = models.applications.S3Bucket(bundle.resource_id, None)
         bucket_config.update(bucket_config_dict)
         bucket_config.resolve_ref_obj = self
+        bucket_config.enabled = bundle.resource_config.is_enabled()
         bucket_name_prefix = '-'.join([self.app_engine.get_aws_name(), bundle.group_id])
         bucket_name_suffix = self.id
         bucket_region = self.aws_region

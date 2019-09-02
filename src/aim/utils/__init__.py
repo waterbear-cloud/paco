@@ -84,8 +84,10 @@ def prefixed_name(resource, name):
 
     return '-'.join([env_name, app_name, group_name, resource.name, name])
 
-def log_action(action, message, return_it=False):
+def log_action(action, message, return_it=False, enabled=True):
     log_message = action+": "+message
+    if enabled == False:
+        log_message = '! Disabled: ' + log_message
     if return_it == False:
         print(log_message)
     else:

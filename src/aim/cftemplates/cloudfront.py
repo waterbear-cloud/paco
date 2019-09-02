@@ -244,7 +244,8 @@ Outputs:
             aliases_record_sets_table['cname_id'] = alias_hash
             aliases_record_sets_table['domain_name_param'] = domain_name_param
             aliases_record_sets_table['zone_param_name'] = zone_param_name
-            aliases_record_sets_yaml += aliases_record_sets_fmt.format(aliases_record_sets_table)
+            if cloudfront_config.is_dns_enabled() == True:
+                aliases_record_sets_yaml += aliases_record_sets_fmt.format(aliases_record_sets_table)
 
 
         # ---------------------------------------------------------------------

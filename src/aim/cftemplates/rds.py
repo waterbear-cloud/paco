@@ -21,7 +21,7 @@ class RDS(CFTemplate):
                  rds_config,
                  config_ref=None):
 
-        aws_name = '-'.join([aws_name, 'RDS'])
+        aws_name = '-'.join(['RDS', aws_name])
         super().__init__(aim_ctx,
                          account_ctx,
                          aws_region,
@@ -352,7 +352,7 @@ Resources:
             db_table['db_resource'] = 'DBInstance' + db_table['db_position']
             db_table['db_cluster_properties'] = ''
             resources_yaml += db_instance_fmt.format(db_table)
-            if rds_config.primary_domain_name != None:
+            if rds_config.primary_domain_name != None and rds_config.is_dns_enabled() == True:
                 resources_yaml += record_set_fmt.format(db_table)
 
 

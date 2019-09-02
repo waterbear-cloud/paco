@@ -439,14 +439,15 @@ Outputs:
         # Record Sets
         record_sets_yaml = ""
         record_sets_param_yaml = ""
-        record_set_table['idx'] = 0
-        for alb_dns in alb_config.dns:
-            record_set_table['hosted_zone_id'] = alb_dns.hosted_zone+'.id'
-            record_set_table['domain_name'] = alb_dns.domain_name
-            self.set_parameter('HostedZoneID%d' % (record_set_table['idx']), alb_dns.hosted_zone+'.id')
-            record_sets_yaml += record_set_fmt.format(record_set_table)
-            record_sets_param_yaml += record_set_param_fmt.format(record_set_table)
-            record_set_table['idx'] += 1
+        if alb_config.is_dns_enabled() == True:
+            record_set_table['idx'] = 0
+            for alb_dns in alb_config.dns:
+                record_set_table['hosted_zone_id'] = alb_dns.hosted_zone+'.id'
+                record_set_table['domain_name'] = alb_dns.domain_name
+                self.set_parameter('HostedZoneID%d' % (record_set_table['idx']), alb_dns.hosted_zone+'.id')
+                record_sets_yaml += record_set_fmt.format(record_set_table)
+                record_sets_param_yaml += record_set_param_fmt.format(record_set_table)
+                record_set_table['idx'] += 1
 
         template_fmt_table = {
             'Listeners': listener_yaml,
