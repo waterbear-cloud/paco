@@ -33,7 +33,7 @@ class Controller():
 
     def apply_model_obj(self):
         if self.model_obj != None:
-            loader.provision_model_obj(
+            loader.apply_model_obj(
                 self.model_obj,
                 self.aim_ctx.home,
                 self.aim_ctx.build_folder
