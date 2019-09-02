@@ -40,6 +40,7 @@ setup(
         'pexpect',
         'troposphere',
         'awacs',
+        'deepdiff'
     ],
     packages=[
         'aim.adapters',
