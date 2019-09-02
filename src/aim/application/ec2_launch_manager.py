@@ -215,6 +215,7 @@ class EC2LaunchManager():
 
     def init_bundle_s3_bucket(self, bundle):
         bucket_config_dict = {
+            'enabled': True,
             'bucket_name': 'lb',
             'deletion_policy': 'delete',
             'policy': [ {
@@ -466,16 +467,17 @@ enabled: true
 statement:
   - effect: Allow
     action:
-      - cloudwatch:PutMetricData
-      - ec2:DescribeTags
+      - "cloudwatch:PutMetricData"
       - "autoscaling:Describe*"
-      - "cloudwatch:*"
-      - "logs:*"
-      - "sns:*"
       - "iam:GetPolicy"
       - "iam:GetPolicyVersion"
       - "iam:GetRole"
       - "ec2:DescribeTags"
+      - "logs:PutLogEvents"
+      - "logs:DescribeLogStreams"
+      - "logs:DescribeLogGroups"
+      - "logs:CreateLogStream"
+      - "logs:CreateLogGroup"
     resource:
       - '*'
 """
