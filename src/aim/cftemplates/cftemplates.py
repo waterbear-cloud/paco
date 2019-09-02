@@ -285,6 +285,8 @@ class CFTemplate():
         #print("End sub")
 
     def validate(self):
+        if self.enabled == False:
+            return
         self.generate_template()
         self.aim_ctx.log("Validate template: " + self.get_yaml_path())
         try:
