@@ -1,4 +1,6 @@
 import os
+from aim.models import loader
+from aim.core.exception import StackException, AimErrorCode
 
 class Controller():
 
@@ -8,6 +10,7 @@ class Controller():
         self.controller_type = controller_type
         self.aws_name = controller_type
         self.init_done = False
+        self.model_obj = None
         if controller_name:
             self.aws_name = self.aws_name + '-' + controller_name
 
@@ -18,3 +21,25 @@ class Controller():
         if self.init_done:
             return
         self.init_done = True
+
+    def validate_model_obj(self, model_obj):
+        self.model_obj = model_obj
+        if self.model_obj != None:
+            loader.validate_model_obj(
+                self.model_obj,
+                self.aim_ctx.home,
+                self.aim_ctx.build_folder
+            )
+
+    def apply_model_obj(self):
+        if self.model_obj != None:
+            loader.provision_model_obj(
+                self.model_obj,
+                self.aim_ctx.home,
+                self.aim_ctx.build_folder
+            )
+        else:
+            raise StackException(
+                AimErrorCode.unknown,
+                message = 'No model object to apply.'
+            )

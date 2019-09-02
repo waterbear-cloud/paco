@@ -288,6 +288,8 @@ class NetEnvController(Controller):
 
         self.config = self.aim_ctx.project['netenv'][self.netenv_id]
 
+        self.validate_model_obj(self.config)
+
         utils.log_action("Init", "NetworkEnvironment: {}".format(self.netenv_id))
         if env_id != None:
             if region == None:
@@ -311,6 +313,7 @@ class NetEnvController(Controller):
         for env_id in self.sub_envs.keys():
             for region in self.sub_envs[env_id].keys():
                 self.sub_envs[env_id][region].provision()
+        self.apply_model_obj()
         utils.log_action("Provision", "Network Environment: {}: Completed".format(self.netenv_id))
 
     def backup(self, config_arg):
