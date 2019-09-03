@@ -724,6 +724,7 @@ class StackGroup():
         self.stack_output_config = {}
         self.state = None
         self.prev_state = None
+        self.filter_config = controller.stack_group_filter
         self.state_filename = '-'.join([self.get_aws_name(), self.name, "StackGroup-State.yaml"])
         self.state_filepath = os.path.join(self.aim_ctx.build_folder, self.state_filename)
 
@@ -792,18 +793,36 @@ class StackGroup():
                 yaml.dump(  data=new_state,
                             stream=output_fd)
 
+    def filtered_stack_action(self, stack, action_method):
+        if self.filter_config != None:
+            if stack.template.config_ref.startswith(self.filter_config):
+                action_method()
+            else:
+                stack.log_action(
+                    action_method.__func__.__name__.capitalize(),
+                    'Filtered'
+                )
+        else:
+            action_method()
+
     def validate(self):
         # Loop through stacks and validate each
         for order_item in self.stack_orders:
             if order_item.order == StackOrder.PROVISION:
-                order_item.stack.validate()
+                self.filtered_stack_action(
+                    order_item.stack,
+                    order_item.stack.validate
+                )
 
     def provision(self):
         # Loop through stacks and provision each one
         wait_last_list = []
         for order_item in self.stack_orders:
             if order_item.order == StackOrder.PROVISION:
-                order_item.stack.provision()
+                self.filtered_stack_action(
+                    order_item.stack,
+                    order_item.stack.provision
+                )
             elif order_item.order == StackOrder.WAIT:
                 if order_item.stack.cached == False:
                     order_item.stack.wait_for_complete(verbose=False)
@@ -820,7 +839,10 @@ class StackGroup():
         # Loop through stacks and deletes each one
         for order_item in reversed(self.stack_orders):
             if order_item.order == StackOrder.PROVISION:
-                order_item.stack.delete()
+                self.filtered_stack_action(
+                    order_item.stack,
+                    order_item.stack.delete
+                )
 
         for order_item in reversed(self.stack_orders):
             if order_item.order == StackOrder.WAIT:
@@ -847,7 +869,6 @@ class StackGroup():
             self.stack_orders.append(stack_order)
         if not stack in self.stacks:
             self.stacks.append(stack)
-
 
     def get_aws_name(self):
         name = '-'.join([self.controller.get_aws_name(),

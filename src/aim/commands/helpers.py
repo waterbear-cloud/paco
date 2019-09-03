@@ -64,6 +64,7 @@ def handle_exceptions(func):
                     click.echo(error.message)
                 else:
                     click.echo(error)
+            print('')
             sys.exit(1)
 
     return decorated

@@ -16,6 +16,7 @@ yaml.default_flow_sytle = False
 class EnvironmentContext():
     def __init__(self, aim_ctx, netenv_ctl, netenv_id, env_id, region, config):
         self.aim_ctx = aim_ctx
+        self.stack_group_filter = netenv_ctl.stack_group_filter
         self.netenv_ctl = netenv_ctl
         self.netenv_id = netenv_id
         self.env_id = env_id
@@ -282,24 +283,74 @@ class NetEnvController(Controller):
             return
         self.init_done = True
 
-        self.netenv_id = controller_args['arg_1']
-        env_id = controller_args['arg_2']
-        region = controller_args['arg_3']
+        netenv_id = None
+        env_id = None
+        region = None
+        resource_arg = None
+        aim_command = controller_args['command']
+        netenv_arg = controller_args['arg_1']
+
+        arg_1_parts = controller_args['arg_1'].split('.', 3)
+        netenv_id = arg_1_parts[0]
+        if netenv_id in self.aim_ctx.project['netenv'].keys():
+            self.netenv_id = netenv_id
+            if len(arg_1_parts) > 1:
+                env_id = arg_1_parts[1]
+            if len(arg_1_parts) > 2:
+                region = arg_1_parts[2]
+            if len(arg_1_parts) > 3:
+                resource_arg = arg_1_parts[3]
+        else:
+            raise StackException(
+                AimErrorCode.Unknown,
+                message="Network Environment does not exist: {}".format(netenv_id)
+            )
 
         self.config = self.aim_ctx.project['netenv'][self.netenv_id]
 
+        if env_id not in self.config.keys():
+            message = "Command: aim {} netenv {}\n".format(aim_command, netenv_arg)
+            message += "Error:   Network Environment '{}' does not have an Environment named '{}'.\n".format(netenv_id, env_id)
+            raise StackException(
+                AimErrorCode.Unknown,
+                message = message
+            )
+        if region not in self.config[env_id].keys():
+            message = "Command: aim {} netenv {}\n".format(aim_command, netenv_arg)
+            message += "Error:   Environment '{}' does not have region '{}'.".format(env_id, region)
+            raise StackException(
+                AimErrorCode.Unknown,
+                message = message
+            )
+        # Validate resource_arg
+        if resource_arg != None:
+            res_parts = resource_arg.split('.')
+            config_obj = self.config[env_id][region]
+            done_parts_str = ""
+            first = True
+            for res_part in res_parts:
+                if first == False:
+                    done_parts_str += '.'
+                done_parts_str += res_part
+                if res_part not in config_obj.keys() and hasattr(config_obj, res_part) == False:
+                    message = "Command: aim {} netenv {}\n".format(aim_command, netenv_arg)
+                    message += "Error:   Unable to locate resource: {}".format(done_parts_str)
+                    raise StackException(
+                        AimErrorCode.Unknown,
+                        message = message
+                    )
+                if res_part in config_obj.keys():
+                    config_obj = config_obj[res_part]
+                else:
+                    config_obj = getattr(config_obj, res_part)
+                first = False
         self.validate_model_obj(self.config)
 
         utils.log_action_col("Init", "NetEnv", self.netenv_id)
-        if env_id != None:
-            if region == None:
-                raise StackException(
-                    AimErrorCode.Unknown,
-                    message="Missing region argument: aim <command> netenv %s %s <region>" % (self.netenv_id, env_id)
-                )
-            self.init_sub_env(env_id, region)
-        else:
-            self.init_all_sub_envs()
+        self.stack_group_filter = 'netenv.'+netenv_arg
+        self.init_sub_env(env_id, region)
+        #else:
+        #    self.init_all_sub_envs()
         utils.log_action_col("Init", "NetEnv", self.netenv_id, "Complete")
 
     def validate(self):

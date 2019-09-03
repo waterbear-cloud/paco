@@ -11,6 +11,7 @@ class Controller():
         self.aws_name = controller_type
         self.init_done = False
         self.model_obj = None
+        self.stack_group_filter = None
         if controller_name:
             self.aws_name = self.aws_name + '-' + controller_name
 

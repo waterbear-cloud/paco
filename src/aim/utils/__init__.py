@@ -100,7 +100,7 @@ def log_action_col(col_1, col_2=None, col_3=None, col_4=None, return_it=False, e
     if col_4 != None: col_4_size = len(col_4)
 
     if enabled == False:
-        col_1 = '! Disabled'
+        col_1 = 'Disabled'
 
     if col_2 == None:
         col_1_size = len(col_1)
