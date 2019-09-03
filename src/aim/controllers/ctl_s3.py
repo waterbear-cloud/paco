@@ -103,7 +103,7 @@ class S3Context():
         # If the bucket already exists, do not create a stack for it
         if self.bucket_context['config'].external_resource == False:
             # S3 Delete on Stack Delete hook
-            utils.log_action("Init", "S3: Bucket: {}: {}".format(bucket_id, self.get_bucket_name()), False, bucket_config.is_enabled())
+            utils.log_action_col("Init", "S3", "Bucket", bucket_id+": "+self.get_bucket_name(), False, bucket_config.is_enabled())
             if stack_hooks == None:
                 stack_hooks = StackHooks(self.aim_ctx)
             stack_hooks.add('S3StackGroup', 'delete', 'post',
@@ -112,7 +112,7 @@ class S3Context():
                             stack_hooks=stack_hooks,
                             stack_tags=self.stack_tags)
         else:
-            utils.log_action("Init", "S3: External Bucket: {}: {}".format(bucket_id, self.get_bucket_name()), False, bucket_config.is_enabled())
+            utils.log_action_col("Init", "S3", "External Bucket", bucket_id+": "+self.get_bucket_name(), False, bucket_config.is_enabled())
 
 
     def add_bucket_policy(self, policy_dict, stack_hooks=None, new_stack=True):
@@ -258,7 +258,7 @@ class S3Controller(Controller):
     def init_s3_resource(self, controller_args, stack_tags):
         if self.init_s3_resource_done == True:
             return
-        utils.log_action("Init", "S3")
+        utils.log_action_col("Init", "S3")
         self.init_s3_resource_done = True
         s3_env_map = {}
         for bucket_id in self.aim_ctx.project['s3'].buckets.keys():
@@ -277,7 +277,7 @@ class S3Controller(Controller):
             s3_env_map[s3_env_id]['buckets'].append([bucket_id, bucket_config])
 
         self.init_bucket_environments(s3_env_map, stack_tags)
-        utils.log_action("Init", "S3: Completed")
+        utils.log_action_col("Init", "S3", "Completed")
 
     def init(self, controller_args):
         if controller_args != None:

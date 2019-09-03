@@ -3,6 +3,7 @@ from aim import models
 from aim.models import schemas
 from pprint import pprint
 import aim.cftemplates
+from aim import utils
 
 class NetworkStackGroup(StackGroup):
     def __init__(self, aim_ctx, account_ctx, env_ctx, stack_tags):
@@ -20,10 +21,7 @@ class NetworkStackGroup(StackGroup):
 
     def log_init_status(self, name, is_enabled):
         "Logs the init status of a network component"
-        if is_enabled == False:
-            print("! Disabled: Init: Network: {}".format(name))
-        else:
-            print("Init: Network: {}".format(name))
+        utils.log_action_col('Init', 'Network', name, '', enabled=is_enabled)
 
     def init(self):
         # Network Stack Templates
@@ -43,7 +41,6 @@ class NetworkStackGroup(StackGroup):
         self.vpc_stack = vpc_template.stack
 
         # Segments
-        #print("Segments -----------")
         self.segment_list = []
         self.segment_dict = {}
         for segment_id in self.env_ctx.segment_ids():
@@ -136,7 +133,7 @@ class NetworkStackGroup(StackGroup):
         for nat_stack in self.nat_list:
             self.add_stack_order(nat_stack, [StackOrder.WAIT])
 
-        print("Init: Network: Completed")
+        utils.log_action_col('Init', 'Network', 'Completed', enabled=self.env_ctx.config.network.is_enabled())
 
     def get_vpc_stack(self):
         return self.vpc_stack

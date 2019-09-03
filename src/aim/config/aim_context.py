@@ -11,6 +11,7 @@ from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.models import vocabulary
 from aim.models.references import Reference
+from aim import utils
 
 class AccountContext(object):
 
@@ -166,11 +167,11 @@ class AimContext(object):
         service_plugins = aim.models.services.list_service_plugins()
         for plugin_name, plugin_module in service_plugins.items():
             try:
-                print("Init: Service Plugin: %s" % (plugin_name))
+                utils.log_action_col('Init', 'Service Plugin', plugin_name)
                 service = plugin_module.instantiate_class(self, self.project['service'][plugin_name.lower()])
                 service.init(None)
                 self.services[plugin_name.lower()] = service
-                print("Init: Service Plugin: %s: Completed" % (plugin_name))
+                utils.log_action_col('Init', 'Service Plugin', plugin_name, 'Completed')
             except KeyError:
                 # ignore if no config files for a registered service
                 print("Skipping Service: {}".format(plugin_name))

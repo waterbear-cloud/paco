@@ -29,7 +29,7 @@ class CodeCommitController(Controller):
         if self.init_done:
             return
         self.init_done = True
-        utils.log_action("Init", "CodeCommit")
+        utils.log_action_col("Init", "CodeCommit")
         stack_group.log_next_header = "Init"
         if controller_args:
             self.name = controller_args['arg_1']
@@ -39,7 +39,7 @@ class CodeCommitController(Controller):
         if self.config != None:
             self.config.resolve_ref_obj = self
             self.init_stack_groups()
-        utils.log_action("Init", "CodeCommit: Completed")
+        utils.log_action_col("Init", "CodeCommit", "Completed")
 
     def init_stack_groups(self):
         # CodeCommit Repository

@@ -29,9 +29,9 @@ class Route53Controller(Controller):
             return
         self.config.resolve_ref_obj = self
         self.init_done = True
-        utils.log_action("Init", "Route53")
+        utils.log_action_col("Init", "Route53")
         self.init_stack_groups()
-        utils.log_action("Init", "Route53: Completed")
+        utils.log_action_col("Init", "Route53", "Completed")
 
     def init_stack_groups(self):
         # TODO: Fixed above now with init done flag?

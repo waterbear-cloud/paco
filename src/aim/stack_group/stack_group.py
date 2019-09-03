@@ -9,7 +9,7 @@ from aim.core.exception import AimException, AimErrorCode
 from botocore.exceptions import ClientError, WaiterError
 from enum import Enum
 from aim.core.yaml import YAML
-from aim.utils import md5sum, str_spc, dict_of_dicts_merge
+from aim.utils import md5sum, dict_of_dicts_merge
 from copy import deepcopy
 
 log_next_header = None
@@ -149,7 +149,6 @@ class StackHooks():
     def run(self, stack_action, stack_timing, stack):
         for hook in self.hooks[stack_action][stack_timing]:
             stack.log_action("Provision", "Hook", message=": {}: {}: {}".format(hook['name'], stack_timing, stack_action))
-            #utils.log_action("Provision", "{0} {1} {2}: {3}.{4}: {5}".format(account_name, action_name, stack.get_name(), stack_action, stack_timing, hook['name'] ))
             hook['method'](hook, hook['arg'])
 
     def gen_cache_id(self):
@@ -388,7 +387,7 @@ class Stack():
 
     def is_stack_cached(self):
         if self.aim_ctx.nocache or self.do_not_cache:
-            return False
+            #return False
             # XXX: Make this work
             if self.template.dependency_group == True:
                 self.get_status()
@@ -622,33 +621,39 @@ class Stack():
     def log_action_header(self):
         global log_next_header
         if log_next_header != None:
-            msg_account = str_spc('Account', self.max_account_name_size)
-            msg_action = str_spc('Action', self.max_action_name_size)
-            utils.log_action(log_next_header, msg_account+msg_action+"Stack Name")
+            utils.log_action_col(log_next_header, 'Account', 'Action', 'Stack Name')
             log_next_header = None
 
 
     def log_action(self, action, stack_action, account_name=None, stack_name=None, message=None, return_it=False):
         if account_name == None:
-            msg_account_name = str_spc(self.account_ctx.get_name(), self.max_account_name_size)
+            msg_account_name = self.account_ctx.get_name()
         else:
-            msg_account_name = str_spc(account_name, self.max_account_name_size)
+            msg_account_name = account_name
 
-        stack_action = str_spc(stack_action, self.max_action_name_size)
+        if msg_account_name == 'Hook':
+            breakpoint()
 
         if stack_name == None:
             msg_stack_name = self.get_name()
         else:
             msg_stack_name = stack_name
+
         if self.template.template_file_id != None:
             msg_stack_name += ' - fileid - ' + self.template.template_file_id
-        stack_message = msg_account_name+stack_action+msg_stack_name
+        stack_message = msg_stack_name
         if message != None:
-            stack_message += message
+            stack_message += ': '+message
         global log_next_header
         if return_it == False:
             self.log_action_header()
-        log_message = utils.log_action(action, stack_message, return_it)
+        log_message = utils.log_action_col(
+            action,
+            msg_account_name,
+            stack_action,
+            stack_message,
+            return_it
+        )
         if return_it == True:
             return log_message
 
