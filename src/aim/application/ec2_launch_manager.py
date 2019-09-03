@@ -470,9 +470,6 @@ statement:
     action:
       - "cloudwatch:PutMetricData"
       - "autoscaling:Describe*"
-      - "iam:GetPolicy"
-      - "iam:GetPolicyVersion"
-      - "iam:GetRole"
       - "ec2:DescribeTags"
       - "logs:PutLogEvents"
       - "logs:DescribeLogStreams"
