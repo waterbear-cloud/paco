@@ -90,35 +90,34 @@ def create_log_col(col='', col_size=0):
     message = '{}{} '.format(col[:col_size], ' '*(col_size-len(col[:col_size])))
     return message
 
-def log_action_col(col_1, col_2='', col_3='', col_4='', return_it=False, enabled=True):
+def log_action_col(col_1, col_2=None, col_3=None, col_4=None, return_it=False, enabled=True):
     col_1_size = 10
     col_2_size = 15
     col_3_size = 15
-    col_4_size = 100
-
-    if col_2 == None:
-        col_2 = ''
-    if col_3 == None:
-        col_3 = ''
-    if col_4 == None:
-        col_4 = ''
-
-    if col_2 == '':
-        col_1_size = 100
-    if col_3 == '':
-        col_2_size = 100
-    if col_4 == '':
-        col_3_size = 100
+    if col_2 == '': col_2 = None
+    if col_3 == '': col_3 = None
+    if col_4 == '': col_4 = None
+    if col_4 != None: col_4_size = len(col_4)
 
     if enabled == False:
         col_1 = '! Disabled'
 
+    if col_2 == None:
+        col_1_size = len(col_1)
+        col_3 = None
+        col_4 = None
+    if col_3 == None and col_2 != None:
+        col_2_size = len(col_2)
+        col_4 = None
+    if col_4 == None and col_3 != None:
+        col_3_size = len(col_3)
+
     message = create_log_col(col_1, col_1_size)
-    if col_2 != '':
+    if col_2 != None:
         message += create_log_col(col_2, col_2_size)
-        if col_3 != '':
+        if col_3 != None:
             message += create_log_col(col_3, col_3_size)
-            if col_4 != '':
+            if col_4 != None:
                 message += create_log_col(col_4, col_4_size)
     if return_it == True:
         return message+'\n'
