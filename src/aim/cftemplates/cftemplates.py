@@ -784,7 +784,7 @@ class CFTemplate():
 
             print("  {}:".format(node_str), end='')
             if diff_obj_key == 'values_changed':
-                print("    old: {}".format(root_change.t1))
+                print("\n    old: {}".format(root_change.t1))
                 print("    new: {}\n".format(root_change.t2))
             elif isinstance(change_t, list):
                 self.print_diff_list(change_t)
@@ -826,7 +826,7 @@ class CFTemplate():
         )
         if len(deep_diff.keys()) == 0:
             return
-        print("----------------------------------------------------")
+        print("==========================")
         print("Validate Template Changes")
         print("(stack) {}".format(self.stack.get_name()))
         print("(model) {}".format(self.config_ref))
@@ -854,7 +854,7 @@ class CFTemplate():
             self.print_diff_object(deep_diff, 'set_item_removed')
             print("+++")
             # attribute_added
-        print("----------------------------------------------------")
+        print("\n==========================")
 
         while prompt_user:
             answer = input("\nAre these changes acceptable? [y/N] ")
@@ -869,3 +869,4 @@ class CFTemplate():
                 else:
                     print("aborting...")
                     sys.exit(1)
+        print('', end='\n')

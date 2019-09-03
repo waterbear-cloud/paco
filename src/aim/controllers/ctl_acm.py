@@ -36,7 +36,7 @@ class ACMController(Controller):
             cert_config = acm_config['config']
             if cert_config.is_enabled() == False:
                 continue
-            if cert_config.external_resource == True:
+            if cert_config.external_resource == True or cert_config.is_dns_enabled() == False:
                 return
             cert_domain = cert_config.domain_name
             acm_client = DNSValidatedACMCertClient(acm_config['account_ctx'], cert_domain, acm_config['region'])
@@ -71,7 +71,7 @@ class ACMController(Controller):
                 if cert_arn == None:
                     self.provision()
                     cert_arn = acm_client.get_certificate_arn()
-                if res_config['config'].external_resource == False:
+                if res_config['config'].external_resource == False and res_config['config'].is_dns_enabled() == True:
                     acm_client.wait_for_certificate_validation( cert_arn )
                 # print("Certificate ARN: " + cert_domain + ": " + cert_arn)
                 return cert_arn
