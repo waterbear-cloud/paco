@@ -25,7 +25,8 @@ class Sts(object):
                     admin_iam_role_arn=None,
                     mfa_account=None
                 ):
-        self.sts_token_expiry_seconds = 3500 # Limited to 1 hour until we use
+        self.mfa_session_expiry_secs = 3600 * 8 # 8 hour
+        self.assume_role_session_expiry_secs = 60 * 15 # 15 minutes
         self.temp_creds_path = temp_creds_path
         self.session_creds_path = session_creds_path
         self.role_creds_path = role_creds_path
@@ -37,7 +38,6 @@ class Sts(object):
         self.admin_iam_role_arn = admin_iam_role_arn
         self.session = None
         self.sts_client = boto3.client('sts')
-
 
     def get_temporary_credentials(self):
         return self.credentials
@@ -78,7 +78,7 @@ class Sts(object):
         )
         token_code = input('MFA Token: {0}: '.format(self.account_ctx.get_name()))
         session_creds = sts_client.get_session_token(
-            DurationSeconds=(60*60)*6, # 6 hours
+            DurationSeconds=self.sts_mfa_token_session_expiry_secs,
             TokenCode=token_code,
             SerialNumber=self.mfa_arn,
         )['Credentials']
@@ -94,7 +94,7 @@ class Sts(object):
             aws_session_token=session_creds['SessionToken'],
         )
         role_creds = sts_client.assume_role(
-            DurationSeconds=60*15, # 15 minues
+            DurationSeconds=self.assume_role_session_expiry_secs,
             RoleArn=self.admin_iam_role_arn,
             RoleSessionName='aim-multiaccount-session',
             #TokenCode=token_code,
