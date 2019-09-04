@@ -78,7 +78,7 @@ class Sts(object):
         )
         token_code = input('MFA Token: {0}: '.format(self.account_ctx.get_name()))
         session_creds = sts_client.get_session_token(
-            DurationSeconds=self.sts_mfa_token_session_expiry_secs,
+            DurationSeconds=self.mfa_session_expiry_secs,
             TokenCode=token_code,
             SerialNumber=self.mfa_arn,
         )['Credentials']

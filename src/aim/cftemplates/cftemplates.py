@@ -859,7 +859,7 @@ class CFTemplate():
         while prompt_user:
             answer = self.aim_ctx.input(
                 "\nAre these changes acceptable?",
-                yes_no_promp=True,
+                yes_no_prompt=True,
                 default='N'
             )
             if answer == False:

@@ -34,6 +34,7 @@ class CodeCommitController(Controller):
         if controller_args:
             self.name = controller_args['arg_1']
         self.config = self.aim_ctx.project['codecommit']
+        self.validate_model_obj(self.config)
         # Sets the CodeCommit reference resolver object to forward all
         # all aim.ref resource.codecommit.* calls to self.resolve_ref()
         if self.config != None:
@@ -119,6 +120,7 @@ policies:
     def provision(self):
         for stack_grp in self.stack_grps:
             stack_grp.provision()
+        self.apply_model_obj()
 
     def resolve_ref(self, ref):
         # codecommit.example.app1.name

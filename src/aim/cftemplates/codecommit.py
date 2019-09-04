@@ -128,6 +128,8 @@ Resources:
         policy_users = {}
         for repo_item in repo_list:
             repo_config = repo_item['repo_config']
+            if repo_config.is_enabled() == False:
+                continue
             codecommit_repo_table['repository_name'] = repo_config.repository_name
             codecommit_repo_table['repository_description'] = repo_config.description
             cf_repo_name = '_'.join([repo_item['group_id'], repo_item['repo_id']])
