@@ -23,12 +23,19 @@ from aim.commands.helpers import pass_aim_context
     default=False,
     help='Disables the AIM CloudFormation stack cache.'
 )
+@click.option(
+    '-y', '--yes',
+    is_flag=True,
+    default=False,
+    help='Responds "yes" to any Yes/No prompts.'
+)
 
 @pass_aim_context
-def cli(ctx, verbose, nocache):
+def cli(ctx, verbose, nocache, yes):
     """AIM: Application Infrastructure Manager"""
     ctx.verbose = verbose
     ctx.nocache = nocache
+    ctx.yes = yes
 
 cli.add_command(provision_command)
 cli.add_command(init_command)

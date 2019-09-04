@@ -833,7 +833,9 @@ class StackGroup():
             if order_item.stack.cached == False:
                 order_item.stack.wait_for_complete(verbose=False)
 
-        self.update_state()
+        # Disabling stack state for now as it seems stacks are being
+        # suggested to be deleted when they shouldn't be.
+        # self.update_state()
 
     def delete(self):
         # Loop through stacks and deletes each one

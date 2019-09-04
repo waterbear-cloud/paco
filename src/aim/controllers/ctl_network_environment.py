@@ -293,7 +293,7 @@ class NetEnvController(Controller):
 
         if netenv_arg == None:
             message = "Command: aim {} netenv {}\n".format(aim_command, netenv_arg)
-            message += "Error:   Missing NetEnv argument:  <netenv>.<environment>.<region>[.<option>.<resource>.<path>]".format(env_id, region)
+            message += "Error:   Missing NetEnv argument:  <netenv>.<environment>.<region>[.<option>.<resource>.<path>]"
             raise StackException(
                 AimErrorCode.Unknown,
                 message = message

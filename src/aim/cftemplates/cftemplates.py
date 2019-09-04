@@ -857,16 +857,14 @@ class CFTemplate():
         print("\n==========================")
 
         while prompt_user:
-            answer = input("\nAre these changes acceptable? [y/N] ")
-            if answer == '':
-                answer = 'n'
-            if answer.lower() not in ['y', 'n', 'yes', 'no']:
-                print('Invalid answer: ' + answer)
-                continue
+            answer = self.aim_ctx.input(
+                "\nAre these changes acceptable?",
+                yes_no_promp=True,
+                default='N'
+            )
+            if answer == False:
+                print("aborting...")
+                sys.exit(1)
             else:
-                if answer.lower() in ['y', 'yes']:
-                    return True
-                else:
-                    print("aborting...")
-                    sys.exit(1)
+                break
         print('', end='\n')

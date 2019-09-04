@@ -29,7 +29,8 @@ class Controller():
             loader.validate_model_obj(
                 self.model_obj,
                 self.aim_ctx.home,
-                self.aim_ctx.build_folder
+                self.aim_ctx.build_folder,
+                self.aim_ctx.yes
             )
 
     def apply_model_obj(self):

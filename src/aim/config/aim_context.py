@@ -109,8 +109,11 @@ class AimContext(object):
 
     def __init__(self, home=None):
         self.home = home
+        # CLI Flags
         self.verbose = False
         self.nocache = False
+        self.yes = False
+
         self.aim_path = os.getcwd()
         self.build_folder = None
         self.aws_name = "AIM"
@@ -240,6 +243,9 @@ class AimContext(object):
                 allowed_values=None,
                 return_bool_on_allowed_value=False,
                 case_sensitive=True):
+
+        if yes_no_prompt == True and self.yes:
+            return 'Y'
 
         try_again = True
         while try_again:
