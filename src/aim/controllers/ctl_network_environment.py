@@ -283,12 +283,21 @@ class NetEnvController(Controller):
             return
         self.init_done = True
 
+
         netenv_id = None
         env_id = None
         region = None
         resource_arg = None
         aim_command = controller_args['command']
         netenv_arg = controller_args['arg_1']
+
+        if netenv_arg == None:
+            message = "Command: aim {} netenv {}\n".format(aim_command, netenv_arg)
+            message += "Error:   Missing NetEnv argument:  <netenv>.<environment>.<region>[.<option>.<resource>.<path>]".format(env_id, region)
+            raise StackException(
+                AimErrorCode.Unknown,
+                message = message
+            )
 
         arg_1_parts = controller_args['arg_1'].split('.', 3)
         netenv_id = arg_1_parts[0]
@@ -332,17 +341,17 @@ class NetEnvController(Controller):
                 if first == False:
                     done_parts_str += '.'
                 done_parts_str += res_part
-                if res_part not in config_obj.keys() and hasattr(config_obj, res_part) == False:
+                if hasattr(config_obj, res_part) == False and res_part not in config_obj.keys():
                     message = "Command: aim {} netenv {}\n".format(aim_command, netenv_arg)
                     message += "Error:   Unable to locate resource: {}".format(done_parts_str)
                     raise StackException(
                         AimErrorCode.Unknown,
                         message = message
                     )
-                if res_part in config_obj.keys():
-                    config_obj = config_obj[res_part]
-                else:
+                if hasattr(config_obj, res_part):
                     config_obj = getattr(config_obj, res_part)
+                else:
+                    config_obj = config_obj[res_part]
                 first = False
         self.validate_model_obj(self.config)
 

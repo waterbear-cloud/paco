@@ -26,10 +26,17 @@ class AccountContext(object):
         self.config = aim_ctx.project['accounts'][name]
         self.mfa_account = mfa_account
         self.aws_session = None
-        cache_filename = '-'.join(['aim', aim_ctx.project.name, 'account', self.name])
-        self.cli_cache = os.path.join(os.path.expanduser('~'),
-                                      '.aws/cli/cache',
-                                      cache_filename)
+        role_cache_filename = '-'.join(['aim', aim_ctx.project.name, self.name])+'.role'
+        self.role_cache_path = os.path.join(
+            os.path.expanduser('~'),
+            '.aws/cli/cache',
+            role_cache_filename)
+        session_cache_filename = '-'.join(['aim', aim_ctx.project.name])+'.session'
+        self.session_cache_path = os.path.join(
+            os.path.expanduser('~'),
+            '.aws/cli/cache',
+            session_cache_filename)
+
         admin_creds = self.aim_ctx.project['credentials']
         self.admin_iam_role_arn = 'arn:aws:iam::{}:role/{}'.format(
                 self.config.account_id,
@@ -51,7 +58,8 @@ class AccountContext(object):
         if self.aws_session == None:
             self.aws_session = aim.config.aws_credentials.Sts(
                 self,
-                temporary_credentials_path=self.cli_cache,
+                session_creds_path=self.session_cache_path,
+                role_creds_path=self.role_cache_path,
                 mfa_arn=admin_creds.mfa_role_arn,
                 admin_creds=admin_creds,
                 admin_iam_role_arn=self.admin_iam_role_arn
@@ -63,7 +71,8 @@ class AccountContext(object):
         if self.aws_session == None:
             self.aws_session = aim.config.aws_credentials.Sts(
                     self,
-                    temporary_credentials_path=self.cli_cache,
+                    session_creds_path=self.session_cache_path,
+                    role_creds_path=self.role_cache_path,
                     mfa_account=self.mfa_account,
                     admin_iam_role_arn=self.admin_iam_role_arn
             )
