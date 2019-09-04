@@ -284,7 +284,7 @@ class Stack():
 
                 else:
                     message = self.get_stack_error_message(
-                        message_prefix=e.response['Error']['Message'],
+                        prefix_message=e.response['Error']['Message'],
                         skip_status = True
                     )
                     raise StackException(AimErrorCode.Unknown, message=message)

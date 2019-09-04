@@ -66,8 +66,8 @@ class IAMUserAccountDelegates(CFTemplate):
         self.set_template(self.template.to_yaml())
 
     def user_delegate_role_and_policies(self, user_config, permissions_list):
-        #user_arn = 'arn:aws:iam::{}:user/{}'.format(self.master_account_id, user_config.username)
-        user_arn = 'arn:aws:iam::{}:root'.format(self.master_account_id)
+        user_arn = 'arn:aws:iam::{}:user/{}'.format(self.master_account_id, user_config.username)
+        #user_arn = 'arn:aws:iam::{}:root'.format(self.master_account_id)
         assume_role_res = troposphere.iam.Role(
             "UserAccountDelegateRole",
             RoleName="IAM-User-Account-Delegate-Role-{}".format(
@@ -80,13 +80,13 @@ class IAMUserAccountDelegates(CFTemplate):
                         Effect=Allow,
                         Action=[ AssumeRole ],
                         Principal=Principal("AWS", [user_arn]),
-                        #Condition=Condition(
-                        #    [
-                        #        AWACSBool({
-                        #            MultiFactorAuthPresent: True
-                        #        })
-                        #    ]
-                        #)
+                        Condition=Condition(
+                            [
+                                AWACSBool({
+                                    MultiFactorAuthPresent: True
+                                })
+                            ]
+                        )
                     )
                 ]
             )

@@ -58,21 +58,6 @@ class CodeCommitController(Controller):
                 self.stack_grps.append(codecommit_stack_grp)
                 codecommit_stack_grp.init()
 
-
-                # IAM Account Delegate Role
-                # Generate IAM Role dict config
-                #iam_roles_dict = self.gen_iam_roles_config_dict(repo_list)
-                #aws_name_prefix = self.get_aws_name()
-                #iam_stack_grp = IAMStackGroup(self.aim_ctx,
-                #                              account_ctx,
-                #                              aws_name_prefix,
-                #                              iam_roles_dict,
-                #                              'codecommit',
-                #                              'codecommit',
-                #                              self)
-                #self.stack_grps.append(iam_stack_grp)
-                #iam_stack_grp.init()
-
     def gen_iam_roles_config_dict(self, repo_list):
 
         role_yaml = """
