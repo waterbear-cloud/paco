@@ -136,6 +136,7 @@ Resources:
                         # XXX: TODO: This only handles references to security groups within the
                         #            template currently being generated.
                         local_ref = self.get_local_sg_ref(sg_rule_config.source_security_group+'.id')
+                        local_ref = self.create_cfn_logical_id(local_ref)
                         sg_rule_table['source'] = '\n      SourceSecurityGroupId: !Ref ' + local_ref
                     else:
                         raise StackException(AimErrorCode.Unknown)

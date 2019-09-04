@@ -7,12 +7,13 @@ from botocore.exceptions import ClientError
 #import logging
 #logging.basicConfig(level=logging.DEBUG)
 
-class Sts(object):
+class AimSTS(object):
     """
-    Sts: Object to manage the persistence of authentication over multiple
-        runs of an automation script. When testing a script this will
-        save having to input an MFA token multiple times when using
-        an account that requires it.
+    Provides temporary long term credentials that generate short term
+    credentials by assuming a role. When the short term credentials
+    expire, they are regenerated using the long term credentials. When
+    The long term credentials expire, the user will be prompted for
+    a new MFA token.
     """
 
     def __init__(   self,
@@ -23,10 +24,14 @@ class Sts(object):
                     mfa_arn=None,
                     admin_creds=None,
                     admin_iam_role_arn=None,
-                    mfa_account=None
+                    mfa_account=None,
+                    mfa_session_expiry_secs=None,
+                    assume_role_session_expiry_secs=None,
                 ):
+        # mfa_session_expiry provides long term expiry
         self.mfa_session_expiry_secs = 3600 * 8 # 8 hour
-        self.assume_role_session_expiry_secs = 60 * 15 # 15 minutes
+        # assume_role_session_expiry is restricted to 1 hour due to role chaining.
+        self.assume_role_session_expiry_secs = 60 * 60 # 60 minutes
         self.temp_creds_path = temp_creds_path
         self.session_creds_path = session_creds_path
         self.role_creds_path = role_creds_path
@@ -52,6 +57,7 @@ class Sts(object):
                     aws_secret_access_key=credentials['SecretAccessKey'],
                     aws_session_token=credentials['SessionToken']
                 )
+                breakpoint()
                 _ = client.get_caller_identity()['Account']
         except:
             return None

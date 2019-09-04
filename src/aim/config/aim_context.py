@@ -42,6 +42,8 @@ class AccountContext(object):
                 self.config.account_id,
                 admin_creds.admin_iam_role_name
             )
+        self.mfa_session_expiry_secs = admin_creds.mfa_session_expiry_secs
+        self.assume_role_session_expiry_secs = admin_creds.assume_role_session_expiry_secs
         if name == "master":
             self.get_mfa_session(admin_creds)
 
@@ -56,25 +58,29 @@ class AccountContext(object):
 
     def get_mfa_session(self, admin_creds):
         if self.aws_session == None:
-            self.aws_session = aim.config.aws_credentials.Sts(
+            self.aws_session = aim.config.aws_credentials.AimSTS(
                 self,
                 session_creds_path=self.session_cache_path,
                 role_creds_path=self.role_cache_path,
                 mfa_arn=admin_creds.mfa_role_arn,
                 admin_creds=admin_creds,
-                admin_iam_role_arn=self.admin_iam_role_arn
+                admin_iam_role_arn=self.admin_iam_role_arn,
+                mfa_session_expiry_secs=self.mfa_session_expiry_secs,
+                assume_role_session_expiry_secs=self.assume_role_session_expiry_secs
             )
 
         return self.aws_session.get_temporary_session()
 
     def get_session(self):
         if self.aws_session == None:
-            self.aws_session = aim.config.aws_credentials.Sts(
+            self.aws_session = aim.config.aws_credentials.AimSTS(
                     self,
                     session_creds_path=self.session_cache_path,
                     role_creds_path=self.role_cache_path,
                     mfa_account=self.mfa_account,
-                    admin_iam_role_arn=self.admin_iam_role_arn
+                    admin_iam_role_arn=self.admin_iam_role_arn,
+                    mfa_session_expiry_secs=self.mfa_session_expiry_secs,
+                    assume_role_session_expiry_secs=self.assume_role_session_expiry_secs
             )
 
         return self.aws_session.get_temporary_session()
