@@ -1,7 +1,9 @@
 import os
+from aim import utils
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
+from aim.models import references
 from aim.models.references import Reference
 from aim.core.exception import StackException, AimErrorCode
 from io import StringIO
@@ -69,6 +71,7 @@ Resources:
     Properties:
       GroupId: !Ref {0[cf_sg_name]:s}
       IpProtocol: {0[protocol]:s}{0[from_port]:s}{0[to_port]:s}{0[source]:s}
+      Description: {0[description]:s}
 """
 
         sg_rule_output_fmt = """
@@ -78,7 +81,6 @@ Resources:
 
         template_yaml = template_header
         template_outputs = ""
-
         # Security Group and Ingress/Egress Resources
         is_sg_enabled = False
         for sg_name in sorted(security_groups_config.keys()):
@@ -93,7 +95,7 @@ Resources:
             # Controller Name, Network Environment Name
             #sg_table['group_name'] = aim_ctx.config_controller.aws_name() + "-" + self.stack_group_ctx.aws_name + "-" + sg_name
             group_name = self.create_resource_name_join(
-                [self.env_ctx.netenv_id, self.env_ctx.env_id,sg_group_id, sg_name],
+                [self.env_ctx.netenv_id, self.env_ctx.env_id, sg_group_id, sg_name],
                 separator='-',
                 camel_case=True,
                 filter_id='SecurityGroup.GroupName'
@@ -122,9 +124,11 @@ Resources:
                                       'protocol': '',
                                       'from_port': '',
                                       'to_port': '',
-                                      'source': '' }
+                                      'source': '',
+                                      'description': '' }
 
-                    sg_rule_table['cf_sg_rule_name'] = self.create_cfn_logical_id(sg_name + sg_rule_type + sg_rule_config.name)
+                    sg_rule_hash = utils.md5sum(str_data='{}'.format(sg_rule_config.__dict__))[:8].upper()
+                    sg_rule_table['cf_sg_rule_name'] = self.create_cfn_logical_id(sg_name + sg_rule_hash + sg_rule_type + sg_rule_config.name)
                     sg_rule_table['cf_sg_name'] = sg_table['cf_sg_name']
                     sg_rule_table['cf_rule_type'] = sg_rule_type
                     sg_rule_table['protocol'] = str(sg_rule_config.protocol)
@@ -135,9 +139,12 @@ Resources:
                     elif sg_rule_config.source_security_group != '':
                         # XXX: TODO: This only handles references to security groups within the
                         #            template currently being generated.
-                        local_ref = self.get_local_sg_ref(sg_rule_config.source_security_group+'.id')
-                        local_ref = self.create_cfn_logical_id(local_ref)
-                        sg_rule_table['source'] = '\n      SourceSecurityGroupId: !Ref ' + local_ref
+                        if references.is_ref(sg_rule_config.source_security_group):
+                            source_sg = self.get_local_sg_ref(sg_rule_config.source_security_group+'.id')
+                            source_sg = '!Ref ' + self.create_cfn_logical_id(source_sg)
+                        else:
+                            source_sg = sg_rule_config.source_security_group
+                        sg_rule_table['source'] = '\n      SourceSecurityGroupId: ' + source_sg
                     else:
                         raise StackException(AimErrorCode.Unknown)
 
@@ -150,6 +157,10 @@ Resources:
                             sg_rule_table['from_port'] = '\n      FromPort: ' + str(sg_rule_config.from_port)
                         if sg_rule_config.to_port != '':
                             sg_rule_table['to_port'] = '\n      ToPort: ' + str(sg_rule_config.to_port)
+                    if sg_rule_config.description != None and sg_rule_config.description != '':
+                        sg_rule_table['description'] = sg_rule_config.description
+                    else:
+                        sg_rule_table['description'] = 'unknown'
 
                     template_yaml += sg_rule_fmt.format(sg_rule_table)
 

@@ -308,6 +308,7 @@ class CFTemplate():
                 )
                 raise StackException(AimErrorCode.TemplateValidationError, message=message)
         #self.aim_ctx.log("Validation successful")
+        self.validate_template_changes()
 
     def provision(self):
         #print("cftemplate: provision: " + self.get_yaml_path())
@@ -792,6 +793,7 @@ class CFTemplate():
                 self.print_diff_dict(change_t)
             else:
                 print("{}".format(change_t))
+            print('')
 
     def init_template_store_paths(self):
         read_file_path = self.get_yaml_path()
