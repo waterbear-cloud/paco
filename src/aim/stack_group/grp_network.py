@@ -74,7 +74,7 @@ class NetworkStackGroup(StackGroup):
                     'SecurityGroup', '{}.{}'.format(sg_id, sg_obj_id),
                     sg_config[sg_id][sg_obj_id].is_enabled()
                 )
-            sg_group_config_ref = '.'.join([self.config_ref_prefix, "network.vpc.security_groups", sg_id])
+            sg_groups_config_ref = '.'.join([self.config_ref_prefix, "network.vpc.security_groups", sg_id])
             sg_template = aim.cftemplates.SecurityGroups( aim_ctx=self.aim_ctx,
                                                           account_ctx=self.account_ctx,
                                                           aws_region=self.region,
@@ -83,7 +83,7 @@ class NetworkStackGroup(StackGroup):
                                                           env_ctx=self.env_ctx,
                                                           security_groups_config=sg_config[sg_id],
                                                           sg_group_id=sg_id,
-                                                          sg_group_config_ref=sg_group_config_ref )
+                                                          sg_groups_config_ref=sg_groups_config_ref )
             sg_stack = sg_template.stack
             self.sg_list.append(sg_stack)
             self.sg_dict[sg_id] = sg_stack

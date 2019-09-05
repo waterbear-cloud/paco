@@ -777,15 +777,22 @@ class CFTemplate():
     def print_diff_object(self, diff_obj, diff_obj_key):
         if diff_obj_key not in diff_obj.keys():
             return
+        last_root_node_str = None
         for root_change in diff_obj[diff_obj_key]:
             node_str = '.'.join(self.getFromSquareBrackets(root_change.path()))
+            for root_node_str in ['Parameters', 'Resources', 'Outputs']:
+                if node_str.startswith(root_node_str+'.'):
+                    node_str = node_str[len(root_node_str+'.'):]
+                    if last_root_node_str != root_node_str:
+                        print(root_node_str+":")
+                    last_root_node_str = root_node_str
+                    break
             if diff_obj_key.endswith('_removed'):
                 change_t = root_change.t1
             elif diff_obj_key.endswith('_added'):
                 change_t = root_change.t2
             elif diff_obj_key == 'values_changed':
                 change_t = root_change.t1
-
             print("  {}:".format(node_str), end='')
             if diff_obj_key == 'values_changed':
                 print("\n    old: {}".format(root_change.t1))
