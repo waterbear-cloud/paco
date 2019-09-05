@@ -10,6 +10,7 @@ from aim.application.ec2_launch_manager import EC2LaunchManager
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.core.yaml import YAML
+from aim.models import references, vocabulary
 from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks, StackTags
 
 yaml=YAML()
@@ -384,6 +385,8 @@ role_name: %s""" % ("ASGInstance")
             stack_tags=res_stack_tags
         )
         role_profile_arn = iam_ctl.role_profile_arn(instance_iam_role_ref)
+
+        # Monitoring
         if res_config.monitoring != None and res_config.monitoring.enabled != False:
             self.ec2_launch_manager.lb_add_cloudwatch_agent(instance_iam_role_ref, res_config)
         # SSM Agent
@@ -411,7 +414,9 @@ role_name: %s""" % ("ASGInstance")
             res_config,
             res_config.aim_ref_parts,
             role_profile_arn,
-            self.ec2_launch_manager.user_data_script(self.app_id, grp_id, res_id),
+            self.ec2_launch_manager.user_data_script(
+                self.app_id, grp_id, res_id,
+                res_config.instance_ami_type),
             self.ec2_launch_manager.get_cache_id(self.app_id, grp_id, res_id)
         )
 

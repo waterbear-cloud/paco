@@ -143,6 +143,7 @@ class CFTemplate():
                  stack_tags=None,
                  stack_hooks=None,
                  stack_order=None,
+                 change_protected=False,
                  iam_capabilities=[]
                 ):
         self.update_only = False
@@ -172,6 +173,7 @@ class CFTemplate():
         # Dependencies
         self.dependency_template = None
         self.dependency_group = False
+        self.change_protected = change_protected
 
     @property
     def enabled(self):
@@ -448,7 +450,8 @@ class CFTemplate():
                 aws_region=self.aws_region,
                 stack_tags=self.stack_tags,
                 hooks=self.stack_hooks,
-                update_only=self.update_only
+                update_only=self.update_only,
+                change_protected=self.change_protected,
             )
             if self.enabled == True:
                 self.stack_group.add_stack_order(stack, self.stack_order)

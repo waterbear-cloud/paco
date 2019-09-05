@@ -20,7 +20,7 @@ import pathlib
 import tarfile
 from aim.stack_group import StackHooks, Stack, StackTags
 from aim import models
-from aim.models import schemas
+from aim.models import schemas, vocabulary
 from aim.models.locations import get_parent_by_interface
 from aim.core.yaml import YAML
 from aim.utils import md5sum, prefixed_name
@@ -267,45 +267,63 @@ class EC2LaunchManager():
                 return s3_ctl.get_bucket_name(bundle.s3_bucket_ref)
         return None
 
-    def user_data_script(self, app_id, grp_id, resource_id):
+    def user_data_script(self, app_id, grp_id, resource_id, instance_ami_type):
         """BASH script that will load the launch bundle from user_data"""
-        script = """#!/bin/bash
+        script_fmt = """#!/bin/bash
+# EC2 Launch Manager: {0[description]}
 
-# EC2 Launch Manager: %s
-""" % (self.get_cache_id(app_id, grp_id, resource_id))
+# Update System
+{0[update_system]}
+"""
+        script_table = {
+            'description': self.get_cache_id(app_id, grp_id, resource_id),
+            'update_system': None,
+            'essential_package': None,
+            'ec2_manager_s3_bucket': None,
+        }
+        for command in vocabulary.user_data_script['update_system'][instance_ami_type]:
+            script_table['update_system'] = command + '\n'
+
         s3_bucket = self.get_s3_bucket_name(app_id, grp_id, self.bucket_id(resource_id))
         if s3_bucket != None:
-            script += """
-# Update System
-yum update -y
+            script_table['ec2_manager_s3_bucket'] = s3_bucket
+
+            script_table['essential_packages'] = ""
+            for command in vocabulary.user_data_script['essential_packages'][instance_ami_type]:
+                script_table['essential_packages'] += command + '\n'
+
+            script_fmt += """
+# Essential Packages
+{0[essential_packages]}
+
 # Launch Bundles
 EC2_MANAGER_FOLDER='/opt/aim/EC2Manager/'
-mkdir -p ${EC2_MANAGER_FOLDER}
-aws s3 sync s3://%s/ ${EC2_MANAGER_FOLDER}
+mkdir -p $EC2_MANAGER_FOLDER
+aws s3 sync s3://{0[ec2_manager_s3_bucket]}/ $EC2_MANAGER_FOLDER
 
-cd ${EC2_MANAGER_FOLDER}/LaunchBundles/
+cd $EC2_MANAGER_FOLDER/LaunchBundles/
 
 echo "Loading Launch Bundles"
 for BUNDLE_PACKAGE in "$(ls *.tgz)"
 do
-    BUNDLE_FOLDER=${BUNDLE_PACKAGE//'.tgz'/}
-    echo "${BUNDLE_FOLDER}: Unpacking:"
-    tar xvfz ${BUNDLE_PACKAGE}
-    chown -R root.root ${BUNDLE_FOLDER}
-    echo "${BUNDLE_FOLDER}: Launching bundle"
-    cd ${BUNDLE_FOLDER}
+    BUNDLE_FOLDER=${{BUNDLE_PACKAGE//'.tgz'/}}
+    echo "$BUNDLE_FOLDER: Unpacking:"
+    tar xvfz $BUNDLE_PACKAGE
+    chown -R root.root $BUNDLE_FOLDER
+    echo "$BUNDLE_FOLDER: Launching bundle"
+    cd $BUNDLE_FOLDER
     chmod u+x ./launch.sh
     ./launch.sh
     cd ..
-    echo "${BUNDLE_FOLDER}: Done"
+    echo "$BUNDLE_FOLDER: Done"
 done
-            """ % (s3_bucket)
+            """
         else:
-            script += """
+            script_fmt += """
 # Launch Bundles
 echo "No Launch bundles to load"
 """
-        return script
+        return script_fmt.format(script_table)
 
     def add_bundle(self, bundle):
         bundle.build()
@@ -335,32 +353,6 @@ echo "No Launch bundles to load"
         app_name = get_parent_by_interface(resource, schemas.IApplication).name
         group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
 
-        # Create the CloudWatch agent launch scripts and configuration
-        cw_agent_object = {
-            "Amazon": { "path": "/amazon_linux/amd64/latest",
-                         "object": "amazon-cloudwatch-agent.rpm"},
-            "Centos":  { "path": "/centos/amd64/latest",
-                         "object": "amazon-cloudwatch-agent.rpm" },
-            "SUSE":    { "path": "/suse/amd64/latest",
-			             "object": "amazon-cloudwatch-agent.rpm" },
-            "Debian":  { "path": "/debian/amd64/latest",
-			             "object": "amazon-cloudwatch-agent.deb" },
-            "Ubuntu":  { "path": "/ubuntu/amd64/latest",
-			             "object": "amazon-cloudwatch-agent.deb" },
-            "Windows": { "path": "/windows/amd64/latest",
-			             "object": "amazon-cloudwatch-agent.msi" },
-            "Redhat":  { "path": "/redhat/arm64/latest",
-			             "object": "amazon-cloudwatch-agent.rpm" },
-            }
-        cw_install_command = {
-            "Amazon": "rpm -U" ,
-            "Centos":  "rpm -U",
-            "SUSE":    "rpm -U",
-            "Debian":  "dpkg -i -E",
-            "Ubuntu":  "dpkg -i -E",
-            "Windows": "msiexec /i",
-            "Redhat":  "rpm -U"
-            }
         # Launch script
         launch_script_template = """#!/bin/bash
 
@@ -391,10 +383,12 @@ fi
 cd ${{LB_DIR}}
 /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:amazon-cloudwatch-agent.json -s
 """
+
+
         launch_script_table = {
-            'agent_path': cw_agent_object['Amazon']['path'],
-            'agent_object': cw_agent_object['Amazon']['object'],
-            'install_command': cw_install_command['Amazon']
+            'agent_path': vocabulary.cloudwatch_agent[resource.instance_ami_type]['path'],
+            'agent_object': vocabulary.cloudwatch_agent[resource.instance_ami_type]['object'],
+            'install_command': vocabulary.cloudwatch_agent[resource.instance_ami_type]['install']
         }
         launch_script = launch_script_template.format(launch_script_table)
 
@@ -433,7 +427,6 @@ cd ${{LB_DIR}}
 
         # if there is logging, add it to the cwagent config
         if monitoring.log_sets:
-            log_groups = []
             agent_config["logs"] = {
                 "logs_collected": {
                     "files": {

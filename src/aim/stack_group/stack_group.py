@@ -174,6 +174,7 @@ class Stack():
         do_not_cache=False,
         stack_tags=None,
         update_only=False,
+        change_protected=False
     ):
         self.aim_ctx = aim_ctx
         self.account_ctx = account_ctx
@@ -197,6 +198,7 @@ class Stack():
         self.action = None
         self.do_not_cache = do_not_cache
         self.update_only = update_only
+        self.change_protected = change_protected
 
         self.tags = StackTags(stack_tags)
         self.tags.add_tag('AIM-Stack', 'true')
@@ -488,6 +490,9 @@ class Stack():
 
     def update_stack(self):
         # Update Stack
+        if self.change_protected == True:
+            self.log_action("Provision", "Protected")
+            return
         self.action = "update"
         self.log_action("Provision", "Update")
         stack_parameters = self.template.generate_stack_parameters()
