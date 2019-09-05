@@ -142,10 +142,14 @@ Resources:
                         raise StackException(AimErrorCode.Unknown)
 
                     # Optional Properties
-                    if sg_rule_config.from_port != '':
-                        sg_rule_table['from_port'] = '\n      FromPort: ' + str(sg_rule_config.from_port)
-                    if sg_rule_config.to_port != '':
-                        sg_rule_table['to_port'] = '\n      ToPort: ' + str(sg_rule_config.to_port)
+                    if sg_rule_config.port != -1:
+                        sg_rule_table['from_port'] = '\n      FromPort: ' + str(sg_rule_config.port)
+                        sg_rule_table['to_port'] = '\n      ToPort: ' + str(sg_rule_config.port)
+                    else:
+                        if sg_rule_config.from_port != '':
+                            sg_rule_table['from_port'] = '\n      FromPort: ' + str(sg_rule_config.from_port)
+                        if sg_rule_config.to_port != '':
+                            sg_rule_table['to_port'] = '\n      ToPort: ' + str(sg_rule_config.to_port)
 
                     template_yaml += sg_rule_fmt.format(sg_rule_table)
 

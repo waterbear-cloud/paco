@@ -330,7 +330,7 @@ class Stack():
             stack_metadata = self.cfn_client.describe_stacks(StackName=self.get_name())
         except ClientError as e:
             if e.response['Error']['Code'] == 'ValidationError' and e.response['Error']['Message'].find("does not exist") != -1:
-                raise StackException(AimErrorCode.StackDoesNotExist, 'Could not describe missing stack "{}".'.format(self.get_name()))
+                raise StackException(AimErrorCode.StackDoesNotExist, message = 'Could not describe missing stack "{}".\n'.format(self.get_name()))
                 # Debug how we got here and what to do about it
                 print("Error: Stack does not exist: {}".format(self.stack_id))
                 print("  If it was manually deleted from the AWS Web Console, then this error is caused")
@@ -463,10 +463,11 @@ class Stack():
         try:
             stack_parameters = self.template.generate_stack_parameters()
         except StackException as e:
-            e.message = "Error generating stack parameters for template"
+            e.message += "Error generating stack parameters for template\n"
             if e.code == AimErrorCode.StackDoesNotExist:
                 self.log_action("Provision", "Error")
-                print("Stack: %s: Error: Depends on StackOutputs from a stack that does not yet exist." % (self.get_name()))
+                e.message += "Stack: {}\n".format(self.get_name())
+                e.message += "Error: Depends on StackOutputs from a stack that does not yet exist.\n"
             raise e
         self.hooks.run("create", "pre", self)
         response = self.cfn_client.create_stack(
@@ -579,6 +580,7 @@ class Stack():
 
         # If last md5 is equal, then we no changes are required
         if self.is_stack_cached() == True:
+            self.template.apply_template_changes()
             self.log_action("Provision", "Cache")
             return
 

@@ -19,15 +19,15 @@ class NetworkStackGroup(StackGroup):
         self.region = self.env_ctx.region
         self.stack_tags = stack_tags
 
-    def log_init_status(self, name, is_enabled):
+    def log_init_status(self, name, description, is_enabled):
         "Logs the init status of a network component"
-        utils.log_action_col('Init', 'Network', name, '', enabled=is_enabled)
+        utils.log_action_col('Init', 'Network', name, description, enabled=is_enabled)
 
     def init(self):
         # Network Stack Templates
         # VPC Stack
         vpc_config = self.env_ctx.vpc_config()
-        self.log_init_status('VPC', vpc_config.is_enabled())
+        self.log_init_status('VPC', '', vpc_config.is_enabled())
         vpc_config_ref = '.'.join([self.config_ref_prefix, "network.vpc"])
         vpc_config.resolve_ref_obj = self
         vpc_config.private_hosted_zone.resolve_ref_obj = self
@@ -45,7 +45,7 @@ class NetworkStackGroup(StackGroup):
         self.segment_dict = {}
         for segment_id in self.env_ctx.segment_ids():
             segment_config = self.env_ctx.segment_config(segment_id)
-            self.log_init_status('Segment: {}'.format(segment_id), segment_config.is_enabled())
+            self.log_init_status('Segment', '{}'.format(segment_id), segment_config.is_enabled())
             segment_config.resolve_ref_obj = self
             segment_config_ref = '.'.join([self.config_ref_prefix, "network.vpc.segments", segment_id])
             segment_template = aim.cftemplates.Segment(self.aim_ctx,
@@ -71,7 +71,7 @@ class NetworkStackGroup(StackGroup):
             for sg_obj_id in sg_config[sg_id]:
                 sg_config[sg_id][sg_obj_id].resolve_ref_obj = self
                 self.log_init_status(
-                    'Security Group: {}.{}'.format(sg_id, sg_obj_id),
+                    'SecurityGroup', '{}.{}'.format(sg_id, sg_obj_id),
                     sg_config[sg_id][sg_obj_id].is_enabled()
                 )
             sg_group_config_ref = '.'.join([self.config_ref_prefix, "network.vpc.security_groups", sg_id])
@@ -99,7 +99,7 @@ class NetworkStackGroup(StackGroup):
             for peer_id in peering_config.keys():
                 peer_config = vpc_config.peering[peer_id]
                 peer_config.resolve_ref_obj = self
-                self.log_init_status('VPC Peer: {}'.format(peer_id), peer_config.is_enabled())
+                self.log_init_status('VPCPeer', '{}'.format(peer_id), peer_config.is_enabled())
 
             peering_template = aim.cftemplates.VPCPeering(
                 self.aim_ctx,
@@ -117,7 +117,7 @@ class NetworkStackGroup(StackGroup):
         self.nat_list = []
         for nat_id in vpc_config.nat_gateway.keys():
             nat_config = vpc_config.nat_gateway[nat_id]
-            self.log_init_status('NAT Gateway: {}'.format(nat_id), nat_config.is_enabled())
+            self.log_init_status('NAT Gateway', '{}'.format(nat_id), nat_config.is_enabled())
             # We now disable the NAT Gatewy in the template so that we can delete it and recreate
             # it when disabled.
             nat_template = aim.cftemplates.NATGateway( aim_ctx=self.aim_ctx,

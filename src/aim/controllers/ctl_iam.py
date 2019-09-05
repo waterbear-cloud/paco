@@ -388,7 +388,11 @@ class IAMController(Controller):
             # Create SDB Domain for Account wide access keys
             # Use us-west-2 region as ca-central-1 does not support SDB yet and the
             # region does not mattter here.
-            sdb_client = master_account_ctx.get_aws_client('sdb', aws_region='us-west-2')
+            if master_account_ctx.config.region == 'ca-central-1':
+                sdb_region = 'us-west-2'
+            else:
+                sdb_region = master_account_ctx.config.region
+            sdb_client = master_account_ctx.get_aws_client('sdb', aws_region=sdb_region)
             sdb_domain = self.iam_user_access_keys_sdb_domain
             sdb_item_name = md5sum(str_data=user_config.username)
             sdb_client.create_domain(
