@@ -221,7 +221,7 @@ class CFTemplate():
         if applied == False:
             yaml_path = os.path.join(self.build_folder, self.account_ctx.get_name())
         else:
-            yaml_path = os.path.join(self.aim_ctx.home, 'aimdata', 'applied-templates', self.account_ctx.get_name())
+            yaml_path = os.path.join(self.aim_ctx.home, 'aimdata', 'applied', 'cloudformation', self.account_ctx.get_name())
 
         if self.stack.aws_region != None:
             yaml_path = os.path.join(yaml_path, self.stack.aws_region)

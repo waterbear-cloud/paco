@@ -29,7 +29,6 @@ class Controller():
             loader.validate_model_obj(
                 self.model_obj,
                 self.aim_ctx.home,
-                self.aim_ctx.build_folder,
                 self.aim_ctx.yes
             )
 
@@ -38,10 +37,9 @@ class Controller():
             loader.apply_model_obj(
                 self.model_obj,
                 self.aim_ctx.home,
-                self.aim_ctx.build_folder
             )
         else:
             raise StackException(
-                AimErrorCode.unknown,
+                AimErrorCode.Unknown,
                 message = 'No model object to apply.'
             )
