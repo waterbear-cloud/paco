@@ -153,6 +153,7 @@ class CFTemplate():
         self.aws_region = aws_region
         self.build_folder = os.path.join(aim_ctx.build_folder, "templates")
         self.yaml_path = None
+        self.applied_yaml_path = None
         self.parameters = []
         self.capabilities = iam_capabilities
         self.body = None
@@ -190,6 +191,7 @@ class CFTemplate():
     def set_template_file_id(self, file_id):
         self.template_file_id = file_id
         self.yaml_path = None
+        self.applied_yaml_path = None
 
     def set_dependency(self, template, dependency_name):
         """
@@ -205,25 +207,36 @@ class CFTemplate():
             template.dependency_group = True
 
 
-    def get_yaml_path(self):
-        if self.yaml_path == None:
-            yaml_filename = self.stack.get_name()
-            if self.template_file_id != None:
-                yaml_filename += "-" + self.template_file_id
-            yaml_filename += ".yaml"
-            #print("BF: " + self.build_folder)
-            #print("YF: " + yaml_filename)
-            self.yaml_path = os.path.join(self.build_folder, self.account_ctx.get_name())
-            #print("YP: " + self.yaml_path)
-            if self.stack.aws_region != None:
-                self.yaml_path = os.path.join(self.yaml_path, self.stack.aws_region)
-            else:
-                raise StackException(AimErrorCode.Unknown, message = "Could not find YAML path: {}".format(self.yaml_path))
+    def get_yaml_path(self, applied=False):
+        if self.yaml_path and applied == False:
+            return self.yaml_path
+        if self.applied_yaml_path and applied == True:
+            return self.applied_yaml_path
 
-            pathlib.Path(self.yaml_path).mkdir(parents=True, exist_ok=True)
-            self.yaml_path = os.path.join(self.yaml_path, yaml_filename)
-            #print("YP: " + self.yaml_path)
-        return self.yaml_path
+        yaml_filename = self.stack.get_name()
+        if self.template_file_id != None:
+            yaml_filename += "-" + self.template_file_id
+        yaml_filename += ".yaml"
+
+        if applied == False:
+            yaml_path = os.path.join(self.build_folder, self.account_ctx.get_name())
+        else:
+            yaml_path = os.path.join(self.aim_ctx.home, 'aimdata', 'applied-templates', self.account_ctx.get_name())
+
+        if self.stack.aws_region != None:
+            yaml_path = os.path.join(yaml_path, self.stack.aws_region)
+        else:
+            raise StackException(AimErrorCode.Unknown, message = "AWS region is unavailable: {}".format(yaml_path))
+
+        pathlib.Path(yaml_path).mkdir(parents=True, exist_ok=True)
+        yaml_path = os.path.join(yaml_path, yaml_filename)
+
+        if applied == True:
+            self.applied_yaml_path = yaml_path
+        else:
+            self.yaml_path = yaml_path
+
+        return yaml_path
 
     # Move this somewhere else?
     def aim_sub(self):
@@ -806,10 +819,8 @@ class CFTemplate():
             print('')
 
     def init_template_store_paths(self):
-        read_file_path = self.get_yaml_path()
-        applied_file_path = pathlib.Path(read_file_path+'.applied')
-        new_file_path = pathlib.Path(read_file_path)
-
+        new_file_path = pathlib.Path(self.get_yaml_path())
+        applied_file_path = pathlib.Path(self.get_yaml_path(applied=True))
         return [applied_file_path, new_file_path]
 
     def apply_template_changes(self):
