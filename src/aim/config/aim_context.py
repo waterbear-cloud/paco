@@ -1,17 +1,17 @@
-import os
 import aim.config.aws_credentials
 import aim.core.log
 import aim.controllers
 import aim.models.services
+import os
 import pkg_resources
-from aim.models import load_project_from_yaml
-from aim.models import references
-from aim.config import ConfigProcessor
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.models import vocabulary
 from aim.models.references import Reference
+from aim.models import references
 from aim import utils
+from aim.utils.cache import load_cached_project
+
 
 class AccountContext(object):
 
@@ -160,28 +160,31 @@ class AimContext(object):
         return region
 
     def load_project(self, project_init=False):
+        "Load an AIM Project from YAML,c initialize settings and controllers, and load Service plug-ins."
         print("Project: %s" % (self.home))
         self.project_folder = self.home
         if project_init == True:
             return
 
-        # Config Processor Init
-        self.config_processor = ConfigProcessor(self)
-        self.project = load_project_from_yaml(self.project_folder, None) #self.config_processor.load_yaml)
+        # Load the model from YAML
+        self.project = load_cached_project(self.project_folder)
+
+        # Settings
         self.build_folder = os.path.join(self.home, "build", self.project.name)
-        self.master_account = AccountContext(aim_ctx=self,
-                                             name='master',
-                                             mfa_account=None)
-        # Set Default AWS Region
+        self.master_account = AccountContext(
+            aim_ctx=self,
+            name='master',
+            mfa_account=None
+        )
         os.environ['AWS_DEFAULT_REGION'] = self.project['credentials'].aws_default_region
 
-        # Initialize Controllers so they can initiaize their
+        # Initialize Controllers so they can initialize their
         # resolve_ref_obj's to allow reference lookups
         self.get_controller('Route53')
         self.get_controller('CodeCommit')
         self.get_controller('S3').init({'name': 'buckets'})
 
-        # Load the Service Plugins
+        # Load the Service plug-ins
         service_plugins = aim.models.services.list_service_plugins()
         for plugin_name, plugin_module in service_plugins.items():
             try:
