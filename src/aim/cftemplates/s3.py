@@ -6,7 +6,7 @@ import troposphere.s3
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
-from awacs.aws import Allow, Statement, Policy, Principal
+from awacs.aws import Action, Allow, Statement, Policy, Principal
 from io import StringIO
 from enum import Enum
 
@@ -124,7 +124,7 @@ class S3(CFTemplate):
                 statement_dict = {
                     'Effect': policy_statement.effect,
                     'Action': [
-                        Action(*action.split(':')) for action in policy_statement.actions
+                        Action(*action.split(':')) for action in policy_statement.action
                     ],
                 }
 
