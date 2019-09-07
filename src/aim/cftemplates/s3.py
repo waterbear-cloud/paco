@@ -59,18 +59,18 @@ class S3(CFTemplate):
         # ---------------------------------------------------------------------------
         # Resources
         if bucket_policy_only == False:
-            s3_logical_id = self.gen_cf_logical_name(self.bucket_context['id'], '_') + 'Bucket'
+            s3_logical_id = cf_name_prefix + 'BucketName'
             cfn_export_dict = bucket.cfn_export_dict
             cfn_export_dict['BucketName'] = bucket_name
             s3_resource = troposphere.s3.Bucket.from_dict(s3_logical_id, cfn_export_dict)
             template.add_resource(s3_resource)
-            troposphere.add_output(
+            template.add_output(
                 troposphere.Output(
                     s3_logical_id,
                     Value=troposphere.Ref(s3_resource)
                 )
             )
-            self.register_stack_output_config(config_ref + '.name', cf_name_prefix + 'BucketName')
+            self.register_stack_output_config(config_ref + '.name', s3_logical_id)
 
         if bucket.cloudfront_origin == True:
             # CloudFront OriginAccessIdentity resource
@@ -101,16 +101,17 @@ class S3(CFTemplate):
                 'CloudFrontOriginAccessIdentity',
                 s3_logical_id
             ]
+            template.add_resource(bucket_policy_resource)
+
+            # Output CloudFrontOriginAccessIdentity
             template.add_output(
                 troposphere.Output(
                     'CloudFrontOriginAccessIdentity',
                     Value=troposphere.Ref(cloudfront_origin_resource)
                 )
             )
-            template.add_resource(bucket_policy_resource)
+            self.register_stack_output_config(config_ref + '.origin_id', 'CloudFrontOriginAccessIdentity')
 
-            # Output CloudFrontOriginAccessIdentity
-            self.register_stack_output_config(config_ref+'.origin_id', 'CloudFrontOriginAccessIdentity')
         elif len(bucket.policy) > 0:
             # Bucket Policy
             # ToDo: allow mixing CloudFront Origin policies and other bucket policies together
