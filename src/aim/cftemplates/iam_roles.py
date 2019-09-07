@@ -27,7 +27,7 @@ class IAMRoles(CFTemplate):
             account_ctx,
             aws_region,
             enabled=role_config.is_enabled(),
-            config_ref="",
+            config_ref=role_ref,
             aws_name=aws_name,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
             stack_group=stack_group,

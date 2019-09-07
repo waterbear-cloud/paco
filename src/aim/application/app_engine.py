@@ -5,11 +5,12 @@ CloudFormation templates, organizing the stacks into groups and configuring supp
 
 import aim.cftemplates
 import os
-from aim import models
+from aim import models, utils
 from aim.application.ec2_launch_manager import EC2LaunchManager
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.core.yaml import YAML
+from aim.models import references, vocabulary
 from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks, StackTags
 
 yaml=YAML()
@@ -56,7 +57,7 @@ class ApplicationEngine():
         return self.stack_group.get_aws_name()
 
     def init(self):
-        print("Init: Application: %s" % (self.app_id) )
+        utils.log_action_col('Init', 'Application', self.app_id, enabled=self.config.is_enabled())
         self.ec2_launch_manager = EC2LaunchManager(
             self.aim_ctx,
             self,
@@ -83,7 +84,8 @@ class ApplicationEngine():
                 else:
                     init_method(grp_id, res_id, res_config, StackTags(res_stack_tags))
 
-        print("Init: Application: %s: Completed" % (self.app_id))
+        utils.log_action_col('Init', 'Application', self.app_id, 'Completed', enabled=self.config.is_enabled())
+
 
 
     def gen_iam_role_id(self, res_id, role_id):
@@ -91,10 +93,10 @@ class ApplicationEngine():
 
     def log_resource_init_status(self, res_config):
         "Logs the init status of a resource"
-        if res_config.is_enabled() == False:
-            print("! Disabled: Init: Application: Resource: {}: {}".format(res_config.title_or_name, res_config.name))
-        else:
-            print("Init: Application: Resource: {}: {}".format(res_config.title_or_name, res_config.name))
+        utils.log_action_col(
+            'Init', 'Application', 'Resource',
+                res_config.title_or_name + ': '+ res_config.name,
+                enabled = res_config.is_enabled())
 
     def init_alarms(self, aws_name, res_config, res_stack_tags):
         aim.cftemplates.CWAlarms(
@@ -318,7 +320,6 @@ statement:
         )
 
     def init_lbapplication_resource(self, grp_id, res_id, res_config, res_stack_tags):
-
         # resolve_ref object for TargetGroups
         for target_group in res_config.target_groups.values():
             target_group.resolve_ref_obj = self
@@ -384,6 +385,8 @@ role_name: %s""" % ("ASGInstance")
             stack_tags=res_stack_tags
         )
         role_profile_arn = iam_ctl.role_profile_arn(instance_iam_role_ref)
+
+        # Monitoring
         if res_config.monitoring != None and res_config.monitoring.enabled != False:
             self.ec2_launch_manager.lb_add_cloudwatch_agent(instance_iam_role_ref, res_config)
         # SSM Agent
@@ -411,7 +414,9 @@ role_name: %s""" % ("ASGInstance")
             res_config,
             res_config.aim_ref_parts,
             role_profile_arn,
-            self.ec2_launch_manager.user_data_script(self.app_id, grp_id, res_id),
+            self.ec2_launch_manager.user_data_script(
+                self.app_id, grp_id, res_id,
+                res_config.instance_ami_type),
             self.ec2_launch_manager.get_cache_id(self.app_id, grp_id, res_id)
         )
 

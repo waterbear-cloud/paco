@@ -84,8 +84,49 @@ def prefixed_name(resource, name):
 
     return '-'.join([env_name, app_name, group_name, resource.name, name])
 
-def log_action(action, message, return_it=False):
+def create_log_col(col='', col_size=0):
+    if col == '' or col == None:
+        return ' '*col_size
+    message = '{}{} '.format(col[:col_size], ' '*(col_size-len(col[:col_size])))
+    return message
+
+def log_action_col(col_1, col_2=None, col_3=None, col_4=None, return_it=False, enabled=True):
+    col_1_size = 10
+    col_2_size = 15
+    col_3_size = 15
+    if col_2 == '': col_2 = None
+    if col_3 == '': col_3 = None
+    if col_4 == '': col_4 = None
+    if col_4 != None: col_4_size = len(col_4)
+
+    if enabled == False:
+        col_1 = 'Disabled'
+
+    if col_2 == None:
+        col_1_size = len(col_1)
+        col_3 = None
+        col_4 = None
+    if col_3 == None and col_2 != None:
+        col_2_size = len(col_2)
+        col_4 = None
+    if col_4 == None and col_3 != None:
+        col_3_size = len(col_3)
+
+    message = create_log_col(col_1, col_1_size)
+    if col_2 != None:
+        message += create_log_col(col_2, col_2_size)
+        if col_3 != None:
+            message += create_log_col(col_3, col_3_size)
+            if col_4 != None:
+                message += create_log_col(col_4, col_4_size)
+    if return_it == True:
+        return message+'\n'
+    print(message)
+
+def log_action(action, message, return_it=False, enabled=True):
     log_message = action+": "+message
+    if enabled == False:
+        log_message = '! Disabled: ' + log_message
     if return_it == False:
         print(log_message)
     else:

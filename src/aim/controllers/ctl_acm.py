@@ -28,31 +28,28 @@ class ACMController(Controller):
         pass
 
     def provision(self):
+        """
+        Creates a certificate if one does not exists, then adds DNS validation records
+        the its Route53 hosted zone.
+        """
         for acm_config in self.cert_config_list:
             cert_config = acm_config['config']
             if cert_config.is_enabled() == False:
                 continue
-            if cert_config.external_resource == True:
+            if cert_config.external_resource == True or cert_config.is_dns_enabled() == False:
                 return
             cert_domain = cert_config.domain_name
-            #aws_session = acm_config.account_ctx.get_session()
             acm_client = DNSValidatedACMCertClient(acm_config['account_ctx'], cert_domain, acm_config['region'])
-            #print("Alternate sert name: %s" % (cert_config.subject_alternative_names))
+            # Creates the certificate if it does not exists here.
             cert_arn = acm_client.request_certificate(cert_config.subject_alternative_names)
-            #           print("Cert arn: %s" % (cert_arn))
             validation_records = None
             while validation_records == None:
                 validation_records = acm_client.get_domain_validation_records(cert_arn)
-                #                print("Validation records")
-                #                print(validation_records)
                 if len(validation_records) == 0 or 'ResourceRecord' not in validation_records[0]:
                     print("Waiting for DNS Validation records...")
                     time.sleep(1)
                     validation_records = None
-#                    else:
-#                        print("...received validation records")
 
-            #print("Creating validation records in Route53")
             acm_client.create_domain_validation_records(cert_arn)
 
 
@@ -74,7 +71,7 @@ class ACMController(Controller):
                 if cert_arn == None:
                     self.provision()
                     cert_arn = acm_client.get_certificate_arn()
-                if res_config['config'].external_resource == False:
+                if res_config['config'].external_resource == False and res_config['config'].is_dns_enabled() == True:
                     acm_client.wait_for_certificate_validation( cert_arn )
                 # print("Certificate ARN: " + cert_domain + ": " + cert_arn)
                 return cert_arn

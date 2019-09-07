@@ -46,6 +46,7 @@ class ELB(CFTemplate):
         self.set_parameter('CrossZone', elb_config['cross_zone'])
         self.set_parameter('CustomDomainName', elb_config['dns']['domain_name'])
         self.set_parameter('HostedZoneId', elb_config['dns']['hosted_zone'])
+        self.set_parameter('DNSEnabled', elb_config.is_dns_enabled())
 
         elb_region = self.env_ctx.region
         self.set_parameter('ELBHostedZoneId', self.lb_hosted_zone_id('elb', elb_region))
@@ -168,12 +169,18 @@ Parameters:
     Description: The Regonal AWS Route53 Hosted Zone ID
     Type: String
 
+  DNSEnabled:
+    Description: Enables the creation of DNS Record Sets
+    Type: String
+
 {0[SSLCertificateParameters]:s}
 
 Conditions:
   IsEnabled: !Equals [!Ref LoadBalancerEnabled, "true"]
   CustomDomainExists: !Not [!Equals [!Ref CustomDomainName, ""] ]
+  DNSIsEnabled: !Equals [!Ref DNSEnabled, "true"]
   CustomDomainIsEnabled: !And
+    - !Condition DNSIsEnabled
     - !Condition CustomDomainExists
     - !Condition IsEnabled
 

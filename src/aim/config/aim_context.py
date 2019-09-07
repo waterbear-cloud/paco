@@ -11,6 +11,7 @@ from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.models import vocabulary
 from aim.models.references import Reference
+from aim import utils
 
 class AccountContext(object):
 
@@ -25,15 +26,24 @@ class AccountContext(object):
         self.config = aim_ctx.project['accounts'][name]
         self.mfa_account = mfa_account
         self.aws_session = None
-        cache_filename = '-'.join(['aim', aim_ctx.project.name, 'account', self.name])
-        self.cli_cache = os.path.join(os.path.expanduser('~'),
-                                      '.aws/cli/cache',
-                                      cache_filename)
+        role_cache_filename = '-'.join(['aim', aim_ctx.project.name, self.name])+'.role'
+        self.role_cache_path = os.path.join(
+            os.path.expanduser('~'),
+            '.aws/cli/cache',
+            role_cache_filename)
+        session_cache_filename = '-'.join(['aim', aim_ctx.project.name])+'.session'
+        self.session_cache_path = os.path.join(
+            os.path.expanduser('~'),
+            '.aws/cli/cache',
+            session_cache_filename)
+
         admin_creds = self.aim_ctx.project['credentials']
         self.admin_iam_role_arn = 'arn:aws:iam::{}:role/{}'.format(
                 self.config.account_id,
                 admin_creds.admin_iam_role_name
             )
+        self.mfa_session_expiry_secs = admin_creds.mfa_session_expiry_secs
+        self.assume_role_session_expiry_secs = admin_creds.assume_role_session_expiry_secs
         if name == "master":
             self.get_mfa_session(admin_creds)
 
@@ -48,23 +58,29 @@ class AccountContext(object):
 
     def get_mfa_session(self, admin_creds):
         if self.aws_session == None:
-            self.aws_session = aim.config.aws_credentials.Sts(
+            self.aws_session = aim.config.aws_credentials.AimSTS(
                 self,
-                temporary_credentials_path=self.cli_cache,
+                session_creds_path=self.session_cache_path,
+                role_creds_path=self.role_cache_path,
                 mfa_arn=admin_creds.mfa_role_arn,
                 admin_creds=admin_creds,
-                admin_iam_role_arn=self.admin_iam_role_arn
+                admin_iam_role_arn=self.admin_iam_role_arn,
+                mfa_session_expiry_secs=self.mfa_session_expiry_secs,
+                assume_role_session_expiry_secs=self.assume_role_session_expiry_secs
             )
 
         return self.aws_session.get_temporary_session()
 
     def get_session(self):
         if self.aws_session == None:
-            self.aws_session = aim.config.aws_credentials.Sts(
+            self.aws_session = aim.config.aws_credentials.AimSTS(
                     self,
-                    temporary_credentials_path=self.cli_cache,
+                    session_creds_path=self.session_cache_path,
+                    role_creds_path=self.role_cache_path,
                     mfa_account=self.mfa_account,
-                    admin_iam_role_arn=self.admin_iam_role_arn
+                    admin_iam_role_arn=self.admin_iam_role_arn,
+                    mfa_session_expiry_secs=self.mfa_session_expiry_secs,
+                    assume_role_session_expiry_secs=self.assume_role_session_expiry_secs
             )
 
         return self.aws_session.get_temporary_session()
@@ -99,8 +115,11 @@ class AimContext(object):
 
     def __init__(self, home=None):
         self.home = home
+        # CLI Flags
         self.verbose = False
         self.nocache = False
+        self.yes = False
+
         self.aim_path = os.getcwd()
         self.build_folder = None
         self.aws_name = "AIM"
@@ -166,11 +185,11 @@ class AimContext(object):
         service_plugins = aim.models.services.list_service_plugins()
         for plugin_name, plugin_module in service_plugins.items():
             try:
-                print("Init: Service Plugin: %s" % (plugin_name))
+                utils.log_action_col('Init', 'Service Plugin', plugin_name)
                 service = plugin_module.instantiate_class(self, self.project['service'][plugin_name.lower()])
                 service.init(None)
                 self.services[plugin_name.lower()] = service
-                print("Init: Service Plugin: %s: Completed" % (plugin_name))
+                utils.log_action_col('Init', 'Service Plugin', plugin_name, 'Completed')
             except KeyError:
                 # ignore if no config files for a registered service
                 print("Skipping Service: {}".format(plugin_name))
@@ -230,6 +249,9 @@ class AimContext(object):
                 allowed_values=None,
                 return_bool_on_allowed_value=False,
                 case_sensitive=True):
+
+        if yes_no_prompt == True and self.yes:
+            return 'Y'
 
         try_again = True
         while try_again:

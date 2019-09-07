@@ -43,7 +43,8 @@ class ASG(CFTemplate):
                          config_ref=asg_config_ref,
                          aws_name=aws_name,
                          stack_group=stack_group,
-                         stack_tags=stack_tags)
+                         stack_tags=stack_tags,
+                         change_protected=asg_config.change_protected)
 
         self.asg_config = asg_config
 

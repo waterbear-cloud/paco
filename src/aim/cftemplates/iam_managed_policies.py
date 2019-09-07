@@ -19,13 +19,12 @@ class IAMManagedPolicies(CFTemplate):
         #aim_ctx.log("IAMManagedPolicies CF Template init")
         aws_name = '-'.join(['Policy', template_name])
         #aws_name = '-'.join([template_name, 'Policy'])
-
         super().__init__(
             aim_ctx,
             account_ctx,
             aws_region,
             enabled=policy_context['config'].is_enabled(),
-            config_ref="",
+            config_ref=policy_context['ref'],
             aws_name=aws_name,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
             stack_group=stack_group,

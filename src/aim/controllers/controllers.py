@@ -11,6 +11,7 @@ class Controller():
         self.aws_name = controller_type
         self.init_done = False
         self.model_obj = None
+        self.stack_group_filter = None
         if controller_name:
             self.aws_name = self.aws_name + '-' + controller_name
 
@@ -28,7 +29,7 @@ class Controller():
             loader.validate_model_obj(
                 self.model_obj,
                 self.aim_ctx.home,
-                self.aim_ctx.build_folder
+                self.aim_ctx.yes
             )
 
     def apply_model_obj(self):
@@ -36,10 +37,9 @@ class Controller():
             loader.apply_model_obj(
                 self.model_obj,
                 self.aim_ctx.home,
-                self.aim_ctx.build_folder
             )
         else:
             raise StackException(
-                AimErrorCode.unknown,
+                AimErrorCode.Unknown,
                 message = 'No model object to apply.'
             )

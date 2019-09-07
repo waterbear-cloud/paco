@@ -6,10 +6,10 @@ import time
 from aim import utils
 from aim.core.exception import StackException
 from aim.core.exception import AimException, AimErrorCode
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, WaiterError
 from enum import Enum
 from aim.core.yaml import YAML
-from aim.utils import md5sum, str_spc, dict_of_dicts_merge
+from aim.utils import md5sum, dict_of_dicts_merge
 from copy import deepcopy
 
 log_next_header = None
@@ -149,7 +149,6 @@ class StackHooks():
     def run(self, stack_action, stack_timing, stack):
         for hook in self.hooks[stack_action][stack_timing]:
             stack.log_action("Provision", "Hook", message=": {}: {}: {}".format(hook['name'], stack_timing, stack_action))
-            #utils.log_action("Provision", "{0} {1} {2}: {3}.{4}: {5}".format(account_name, action_name, stack.get_name(), stack_action, stack_timing, hook['name'] ))
             hook['method'](hook, hook['arg'])
 
     def gen_cache_id(self):
@@ -175,6 +174,7 @@ class Stack():
         do_not_cache=False,
         stack_tags=None,
         update_only=False,
+        change_protected=False
     ):
         self.aim_ctx = aim_ctx
         self.account_ctx = account_ctx
@@ -184,7 +184,7 @@ class Stack():
         if aws_region == None:
             raise StackException(AimErrorCode.Unknown, message="AWS Region is not supplied")
         self.aws_region = aws_region
-        self.cf_client = self.account_ctx.get_aws_client('cloudformation', aws_region)
+        self.cfn_client = self.account_ctx.get_aws_client('cloudformation', aws_region)
 
         # Load the template
         template.stack = self
@@ -198,6 +198,7 @@ class Stack():
         self.action = None
         self.do_not_cache = do_not_cache
         self.update_only = update_only
+        self.change_protected = change_protected
 
         self.tags = StackTags(stack_tags)
         self.tags.add_tag('AIM-Stack', 'true')
@@ -272,7 +273,7 @@ class Stack():
     def get_status(self):
         while True:
             try:
-                stack_list = self.cf_client.describe_stacks(StackName=self.get_name())
+                stack_list = self.cfn_client.describe_stacks(StackName=self.get_name())
             except ClientError as e:
                 if e.response['Error']['Code'] == 'ValidationError' and e.response['Error']['Message'].endswith("does not exist"):
                     self.status = StackStatus.DOES_NOT_EXIST
@@ -284,7 +285,11 @@ class Stack():
                     continue
 
                 else:
-                    raise StackException(AimErrorCode.Unknown, message=e.response['Error']['Message'])
+                    message = self.get_stack_error_message(
+                        prefix_message=e.response['Error']['Message'],
+                        skip_status = True
+                    )
+                    raise StackException(AimErrorCode.Unknown, message=message)
             else:
                 self.status = StackStatus[stack_list['Stacks'][0]['StackStatus']]
                 self.stack_id = stack_list['Stacks'][0]['StackId']
@@ -324,10 +329,10 @@ class Stack():
             return self.outputs_value_cache[key]
 
         try:
-            stack_metadata = self.cf_client.describe_stacks(StackName=self.get_name())
+            stack_metadata = self.cfn_client.describe_stacks(StackName=self.get_name())
         except ClientError as e:
             if e.response['Error']['Code'] == 'ValidationError' and e.response['Error']['Message'].find("does not exist") != -1:
-                raise StackException(AimErrorCode.StackDoesNotExist, 'Could not describe missing stack "{}".'.format(self.get_name()))
+                raise StackException(AimErrorCode.StackDoesNotExist, message = 'Could not describe missing stack "{}".\n'.format(self.get_name()))
                 # Debug how we got here and what to do about it
                 print("Error: Stack does not exist: {}".format(self.stack_id))
                 print("  If it was manually deleted from the AWS Web Console, then this error is caused")
@@ -384,7 +389,7 @@ class Stack():
 
     def is_stack_cached(self):
         if self.aim_ctx.nocache or self.do_not_cache:
-            return False
+            #return False
             # XXX: Make this work
             if self.template.dependency_group == True:
                 self.get_status()
@@ -448,6 +453,7 @@ class Stack():
 
             # Save stack outputs to yaml
             self.save_stack_outputs()
+            self.template.apply_template_changes()
 
     def create_stack(self):
         # Create Stack
@@ -459,13 +465,14 @@ class Stack():
         try:
             stack_parameters = self.template.generate_stack_parameters()
         except StackException as e:
-            e.message = "Error generating stack parameters for template"
+            e.message += "Error generating stack parameters for template\n"
             if e.code == AimErrorCode.StackDoesNotExist:
                 self.log_action("Provision", "Error")
-                print("Stack: %s: Error: Depends on StackOutputs from a stack that does not yet exist." % (self.get_name()))
+                e.message += "Stack: {}\n".format(self.get_name())
+                e.message += "Error: Depends on StackOutputs from a stack that does not yet exist.\n"
             raise e
         self.hooks.run("create", "pre", self)
-        response = self.cf_client.create_stack(
+        response = self.cfn_client.create_stack(
             StackName=self.get_name(),
             TemplateBody=self.template.body,
             Parameters=stack_parameters,
@@ -476,19 +483,22 @@ class Stack():
         )
         self.stack_id = response['StackId']
 
-        self.cf_client.update_termination_protection(
+        self.cfn_client.update_termination_protection(
             EnableTerminationProtection=True,
             StackName=self.get_name()
         )
 
     def update_stack(self):
         # Update Stack
+        if self.change_protected == True:
+            self.log_action("Provision", "Protected")
+            return
         self.action = "update"
         self.log_action("Provision", "Update")
         stack_parameters = self.template.generate_stack_parameters()
         self.hooks.run("update", "pre", self)
         try:
-            self.cf_client.update_stack(
+            self.cfn_client.update_stack(
                 StackName=self.get_name(),
                 TemplateBody=self.template.body,
                 Parameters=stack_parameters,
@@ -515,11 +525,12 @@ class Stack():
                     )
                     raise StackException(AimErrorCode.Unknown, message = message)
             else:
-                message = "Stack: {}\nError: {}\n".format(self.get_name(), e.response['Error']['Message'])
+                #message = "Stack: {}\nError: {}\n".format(self.get_name(), e.response['Error']['Message'])
+                message = self.get_stack_error_message()
                 raise StackException(AimErrorCode.Unknown, message = message)
 
         if self.cfn_stack_describe['EnableTerminationProtection'] == False:
-            self.cf_client.update_termination_protection(
+            self.cfn_client.update_termination_protection(
                 EnableTerminationProtection=True,
                 StackName=self.get_name()
             )
@@ -533,20 +544,48 @@ class Stack():
             if answer == False:
                 print("Destruction aborted. Allowing stack to exist.")
                 return
-        self.cf_client.update_termination_protection(
+        self.cfn_client.update_termination_protection(
             EnableTerminationProtection=False,
             StackName=self.get_name()
         )
         self.action = "delete"
         self.log_action("Provision", "Delete")
         self.hooks.run("delete", "pre", self)
-        self.cf_client.delete_stack( StackName=self.get_name() )
+        self.cfn_client.delete_stack( StackName=self.get_name() )
+
+    def get_stack_error_message(self, prefix_message="", skip_status = False):
+        if skip_status == False:
+            self.get_status()
+        message = "\n"+prefix_message
+        message += "Stack:          {}\n".format(self.get_name())
+        message += "Stack Status:  {}\n".format(self.status)
+        message += "Status Reasons:\n"
+        col_size = 20
+        message += "LogicalId {}  Status Reason\n".format(
+            ' '*(col_size-len('LogicalId '))
+        )
+        message += "--------- {}  -------------\n".format(
+            ' '*(col_size-len('LogicalId '))
+        )
+        stack_events = self.cfn_client.describe_stack_events(StackName=self.get_name())
+        for stack_event in stack_events['StackEvents']:
+            if stack_event['ResourceStatus'].find('FAILED') != -1:
+                spaces = col_size-len(stack_event['LogicalResourceId'])
+                if spaces < 0:
+                    spaces = 0
+                message += '{} {} {}\n'.format(
+                    stack_event['LogicalResourceId'][:col_size],
+                    ' ' * spaces,
+                    stack_event['ResourceStatusReason']
+                )
+        return message
 
     def provision(self):
         self.template.provision()
 
         # If last md5 is equal, then we no changes are required
         if self.is_stack_cached() == True:
+            self.template.apply_template_changes()
             self.log_action("Provision", "Cache")
             return
 
@@ -569,7 +608,8 @@ class Stack():
             # TODO: Delete stack here if in error state
 #            pass
         elif self.is_creating() == False and self.is_updating() == False:
-            message = self.log_action("Provision", "Error", return_it=True)
+            self.log_action("Provision", "Error")
+            message = self.get_stack_error_message()
             raise StackException(AimErrorCode.Unknown, message = message)
 
     def delete(self):
@@ -588,33 +628,39 @@ class Stack():
     def log_action_header(self):
         global log_next_header
         if log_next_header != None:
-            msg_account = str_spc('Account', self.max_account_name_size)
-            msg_action = str_spc('Action', self.max_action_name_size)
-            utils.log_action(log_next_header, msg_account+msg_action+"Stack Name")
+            utils.log_action_col(log_next_header, 'Account', 'Action', 'Stack Name')
             log_next_header = None
 
 
     def log_action(self, action, stack_action, account_name=None, stack_name=None, message=None, return_it=False):
         if account_name == None:
-            msg_account_name = str_spc(self.account_ctx.get_name(), self.max_account_name_size)
+            msg_account_name = self.account_ctx.get_name()
         else:
-            msg_account_name = str_spc(account_name, self.max_account_name_size)
+            msg_account_name = account_name
 
-        stack_action = str_spc(stack_action, self.max_action_name_size)
+        if msg_account_name == 'Hook':
+            breakpoint()
 
         if stack_name == None:
             msg_stack_name = self.get_name()
         else:
             msg_stack_name = stack_name
+
         if self.template.template_file_id != None:
             msg_stack_name += ' - fileid - ' + self.template.template_file_id
-        stack_message = msg_account_name+stack_action+msg_stack_name
+        stack_message = msg_stack_name
         if message != None:
-            stack_message += message
+            stack_message += ': '+message
         global log_next_header
         if return_it == False:
             self.log_action_header()
-        log_message = utils.log_action(action, stack_message, return_it)
+        log_message = utils.log_action_col(
+            action,
+            msg_account_name,
+            stack_action,
+            stack_message,
+            return_it
+        )
         if return_it == True:
             return log_message
 
@@ -626,29 +672,35 @@ class Stack():
         if self.is_updating():
             if verbose:
                 self.log_action("Provision", "Update")
-            waiter = self.cf_client.get_waiter('stack_update_complete')
+            waiter = self.cfn_client.get_waiter('stack_update_complete')
         elif self.is_creating():
             if verbose:
                 self.log_action("Provision", "Create")
-            waiter = self.cf_client.get_waiter('stack_create_complete')
+            waiter = self.cfn_client.get_waiter('stack_create_complete')
         elif self.is_deleting():
             if verbose:
                 self.log_action("Provision", "Delete")
-            waiter = self.cf_client.get_waiter('stack_delete_complete')
+            waiter = self.cfn_client.get_waiter('stack_delete_complete')
         elif self.is_complete():
             pass
         elif not self.is_exists():
             pass
         else:
-            message = self.log_action("Provision", "Error", return_it=True)
+            message = self.get_stack_error_message()
             raise StackException(
-                AimErrorCode.Unknown,
-                 message="{}: Unknown status: {}".format(message,self.status)
+                AimErrorCode.WaiterError,
+                message=message
             )
 
         if waiter != None:
             self.log_action("Provision", "Wait")
-            waiter.wait(StackName=self.get_name())
+            try:
+                waiter.wait(StackName=self.get_name())
+            except WaiterError as waiter_exception:
+                self.log_action("Provision", "Error")
+                message = "Waiter Error:  {}\n".format(waiter_exception)
+                message = self.get_stack_error_message(message)
+                raise StackException(AimErrorCode.WaiterError, message = message)
             self.log_action("Provision", "Done")
 
         if self.is_exists():
@@ -679,6 +731,7 @@ class StackGroup():
         self.stack_output_config = {}
         self.state = None
         self.prev_state = None
+        self.filter_config = controller.stack_group_filter
         self.state_filename = '-'.join([self.get_aws_name(), self.name, "StackGroup-State.yaml"])
         self.state_filepath = os.path.join(self.aim_ctx.build_folder, self.state_filename)
 
@@ -732,7 +785,7 @@ class StackGroup():
                     cur_state['regions'][idx],
                     cur_state['stack_names'][idx]
                 ))
-            answer = self.aim_ctx.input("\nDelete them from your AWS environment?", default="Y", yes_no_prompt=True)
+            answer = self.aim_ctx.input("\nDelete them from your AWS environment?", default="N", yes_no_prompt=True)
             if answer == True:
                 for idx in deleted_stacks:
                     self.delete_stack(
@@ -747,18 +800,36 @@ class StackGroup():
                 yaml.dump(  data=new_state,
                             stream=output_fd)
 
+    def filtered_stack_action(self, stack, action_method):
+        if self.filter_config != None:
+            if stack.template.config_ref.startswith(self.filter_config):
+                action_method()
+            else:
+                stack.log_action(
+                    action_method.__func__.__name__.capitalize(),
+                    'Filtered'
+                )
+        else:
+            action_method()
+
     def validate(self):
         # Loop through stacks and validate each
         for order_item in self.stack_orders:
             if order_item.order == StackOrder.PROVISION:
-                order_item.stack.validate()
+                self.filtered_stack_action(
+                    order_item.stack,
+                    order_item.stack.validate
+                )
 
     def provision(self):
         # Loop through stacks and provision each one
         wait_last_list = []
         for order_item in self.stack_orders:
             if order_item.order == StackOrder.PROVISION:
-                order_item.stack.provision()
+                self.filtered_stack_action(
+                    order_item.stack,
+                    order_item.stack.provision
+                )
             elif order_item.order == StackOrder.WAIT:
                 if order_item.stack.cached == False:
                     order_item.stack.wait_for_complete(verbose=False)
@@ -769,13 +840,18 @@ class StackGroup():
             if order_item.stack.cached == False:
                 order_item.stack.wait_for_complete(verbose=False)
 
-        self.update_state()
+        # Disabling stack state for now as it seems stacks are being
+        # suggested to be deleted when they shouldn't be.
+        # self.update_state()
 
     def delete(self):
         # Loop through stacks and deletes each one
         for order_item in reversed(self.stack_orders):
             if order_item.order == StackOrder.PROVISION:
-                order_item.stack.delete()
+                self.filtered_stack_action(
+                    order_item.stack,
+                    order_item.stack.delete
+                )
 
         for order_item in reversed(self.stack_orders):
             if order_item.order == StackOrder.WAIT:
@@ -802,7 +878,6 @@ class StackGroup():
             self.stack_orders.append(stack_order)
         if not stack in self.stacks:
             self.stacks.append(stack)
-
 
     def get_aws_name(self):
         name = '-'.join([self.controller.get_aws_name(),

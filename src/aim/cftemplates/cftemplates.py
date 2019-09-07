@@ -1,10 +1,11 @@
 import boto3
 import os
 import pathlib
-import random
-import string
+import random, re
+import string, sys
 import troposphere
 from enum import Enum
+from aim.core.yaml import YAML
 from aim.core.exception import StackException, AimErrorCode, AimException
 from aim.models import references
 from aim.models.references import Reference
@@ -12,6 +13,13 @@ from aim.stack_group import Stack, StackOrder
 from aim.utils import dict_of_dicts_merge, md5sum, big_join, list_to_comma_string
 from botocore.exceptions import ClientError
 from pprint import pprint
+from shutil import copyfile
+
+# deepdiff turns on Deprecation warnings, we need to turn them back off
+# again right after import, otherwise 3rd libs spam dep warnings all over the place
+from deepdiff import DeepDiff
+import warnings
+warnings.simplefilter("ignore")
 
 
 # StackOutputParam
@@ -135,6 +143,7 @@ class CFTemplate():
                  stack_tags=None,
                  stack_hooks=None,
                  stack_order=None,
+                 change_protected=False,
                  iam_capabilities=[]
                 ):
         self.update_only = False
@@ -144,6 +153,7 @@ class CFTemplate():
         self.aws_region = aws_region
         self.build_folder = os.path.join(aim_ctx.build_folder, "templates")
         self.yaml_path = None
+        self.applied_yaml_path = None
         self.parameters = []
         self.capabilities = iam_capabilities
         self.body = None
@@ -164,6 +174,7 @@ class CFTemplate():
         # Dependencies
         self.dependency_template = None
         self.dependency_group = False
+        self.change_protected = change_protected
 
     @property
     def enabled(self):
@@ -180,6 +191,7 @@ class CFTemplate():
     def set_template_file_id(self, file_id):
         self.template_file_id = file_id
         self.yaml_path = None
+        self.applied_yaml_path = None
 
     def set_dependency(self, template, dependency_name):
         """
@@ -195,25 +207,36 @@ class CFTemplate():
             template.dependency_group = True
 
 
-    def get_yaml_path(self):
-        if self.yaml_path == None:
-            yaml_filename = self.stack.get_name()
-            if self.template_file_id != None:
-                yaml_filename += "-" + self.template_file_id
-            yaml_filename += ".yaml"
-            #print("BF: " + self.build_folder)
-            #print("YF: " + yaml_filename)
-            self.yaml_path = os.path.join(self.build_folder, self.account_ctx.get_name())
-            #print("YP: " + self.yaml_path)
-            if self.stack.aws_region != None:
-                self.yaml_path = os.path.join(self.yaml_path, self.stack.aws_region)
-            else:
-                raise StackException(AimErrorCode.Unknown, message = "Could not find YAML path: {}".format(self.yaml_path))
+    def get_yaml_path(self, applied=False):
+        if self.yaml_path and applied == False:
+            return self.yaml_path
+        if self.applied_yaml_path and applied == True:
+            return self.applied_yaml_path
 
-            pathlib.Path(self.yaml_path).mkdir(parents=True, exist_ok=True)
-            self.yaml_path = os.path.join(self.yaml_path, yaml_filename)
-            #print("YP: " + self.yaml_path)
-        return self.yaml_path
+        yaml_filename = self.stack.get_name()
+        if self.template_file_id != None:
+            yaml_filename += "-" + self.template_file_id
+        yaml_filename += ".yaml"
+
+        if applied == False:
+            yaml_path = os.path.join(self.build_folder, self.account_ctx.get_name())
+        else:
+            yaml_path = os.path.join(self.aim_ctx.home, 'aimdata', 'applied', 'cloudformation', self.account_ctx.get_name())
+
+        if self.stack.aws_region != None:
+            yaml_path = os.path.join(yaml_path, self.stack.aws_region)
+        else:
+            raise StackException(AimErrorCode.Unknown, message = "AWS region is unavailable: {}".format(yaml_path))
+
+        pathlib.Path(yaml_path).mkdir(parents=True, exist_ok=True)
+        yaml_path = os.path.join(yaml_path, yaml_filename)
+
+        if applied == True:
+            self.applied_yaml_path = yaml_path
+        else:
+            self.yaml_path = yaml_path
+
+        return yaml_path
 
     # Move this somewhere else?
     def aim_sub(self):
@@ -300,10 +323,12 @@ class CFTemplate():
                 )
                 raise StackException(AimErrorCode.TemplateValidationError, message=message)
         #self.aim_ctx.log("Validation successful")
+        self.validate_template_changes()
 
     def provision(self):
         #print("cftemplate: provision: " + self.get_yaml_path())
         self.generate_template()
+        self.validate_template_changes()
 
     def delete(self):
         pass
@@ -438,7 +463,8 @@ class CFTemplate():
                 aws_region=self.aws_region,
                 stack_tags=self.stack_tags,
                 hooks=self.stack_hooks,
-                update_only=self.update_only
+                update_only=self.update_only,
+                change_protected=self.change_protected,
             )
             if self.enabled == True:
                 self.stack_group.add_stack_order(stack, self.stack_order)
@@ -735,3 +761,133 @@ class CFTemplate():
             role_name = name_hash + '-' + role_name[-(max_role_name_len-name_hash_len):]
 
         return role_name
+
+    def getFromSquareBrackets(self, s):
+        return re.findall(r"\['?([A-Za-z0-9_]+)'?\]", s)
+
+    def print_diff_list(self, change_t, level=1):
+        print('', end='\n')
+        for value in change_t:
+            print("  {}-".format(' '*(level*2)), end='')
+            if isinstance(value, list):
+                self.print_diff_list(value, level+1)
+            elif isinstance(value, dict):
+                self.print_diff_dict(value, level+1)
+            else:
+                print("  {}".format(value))
+
+    def print_diff_dict(self, change_t, level=1):
+        print('', end='\n')
+        for key, value in change_t.items():
+            print("  {}{}:".format(' '*(level*2), key), end='')
+            if isinstance(value, list):
+                self.print_diff_list(value, level+1)
+            elif isinstance(value, dict):
+                self.print_diff_dict(value, level+1)
+            else:
+                print("  {}".format(value))
+
+    def print_diff_object(self, diff_obj, diff_obj_key):
+        if diff_obj_key not in diff_obj.keys():
+            return
+        last_root_node_str = None
+        for root_change in diff_obj[diff_obj_key]:
+            node_str = '.'.join(self.getFromSquareBrackets(root_change.path()))
+            for root_node_str in ['Parameters', 'Resources', 'Outputs']:
+                if node_str.startswith(root_node_str+'.'):
+                    node_str = node_str[len(root_node_str+'.'):]
+                    if last_root_node_str != root_node_str:
+                        print(root_node_str+":")
+                    last_root_node_str = root_node_str
+                    break
+            if diff_obj_key.endswith('_removed'):
+                change_t = root_change.t1
+            elif diff_obj_key.endswith('_added'):
+                change_t = root_change.t2
+            elif diff_obj_key == 'values_changed':
+                change_t = root_change.t1
+            print("  {}:".format(node_str), end='')
+            if diff_obj_key == 'values_changed':
+                print("\n    old: {}".format(root_change.t1))
+                print("    new: {}\n".format(root_change.t2))
+            elif isinstance(change_t, list):
+                self.print_diff_list(change_t)
+            elif isinstance(change_t, dict):
+                self.print_diff_dict(change_t)
+            else:
+                print("{}".format(change_t))
+            print('')
+
+    def init_template_store_paths(self):
+        new_file_path = pathlib.Path(self.get_yaml_path())
+        applied_file_path = pathlib.Path(self.get_yaml_path(applied=True))
+        return [applied_file_path, new_file_path]
+
+    def apply_template_changes(self):
+        applied_file_path, new_file_path = self.init_template_store_paths()
+        copyfile(new_file_path, applied_file_path)
+
+    def validate_template_changes(self):
+        applied_file_path, new_file_path = self.init_template_store_paths()
+        if applied_file_path.exists() == False:
+            copyfile(new_file_path, applied_file_path)
+            return
+
+        yaml = YAML(pure=True)
+        yaml.allow_duplicate_keys = True
+        #yaml.default_flow_sytle = False
+        with open(applied_file_path, 'r') as stream:
+            applied_file_dict= yaml.load(stream)
+        with open(new_file_path, 'r') as stream:
+            new_file_dict= yaml.load(stream)
+
+        deep_diff = DeepDiff(
+            applied_file_dict,
+            new_file_dict,
+            verbose_level=1,
+            view='tree'
+        )
+        if len(deep_diff.keys()) == 0:
+            return
+        print("==========================")
+        print("Validate Template Changes")
+        print("(stack) {}".format(self.stack.get_name()))
+        print("(model) {}".format(self.config_ref))
+        print("(file)  {}".format(self.get_yaml_path()))
+        prompt_user = True
+        if 'values_changed' in deep_diff.keys():
+            print("\nooo Changed")
+            self.print_diff_object(deep_diff, 'values_changed')
+            print("ooo")
+
+        if  'dictionary_item_removed' in deep_diff.keys() or \
+            'iterable_item_removed' in deep_diff.keys() or \
+            'set_item_added' in deep_diff.keys():
+            print("\n--- Removed")
+            self.print_diff_object(deep_diff, 'dictionary_item_removed')
+            self.print_diff_object(deep_diff, 'iterable_item_removed')
+            self.print_diff_object(deep_diff, 'set_item_added')
+            print("---")
+        if  'dictionary_item_added' in deep_diff.keys() or \
+            'iterable_item_added' in deep_diff.keys() or \
+            'set_item_removed' in deep_diff.keys():
+            print("\n+++ Added")
+            self.print_diff_object(deep_diff, 'dictionary_item_added')
+            self.print_diff_object(deep_diff, 'iterable_item_added')
+            self.print_diff_object(deep_diff, 'set_item_removed')
+            print("+++")
+            # attribute_added
+        print("\n==========================")
+
+        while prompt_user:
+            answer = self.aim_ctx.input(
+                "\nAre these changes acceptable?",
+                yes_no_prompt=True,
+                default='N'
+            )
+            if answer == False:
+                print("aborting...")
+                sys.exit(1)
+            else:
+                break
+        print('', end='\n')

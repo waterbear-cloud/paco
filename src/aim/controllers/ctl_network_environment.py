@@ -16,6 +16,7 @@ yaml.default_flow_sytle = False
 class EnvironmentContext():
     def __init__(self, aim_ctx, netenv_ctl, netenv_id, env_id, region, config):
         self.aim_ctx = aim_ctx
+        self.stack_group_filter = netenv_ctl.stack_group_filter
         self.netenv_ctl = netenv_ctl
         self.netenv_id = netenv_id
         self.env_id = env_id
@@ -51,7 +52,7 @@ class EnvironmentContext():
         if self.init_done:
             return
         self.init_done = True
-        print("Init: Environment: {}.{}".format(self.env_id, self.region))
+        utils.log_action_col('Init', 'Environment', self.env_id+' '+self.region)
         # Network Stack: VPC, Subnets, Etc
         self.network_stack_grp = NetworkStackGroup(self.aim_ctx,
                                                    self.account_ctx,
@@ -86,7 +87,7 @@ class EnvironmentContext():
             self.stack_grps.append(application_stack_grp)
             application_stack_grp.init()
 
-        print("Init: Environment: {}.{}: Completed".format(self.env_id, self.region))
+        utils.log_action_col('Init', 'Environment', self.env_id+' '+self.region)
 
     def get_aws_name(self):
         aws_name = '-'.join([self.netenv_ctl.get_aws_name(),
@@ -191,15 +192,15 @@ class EnvironmentContext():
             stack_grp.validate()
 
     def provision(self):
-        utils.log_action("Provision", "Environment: {}.{}".format(self.env_id, self.region))
+        utils.log_action_col("Provision", "Environment", self.env_id+' '+self.region)
         if len(self.stack_grps) > 0:
             stack_group.log_next_header = "Provision"
             for stack_grp in self.stack_grps:
                 stack_grp.provision()
             self.save_stack_output_config()
         else:
-            utils.log_action("Provision", "Nothing to provision.")
-        utils.log_action("Provision", "Environment: {}.{}: Completed".format(self.env_id, self.region))
+            utils.log_action_col("Provision", "Nothing to provision.")
+        utils.log_action_col("Provision", "Environment", self.env_id+' '+self.region, "Completed")
 
     def delete(self):
         for stack_grp in reversed(self.stack_grps):
@@ -282,39 +283,100 @@ class NetEnvController(Controller):
             return
         self.init_done = True
 
-        self.netenv_id = controller_args['arg_1']
-        env_id = controller_args['arg_2']
-        region = controller_args['arg_3']
+
+        netenv_id = None
+        env_id = None
+        region = None
+        resource_arg = None
+        aim_command = controller_args['command']
+        netenv_arg = controller_args['arg_1']
+
+        if netenv_arg == None:
+            message = "Command: aim {} netenv {}\n".format(aim_command, netenv_arg)
+            message += "Error:   Missing NetEnv argument:  <netenv>.<environment>.<region>[.<option>.<resource>.<path>]"
+            raise StackException(
+                AimErrorCode.Unknown,
+                message = message
+            )
+
+        arg_1_parts = controller_args['arg_1'].split('.', 3)
+        netenv_id = arg_1_parts[0]
+        if netenv_id in self.aim_ctx.project['netenv'].keys():
+            self.netenv_id = netenv_id
+            if len(arg_1_parts) > 1:
+                env_id = arg_1_parts[1]
+            if len(arg_1_parts) > 2:
+                region = arg_1_parts[2]
+            if len(arg_1_parts) > 3:
+                resource_arg = arg_1_parts[3]
+        else:
+            raise StackException(
+                AimErrorCode.Unknown,
+                message="Network Environment does not exist: {}".format(netenv_id)
+            )
 
         self.config = self.aim_ctx.project['netenv'][self.netenv_id]
 
+        if env_id not in self.config.keys():
+            message = "Command: aim {} netenv {}\n".format(aim_command, netenv_arg)
+            message += "Error:   Network Environment '{}' does not have an Environment named '{}'.\n".format(netenv_id, env_id)
+            raise StackException(
+                AimErrorCode.Unknown,
+                message = message
+            )
+        if region not in self.config[env_id].keys():
+            message = "Command: aim {} netenv {}\n".format(aim_command, netenv_arg)
+            message += "Error:   Environment '{}' does not have region '{}'.".format(env_id, region)
+            raise StackException(
+                AimErrorCode.Unknown,
+                message = message
+            )
+        # Validate resource_arg
+        if resource_arg != None:
+            res_parts = resource_arg.split('.')
+            config_obj = self.config[env_id][region]
+            done_parts_str = ""
+            first = True
+            for res_part in res_parts:
+                if first == False:
+                    done_parts_str += '.'
+                done_parts_str += res_part
+                if hasattr(config_obj, res_part) == False and res_part not in config_obj.keys():
+                    message = "Command: aim {} netenv {}\n".format(aim_command, netenv_arg)
+                    message += "Error:   Unable to locate resource: {}".format(done_parts_str)
+                    raise StackException(
+                        AimErrorCode.Unknown,
+                        message = message
+                    )
+                if hasattr(config_obj, res_part):
+                    config_obj = getattr(config_obj, res_part)
+                else:
+                    config_obj = config_obj[res_part]
+                first = False
         self.validate_model_obj(self.config)
 
-        utils.log_action("Init", "NetworkEnvironment: {}".format(self.netenv_id))
-        if env_id != None:
-            if region == None:
-                raise StackException(
-                    AimErrorCode.Unknown,
-                    message="Missing region argument: aim <command> netenv %s %s <region>" % (self.netenv_id, env_id)
-                )
-            self.init_sub_env(env_id, region)
-        else:
-            self.init_all_sub_envs()
-        utils.log_action("Init", "NetworkEnvironment: {}: Complete".format(self.netenv_id))
+        utils.log_action_col("Init", "NetEnv", self.netenv_id)
+        self.stack_group_filter = 'netenv.'+netenv_arg
+        self.init_sub_env(env_id, region)
+        #else:
+        #    self.init_all_sub_envs()
+        utils.log_action_col("Init", "NetEnv", self.netenv_id, "Complete")
 
     def validate(self):
+        utils.log_action_col("Validate", "NetEnv", self.netenv_id)
         for env_id in self.sub_envs.keys():
             for region in self.sub_envs[env_id].keys():
-                print("Validating Environment: %s.%s" % (env_id, region))
+                utils.log_action_col('Validate', 'Environment', env_id+' '+region)
                 self.sub_envs[env_id][region].validate()
+        utils.log_action_col("Validate", "NetEnv", self.netenv_id, 'Completed')
 
     def provision(self):
-        utils.log_action("Provision", "Network Environment: {}".format(self.netenv_id))
+        utils.log_action_col("Provision", "NetEnv", self.netenv_id)
         for env_id in self.sub_envs.keys():
             for region in self.sub_envs[env_id].keys():
                 self.sub_envs[env_id][region].provision()
         self.apply_model_obj()
-        utils.log_action("Provision", "Network Environment: {}: Completed".format(self.netenv_id))
+        utils.log_action_col("Provision", "NetEnv", self.netenv_id, "Completed")
 
     def backup(self, config_arg):
         env_ctx = self.sub_envs[config_arg['env_id']][config_arg['region']]

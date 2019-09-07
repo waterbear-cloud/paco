@@ -29,17 +29,18 @@ class CodeCommitController(Controller):
         if self.init_done:
             return
         self.init_done = True
-        utils.log_action("Init", "CodeCommit")
+        utils.log_action_col("Init", "CodeCommit")
         stack_group.log_next_header = "Init"
         if controller_args:
             self.name = controller_args['arg_1']
         self.config = self.aim_ctx.project['codecommit']
+        self.validate_model_obj(self.config)
         # Sets the CodeCommit reference resolver object to forward all
         # all aim.ref resource.codecommit.* calls to self.resolve_ref()
         if self.config != None:
             self.config.resolve_ref_obj = self
             self.init_stack_groups()
-        utils.log_action("Init", "CodeCommit: Completed")
+        utils.log_action_col("Init", "CodeCommit", "Completed")
 
     def init_stack_groups(self):
         # CodeCommit Repository
@@ -56,21 +57,6 @@ class CodeCommitController(Controller):
 
                 self.stack_grps.append(codecommit_stack_grp)
                 codecommit_stack_grp.init()
-
-
-                # IAM Account Delegate Role
-                # Generate IAM Role dict config
-                #iam_roles_dict = self.gen_iam_roles_config_dict(repo_list)
-                #aws_name_prefix = self.get_aws_name()
-                #iam_stack_grp = IAMStackGroup(self.aim_ctx,
-                #                              account_ctx,
-                #                              aws_name_prefix,
-                #                              iam_roles_dict,
-                #                              'codecommit',
-                #                              'codecommit',
-                #                              self)
-                #self.stack_grps.append(iam_stack_grp)
-                #iam_stack_grp.init()
 
     def gen_iam_roles_config_dict(self, repo_list):
 
@@ -119,6 +105,7 @@ policies:
     def provision(self):
         for stack_grp in self.stack_grps:
             stack_grp.provision()
+        self.apply_model_obj()
 
     def resolve_ref(self, ref):
         # codecommit.example.app1.name
