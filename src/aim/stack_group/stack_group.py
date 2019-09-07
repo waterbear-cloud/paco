@@ -356,18 +356,19 @@ class Stack():
                 self.outputs_value_cache[key] = output['OutputValue']
                 return self.outputs_value_cache[key]
 
+        message = self.get_stack_error_message()
+        message += "Could not find Stack Output {} in stack_metadata:\n\n{}\n".format(key, stack_metadata)
         raise StackException(
             AimErrorCode.StackOutputMissing,
-            message="Could not find Stack Output {} in stack_metadata:\n\n{}".format(key, stack_metadata)
+            message=message
         )
 
     def get_outputs_key_from_ref(self, ref):
 
         key = self.template.get_outputs_key_from_ref(ref)
         if key == None:
-            message= "Error: Unable to find outputs key for ref: " + ref.raw
-            message+= 'Stack: '+self.get_name()
-            message+= 'Template: '+self.template.get_yaml_path()
+            message = self.get_stack_error_message()
+            message += "Error: Unable to find outputs key for ref: {}\n".format(ref.raw)
             raise StackException(
                 AimErrorCode.Unknown,
                 message=message)
@@ -557,27 +558,29 @@ class Stack():
         if skip_status == False:
             self.get_status()
         message = "\n"+prefix_message
-        message += "Stack:          {}\n".format(self.get_name())
+        message += "Stack:         {}\n".format(self.get_name())
+        message += "Template:      {}\n".format(self.template.get_yaml_path())
         message += "Stack Status:  {}\n".format(self.status)
-        message += "Status Reasons:\n"
-        col_size = 20
-        message += "LogicalId {}  Status Reason\n".format(
-            ' '*(col_size-len('LogicalId '))
-        )
-        message += "--------- {}  -------------\n".format(
-            ' '*(col_size-len('LogicalId '))
-        )
-        stack_events = self.cfn_client.describe_stack_events(StackName=self.get_name())
-        for stack_event in stack_events['StackEvents']:
-            if stack_event['ResourceStatus'].find('FAILED') != -1:
-                spaces = col_size-len(stack_event['LogicalResourceId'])
-                if spaces < 0:
-                    spaces = 0
-                message += '{} {} {}\n'.format(
-                    stack_event['LogicalResourceId'][:col_size],
-                    ' ' * spaces,
-                    stack_event['ResourceStatusReason']
-                )
+        if self.is_exists():
+            message += "Status Reasons:\n"
+            col_size = 20
+            message += "LogicalId {}  Status Reason\n".format(
+                ' '*(col_size-len('LogicalId '))
+            )
+            message += "--------- {}  -------------\n".format(
+                ' '*(col_size-len('LogicalId '))
+            )
+            stack_events = self.cfn_client.describe_stack_events(StackName=self.get_name())
+            for stack_event in stack_events['StackEvents']:
+                if stack_event['ResourceStatus'].find('FAILED') != -1:
+                    spaces = col_size-len(stack_event['LogicalResourceId'])
+                    if spaces < 0:
+                        spaces = 0
+                    message += '{} {} {}\n'.format(
+                        stack_event['LogicalResourceId'][:col_size],
+                        ' ' * spaces,
+                        stack_event['ResourceStatusReason']
+                    )
         return message
 
     def provision(self):
@@ -736,10 +739,13 @@ class StackGroup():
         self.state_filepath = os.path.join(self.aim_ctx.build_folder, self.state_filename)
 
     def delete_stack(self, account_name, region, stack_name):
+        pass
+        breakpoint()
+        # XXX: not used
         # Delete Stack
-        account_ctx = self.aim_ctx.get_account_context(account_name=account_name)
-        cf_client = account_ctx.get_aws_client('cloudformation', region)
-        cf_client.delete_stack( StackName=stack_name )
+        #account_ctx = self.aim_ctx.get_account_context(account_name=account_name)
+        #cf_client = account_ctx.get_aws_client('cloudformation', region)
+        #cf_client.delete_stack( StackName=stack_name )
 
     def new_state(self):
         state = {

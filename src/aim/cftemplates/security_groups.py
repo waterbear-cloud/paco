@@ -34,7 +34,8 @@ class SecurityGroups(CFTemplate):
             config_ref=sg_groups_config_ref,
             aws_name='-'.join(["SecurityGroups", sg_group_id]),
             stack_group=stack_group,
-            stack_tags=stack_tags
+            stack_tags=stack_tags,
+            environment_name=self.env_ctx.env_id,
         )
 
         # Troposphere Template Initialization
@@ -51,7 +52,7 @@ class SecurityGroups(CFTemplate):
             name='VPC',
             param_type='AWS::EC2::VPC::Id',
             description='The VPC Id',
-            value='aim.ref netenv.{}.<account>.<region>.network.vpc.id'.format(self.env_ctx.netenv_id),
+            value='aim.ref netenv.{}.<environment>.<region>.network.vpc.id'.format(self.env_ctx.netenv_id),
             use_troposphere=True
         )
         template.add_parameter(vpc_id_param)

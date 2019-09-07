@@ -334,6 +334,7 @@ statement:
             aws_name,
             self.app_id,
             res_id,
+            grp_id,
             res_config,
             res_config.aim_ref_parts
         )

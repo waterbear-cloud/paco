@@ -16,6 +16,7 @@ class VPCPeering(CFTemplate):
                  stack_group,
                  stack_tags,
                  netenv_name,
+                 env_name,
                  network_config,
                  vpc_config_ref):
         #aim_ctx.log("VPC CF Template init")
@@ -27,7 +28,8 @@ class VPCPeering(CFTemplate):
             config_ref=vpc_config_ref,
             aws_name='-'.join(["VPCPeering"]),
             stack_group=stack_group,
-            stack_tags=stack_tags
+            stack_tags=stack_tags,
+            environment_name = env_name
         )
 
         vpc_config = network_config.vpc
@@ -45,7 +47,7 @@ class VPCPeering(CFTemplate):
             name='VpcId',
             param_type='AWS::EC2::VPC::Id',
             description='The VPC Id',
-            value='aim.ref netenv.{}.<account>.<region>.network.vpc.id'.format(netenv_name),
+            value='aim.ref netenv.{}<environment>.<region>.network.vpc.id'.format(netenv_name),
             use_troposphere=True
         )
         template.add_parameter(vpc_id_param)

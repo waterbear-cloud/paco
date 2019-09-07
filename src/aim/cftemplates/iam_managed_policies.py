@@ -39,9 +39,12 @@ Description: 'IAM Roles: Roles and Instance Profiles'
 {0[parameters_yaml]:s}
 
 Resources:
+
+  DummyResource:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
 {0[resources_yaml]:s}
 
-Outputs:
 {0[outputs_yaml]:s}
 """
         template_table = {
@@ -99,22 +102,22 @@ Outputs:
      Type: {0[type]:s}
      Description: {0[description]:s}
 """
-        policy_table.clear()
-        if policy_context['template_params']:
-            for param_table in policy_context['template_params']:
-                self.set_parameter(param_table['key'], param_table['value'])
-                parameters_yaml += parameter_fmt.format(param_table)
-
         policy_config = policy_context['config']
-        policy_id = policy_context['id']
-        # Name
-        policy_table['name'] = self.gen_policy_name(policy_id)
-        policy_table['cfn_logical_id_prefix'] = self.create_cfn_logical_id(policy_id)
-        # Path
-        policy_table['path'] = policy_config.path
-
-        # Policy Document
         if policy_config.is_enabled() == True:
+            policy_table.clear()
+            if policy_context['template_params']:
+                for param_table in policy_context['template_params']:
+                    self.set_parameter(param_table['key'], param_table['value'])
+                    parameters_yaml += parameter_fmt.format(param_table)
+
+            policy_id = policy_context['id']
+            # Name
+            policy_table['name'] = self.gen_policy_name(policy_id)
+            policy_table['cfn_logical_id_prefix'] = self.create_cfn_logical_id(policy_id)
+            # Path
+            policy_table['path'] = policy_config.path
+
+            # Policy Document
             # Roles
             policy_table['roles'] = ""
             if policy_config.roles and len(policy_config.roles) > 0:
@@ -134,25 +137,29 @@ Outputs:
             policy_table['policy_document'] = policy_document
             # Statement
             policy_table['statement'] = self.gen_statement_yaml(policy_config.statement)
-        else:
-            policy_table['statement'] = ""
-            policy_table['policy_document'] = ""
-            policy_table['roles'] = ""
-            policy_table['users'] = ""
 
-        # Initialize Parameters
-        # Resources
-        resources_yaml += policy_fmt.format(policy_table)
-        # Outputs
-        outputs_yaml += policy_outputs_fmt.format(policy_table)
+            # Resources
+            resources_yaml += policy_fmt.format(policy_table)
 
+            # Initialize Parameters
+            # Outputs
+            outputs_yaml += policy_outputs_fmt.format(policy_table)
+
+        # Parameters
         template_table['parameters_yaml'] = ""
         if parameters_yaml != "":
-            template_table['parameters_yaml'] = """Parameters:
-"""
+            template_table['parameters_yaml'] = "Parameters:\n"
         template_table['parameters_yaml'] += parameters_yaml
+
+        # Resources
         template_table['resources_yaml'] = resources_yaml
-        template_table['outputs_yaml'] = outputs_yaml
+        # Outputs
+        template_table['outputs_yaml'] = ""
+        if outputs_yaml != "":
+            template_table['outputs_yaml'] = "Outputs:\n"
+        template_table['outputs_yaml'] += outputs_yaml
+
+        # Template
         self.set_template(template_fmt.format(template_table))
 
 

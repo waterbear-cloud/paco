@@ -2,6 +2,10 @@ import json
 import boto3
 import aim
 import os
+from aim.core.exception import StackException
+from aim.core.exception import AimException, AimErrorCode
+from botocore.exceptions import ClientError, WaiterError
+
 
 from botocore.exceptions import ClientError
 #import logging
@@ -98,13 +102,18 @@ class AimSTS(object):
             aws_secret_access_key=session_creds['SecretAccessKey'],
             aws_session_token=session_creds['SessionToken'],
         )
-        role_creds = sts_client.assume_role(
-            DurationSeconds=self.assume_role_session_expiry_secs,
-            RoleArn=self.admin_iam_role_arn,
-            RoleSessionName='aim-multiaccount-session',
-            #TokenCode=token_code,
-            #SerialNumber=self.mfa_arn
-        )['Credentials']
+        try:
+            role_creds = sts_client.assume_role(
+                DurationSeconds=self.assume_role_session_expiry_secs,
+                RoleArn=self.admin_iam_role_arn,
+                RoleSessionName='aim-multiaccount-session',
+                #TokenCode=token_code,
+                #SerialNumber=self.mfa_arn
+            )['Credentials']
+        except ClientError as e:
+            message = '{}\n'.format(e)
+            message += 'Unable to assume role: {}\n'.format(self.admin_iam_role_arn)
+            raise StackException(AimErrorCode.Unknown, message = message)
         self.save_temp_creds(role_creds, self.role_creds_path)
         return role_creds
 

@@ -471,6 +471,32 @@ class IAMController(Controller):
             account_ctx = self.aim_ctx.get_account_context('aim.ref accounts.'+account_name)
             self.iam_user_stack_groups[account_name] = IAMUserStackGroup(self.aim_ctx, account_ctx, account_name, self)
 
+        stack_hooks = StackHooks(self.aim_ctx)
+        for user_name in self.iam_config.users.keys():
+            user_config = self.iam_config.users[user_name]
+            # Stack hooks for managing access keys
+            for hook_action in ['create', 'update']:
+                stack_hooks.add(
+                    name='IAMUserAccessKeys',
+                    stack_action=hook_action,
+                    stack_timing='post',
+                    hook_method=self.iam_user_access_keys_hook,
+                    cache_method=self.iam_user_access_keys_hook_cache_id,
+                    hook_arg=user_config
+                )
+
+        config_ref = 'resource.iam.users'
+        IAMUsers(
+            self.aim_ctx,
+            master_account_ctx,
+            master_account_ctx.config.region,
+            self.iam_user_stack_groups['master'],
+            None, # stack_tags,
+            stack_hooks,
+            self.iam_config.users,
+            config_ref
+        )
+
         for user_name in self.iam_config.users.keys():
             user_config = self.iam_config.users[user_name]
 
@@ -502,29 +528,6 @@ class IAMController(Controller):
                     config_ref
                 )
 
-
-        # Stack hooks for managing access keys
-        stack_hooks = StackHooks(self.aim_ctx)
-        for hook_action in ['create', 'update']:
-            stack_hooks.add(
-                name='IAMUserAccessKeys',
-                stack_action=hook_action,
-                stack_timing='post',
-                hook_method=self.iam_user_access_keys_hook,
-                cache_method=self.iam_user_access_keys_hook_cache_id,
-                hook_arg=user_config
-            )
-        config_ref = 'resource.iam.users'
-        IAMUsers(
-            self.aim_ctx,
-            master_account_ctx,
-            master_account_ctx.config.region,
-            self.iam_user_stack_groups['master'],
-            None, # stack_tags,
-            stack_hooks,
-            self.iam_config.users,
-            config_ref
-        )
 
         # Create the IAM Users
         #iam_user(self.iam_config.users)
@@ -598,18 +601,26 @@ class IAMController(Controller):
         return self.role_context[role_ref].role_profile_arn
 
     def validate(self):
+        self.iam_user_stack_groups['master'].validate()
         for account_name in self.iam_user_stack_groups.keys():
-            stack_group = self.iam_user_stack_groups[account_name]
-            stack_group.validate()
+            if account_name == 'master':
+                continue
+            stack_group = self.iam_user_stack_groups[account_name].validate()
 
     def provision(self):
+        # Master first due to IAM Users needing to be created first
+        # before account delegate roles
+        self.iam_user_stack_groups['master'].provision()
         for account_name in self.iam_user_stack_groups.keys():
-            stack_group = self.iam_user_stack_groups[account_name]
-            stack_group.provision()
+            if account_name == 'master':
+                continue
+            self.iam_user_stack_groups[account_name].provision()
 
     def delete(self):
         for account_name in self.iam_user_stack_groups.keys():
-            stack_group = self.iam_user_stack_groups[account_name]
-            stack_group.delete()
+            if account_name == 'master':
+                continue
+            self.iam_user_stack_groups[account_name].delete()
+        self.iam_user_stack_groups['master'].delete()
 
 

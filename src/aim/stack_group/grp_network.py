@@ -108,6 +108,7 @@ class NetworkStackGroup(StackGroup):
                 self, # stack_order
                 StackTags(self.stack_tags),
                 self.env_ctx.netenv_id,
+                self.env_ctx.env_id,
                 self.env_ctx.config.network,
                 peering_config_ref
             )

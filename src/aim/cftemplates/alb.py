@@ -18,6 +18,7 @@ class ALB(CFTemplate):
                  aws_name,
                  app_id,
                  alb_id,
+                 grp_id,
                  alb_config,
                  alb_config_ref):
         #aim_ctx.log("ALB CF Template init")
@@ -32,8 +33,8 @@ class ALB(CFTemplate):
                          config_ref=alb_config_ref,
                          aws_name='-'.join([ "ALB", aws_name]),
                          stack_group=stack_group,
-                         stack_tags=stack_tags)
-
+                         stack_tags=stack_tags,
+                         environment_name=self.env_ctx.env_id)
 
         # Initialize Parameters
         self.set_parameter('ALBEnabled', alb_config.is_enabled())
@@ -49,7 +50,7 @@ class ALB(CFTemplate):
         #   - Add a hash?
         #   - Check for duplicates with validating template
         load_balancer_name = self.create_resource_name_join(
-            name_list=[self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, alb_id],
+            name_list=[self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, grp_id, alb_id],
             separator='',
             camel_case=True,
             filter_id='EC2.ElasticLoadBalancingV2.LoadBalancer.Name'
@@ -63,7 +64,11 @@ class ALB(CFTemplate):
         self.set_parameter(StackOutputParam('SubnetList', segment_stack, subnet_list_key))
 
         # Security Group List
+        #if grp_id == 'staging':
+        #  breakpoint()
         self.set_list_parameter('SecurityGroupList', alb_config.security_groups, 'id')
+
+        self.set_parameter('IdleTimeoutSecs', alb_config.idle_timeout_secs)
 
         # Define the Template
         template_fmt = """
@@ -105,6 +110,10 @@ Parameters:
     Description: The Regonal AWS Route53 Hosted Zone ID
     Type: String
 
+  IdleTimeoutSecs:
+    Description: The idle timeout value, in seconds.
+    Type: String
+
 {0[RecordSetsParameters]:s}
 
 {0[SSLCertificateParameters]:s}
@@ -125,6 +134,9 @@ Resources:
       Scheme: !Ref Scheme
       SecurityGroups: !Ref SecurityGroupList
       Type: application
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: !Ref IdleTimeoutSecs
 
 {0[RecordSets]:s}
 
@@ -460,8 +472,9 @@ Outputs:
 
         self.set_template(template_fmt.format(template_fmt_table))
 
-        self.register_stack_output_config(self.alb_config_ref+'.arn', 'LoadBalancerArn')
-        self.register_stack_output_config(self.alb_config_ref+'.name', 'LoadBalancerName')
-        self.register_stack_output_config(self.alb_config_ref+'.fullname', 'LoadBalancerFullName')
-        self.register_stack_output_config(self.alb_config_ref+'.canonicalhostedzoneid', 'LoadBalancerCanonicalHostedZoneID')
-        self.register_stack_output_config(self.alb_config_ref+'.dnsname', 'LoadBalancerDNSName')
+        if self.enabled == True:
+            self.register_stack_output_config(self.alb_config_ref+'.arn', 'LoadBalancerArn')
+            self.register_stack_output_config(self.alb_config_ref+'.name', 'LoadBalancerName')
+            self.register_stack_output_config(self.alb_config_ref+'.fullname', 'LoadBalancerFullName')
+            self.register_stack_output_config(self.alb_config_ref+'.canonicalhostedzoneid', 'LoadBalancerCanonicalHostedZoneID')
+            self.register_stack_output_config(self.alb_config_ref+'.dnsname', 'LoadBalancerDNSName')

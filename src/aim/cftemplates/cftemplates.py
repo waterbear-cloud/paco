@@ -5,6 +5,7 @@ import random, re
 import string, sys
 import troposphere
 from enum import Enum
+from aim import utils
 from aim.core.yaml import YAML
 from aim.core.exception import StackException, AimErrorCode, AimException
 from aim.models import references
@@ -37,6 +38,7 @@ class StackOutputParam():
         self.entry_list = []
         self.use_previous_value = False
         self.resolved_value = ""
+        self.stack = stack
         #print(param_key)
         if stack !=None and stack_output_key !=None:
             #print("Adding stackoutput key: " + stack_output_key)
@@ -75,7 +77,7 @@ class StackOutputParam():
     #    parameter as a single value
     def gen_parameter(self):
         param_value = self.gen_parameter_value()
-        return Parameter(self.key, param_value, self.use_previous_value, self.resolved_value)
+        return Parameter(self.stack.template, self.key, param_value, self.use_previous_value, self.resolved_value)
 
 class StackOutputConfig():
     def __init__(self, config_ref, key):
@@ -115,17 +117,22 @@ def marshal_value_to_cfn_yaml(value):
 
 class Parameter():
     def __init__(self,
+                 template,
                  key,
                  value,
                  use_previous_value=False,
                  resolved_value=""):
+        self.template = template
         self.key = key
         self.value = marshal_value_to_cfn_yaml(value)
         self.use_previous_value = use_previous_value
         self.resolved_value = resolved_value
 
     def gen_parameter_value(self):
-        #print("Key: " + self.key + ": Value: " + self.value)
+        # print("Key: " + self.key + ": Value: " + self.value)
+        #utils.log_action_col(
+        #    'Info', 'Get', 'Parameter', '{} = {}'.format(self.key, self.value)
+        #)
         return self.value
 
     def gen_parameter(self):
@@ -139,6 +146,7 @@ class CFTemplate():
                  config_ref,
                  aws_name,
                  enabled=True,
+                 environment_name = None,
                  stack_group=None,
                  stack_tags=None,
                  stack_hooks=None,
@@ -161,6 +169,7 @@ class CFTemplate():
         self.aws_name = aws_name.replace('_', '-')
         self.config_ref = config_ref
         self.template_file_id = None
+        self.environment_name = environment_name
         # Stack
         self.stack = None
         self.stack_group = stack_group
@@ -279,6 +288,8 @@ class CFTemplate():
                     #print("Sub ref: " + sub_ref)
                     if sub_ref.find('<account>') != -1:
                         sub_ref = sub_ref.replace('<account>', self.account_ctx.get_name())
+                    if sub_ref.find('<environment>') != -1:
+                        sub_ref = sub_ref.replace('<environment>', self.environment_name)
                     if sub_ref.find('<region>') != -1:
                         sub_ref = sub_ref.replace('<region>', self.aws_region)
 
@@ -377,9 +388,16 @@ class CFTemplate():
             param_entry = param_key
         elif isinstance(param_value, list):
             # Security Group List
-            param_entry = Parameter(param_key, list_to_comma_string(param_value))
-        elif isinstance(param_value, str) and references.is_ref(param_value) and self.enabled:
+            param_entry = Parameter(self, param_key, list_to_comma_string(param_value))
+        elif isinstance(param_value, str) and references.is_ref(param_value):
             param_value = param_value.replace("<account>", self.account_ctx.get_name())
+            if self.environment_name != None:
+                param_value = param_value.replace("<environment>", self.environment_name)
+            elif param_value.find('<environment>') != -1:
+                raise StackException(
+                    AimErrorCode.Unknown,
+                    message="cftemplate: set_parameter: <environment> tag exists but self.environment_name == None: " + param_value
+                )
             param_value = param_value.replace("<region>", self.aws_region)
             ref = Reference(param_value)
             ref_value = ref.resolve(self.aim_ctx.project, account_ctx=self.account_ctx)
@@ -389,13 +407,18 @@ class CFTemplate():
                     message="cftemplate: set_parameter: Unable to locate value for ref: " + param_value
                 )
             if isinstance(ref_value, Stack):
+                # If we need to query another stack, but that stack is not
+                # enabled, then avoid setting this parameter to avoid lookup
+                # errors later.
+                if self.enabled == False and ref_value.template.enabled == False:
+                    return None
                 stack_output_key = self.get_stack_outputs_key_from_ref(ref, ref_value)
                 param_entry = StackOutputParam(param_key, ref_value, stack_output_key)
             else:
-                param_entry = Parameter(param_key, ref_value)
+                param_entry = Parameter(self, param_key, ref_value)
 
         if param_entry == None:
-            param_entry = Parameter(param_key, param_value)
+            param_entry = Parameter(self, param_key, param_value)
             if param_entry == None:
                 raise StackException(AimErrorCode.Unknown, message = "set_parameter says NOOOOOOOOOO")
         # Append the parameter to our list
@@ -404,8 +427,6 @@ class CFTemplate():
     def set_list_parameter(self, param_name, param_list, ref_att=None):
         "Sets a parameter from a list as a comma-separated value"
         # If we are not enabled, do not try to
-        if self.enabled == False:
-            return
         value_list = []
         is_stack_list = False
         for param_ref in param_list:
@@ -414,6 +435,13 @@ class CFTemplate():
             value = Reference(param_ref).resolve(self.aim_ctx.project)
             if isinstance(value, Stack):
                 is_stack_list = True
+                # If we need to query another stack, but that stack is not
+                # enabled, then avoid setting this parameter to avoid lookup
+                # errors later.
+                if self.enabled == False and value.template.enabled == False:
+                    return None
+                #if self.enabled == False:
+                #    return
             elif is_stack_list == True:
                 raise StackException(AimErrorCode.Unknown, message = 'Cannot have mixed Stacks and non-Stacks in the list: ' + param_ref)
             if value == None:
@@ -466,8 +494,8 @@ class CFTemplate():
                 update_only=self.update_only,
                 change_protected=self.change_protected,
             )
-            if self.enabled == True:
-                self.stack_group.add_stack_order(stack, self.stack_order)
+
+            self.stack_group.add_stack_order(stack, self.stack_order)
 
     def get_stack_outputs_key_from_ref(self, ref, stack=None):
         "Gets the output key of a project reference"
@@ -810,9 +838,9 @@ class CFTemplate():
             if diff_obj_key == 'values_changed':
                 print("\n    old: {}".format(root_change.t1))
                 print("    new: {}\n".format(root_change.t2))
-            elif isinstance(change_t, list):
+            elif isinstance(change_t, list) == True:
                 self.print_diff_list(change_t)
-            elif isinstance(change_t, dict):
+            elif isinstance(change_t, dict) == True:
                 self.print_diff_dict(change_t)
             else:
                 print("{}".format(change_t))
@@ -828,6 +856,8 @@ class CFTemplate():
         copyfile(new_file_path, applied_file_path)
 
     def validate_template_changes(self):
+        if self.aim_ctx.disable_validation == True:
+            return
         applied_file_path, new_file_path = self.init_template_store_paths()
         if applied_file_path.exists() == False:
             copyfile(new_file_path, applied_file_path)

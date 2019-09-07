@@ -29,7 +29,8 @@ class Controller():
             loader.validate_model_obj(
                 self.model_obj,
                 self.aim_ctx.home,
-                self.aim_ctx.yes
+                self.aim_ctx.disable_validation,
+                self.aim_ctx.yes,
             )
 
     def apply_model_obj(self):

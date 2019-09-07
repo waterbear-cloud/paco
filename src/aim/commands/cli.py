@@ -29,13 +29,20 @@ from aim.commands.helpers import pass_aim_context
     default=False,
     help='Responds "yes" to any Yes/No prompts.'
 )
+@click.option(
+    '-d', '--disable-validation',
+    is_flag=True,
+    default=False,
+    help='Supresses validation differences.'
+)
 
 @pass_aim_context
-def cli(ctx, verbose, nocache, yes):
+def cli(ctx, verbose, nocache, yes, disable_validation):
     """AIM: Application Infrastructure Manager"""
     ctx.verbose = verbose
     ctx.nocache = nocache
     ctx.yes = yes
+    ctx.disable_validation = disable_validation
 
 cli.add_command(provision_command)
 cli.add_command(init_command)
