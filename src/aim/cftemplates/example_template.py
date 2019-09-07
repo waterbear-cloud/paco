@@ -34,9 +34,10 @@ class Example(CFTemplate):
         # ---------------------------------------------------------------------------
         # Troposphere Template Initialization
 
-        template = troposphere.Template()
-        template.add_version('2010-09-09')
-        template.add_description('Example Template')
+        template = troposphere.Template(
+            Description = 'Example Template',
+        )
+        template.set_version()
         template.add_resource(
             troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
         )
