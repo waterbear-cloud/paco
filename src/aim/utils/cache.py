@@ -46,7 +46,8 @@ def load_cached_project(project_path):
         with open(mtime_cache_file) as cache_file:
             cache_mtime = cache_file.readlines()
         cache_mtime = float(cache_mtime[0])
-        if cache_mtime < last_mtime:
+        # if you CTRL-C right after running aim, you can create the mtime file but not the pickle cache
+        if cache_mtime < last_mtime or not os.path.isfile(model_cache_file):
             # cache is stale
             project = load_project_from_yaml(project_path, None)
             with open(model_cache_file, 'wb') as model_cache_file:
