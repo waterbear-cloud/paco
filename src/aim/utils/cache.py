@@ -27,10 +27,10 @@ def load_cached_project(project_path):
     Creates or updates the aim model cache if any files have been modified since
     the last cache time
     """
-    last_mtime = get_max_mtime(project_path, exclude=('cache', 'build'))
-    cache_dir = os.path.join(project_path, "cache")
-    mtime_cache_file = os.path.join(cache_dir, "last_mtime_cache.txt")
-    model_cache_file = os.path.join(cache_dir, "model_cache.pickle")
+    last_mtime = get_max_mtime(project_path, exclude=('build'))
+    cache_dir = os.path.join(project_path, "build")
+    mtime_cache_file = os.path.join(cache_dir, "cache_last_mtime.txt")
+    model_cache_file = os.path.join(cache_dir, "cache_model.pickle")
     pathlib.Path(cache_dir).mkdir(parents=True, exist_ok=True)
 
     # no last modified time cache file, so load project and cache it
