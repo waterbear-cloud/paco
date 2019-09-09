@@ -883,7 +883,8 @@ class CFTemplate():
         print("Validate Template Changes")
         print("(stack) {}".format(self.stack.get_name()))
         print("(model) {}".format(self.config_ref))
-        print("(file)  {}".format(self.get_yaml_path()))
+        print("(file)  {}".format(new_file_path))
+        print("(applied file)  {}".format(applied_file_path))
         prompt_user = True
         if 'values_changed' in deep_diff.keys():
             print("\nooo Changed")
