@@ -740,7 +740,6 @@ class StackGroup():
 
     def delete_stack(self, account_name, region, stack_name):
         pass
-        breakpoint()
         # XXX: not used
         # Delete Stack
         #account_ctx = self.aim_ctx.get_account_context(account_name=account_name)

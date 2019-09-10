@@ -283,24 +283,20 @@ statement:
         )
 
     def init_s3bucket_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        # Generate s3 bucket name for application deployment
-        bucket_name_prefix = '-'.join([self.get_aws_name(), grp_id])
-        #print("Application depoloyment bucket name: %s" % new_name)
         s3_ctl = self.aim_ctx.get_controller('S3')
-        # If an account was nto set, use the network default
+        # If an account was not set, use the network default
         if res_config.account == None:
-            res_config.account = self.aim_ctx.get_ref('aim.ref '+self.parent_config_ref+'.network.aws_account')
+            # XXX parent_config_ref does not work for S3Buckets in services
+            res_config.account = self.aim_ctx.get_ref('aim.ref ' + self.parent_config_ref + '.network.aws_account')
         account_ctx = self.aim_ctx.get_account_context(account_ref=res_config.account)
-        s3_ctl.init_context(account_ctx, self.aws_region, res_config.aim_ref_parts, self.stack_group, res_stack_tags)
-        s3_ctl.add_bucket(
-            resource_ref=res_config.aim_ref_parts,
-            region=self.aws_region,
-            bucket_id=res_id,
-            bucket_group_id=grp_id,
-            bucket_name_prefix=bucket_name_prefix,
-            bucket_name_suffix=None,
-            bucket_config=res_config
+        s3_ctl.init_context(
+            account_ctx,
+            self.aws_region,
+            res_config.aim_ref_parts,
+            self.stack_group,
+            res_stack_tags
         )
+        s3_ctl.add_bucket(res_config)
 
     def init_lbclassic_resource(self, grp_id, res_id, res_config, res_stack_tags):
         elb_config = res_config[res_id]

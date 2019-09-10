@@ -248,14 +248,10 @@ class EC2LaunchManager():
             StackTags(self.stack_tags)
         )
         s3_ctl.add_bucket(
-            bundle.s3_bucket_ref,
-            region=bucket_region,
-            bucket_id=bundle.bucket_id,
-            bucket_group_id=bundle.group_id,
-            bucket_name_prefix=bucket_name_prefix,
-            bucket_name_suffix=bucket_name_suffix,
-            bucket_config=bucket_config,
-            stack_hooks=None
+            bucket_config,
+            config_ref = bundle.s3_bucket_ref,
+            bucket_name_prefix = bucket_name_prefix,
+            bucket_name_suffix = bucket_name_suffix
         )
 
     def get_s3_bucket_name(self, app_id, grp_id, bucket_id):

@@ -188,14 +188,18 @@ class AimContext(object):
         service_plugins = aim.models.services.list_service_plugins()
         for plugin_name, plugin_module in service_plugins.items():
             try:
-                utils.log_action_col('Init', 'Service Plugin', plugin_name)
-                service = plugin_module.instantiate_class(self, self.project['service'][plugin_name.lower()])
-                service.init(None)
-                self.services[plugin_name.lower()] = service
-                utils.log_action_col('Init', 'Service Plugin', plugin_name, 'Completed')
+                self.project['service'][plugin_name.lower()]
             except KeyError:
                 # ignore if no config files for a registered service
                 print("Skipping Service: {}".format(plugin_name))
+                return
+
+            utils.log_action_col('Init', 'Service Plugin', plugin_name)
+            service = plugin_module.instantiate_class(self, self.project['service'][plugin_name.lower()])
+            service.init(None)
+            self.services[plugin_name.lower()] = service
+            utils.log_action_col('Init', 'Service Plugin', plugin_name, 'Completed')
+
 
     def get_controller(self, controller_type, controller_args=None):
         """Gets a controller by name and calls .init() on it with any controller args"""

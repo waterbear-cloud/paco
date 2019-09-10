@@ -439,10 +439,7 @@ Outputs:
                                 if s3_logical_name not in seen:
                                     permission_table['name'] = 'S3Bucket' + s3_logical_name
                                     permission_table['principal'] = 's3.amazonaws.com'
-                                    # cook up a bucket name before the S3 controller knows about the bucket context?
-                                    # XXX: for now just use *
-                                    bucket_name = '*'
-                                    permission_table['source_arn'] = 'arn:aws:s3:::' + bucket_name
+                                    permission_table['source_arn'] = 'arn:aws:s3:::' + obj.get_bucket_name()
                                     template_table['permissions'] += permission_fmt.format(permission_table)
                                     seen[s3_logical_name] = True
 

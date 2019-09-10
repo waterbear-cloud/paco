@@ -13,6 +13,10 @@ Changelog for aim
   same application notifies the lambda and will automatically add a Lambda permission to allow S3 to
   invoke the lambda.
 
+### Changed
+
+- S3 controller now relies on the bucket name to come from the S3Bucket model object.
+
 ### Fixed
 
 - APIGateway and Lambda now respect the `enabled` field.

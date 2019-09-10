@@ -225,7 +225,7 @@ class IAMController(Controller):
 
         self.role_context = {}
         self.policy_context = {}
-        self.iam_config = self.aim_ctx.project['iam']
+        self.iam_config = self.aim_ctx.project['resource']['iam']
         self.iam_user_stack_groups = {}
         self.iam_user_access_keys_sdb_domain = 'AIM-IAM-Users-Access-Keys-Meta'
         self.init_done = False
