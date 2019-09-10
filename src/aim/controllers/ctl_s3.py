@@ -105,7 +105,7 @@ class S3Context():
         if bucket.external_resource == True:
             # if the bucket already exists, do not create a stack for it
             utils.log_action_col(
-                "Init", "S3", "External Bucket", bucket.name + ": " + self.get_bucket_name(), False, bucket.is_enabled()
+                "Init", "S3", "External Bucket", bucket.name + ": " + bucket.get_bucket_name(), False, bucket.is_enabled()
             )
         else:
             utils.log_action_col(

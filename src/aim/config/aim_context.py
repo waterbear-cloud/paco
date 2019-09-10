@@ -191,7 +191,7 @@ class AimContext(object):
                 self.project['service'][plugin_name.lower()]
             except KeyError:
                 # ignore if no config files for a registered service
-                print("Skipping Service: {}".format(plugin_name))
+                utils.log_action_col("Skipping", 'Service', plugin_name)
                 return
 
             utils.log_action_col('Init', 'Service Plugin', plugin_name)

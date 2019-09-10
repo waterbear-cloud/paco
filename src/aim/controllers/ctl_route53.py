@@ -11,7 +11,7 @@ class Route53Controller(Controller):
                          "Service",
                          "Route53")
 
-        if not 'route53' in self.aim_ctx.project:
+        if not 'route53' in self.aim_ctx.project['resource'].keys():
             self.init_done = True
             return
         self.config = self.aim_ctx.project['resource']['route53']
