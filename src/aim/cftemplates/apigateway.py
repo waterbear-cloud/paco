@@ -41,6 +41,7 @@ class ApiGatewayRestApi(CFTemplate):
             stack_group=stack_group,
             stack_tags=stack_tags,
             iam_capabilities=["CAPABILITY_IAM"],
+            enabled=apigatewayrestapi.is_enabled(),
         )
         self.apigatewayrestapi = apigatewayrestapi
 

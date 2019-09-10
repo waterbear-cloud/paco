@@ -2,8 +2,13 @@ import os
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import Parameter
 from aim.cftemplates.cftemplates import StackOutputParam
+from aim.models.locations import get_parent_by_interface
+from aim.models.loader import get_all_nodes
+from aim.models.references import resolve_ref
+from aim.models import schemas
 from io import StringIO
 from enum import Enum
+
 
 class Lambda(CFTemplate):
     def __init__(
@@ -20,15 +25,17 @@ class Lambda(CFTemplate):
         #aim_ctx.log("Lambda CF Template init")
         aws_name += '-Lambda'
 
-        super().__init__(aim_ctx,
-                         account_ctx,
-                         aws_region,
-                         config_ref=lambda_config_ref,
-                         aws_name=aws_name,
-                         iam_capabilities=["CAPABILITY_NAMED_IAM"],
-                         stack_group=stack_group,
-                         stack_tags=stack_tags)
-
+        super().__init__(
+            aim_ctx,
+            account_ctx,
+            aws_region,
+            config_ref=lambda_config_ref,
+            aws_name=aws_name,
+            iam_capabilities=["CAPABILITY_NAMED_IAM"],
+            stack_group=stack_group,
+            stack_tags=stack_tags,
+            enabled=lambda_config.is_enabled()
+        )
         self.set_parameter('FunctionDescription', lambda_config.description)
         self.set_parameter('Handler', lambda_config.handler)
         self.set_parameter('Runtime', lambda_config.runtime)
@@ -414,6 +421,30 @@ Outputs:
             sns_subscription_table['topic_arn'] = '!Ref %s' % param_name
             template_table['permissions'] += sns_subscription_fmt.format(sns_subscription_table)
             idx += 1
+
+        # S3 Bucket notification permission
+        app = get_parent_by_interface(lambda_config, schemas.IApplication)
+        project = get_parent_by_interface(lambda_config, schemas.IProject)
+        # detect if an S3Bucket resource in the application is configured to notify the Lambda
+        for obj in get_all_nodes(app):
+            if schemas.IS3Bucket.providedBy(obj):
+                seen = {}
+                if hasattr(obj, 'notifications'):
+                    if hasattr(obj.notifications, 'lambdas'):
+                        for lambda_notif in obj.notifications.lambdas:
+                            if lambda_notif.function == lambda_config.aim_ref:
+                                # yes, this Lambda gets notification from this S3Bucket
+                                group = get_parent_by_interface(obj, schemas.IResourceGroup)
+                                s3_logical_name = self.gen_cf_logical_name(group.name + obj.name, '_')
+                                if s3_logical_name not in seen:
+                                    permission_table['name'] = 'S3Bucket' + s3_logical_name
+                                    permission_table['principal'] = 's3.amazonaws.com'
+                                    # cook up a bucket name before the S3 controller knows about the bucket context?
+                                    # XXX: for now just use *
+                                    bucket_name = '*'
+                                    permission_table['source_arn'] = 'arn:aws:s3:::' + bucket_name
+                                    template_table['permissions'] += permission_fmt.format(permission_table)
+                                    seen[s3_logical_name] = True
 
         template_table['parameters'] = parameters_yaml
 

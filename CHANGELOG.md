@@ -4,9 +4,18 @@ Changelog for aim
 2.1.0 (unreleased)
 ------------------
 
+### Added
+
 - API Gateway REST API can now have models, methods and stages. It supports Lambda integration
   with either 'AWS_PROXY' via an assumed Role or 'AWS' via a Lambda Permission.
 
+- S3Bucket has NotificationConfiguration for Lambdas. Lambda will detect if an S3Bucket within the
+  same application notifies the lambda and will automatically add a Lambda permission to allow S3 to
+  invoke the lambda.
+
+### Fixed
+
+- APIGateway and Lambda now respect the `enabled` field.
 
 2.0.0 (2019-08-26)
 ------------------

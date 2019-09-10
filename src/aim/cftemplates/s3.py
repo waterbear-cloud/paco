@@ -62,6 +62,31 @@ class S3(CFTemplate):
             s3_logical_id = cf_name_prefix + 'BucketName'
             cfn_export_dict = bucket.cfn_export_dict
             cfn_export_dict['BucketName'] = bucket_name
+
+            # notification configuration
+            if hasattr(bucket, 'notifications'):
+                cfn_export_dict['NotificationConfiguration'] = {}
+                if hasattr(bucket.notifications, 'lambdas'):
+                    lambda_notifs = []
+                    params = {}
+                    for lambda_notif in bucket.notifications.lambdas:
+                        param_name = self.create_cfn_logical_id('LambdaNotif' + lambda_notif.function[6:])
+                        if param_name not in params:
+                            lambda_arn_param = self.create_cfn_parameter(
+                                name = param_name,
+                                param_type = 'String',
+                                description = 'Lambda ARN parameter.',
+                                value = lambda_notif.function + '.arn',
+                                use_troposphere = True
+                            )
+                            params[param_name] = lambda_arn_param
+                            template.add_parameter(lambda_arn_param)
+                        lambda_notifs.append({
+                            'Event': lambda_notif.event,
+                            'Function': troposphere.Ref(param_name)
+                        })
+                    cfn_export_dict['NotificationConfiguration']["LambdaConfigurations"] = lambda_notifs
+
             s3_resource = troposphere.s3.Bucket.from_dict(s3_logical_id, cfn_export_dict)
             template.add_resource(s3_resource)
             template.add_output(
