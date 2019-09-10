@@ -14,7 +14,7 @@ class Route53Controller(Controller):
         if not 'route53' in self.aim_ctx.project:
             self.init_done = True
             return
-        self.config = self.aim_ctx.project['route53']
+        self.config = self.aim_ctx.project['resource']['route53']
         if self.config != None:
             self.config.resolve_ref_obj = self
 
