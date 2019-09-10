@@ -483,7 +483,7 @@ class CFTemplate():
         creates a Stack and adds it to the stack_group."""
         self.body = template_body
         if self.stack_group != None:
-            stack = Stack(
+            self.stack = Stack(
                 self.aim_ctx,
                 self.account_ctx,
                 self.stack_group,
@@ -495,7 +495,7 @@ class CFTemplate():
                 change_protected=self.change_protected,
             )
 
-            self.stack_group.add_stack_order(stack, self.stack_order)
+            self.stack_group.add_stack_order(self.stack, self.stack_order)
 
     def get_stack_outputs_key_from_ref(self, ref, stack=None):
         "Gets the output key of a project reference"
@@ -858,6 +858,8 @@ class CFTemplate():
     def validate_template_changes(self):
         if self.aim_ctx.disable_validation == True:
             return
+        if self.enabled == False:
+            return
         applied_file_path, new_file_path = self.init_template_store_paths()
         if applied_file_path.exists() == False:
             copyfile(new_file_path, applied_file_path)
@@ -883,7 +885,8 @@ class CFTemplate():
         print("Validate Template Changes")
         print("(stack) {}".format(self.stack.get_name()))
         print("(model) {}".format(self.config_ref))
-        print("(file)  {}".format(self.get_yaml_path()))
+        print("(file)  {}".format(new_file_path))
+        print("(applied file)  {}".format(applied_file_path))
         prompt_user = True
         if 'values_changed' in deep_diff.keys():
             print("\nooo Changed")

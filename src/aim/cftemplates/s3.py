@@ -55,11 +55,14 @@ class S3(CFTemplate):
             Description=bucket.title_or_name
         )
         template.set_version()
+        template.add_resource(
+            troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
+        )
 
         # ---------------------------------------------------------------------------
         # Resources
         if bucket_policy_only == False:
-            s3_logical_id = cf_name_prefix + 'BucketName'
+            s3_logical_id = cf_name_prefix + 'Bucket'
             cfn_export_dict = bucket.cfn_export_dict
             cfn_export_dict['BucketName'] = bucket_name
 
@@ -88,14 +91,16 @@ class S3(CFTemplate):
                     cfn_export_dict['NotificationConfiguration']["LambdaConfigurations"] = lambda_notifs
 
             s3_resource = troposphere.s3.Bucket.from_dict(s3_logical_id, cfn_export_dict)
+            s3_resource.DeletionPolicy = 'Retain' # We always retain. Bucket cleanup is handled by Stack hooks.
             template.add_resource(s3_resource)
+            bucket_name_output_id = s3_logical_id + 'Name'
             template.add_output(
                 troposphere.Output(
-                    s3_logical_id,
+                    bucket_name_output_id,
                     Value=troposphere.Ref(s3_resource)
                 )
             )
-            self.register_stack_output_config(config_ref + '.name', s3_logical_id)
+            self.register_stack_output_config(config_ref + '.name', bucket_name_output_id)
 
         if bucket.cloudfront_origin == True:
             # CloudFront OriginAccessIdentity resource
@@ -182,6 +187,7 @@ class S3(CFTemplate):
 
             bucket_policy_resource = troposphere.s3.BucketPolicy(
                 cf_name_prefix + 'BucketPolicy',
+                template = template,
                 Bucket = bucket_name,
                 PolicyDocument = Policy(
                     Version = '2012-10-17',
