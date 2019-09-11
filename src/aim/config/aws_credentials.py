@@ -33,9 +33,9 @@ class AimSTS(object):
                     assume_role_session_expiry_secs=None,
                 ):
         # mfa_session_expiry provides long term expiry
-        self.mfa_session_expiry_secs = 3600 * 8 # 8 hour
+        self.mfa_session_expiry_secs = mfa_session_expiry_secs
         # assume_role_session_expiry is restricted to 1 hour due to role chaining.
-        self.assume_role_session_expiry_secs = 60 * 60 # 60 minutes
+        self.assume_role_session_expiry_secs = assume_role_session_expiry_secs
         self.temp_creds_path = temp_creds_path
         self.session_creds_path = session_creds_path
         self.role_creds_path = role_creds_path
