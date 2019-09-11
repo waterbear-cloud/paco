@@ -187,12 +187,16 @@ class AimContext(object):
         # Load the Service plug-ins
         service_plugins = aim.models.services.list_service_plugins()
         for plugin_name, plugin_module in service_plugins.items():
+            # Skip it for now
+            if plugin_name.lower() == 'patch':
+                utils.log_action_col("Skipping", 'Service', plugin_name)
+                continue
             try:
                 self.project['service'][plugin_name.lower()]
             except KeyError:
                 # ignore if no config files for a registered service
-                print("Skipping Service: {}".format(plugin_name))
-                return
+                utils.log_action_col("Skipping", 'Service', plugin_name)
+                continue
 
             utils.log_action_col('Init', 'Service Plugin', plugin_name)
             service = plugin_module.instantiate_class(self, self.project['service'][plugin_name.lower()])

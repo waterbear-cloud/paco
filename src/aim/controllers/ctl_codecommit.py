@@ -17,7 +17,7 @@ class CodeCommitController(Controller):
         super().__init__(aim_ctx,
                          "Service",
                          "CodeCommit")
-        if not 'codecommit' in self.aim_ctx.project:
+        if not 'codecommit' in self.aim_ctx.project['resource']:
             self.init_done = True
             return
         self.config = None
@@ -33,7 +33,7 @@ class CodeCommitController(Controller):
         stack_group.log_next_header = "Init"
         if controller_args:
             self.name = controller_args['arg_1']
-        self.config = self.aim_ctx.project['codecommit']
+        self.config = self.aim_ctx.project['resource']['codecommit']
         self.validate_model_obj(self.config)
         # Sets the CodeCommit reference resolver object to forward all
         # all aim.ref resource.codecommit.* calls to self.resolve_ref()

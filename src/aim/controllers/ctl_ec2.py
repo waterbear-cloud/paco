@@ -14,7 +14,7 @@ class EC2Controller(Controller):
                          "Service",
                          "EC2")
 
-        self.config = self.aim_ctx.project['ec2']
+        self.config = self.aim_ctx.project['resource']['ec2']
 
         #self.aim_ctx.log("EC2 Service: Configuration")
 

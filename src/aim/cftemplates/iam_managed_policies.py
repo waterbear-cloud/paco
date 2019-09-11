@@ -1,5 +1,5 @@
 import os
-from aim.cftemplates.cftemplates import CFTemplate, Parameter, StackOutputParam
+from aim.cftemplates.cftemplates import CFTemplate, Parameter
 from aim.utils import md5sum
 from aim import utils
 from io import StringIO

@@ -318,6 +318,10 @@ class Stack():
         if "COMPLETE" in self.status.name:
             return True
         return False
+    def is_failed(self):
+        if 'FAILED' in self.status.name:
+            return True
+        return False
 
     def is_exists(self):
         if not "DOES_NOT_EXIST" in self.status.name:
@@ -455,6 +459,7 @@ class Stack():
             # Save stack outputs to yaml
             self.save_stack_outputs()
             self.template.apply_template_changes()
+            self.template.apply_stack_parameters()
 
     def create_stack(self):
         # Create Stack
@@ -497,6 +502,7 @@ class Stack():
         self.action = "update"
         self.log_action("Provision", "Update")
         stack_parameters = self.template.generate_stack_parameters()
+        self.template.validate_stack_parameters(stack_parameters)
         self.hooks.run("update", "pre", self)
         try:
             self.cfn_client.update_stack(
@@ -593,6 +599,19 @@ class Stack():
             return
 
         self.get_status()
+        if self.is_failed():
+            answer = self.aim_ctx.input(
+                "The stack is in a '{}' state. Delete it?",
+                 yes_no_promp=True,
+                 default='y')
+            if answer == True:
+                self.delete()
+                self.wait_for_complete()
+            else:
+                self.log_action("Provision", "Aborted")
+                sys.exit(1)
+            self.get_status()
+
         if self.status == StackStatus.DOES_NOT_EXIST:
             self.create_stack()
         elif self.is_complete():
@@ -607,9 +626,6 @@ class Stack():
             else:
                 self.log_action("Provision", "Update")
                 self.action = "update"
-#        elif self.has_failure_status():
-            # TODO: Delete stack here if in error state
-#            pass
         elif self.is_creating() == False and self.is_updating() == False:
             self.log_action("Provision", "Error")
             message = self.get_stack_error_message()
@@ -640,9 +656,6 @@ class Stack():
             msg_account_name = self.account_ctx.get_name()
         else:
             msg_account_name = account_name
-
-        if msg_account_name == 'Hook':
-            breakpoint()
 
         if stack_name == None:
             msg_stack_name = self.get_name()

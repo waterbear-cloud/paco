@@ -4,8 +4,7 @@ import troposphere
 import troposphere.cloudfront
 import troposphere.s3
 from aim.cftemplates.cftemplates import CFTemplate
-from aim.cftemplates.cftemplates import Parameter
-from aim.cftemplates.cftemplates import StackOutputParam
+
 from awacs.aws import Action, Allow, Statement, Policy, Principal
 from io import StringIO
 from enum import Enum

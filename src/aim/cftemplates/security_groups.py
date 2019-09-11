@@ -2,8 +2,7 @@ import os
 import troposphere
 from aim import utils
 from aim.cftemplates.cftemplates import CFTemplate
-from aim.cftemplates.cftemplates import Parameter
-from aim.cftemplates.cftemplates import StackOutputParam
+
 from aim.models import references
 from aim.models.references import Reference
 from aim.core.exception import StackException, AimErrorCode

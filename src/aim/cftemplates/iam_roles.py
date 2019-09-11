@@ -1,6 +1,6 @@
 import os
 import sys
-from aim.cftemplates.cftemplates import CFTemplate, Parameter, StackOutputParam
+from aim.cftemplates.cftemplates import CFTemplate, Parameter
 from aim import utils
 from aim.utils import md5sum
 from enum import Enum
