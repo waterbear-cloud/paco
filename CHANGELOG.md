@@ -17,6 +17,10 @@ Changelog for aim
 
 - S3 controller now relies on the bucket name to come from the S3Bucket model object.
 
+- Lambda code.s3_bucket field can now be an aim.ref or a plain bucket name.
+
+- You can provision without specifying the region and it will include all regions in an env.
+
 ### Fixed
 
 - APIGateway and Lambda now respect the `enabled` field.

@@ -49,7 +49,10 @@ class Lambda(CFTemplate):
         s3_code = ""
         code_resource = ""
         if lambda_config.code.s3_bucket:
-            self.set_parameter('CodeS3Bucket', lambda_config.code.s3_bucket + ".name")
+            if lambda_config.code.s3_bucket.startswith('aim.ref '):
+                self.set_parameter('CodeS3Bucket', lambda_config.code.s3_bucket + ".name")
+            else:
+                self.set_parameter('CodeS3Bucket', lambda_config.code.s3_bucket)
             self.set_parameter('CodeS3Key', lambda_config.code.s3_key)
             code_resource = """
         S3Bucket: !Ref CodeS3Bucket

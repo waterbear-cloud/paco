@@ -272,20 +272,15 @@ class NetEnvController(Controller):
 
         env_config = self.config[env_id][region]
         env_ctx = EnvironmentContext(self.aim_ctx, self, self.netenv_id, env_id, region, env_config)
-        self.sub_envs[env_id] = { region: env_ctx }
+        if env_id not in self.sub_envs:
+            self.sub_envs[env_id] = {}
+        self.sub_envs[env_id][region] = env_ctx
         env_ctx.init()
-
-    def init_all_sub_envs(self):
-        for env_id in self.config.keys():
-            for region in self.config[env_id].env_regions:
-                self.init_sub_env(env_id, region)
 
     def init(self, controller_args):
         if self.init_done == True or controller_args == None:
             return
         self.init_done = True
-
-
         netenv_id = None
         env_id = None
         region = None
