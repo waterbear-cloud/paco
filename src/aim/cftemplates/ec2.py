@@ -1,6 +1,6 @@
 import os
 from aim.cftemplates.cftemplates import CFTemplate
-from aim.cftemplates.cftemplates import Parameter
+
 from aim.cftemplates.cftemplates import StackOutputParam
 from aim.models.references import Reference
 from io import StringIO
@@ -46,11 +46,11 @@ class EC2(CFTemplate):
         # Segment SubnetList is a Segment stack Output based on availability zones
         segment_stack = self.env_ctx.get_segment_stack(ec2_config.segment)
         subnet_list_output_key = 'SubnetList1'
-        self.set_parameter(StackOutputParam('SubnetId', segment_stack, subnet_list_output_key))
+        self.set_parameter(StackOutputParam('SubnetId', segment_stack, subnet_list_output_key, self))
 
         # Security Group List
         # TODO: Use self.create_cfn_ref_list_param()
-        sg_output_param = StackOutputParam('SecurityGroupIds')
+        sg_output_param = StackOutputParam('SecurityGroupIds', param_template=self)
         for sg_ref in ec2_config.security_groups:
             # TODO: Better name for self.get_stack_outputs_key_from_ref?
             security_group_stack = self.aim_ctx.get_ref(sg_ref)

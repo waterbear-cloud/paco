@@ -1,6 +1,6 @@
 import os
 from aim.cftemplates.cftemplates import CFTemplate
-from aim.cftemplates.cftemplates import Parameter
+
 from aim.cftemplates.cftemplates import StackOutputParam
 from aim.models.references import Reference
 from io import StringIO
@@ -39,7 +39,7 @@ class ALB(CFTemplate):
         # Initialize Parameters
         self.set_parameter('ALBEnabled', alb_config.is_enabled())
         vpc_stack = self.env_ctx.get_vpc_stack()
-        self.set_parameter(StackOutputParam('VPC', vpc_stack, 'VPC'))
+        self.set_parameter(StackOutputParam('VPC', vpc_stack, 'VPC', self))
         alb_region = env_ctx.region
         self.set_parameter('ALBHostedZoneId', self.lb_hosted_zone_id('alb', alb_region))
 
@@ -61,13 +61,8 @@ class ALB(CFTemplate):
 
         # Segment SubnetList is a Segment stack Output based on availability zones
         subnet_list_key = 'SubnetList' + str(self.env_ctx.availability_zones())
-        self.set_parameter(StackOutputParam('SubnetList', segment_stack, subnet_list_key))
-
-        # Security Group List
-        #if grp_id == 'staging':
-        #  breakpoint()
+        self.set_parameter(StackOutputParam('SubnetList', segment_stack, subnet_list_key, self))
         self.set_list_parameter('SecurityGroupList', alb_config.security_groups, 'id')
-
         self.set_parameter('IdleTimeoutSecs', alb_config.idle_timeout_secs)
 
         # Define the Template

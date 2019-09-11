@@ -3,7 +3,7 @@ import troposphere
 import troposphere.ec2
 import troposphere.route53
 from aim.cftemplates.cftemplates import CFTemplate
-from aim.cftemplates.cftemplates import Parameter
+
 from io import StringIO
 from enum import Enum
 

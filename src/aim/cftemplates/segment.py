@@ -1,6 +1,6 @@
 import os
 from aim.cftemplates.cftemplates import CFTemplate
-from aim.cftemplates.cftemplates import Parameter
+
 from aim.cftemplates.cftemplates import StackOutputParam
 from io import StringIO
 from enum import Enum
@@ -38,10 +38,10 @@ class Segment(CFTemplate):
 
         # Initialize Parameters
         # VPC
-        self.set_parameter(StackOutputParam('VPC', vpc_stack, 'VPC'))
+        self.set_parameter(StackOutputParam('VPC', vpc_stack, 'VPC', self))
 
         # Internet Gateway
-        self.set_parameter(StackOutputParam('InternetGateway', vpc_stack, 'InternetGateway'))
+        self.set_parameter(StackOutputParam('InternetGateway', vpc_stack, 'InternetGateway', self))
 
         # Subnet CIDRS
         self.set_parameter('SubnetAZ1CIDR', segment_config.az1_cidr)

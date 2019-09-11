@@ -3,7 +3,7 @@ import troposphere
 import troposphere.ec2
 import troposphere.route53
 from aim.cftemplates.cftemplates import CFTemplate
-from aim.cftemplates.cftemplates import Parameter
+
 from io import StringIO
 from enum import Enum
 
@@ -43,11 +43,12 @@ class VPCPeering(CFTemplate):
 
         #---------------------------------------------------------------------
         # VPC Peering
+
         vpc_id_param = self.create_cfn_parameter(
             name='VpcId',
             param_type='AWS::EC2::VPC::Id',
             description='The VPC Id',
-            value='aim.ref netenv.{}<environment>.<region>.network.vpc.id'.format(netenv_name),
+            value='aim.ref netenv.{}.<environment>.<region>.network.vpc.id'.format(netenv_name),
             use_troposphere=True
         )
         template.add_parameter(vpc_id_param)

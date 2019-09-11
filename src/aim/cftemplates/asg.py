@@ -1,6 +1,6 @@
 import os
 from aim.cftemplates.cftemplates import CFTemplate
-from aim.cftemplates.cftemplates import Parameter
+
 from aim.cftemplates.cftemplates import StackOutputParam
 from aim.models.references import Reference
 from io import StringIO
@@ -84,7 +84,7 @@ class ASG(CFTemplate):
 
         # Segment SubnetList is a Segment stack Output based on availability zones
         subnet_list_output_key = 'SubnetList' + str(self.env_ctx.availability_zones())
-        self.set_parameter(StackOutputParam('ASGSubnetList', segment_stack, subnet_list_output_key))
+        self.set_parameter(StackOutputParam('ASGSubnetList', segment_stack, subnet_list_output_key, self))
 
         # Load Balancers: A list of aim.ref netenv.to ELBs
         if asg_config.load_balancers != None and len(asg_config.load_balancers) > 0:

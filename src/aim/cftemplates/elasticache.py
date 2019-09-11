@@ -2,8 +2,7 @@ import os
 import troposphere
 import troposphere.elasticache
 from aim.cftemplates.cftemplates import CFTemplate
-from aim.cftemplates.cftemplates import Parameter
-from aim.cftemplates.cftemplates import StackOutputParam
+
 from aim.models.references import Reference
 from io import StringIO
 from enum import Enum

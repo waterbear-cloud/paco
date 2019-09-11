@@ -1,3 +1,4 @@
+import base64
 import boto3
 import os
 import pathlib
@@ -11,7 +12,7 @@ from aim.core.exception import StackException, AimErrorCode, AimException
 from aim.models import references
 from aim.models.references import Reference
 from aim.stack_group import Stack, StackOrder
-from aim.utils import dict_of_dicts_merge, md5sum, big_join, list_to_comma_string
+from aim.utils import dict_of_dicts_merge, md5sum, big_join, list_to_comma_string, log_action_col
 from botocore.exceptions import ClientError
 from pprint import pprint
 from shutil import copyfile
@@ -30,7 +31,7 @@ warnings.simplefilter("ignore")
 #    for to pass into a stack parameter.
 #    (ie, Security Group lists)
 class StackOutputParam():
-    def __init__(self, param_key, stack=None, stack_output_key=None):
+    def __init__(self, param_key, stack=None, stack_output_key=None, param_template=None):
         self.key = param_key
         # entry:
         #   'stack': stack,
@@ -39,6 +40,7 @@ class StackOutputParam():
         self.use_previous_value = False
         self.resolved_value = ""
         self.stack = stack
+        self.param_template = param_template
         #print(param_key)
         if stack !=None and stack_output_key !=None:
             #print("Adding stackoutput key: " + stack_output_key)
@@ -47,6 +49,7 @@ class StackOutputParam():
     def add_stack_output(self, stack, stack_output_key):
         if stack_output_key == None:
             raise AimException(AimErrorCode.Unknown, message="Stack Output key is unset")
+        self.stack = stack
         #print(stack.template.aws_name + ": add_stack_output: output_key: " + stack_output_key)
         for entry in self.entry_list:
             if entry['stack'] == stack:
@@ -77,7 +80,7 @@ class StackOutputParam():
     #    parameter as a single value
     def gen_parameter(self):
         param_value = self.gen_parameter_value()
-        return Parameter(self.stack.template, self.key, param_value, self.use_previous_value, self.resolved_value)
+        return Parameter(self.param_template, self.key, param_value, self.use_previous_value, self.resolved_value)
 
 class StackOutputConfig():
     def __init__(self, config_ref, key):
@@ -122,7 +125,7 @@ class Parameter():
                  value,
                  use_previous_value=False,
                  resolved_value=""):
-        self.template = template
+#        self.template = template
         self.key = key
         self.value = marshal_value_to_cfn_yaml(value)
         self.use_previous_value = use_previous_value
@@ -341,7 +344,16 @@ class CFTemplate():
         self.generate_template()
         self.validate_template_changes()
 
+    def delete_applied_data(self):
+        applied_template_path, _ = self.init_template_store_paths()
+        applied_parameters_path = self.init_applied_parameters_path(applied_template_path)
+        utils.log_action_col('Delete', 'Template', 'Applied', applied_template_path)
+        utils.log_action_col('Delete', 'Template', 'Applied', applied_parameters_path)
+        applied_template_path.unlink()
+        applied_parameters_path.unlink()
+
     def delete(self):
+        self.delete_applied_data()
         pass
 
     def generate_template(self):
@@ -352,6 +364,134 @@ class CFTemplate():
         stream = open(self.get_yaml_path(), 'w')
         stream.write(self.body)
         stream.close()
+
+    def init_applied_parameters_path(self, applied_template_path):
+        return applied_template_path.with_suffix('.parameters')
+
+    def apply_stack_parameters(self):
+        parameter_list = self.generate_stack_parameters()
+        applied_template_path, _ = self.init_template_store_paths()
+        applied_param_file_path = self.init_applied_parameters_path(applied_template_path)
+        yaml = YAML(pure=True)
+        with open(applied_param_file_path, 'w') as stream:
+            yaml.dump(parameter_list, stream)
+
+    def validate_stack_parameters(self, parameter_list):
+        applied_file_path, new_file_path = self.init_template_store_paths()
+        param_applied_file_path = applied_file_path.with_suffix('.parameters')
+
+        if param_applied_file_path.exists() == False:
+            return
+
+        yaml = YAML(pure=True)
+        yaml.allow_duplicate_keys = True
+        with open(param_applied_file_path, 'r') as stream:
+            applied_parameter_list = yaml.load(stream)
+
+        print("==========================")
+        print("Validate Stack Parameters")
+
+        #if parameter_list == applied_parameter_list:
+        #    print("No changes detected")
+        #    print("==========================")
+        #    return
+
+        print("(stack) {}".format(self.stack.get_name()))
+        print("(model) {}".format(self.config_ref))
+        print("(template)  {}".format(new_file_path))
+        print("(applied template)  {}".format(applied_file_path))
+        print("(applied parameters)  {}".format(applied_file_path))
+        print('')
+
+        col_3_size = 0
+        for new_param in parameter_list:
+            if self.aim_ctx.verbose == True or new_param not in applied_parameter_list:
+                key_len = len(new_param['ParameterKey'])
+                if col_3_size < key_len: col_3_size = key_len
+
+        for new_param in parameter_list:
+            if new_param in applied_parameter_list:
+                applied_parameter_list.remove(new_param)
+                col_2_size = 12
+                if self.aim_ctx.verbose == True:
+                    utils.log_action_col(
+                        '  ',
+                        col_2 = 'Unchanged',
+                        col_3 = new_param['ParameterKey'],
+                        col_4 = ': {}'.format(new_param['ParameterValue']),
+                        col_1_size = 2,
+                        col_2_size = col_2_size,
+                        col_3_size = col_3_size,
+                        )
+            else:
+                for applied_param in applied_parameter_list:
+                    if new_param['ParameterKey'] == applied_param['ParameterKey']:
+                        utils.log_action_col(
+                            '  ', col_2 = 'Changed', col_3 = applied_param['ParameterKey'],
+                            col_4 = 'old: {}'.format(applied_param['ParameterValue']),
+                            col_1_size = 2, col_2_size = col_2_size, col_3_size = col_3_size,
+                            col_4_size = 80
+                            )
+                        utils.log_action_col(
+                            '  ', col_2 = 'Changed', col_3 = new_param['ParameterKey'],
+                            col_4 = 'new: {}'.format(new_param['ParameterValue']),
+                            col_1_size = 2, col_2_size = col_2_size, col_3_size = col_3_size,
+                            col_4_size = 80
+                            )
+                        # Parameter Changes
+                        #print("Changed Parameter: " + new_param['ParameterKey'])
+                        #print("        old value: " + applied_param['ParameterValue'])
+                        #print("        new value: " + new_param['ParameterValue'])
+                        if new_param['ParameterKey'] == 'UserDataScript':
+                            old_decoded = base64.b64decode(applied_param['ParameterValue'])
+                            new_decoded = base64.b64decode(new_param['ParameterValue'])
+                            utils.log_action_col(
+                                '  ', col_2 = 'Decoded', col_3 = 'UserDataScript',
+                                col_4 = 'old: {}'.format(old_decoded.decode()),
+                                col_1_size = 2, col_2_size = col_2_size, col_3_size = col_3_size,
+                                col_4_size = 80
+                                )
+                            utils.log_action_col(
+                                '  ', col_2 = 'Decoded', col_3 = 'UserDataScript',
+                                col_4 = 'new: {}'.format(new_decoded.decode()),
+                                col_1_size = 2, col_2_size = col_2_size, col_3_size = col_3_size,
+                                col_4_size = 80
+                                )
+
+                    else:
+                        # New parameter
+                        #
+                        utils.log_action_col(
+                            '  ',
+                            col_2 = 'New Param',
+                            col_3 = new_param['ParameterKey'],
+                            col_4 = ': {}'.format(new_param['ParameterValue']),
+                            col_1_size = 2,
+                            col_2_size = col_2_size,
+                            col_3_size = col_3_size,
+                            )
+                    applied_parameter_list.remove(applied_param)
+                    break
+
+        # Deleted Parameters
+        for applied_param in applied_parameter_list:
+            print("Removed Parameter: {} = {}".format(applied_param['ParameterKey'], applied_param['ParameterValue']))
+
+        print("==========================")
+
+        prompt_user = True
+        while prompt_user:
+            answer = self.aim_ctx.input(
+                "\nAre these changes acceptable?",
+                yes_no_prompt=True,
+                default='N'
+            )
+            if answer == False:
+                print("aborting...")
+                sys.exit(1)
+            else:
+                break
+        print('', end='\n')
 
     def generate_stack_parameters(self):
         """Sets Scheduled output parameters to be collected from one stacks Outputs.
@@ -413,7 +553,7 @@ class CFTemplate():
                 if self.enabled == False and ref_value.template.enabled == False:
                     return None
                 stack_output_key = self.get_stack_outputs_key_from_ref(ref, ref_value)
-                param_entry = StackOutputParam(param_key, ref_value, stack_output_key)
+                param_entry = StackOutputParam(param_key, ref_value, stack_output_key, self)
             else:
                 param_entry = Parameter(self, param_key, ref_value)
 
@@ -451,7 +591,7 @@ class CFTemplate():
         # If this is the first time this stack has been provisioned,
         # we will need to deferr to the stack outputs
         if is_stack_list == True:
-            output_param = StackOutputParam(param_name)
+            output_param = StackOutputParam(param_name, param_template=self)
             for param_ref, stack in value_list:
                 output_key = self.get_stack_outputs_key_from_ref(Reference(param_ref))
                 output_param.add_stack_output(stack, output_key)
@@ -753,7 +893,7 @@ class CFTemplate():
             return param
 
     def create_cfn_ref_list_param(self, param_type, name, description, value, ref_attribute=None, default=None, noecho=False, use_troposphere=False):
-        stack_output_param = StackOutputParam(name)
+        stack_output_param = StackOutputParam(name, param_template=self)
         for item_ref in value:
             if ref_attribute != None:
                 item_ref += '.'+ref_attribute

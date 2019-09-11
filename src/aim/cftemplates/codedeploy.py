@@ -1,7 +1,6 @@
 import os
 from aim.cftemplates.cftemplates import CFTemplate
-from aim.cftemplates.cftemplates import Parameter
-from aim.cftemplates.cftemplates import StackOutputParam
+
 from enum import Enum
 from io import StringIO
 

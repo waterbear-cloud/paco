@@ -1,7 +1,6 @@
 import os
 from aim.cftemplates.cftemplates import CFTemplate
-from aim.cftemplates.cftemplates import Parameter
-from aim.cftemplates.cftemplates import StackOutputParam
+
 from aim.models import schemas
 from aim.models.locations import get_parent_by_interface
 from aim.models.references import Reference

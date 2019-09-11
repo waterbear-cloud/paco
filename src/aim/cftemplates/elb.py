@@ -1,6 +1,6 @@
 import os
 from aim.cftemplates.cftemplates import CFTemplate
-from aim.cftemplates.cftemplates import Parameter
+
 from aim.cftemplates.cftemplates import StackOutputParam
 from aim.models.references import Reference
 from io import StringIO
@@ -71,11 +71,11 @@ class ELB(CFTemplate):
 
         # Segment SubnetList is a Segment stack Output based on availability zones
         subnet_list_key = 'SubnetList' + str(self.env_ctx.availability_zones())
-        self.set_parameter(StackOutputParam('SubnetList', segment_stack, subnet_list_key))
+        self.set_parameter(StackOutputParam('SubnetList', segment_stack, subnet_list_key, self))
 
         # Security Group List
         # TODO: Use self.create_cfn_ref_list_param()
-        sg_output_param = StackOutputParam('SecurityGroupList')
+        sg_output_param = StackOutputParam('SecurityGroupList', param_template=self)
         for sg_ref in elb_config['security_groups']:
             # TODO: Better name for self.get_stack_outputs_key_from_ref?
             sg_output_key = self.get_stack_outputs_key_from_ref(Reference(sg_ref))

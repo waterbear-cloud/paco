@@ -1,7 +1,6 @@
 import os
 from aim.cftemplates.cftemplates import CFTemplate
-from aim.cftemplates.cftemplates import Parameter
-from aim.cftemplates.cftemplates import StackOutputParam
+
 from aim.models.references import Reference, is_ref, resolve_ref
 from aim.utils import md5sum
 from io import StringIO

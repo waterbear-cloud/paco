@@ -17,7 +17,7 @@ class CodeCommitController(Controller):
         super().__init__(aim_ctx,
                          "Service",
                          "CodeCommit")
-        if not 'codecommit' in self.aim_ctx.project:
+        if not 'codecommit' in self.aim_ctx.project['resource']:
             self.init_done = True
             return
         self.config = None
