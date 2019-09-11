@@ -295,7 +295,7 @@ class NetEnvController(Controller):
 
         if netenv_arg == None:
             message = "Command: aim {} netenv {}\n".format(aim_command, netenv_arg)
-            message += "Error:   Missing NetEnv argument:  <netenv>.<environment>.<region>[.<option>.<resource>.<path>]"
+            message += "Error:   Missing NetEnv argument:  <netenv>.<environment>[.<region>.<option>.<resource>.<path>]"
             raise StackException(
                 AimErrorCode.Unknown,
                 message = message
@@ -326,13 +326,20 @@ class NetEnvController(Controller):
                 AimErrorCode.Unknown,
                 message = message
             )
-        if region not in self.config[env_id].keys():
-            message = "Command: aim {} netenv {}\n".format(aim_command, netenv_arg)
-            message += "Error:   Environment '{}' does not have region '{}'.".format(env_id, region)
-            raise StackException(
-                AimErrorCode.Unknown,
-                message = message
-            )
+
+        # if no region specified, then applies to all in the environment
+        if not region:
+            regions = [region for region in self.config[env_id].env_regions.keys()]
+        else:
+            regions = [region]
+            if region not in self.config[env_id].keys():
+                message = "Command: aim {} netenv {}\n".format(aim_command, netenv_arg)
+                message += "Error:   Environment '{}' does not have region '{}'.".format(env_id, region)
+                raise StackException(
+                    AimErrorCode.Unknown,
+                    message = message
+                )
+
         # Validate resource_arg
         if resource_arg != None:
             res_parts = resource_arg.split('.')
@@ -358,10 +365,10 @@ class NetEnvController(Controller):
         self.validate_model_obj(self.config)
 
         utils.log_action_col("Init", "NetEnv", self.netenv_id)
-        self.stack_group_filter = 'netenv.'+netenv_arg
-        self.init_sub_env(env_id, region)
-        #else:
-        #    self.init_all_sub_envs()
+        self.stack_group_filter = 'netenv.' + netenv_arg
+        if regions:
+            for region in regions:
+                self.init_sub_env(env_id, region)
         utils.log_action_col("Init", "NetEnv", self.netenv_id, "Complete")
 
     def validate(self):

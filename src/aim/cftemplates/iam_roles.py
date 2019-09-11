@@ -76,6 +76,7 @@ Outputs:
             Principal:{0[assume_role_principal]:s}
             Action:
               - "sts:AssumeRole"
+{0[managed_policy_arns]:s}
 {0[inline_policies]:s}
 
 {0[instance_profile]:s}
@@ -85,7 +86,8 @@ Outputs:
             'instance_profile': None,
             'profile_name': None,
             'cf_resource_name_prefix': None,
-            'inline_policies': ""
+            'inline_policies': "",
+            'managed_policy_arns': '',
         }
 
         iam_profile_fmt = """
@@ -150,6 +152,15 @@ Outputs:
             pass
         iam_role_table['assume_role_principal'] = principal_yaml
 
+        # Managed Policy ARNs
+        if len(role_config.managed_policy_arns) > 0:
+            iam_role_table['managed_policy_arns'] = "      ManagedPolicyArns:\n"
+            for mp_arn in role_config.managed_policy_arns:
+                iam_role_table['managed_policy_arns'] += "        - " + mp_arn + "\n"
+        else:
+            iam_role_table['managed_policy_arns'] = ""
+
+        # Inline Policies
         if role_config.policies and role_config.is_enabled():
             iam_role_table['inline_policies'] = self.gen_role_policies(role_config.policies)
         else:
