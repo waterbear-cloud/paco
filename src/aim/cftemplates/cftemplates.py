@@ -746,13 +746,15 @@ class CFTemplate():
         else:
             raise AimException(AimErrorCode.Unknown)
 
-    def resource_name_filter(self, name, filter_id):
+    def resource_name_filter(self, name, filter_id, hash_long_names):
         "Checks a name against a filter and raises a StackException if it is not a valid AWS name"
         message = None
+        max_name_len = None
         if filter_id in [
             'EC2.ElasticLoadBalancingV2.LoadBalancer.Name',
             'EC2.ElasticLoadBalancingV2.TargetGroup.Name']:
             if len(name) > 32:
+                max_name_len = 32
                 message = "Name must not be longer than 32 characters.",
             elif filter_id.find('LoadBalancer') != -1 and name.startswith('internal-'):
                 message = "Name must not start with 'internal-'"
@@ -762,14 +764,22 @@ class CFTemplate():
             'IAM.Role.RoleName',
             'IAM.ManagedPolicy.ManagedPolicyName']:
             if len(name) > 255:
+                max_name_len = 255
                 message = "Name must not be longer than 255 characters."
         elif filter_id == 'IAM.Policy.PolicyName':
             if len(name) > 128:
+                max_name_len = 128
                 message = "Name must not be longer than 128 characters."
         elif filter_id == 'SecurityGroup.GroupName':
             pass
         else:
             message = 'Unknown filter_id'
+
+        if max_name_len != None and hash_long_names == True:
+            message = None
+            name_hash = md5sum(str_data=name)[:8].upper()
+            name = name_hash + '-' + name[((max_name_len-9)*-1):]
+
 
         if message != None:
             raise StackException(
@@ -813,7 +823,7 @@ class CFTemplate():
         return '-'
 
 
-    def create_resource_name(self, name, remove_invalids=False, filter_id=None):
+    def create_resource_name(self, name, remove_invalids=False, filter_id=None, hash_long_names=False):
         """
         Resource names are only alphanumberic (A-Za-z0-9) and dashes.
         Invalid characters are removed or changed into a dash.
@@ -829,12 +839,12 @@ class CFTemplate():
             elif remove_invalids == False:
                 new_name += '-'
         if filter_id != None:
-            new_name = self.resource_name_filter(new_name, filter_id)
+            new_name = self.resource_name_filter(new_name, filter_id, hash_long_names)
         return new_name
 
-    def create_resource_name_join(self, name_list, separator, camel_case=False, filter_id=None):
+    def create_resource_name_join(self, name_list, separator, camel_case=False, filter_id=None, hash_long_names=False):
         name = big_join(name_list, separator, camel_case)
-        return self.create_resource_name(name, filter_id=filter_id)
+        return self.create_resource_name(name, filter_id=filter_id, hash_long_names=hash_long_names)
 
     def create_cfn_logical_id(self, name):
         "The logical ID must be alphanumeric (A-Za-z0-9) and unique within the template."

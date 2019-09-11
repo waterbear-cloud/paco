@@ -419,10 +419,9 @@ Outputs:
             target_config = alb_config.target_groups[target_group_id]
             target_group_table['id'] = self.create_cfn_logical_id(target_group_id)
             target_group_table['name'] = self.create_resource_name_join(
-                name_list=[load_balancer_name, target_group_id],
-                separator='',
-                camel_case=True,
-                filter_id='EC2.ElasticLoadBalancingV2.TargetGroup.Name'
+                name_list=[load_balancer_name, target_group_id], separator='',
+                camel_case=True, hash_long_names=True,
+                filter_id='EC2.ElasticLoadBalancingV2.TargetGroup.Name',
             )
             target_group_table['port'] = target_config.port
             target_group_table['protocol'] = target_config.protocol
