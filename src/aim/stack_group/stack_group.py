@@ -601,8 +601,8 @@ class Stack():
         self.get_status()
         if self.is_failed():
             answer = self.aim_ctx.input(
-                "The stack is in a '{}' state. Delete it?",
-                 yes_no_promp=True,
+                "The stack is in a '{}' state. Delete it?".format(self.status),
+                 yes_no_prompt=True,
                  default='y')
             if answer == True:
                 self.delete()

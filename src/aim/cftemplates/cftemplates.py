@@ -347,10 +347,13 @@ class CFTemplate():
     def delete_applied_data(self):
         applied_template_path, _ = self.init_template_store_paths()
         applied_parameters_path = self.init_applied_parameters_path(applied_template_path)
-        utils.log_action_col('Delete', 'Template', 'Applied', applied_template_path)
-        utils.log_action_col('Delete', 'Template', 'Applied', applied_parameters_path)
-        applied_template_path.unlink()
-        applied_parameters_path.unlink()
+        utils.log_action_col('Delete', 'Template', 'Applied', str(applied_template_path))
+        utils.log_action_col('Delete', 'Template', 'Applied', str(applied_parameters_path))
+        try:
+            applied_template_path.unlink()
+            applied_parameters_path.unlink()
+        except FileNotFoundError:
+            pass
 
     def delete(self):
         self.delete_applied_data()
