@@ -2,7 +2,7 @@ import aim.config.aws_credentials
 import aim.core.log
 import aim.controllers
 import aim.models.services
-import os
+import os, sys
 import pkg_resources
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
@@ -26,6 +26,7 @@ class AccountContext(object):
         self.config = aim_ctx.project['accounts'][name]
         self.mfa_account = mfa_account
         self.aws_session = None
+        self.temp_aws_session = None
         role_cache_filename = '-'.join(['aim', aim_ctx.project.name, self.name])+'.role'
         self.role_cache_path = os.path.join(
             os.path.expanduser('~'),
@@ -83,7 +84,10 @@ class AccountContext(object):
                     assume_role_session_expiry_secs=self.assume_role_session_expiry_secs
             )
 
-        return self.aws_session.get_temporary_session()
+        if self.temp_aws_session == None:
+            self.temp_aws_session = self.aws_session.get_temporary_session()
+
+        return self.temp_aws_session
 
     @property
     def id(self):
@@ -148,6 +152,7 @@ class AimContext(object):
         account_ctx = AccountContext(aim_ctx=self,
                                      name=account_name,
                                      mfa_account=self.master_account)
+        self.accounts[account_name] = account_ctx
 
         return account_ctx
 
@@ -203,7 +208,6 @@ class AimContext(object):
             service.init(None)
             self.services[plugin_name.lower()] = service
             utils.log_action_col('Init', 'Service Plugin', plugin_name, 'Completed')
-
 
     def get_controller(self, controller_type, controller_args=None):
         """Gets a controller by name and calls .init() on it with any controller args"""

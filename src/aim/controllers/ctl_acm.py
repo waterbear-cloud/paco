@@ -38,10 +38,13 @@ class ACMController(Controller):
                 continue
             if cert_config.external_resource == True or cert_config.is_dns_enabled() == False:
                 return
+            if 'cert_arn_cache' in acm_config.keys():
+                continue
             cert_domain = cert_config.domain_name
             acm_client = DNSValidatedACMCertClient(acm_config['account_ctx'], cert_domain, acm_config['region'])
             # Creates the certificate if it does not exists here.
             cert_arn = acm_client.request_certificate(cert_config.subject_alternative_names)
+            acm_config['cert_arn_cache'] = cert_arn
             validation_records = None
             while validation_records == None:
                 validation_records = acm_client.get_domain_validation_records(cert_arn)
@@ -65,6 +68,8 @@ class ACMController(Controller):
             group_id = '.'.join(ref.parts[:-1])
             cert_id = ref.parts[-2]
             res_config = self.get_cert_config(group_id, cert_id)
+            if 'cert_arn_cache' in res_config.keys():
+                return res_config['cert_arn_cache']
             acm_client = DNSValidatedACMCertClient(res_config['account_ctx'], res_config['config'].domain_name, ref.region)
             if acm_client:
                 cert_arn = acm_client.get_certificate_arn()

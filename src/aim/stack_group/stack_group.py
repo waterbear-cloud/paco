@@ -184,8 +184,6 @@ class Stack():
         if aws_region == None:
             raise StackException(AimErrorCode.Unknown, message="AWS Region is not supplied")
         self.aws_region = aws_region
-        self.cfn_client = self.account_ctx.get_aws_client('cloudformation', aws_region)
-
         # Load the template
         template.stack = self
         self.template = template
@@ -223,6 +221,13 @@ class Stack():
     @property
     def output_filename(self):
         return self.template.get_yaml_path() + ".output"
+    @property
+    def cfn_client(self):
+        if hasattr(self, '_cfn_client') == False:
+            self._cfn_client = self.account_ctx.get_aws_client('cloudformation', self.aws_region)
+        return self._cfn_client
+
+
     #--------------------------------------------------------
 
     def set_template(self, template):

@@ -8,14 +8,28 @@ import time
 class DNSValidatedACMCertClient():
 
     def __init__(self, account_ctx, domain, region):
-        self.acm_client = account_ctx.get_aws_client('acm', aws_region=region)
-        self.route_53_client = account_ctx.get_aws_client(client_name='route53',
-                                                          client_config=Config(retries={'max_attempts': 10}))
+        #self.acm_client = account_ctx.get_aws_client('acm', aws_region=region)
+        self.region = region
+        self.account_ctx = account_ctx
+        #self.route_53_client = account_ctx.get_aws_client(client_name='route53',
+        #                                                  client_config=Config(retries={'max_attempts': 10}))
 
-        self.list_hosted_zones_paginator = self.route_53_client.get_paginator(
-        'list_hosted_zones')
-        self.route53_zones = self.list_hosted_zones_paginator.paginate().build_full_result()
         self.domain = domain
+
+    @property
+    def acm_client(self):
+        if hasattr(self, '_acm_client') == False:
+            self._acm_client = self.account_ctx.get_aws_client('acm', self.region)
+        return self._acm_client
+
+    @property
+    def route_53_client(self):
+        if hasattr(self, '_route_53_client') == False:
+            self._route_53_client = self.account_ctx.get_aws_client(
+                'route53',
+                client_config=Config(retries={'max_attempts': 10}))
+        return self._route_53_client
+
 
     def get_certificate_arn_from_response(self, response):
         """ Given an ACM Boto response,
@@ -118,7 +132,9 @@ class DNSValidatedACMCertClient():
 
 
             #print("domain: " + hosted_zone_domain)
-            for zone in self.route53_zones.get('HostedZones'):
+            list_hosted_zones_paginator = self.route_53_client.get_paginator('list_hosted_zones')
+            route53_zones = list_hosted_zones_paginator.paginate().build_full_result()
+            for zone in route53_zones.get('HostedZones'):
                 if domain_matches_hosted_zone(hosted_zone_domain, zone) == True:
                     return get_zone_id_from_id_string(zone.get('Id'))
             if len(hosted_zone_subdomain_list) == 1:

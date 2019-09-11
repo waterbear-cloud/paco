@@ -168,7 +168,6 @@ class CFTemplate():
         self.parameters = []
         self.capabilities = iam_capabilities
         self.body = None
-        self.cf_client = self.account_ctx.get_aws_client('cloudformation')
         self.aws_name = aws_name.replace('_', '-')
         self.config_ref = config_ref
         self.template_file_id = None
@@ -199,6 +198,12 @@ class CFTemplate():
         else:
             self.update_only = False
         self._enabled = value
+
+    @property
+    def cfn_client(self):
+        if hasattr(self, '_cfn_client') == False:
+            self._cfn_client = self.account_ctx.get_aws_client('cloudformation', self.aws_region)
+        return self._cfn_client
 
     def set_template_file_id(self, file_id):
         self.template_file_id = file_id
@@ -327,7 +332,7 @@ class CFTemplate():
         self.generate_template()
         self.aim_ctx.log("Validate template: " + self.get_yaml_path())
         try:
-            self.cf_client.validate_template(TemplateBody=self.body)
+            self.cfn_client.validate_template(TemplateBody=self.body)
         except ClientError as e:
             if e.response['Error']['Code'] == 'ValidationError':
                 message = "Validation Error: {}\nStack: {}\nTemplate: {}\n".format(

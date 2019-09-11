@@ -271,7 +271,6 @@ statement:
             self.init_alarms(aws_name, res_config, StackTags(res_stack_tags))
 
     def init_acm_resource(self, grp_id, res_id, res_config, res_stack_tags):
-
         acm_ctl = self.aim_ctx.get_controller('ACM')
         cert_group_id = res_config.aim_ref_parts
         acm_ctl.add_certificate_config(
