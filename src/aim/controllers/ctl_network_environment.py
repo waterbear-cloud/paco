@@ -125,7 +125,9 @@ class EnvironmentContext():
         return self.config.network.vpc.peering
 
     def segment_ids(self):
-        return self.config.network.vpc.segments.keys()
+        if self.config.network.vpc.segments != None:
+            return self.config.network.vpc.segments.keys()
+        return []
 
     def segment_config(self, segment_id):
         return self.config.network.vpc.segments[segment_id]
