@@ -119,8 +119,8 @@ class LaunchBundle():
 
         # EC2 Manager Bucket Reference
         self.s3_bucket_ref = '.'.join([
-            self.manager.config_ref, 'groups', self.group_id, 'resources',
-            self.resource_id, self.manager.id, 'bucket'
+            self.resource_config.aim_ref_parts,
+            self.manager.id, 'bucket'
         ])
 
         instance_iam_role_arn_ref = self.resource_config.aim_ref + '.instance_iam_role.arn'
@@ -231,13 +231,10 @@ class EC2LaunchManager():
                 ]
             } ]
         }
-        bucket_config = models.applications.S3Bucket(bundle.resource_id, None)
+        bucket_config = models.applications.S3Bucket('ec2lm', bundle.resource_config)
         bucket_config.update(bucket_config_dict)
         bucket_config.resolve_ref_obj = self
         bucket_config.enabled = bundle.resource_config.is_enabled()
-        bucket_name_prefix = '-'.join([self.app_engine.get_aws_name(), bundle.group_id])
-        bucket_name_suffix = self.id
-        bucket_region = self.aws_region
 
         s3_ctl = self.aim_ctx.get_controller('S3')
         s3_ctl.init_context(
@@ -249,9 +246,7 @@ class EC2LaunchManager():
         )
         s3_ctl.add_bucket(
             bucket_config,
-            config_ref = bundle.s3_bucket_ref,
-            bucket_name_prefix = bucket_name_prefix,
-            bucket_name_suffix = bucket_name_suffix
+            config_ref = bundle.s3_bucket_ref
         )
 
     def get_s3_bucket_name(self, app_id, grp_id, bucket_id):

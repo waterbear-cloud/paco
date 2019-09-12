@@ -661,7 +661,11 @@ class CFTemplate():
         return output_key
 
     def gen_cf_logical_name(self, name, sep=None):
-        "Create a CloudFormation safe Logical name"
+        """
+        !! DEPRECATED !! Use self.create_cfn_logical_id* methods
+        Create a CloudFormation safe Logical name
+        """
+
         sep_list = ['_','-','@','.']
         if sep != None:
             sep_list = [sep]

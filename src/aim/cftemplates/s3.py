@@ -4,6 +4,7 @@ import troposphere
 import troposphere.cloudfront
 import troposphere.s3
 from aim.cftemplates.cftemplates import CFTemplate
+from aim.models import schemas
 
 from awacs.aws import Action, Allow, Statement, Policy, Principal
 from io import StringIO
@@ -21,10 +22,17 @@ class S3(CFTemplate):
                 bucket_context,
                 bucket_policy_only,
                 config_ref):
+
+        bucket = bucket_context['config']
         aws_name = 'S3'
         if bucket_context['group_id'] != None:
             aws_name = '-'.join([aws_name, bucket_context['group_id']])
-        aws_name = '-'.join([aws_name, bucket_context['id']])
+        if schemas.IResource.providedBy(bucket.__parent__) == True:
+            aws_name = '-'.join([aws_name, bucket.__parent__.name, bucket.name ])
+            cfn_logical_id_prefix = self.create_cfn_logical_id_join([bucket.__parent__.name+bucket.name ], True)
+        else:
+            aws_name = '-'.join([aws_name, bucket.name ])
+            cfn_logical_id_prefix = self.create_cfn_logical_id_join([bucket.name ], True)
         if bucket_policy_only == True:
             aws_name += '-policy'
 
@@ -43,10 +51,9 @@ class S3(CFTemplate):
 
         self.s3_context_id = config_ref
         self.bucket_context = bucket_context
-        bucket = bucket_context['config']
+
         s3_ctl = self.aim_ctx.get_controller('S3')
         bucket_name = s3_ctl.get_bucket_name(self.s3_context_id)
-        cf_name_prefix = self.gen_cf_logical_name(self.bucket_context['id'], '_')
 
         # ---------------------------------------------------------------------------
         # Troposphere Template Initialization
@@ -61,7 +68,7 @@ class S3(CFTemplate):
         # ---------------------------------------------------------------------------
         # Resources
         if bucket_policy_only == False:
-            s3_logical_id = cf_name_prefix + 'Bucket'
+            s3_logical_id = cfn_logical_id_prefix + 'Bucket'
             cfn_export_dict = bucket.cfn_export_dict
             cfn_export_dict['BucketName'] = bucket_name
 
@@ -185,7 +192,7 @@ class S3(CFTemplate):
                 )
 
             bucket_policy_resource = troposphere.s3.BucketPolicy(
-                cf_name_prefix + 'BucketPolicy',
+                cfn_logical_id_prefix + 'BucketPolicy',
                 template = template,
                 Bucket = bucket_name,
                 PolicyDocument = Policy(

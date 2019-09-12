@@ -41,7 +41,6 @@ class S3Context():
         self.resource_ref = resource_ref
         self.stack_tags = stack_tags
         self.bucket_context = {
-            'id': None,
             'group_id': None,
             'config': None,
             'ref': resource_ref,
@@ -84,16 +83,12 @@ class S3Context():
         stack_hooks=None
     ):
         "Add a bucket: will create a stack and stack hooks as needed"
-        if self.bucket_context['id'] != None:
+        if self.bucket_context['config'] != None:
             print("Bucket already exists: %s" % (self.resource_ref))
             raise StackException(AimErrorCode.Unknown)
 
-        if bucket_name_prefix:
-            bucket.bucket_name_prefix = bucket_name_prefix
-        if bucket_name_suffix:
-            bucket.bucket_name_suffix = bucket_name_suffix
-
-        self.bucket_context['id'] = bucket.name
+        bucket.bucket_name_prefix = bucket_name_prefix
+        bucket.bucket_name_suffix = bucket_name_suffix
         res_group = get_parent_by_interface(bucket, schemas.IResourceGroup)
         if res_group != None:
             self.bucket_context['group_id'] = res_group.name
@@ -105,7 +100,7 @@ class S3Context():
         if bucket.external_resource == True:
             # if the bucket already exists, do not create a stack for it
             utils.log_action_col(
-                "Init", "S3", "External Bucket", bucket.name + ": " + bucket.get_bucket_name(), False, bucket.is_enabled()
+                "Init", "S3", "External", bucket.name + ": " + bucket.get_bucket_name(), False, bucket.is_enabled()
             )
         else:
             utils.log_action_col(

@@ -37,6 +37,8 @@ class SecurityGroups(CFTemplate):
             environment_name=self.env_ctx.env_id,
         )
 
+        self.source_group_param_cache = {}
+
         # Troposphere Template Initialization
         template = troposphere.Template()
         template.set_version('2010-09-09')
@@ -146,8 +148,12 @@ class SecurityGroups(CFTemplate):
                         # XXX: TODO: This only handles references to security groups within the
                         #            template currently being generated.
                         if references.is_ref(sg_rule_config.source_security_group):
-                            source_sg = self.get_local_sg_ref(sg_rule_config.source_security_group+'.id')
-                            rule_dict['SourceSecurityGroupId'] = troposphere.Ref(self.create_cfn_logical_id(source_sg))
+                            if self.is_local_ref(sg_rule_config.source_security_group):
+                                source_sg = self.get_local_sg_ref(sg_rule_config.source_security_group+'.id')
+                                rule_dict['SourceSecurityGroupId'] = troposphere.Ref(self.create_cfn_logical_id(source_sg))
+                            else:
+                                rule_dict['SourceSecurityGroupId'] = self.create_source_group_param_ref(
+                                    sg_rule_config.source_security_group, template)
                         else:
                             rule_dict['SourceSecurityGroupId'] = sg_rule_config.source_security_group
                     else:
@@ -160,7 +166,43 @@ class SecurityGroups(CFTemplate):
         self.enabled = is_sg_enabled
         self.set_template(template.to_yaml())
 
+    def is_local_ref(self, aim_ref):
+        """
+        Checks if the ref is with in the same netenv.env.region and
+        network.vpc.security_groups.<group>
+        """
+
+        ref = Reference(aim_ref)
+        config_ref_parts = self.config_ref.split('.')
+        if '.'.join(ref.parts[:4]) != '.'.join(config_ref_parts[:4]):
+            return False
+        if ref.parts[-2] != config_ref_parts[-1]:
+            return False
+        return True
+
     def get_local_sg_ref(self, aim_ref):
         ref = Reference(aim_ref)
         return ref.parts[-2]
+
+    def create_source_group_param_ref(self, group_ref, template):
+        """
+        Creates a Security Group Id parameter and returns a Ref()
+        to it. It caches the parameter to allow multiple references
+        from a single Parameter.
+        """
+        group_ref_hash = utils.md5sum(str_data=group_ref)
+        if group_ref_hash in self.source_group_param_cache.keys():
+            return troposphere.Ref(self.source_group_param_cache[group_ref_hash])
+
+        source_sg_param = self.create_cfn_parameter(
+            param_type='AWS::EC2::SecurityGroup::Id',
+            name='SourceGroupId'+group_ref_hash,
+            description='Source Security Group ID',
+            value=group_ref+'.id',
+            use_troposphere=True,
+            troposphere_template=template)
+
+        self.source_group_param_cache[group_ref_hash] = source_sg_param
+        return troposphere.Ref(self.source_group_param_cache[group_ref_hash])
+
 
