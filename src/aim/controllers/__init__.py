@@ -24,6 +24,6 @@ klass = {
     'ec2': EC2Controller,
     'cloudwatch': CloudWatchController,
     'lambda': LambdaController,
-    'notificationsgroups': NotificationGroupsController,
+    'notificationgroups': NotificationGroupsController,
     'cloudtrail': CloudTrailController,
 }
