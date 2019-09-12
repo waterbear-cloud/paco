@@ -25,14 +25,17 @@ class S3(CFTemplate):
 
         bucket = bucket_context['config']
         aws_name = 'S3'
+        # Application Group
         if bucket_context['group_id'] != None:
             aws_name = '-'.join([aws_name, bucket_context['group_id']])
+        # Bucket Name
         if schemas.IResource.providedBy(bucket.__parent__) == True:
             aws_name = '-'.join([aws_name, bucket.__parent__.name, bucket.name ])
-            cfn_logical_id_prefix = self.create_cfn_logical_id_join([bucket.__parent__.name+bucket.name ], True)
+            cfn_logical_id_prefix = self.create_cfn_logical_id_join([bucket.__parent__.name, bucket.name ], True)
         else:
             aws_name = '-'.join([aws_name, bucket.name ])
             cfn_logical_id_prefix = self.create_cfn_logical_id_join([bucket.name ], True)
+        # Policy
         if bucket_policy_only == True:
             aws_name += '-policy'
 

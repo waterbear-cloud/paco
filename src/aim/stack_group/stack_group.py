@@ -599,7 +599,6 @@ class Stack():
 
         # If last md5 is equal, then we no changes are required
         if self.is_stack_cached() == True:
-            self.template.apply_template_changes()
             self.log_action("Provision", "Cache")
             return
 

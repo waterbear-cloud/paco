@@ -66,27 +66,53 @@ class NetworkStackGroup(StackGroup):
         sg_config = self.env_ctx.security_groups()
         self.sg_list = []
         self.sg_dict = {}
+        # The Groups Only
         for sg_id in sg_config:
             # Set resolve_ref_obj
             for sg_obj_id in sg_config[sg_id]:
                 sg_config[sg_id][sg_obj_id].resolve_ref_obj = self
                 self.log_init_status(
-                    'SecurityGroup', '{}.{}'.format(sg_id, sg_obj_id),
+                    'SecurityGroup', 'group: {}.{}'.format(sg_id, sg_obj_id),
                     sg_config[sg_id][sg_obj_id].is_enabled()
                 )
-            sg_groups_config_ref = '.'.join([self.config_ref_prefix, "network.vpc.security_groups", sg_id])
-            sg_template = aim.cftemplates.SecurityGroups( aim_ctx=self.aim_ctx,
-                                                          account_ctx=self.account_ctx,
-                                                          aws_region=self.region,
-                                                          stack_group=self,
-                                                          stack_tags=StackTags(self.stack_tags),
-                                                          env_ctx=self.env_ctx,
-                                                          security_groups_config=sg_config[sg_id],
-                                                          sg_group_id=sg_id,
-                                                          sg_groups_config_ref=sg_groups_config_ref )
+            sg_groups_config_ref = '.'.join([self.config_ref_prefix, 'network.vpc.security_groups', sg_id])
+            sg_template = aim.cftemplates.SecurityGroups(
+                aim_ctx=self.aim_ctx,
+                account_ctx=self.account_ctx,
+                aws_region=self.region,
+                stack_group=self,
+                stack_tags=StackTags(self.stack_tags),
+                env_ctx=self.env_ctx,
+                security_groups_config=sg_config[sg_id],
+                sg_group_id=sg_id,
+                sg_groups_config_ref=sg_groups_config_ref,
+                template_type = 'Groups' )
             sg_stack = sg_template.stack
             self.sg_list.append(sg_stack)
             self.sg_dict[sg_id] = sg_stack
+
+        # Ingress/Egress Stacks
+        for sg_id in sg_config:
+            # Set resolve_ref_obj
+            for sg_obj_id in sg_config[sg_id]:
+                sg_config[sg_id][sg_obj_id].resolve_ref_obj = self
+                self.log_init_status(
+                    'SecurityGroup', 'rules: {}.{}'.format(sg_id, sg_obj_id),
+                    sg_config[sg_id][sg_obj_id].is_enabled()
+                )
+            for sg_id in sg_config:
+                sg_groups_config_ref = '.'.join([self.config_ref_prefix, 'network.vpc.security_groups', sg_id])
+                aim.cftemplates.SecurityGroups(
+                    aim_ctx=self.aim_ctx,
+                    account_ctx=self.account_ctx,
+                    aws_region=self.region,
+                    stack_group=self,
+                    stack_tags=StackTags(self.stack_tags),
+                    env_ctx=self.env_ctx,
+                    security_groups_config=sg_config[sg_id],
+                    sg_group_id=sg_id,
+                    sg_groups_config_ref=sg_groups_config_ref,
+                    template_type='Rules' )
 
         # Wait for Segment Stacks
         for segment_stack in self.segment_list:

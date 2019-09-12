@@ -835,36 +835,52 @@ class CFTemplate():
         return '-'
 
 
-    def create_resource_name(self, name, remove_invalids=False, filter_id=None, hash_long_names=False):
+    def create_resource_name(self, name, remove_invalids=False, filter_id=None, hash_long_names=False, camel_case=False):
         """
         Resource names are only alphanumberic (A-Za-z0-9) and dashes.
         Invalid characters are removed or changed into a dash.
         """
+#        if name == 'S3_assets':
+#            breakpoint()
         if name.isalnum() == True:
             return name
         new_name = ""
+        uppercase_next_char = False
         for ch in name:
             if filter_id != None:
-                new_name += self.resource_char_filter(ch, filter_id, remove_invalids)
+                ch = self.resource_char_filter(ch, filter_id, remove_invalids)
+                if ch == '' and camel_case == True:
+                    uppercase_next_char = True
             elif ch.isalnum() == True:
-                new_name += ch
+                ch = ch
             elif remove_invalids == False:
-                new_name += '-'
+                ch = '-'
+            elif remove_invalids == True:
+                ch = ''
+                if camel_case == True:
+                    uppercase_next_char = True
+
+            if remove_invalids == True and ch != '' and uppercase_next_char == True:
+                new_name += ch.upper()
+                uppercase_next_char = False
+            else:
+                new_name += ch
+
         if filter_id != None:
             new_name = self.resource_name_filter(new_name, filter_id, hash_long_names)
         return new_name
 
     def create_resource_name_join(self, name_list, separator, camel_case=False, filter_id=None, hash_long_names=False):
         name = big_join(name_list, separator, camel_case)
-        return self.create_resource_name(name, filter_id=filter_id, hash_long_names=hash_long_names)
+        return self.create_resource_name(name, filter_id=filter_id, hash_long_names=hash_long_names, camel_case=camel_case)
 
-    def create_cfn_logical_id(self, name):
+    def create_cfn_logical_id(self, name, camel_case=False):
         "The logical ID must be alphanumeric (A-Za-z0-9) and unique within the template."
-        return self.create_resource_name(name, remove_invalids=True).replace('-', '')
+        return self.create_resource_name(name, remove_invalids=True, camel_case=camel_case).replace('-', '')
 
     def create_cfn_logical_id_join(self, str_list, camel_case=False):
         logical_id = big_join(str_list, '', camel_case)
-        return self.create_cfn_logical_id(logical_id)
+        return self.create_cfn_logical_id(logical_id, camel_case=camel_case)
 
     def create_cfn_parameter(
         self, param_type, name, description, value,
