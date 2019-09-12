@@ -399,10 +399,10 @@ class CFTemplate():
         print("==========================")
         print("Validate Stack Parameters")
 
-        #if parameter_list == applied_parameter_list:
-        #    print("No changes detected")
-        #    print("==========================")
-        #    return
+        if parameter_list == applied_parameter_list:
+            print("No changes detected")
+            print("==========================")
+            return
 
         print("(stack) {}".format(self.stack.get_name()))
         print("(model) {}".format(self.config_ref))
