@@ -5,11 +5,11 @@ CloudFormation template for CloudWatch Alarms
 import aim.models.services
 import json
 import troposphere
-from aim.cftemplates.cftemplates import CFTemplate
+from aim import utils
 from aim.models import schemas
 from aim.models import vocabulary
-from aim import utils
-
+from aim.cftemplates.cftemplates import CFTemplate
+from aim.models.locations import get_parent_by_interface
 
 class CWAlarms(CFTemplate):
     """
@@ -41,6 +41,7 @@ class CWAlarms(CFTemplate):
         )
         self.alarm_sets = alarm_sets
         self.dimension = vocabulary.cloudwatch[res_type]['dimension']
+
         # build a list of Alarm objects
         alarms = []
         for alarm_set_id in alarm_sets.keys():
@@ -72,7 +73,6 @@ class CWAlarms(CFTemplate):
                 alarm_id,
                 alarm_set_id,
             )
-
         self.set_template(template.to_yaml())
 
     def add_alarms(
@@ -111,7 +111,7 @@ class CWAlarms(CFTemplate):
             # compute dynamic attributes for cfn_export_dict
             alarm_export_dict = alarm.cfn_export_dict
             alarm_action_list = []
-            for alarm_action in alarm.get_alarm_actions():
+            for alarm_action in alarm.get_alarm_actions_aim_refs():
                 # Create parameter
                 param_name = 'AlarmAction{}'.format(utils.md5sum(str_data=alarm_action))
                 if param_name in self.alarm_action_param_map.keys():
@@ -129,6 +129,9 @@ class CWAlarms(CFTemplate):
                 alarm_action_list.append(troposphere.Ref(alarm_action_param))
 
             alarm_export_dict['AlarmActions'] = alarm_action_list
+
+            # AlarmDescription
+            alarm_export_dict['AlarmDescription'] = self.get_alarm_description(alarm, alarm_action_list)
 
             # Namespace - if not supplied default to the Namespace for the Resource type
             if 'Namespace' not in alarm_export_dict:
@@ -165,3 +168,59 @@ class CWAlarms(CFTemplate):
                 Value=troposphere.Ref(alarm_resource)
             )
             template.add_output(alarm_output)
+
+    def get_alarm_description(self, alarm, alarm_action_list):
+        """Create an Alarm Description in JSON format with AIM Alarm information"""
+        netenv = get_parent_by_interface(alarm, schemas.INetworkEnvironment)
+        env = get_parent_by_interface(alarm, schemas.IEnvironment)
+        envreg = get_parent_by_interface(alarm, schemas.IEnvironmentRegion)
+        app = get_parent_by_interface(alarm, schemas.IApplication)
+        group = get_parent_by_interface(alarm, schemas.IResourceGroup)
+        resource = get_parent_by_interface(alarm, schemas.IResource)
+
+        # SNS Topic ARNs are supplied Paramter Refs
+        topic_arn_subs = []
+        sub_dict = {}
+        for action_ref in alarm_action_list:
+            ref_id = action_ref.data['Ref']
+            topic_arn_subs.append('${%s}' % ref_id)
+            sub_dict[ref_id] = action_ref
+
+        # Base alarm info - used for standalone alarms not part of an application
+        description = {
+            "alarm_name": alarm.name,
+            "classification": alarm.classification,
+            "severity": alarm.severity,
+            "topic_arns": topic_arn_subs
+        }
+
+        # conditional fields:
+        if alarm.description:
+            description['description'] = alarm.description
+        if alarm.runbook_url:
+            description['runbook_url'] = alarm.runbook_url
+
+        if app != None:
+            # Service applications and apps not part of a NetEnv
+            description["app_name"] = app.name
+            description["app_title"] = app.title
+            description["resource_group_name"] = group.name
+            description["resource_group_title"] = group.title
+            description["resource_name"] = resource.name
+            description["resource_title"] = resource.title
+
+        if netenv != None:
+            # NetEnv information
+            description["netenv_name"] = netenv.name
+            description["netenv_title"] = netenv.title
+            description["env_name"] = env.name
+            description["env_title"] = env.title
+            description["envreg_name"] = env.name
+            description["envreg_title"] = env.title
+
+        description_json = json.dumps(description)
+
+        return troposphere.Sub(
+            description_json,
+            sub_dict
+        )

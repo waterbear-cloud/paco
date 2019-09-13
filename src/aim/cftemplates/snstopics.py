@@ -2,6 +2,8 @@
 CloudFormation template for SNS Topics
 """
 
+import troposphere
+import troposphere.sns
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.models import references
 from aim.models.references import Reference
@@ -34,106 +36,73 @@ class SNSTopics(CFTemplate):
         )
         self.config = config
 
-        # Define the Template
-        template_fmt = """
-AWSTemplateFormatVersion: '2010-09-09'
-Description: 'SNS Topics'
+        # Troposphere Template Initialization
+        template = troposphere.Template(
+            Description = 'SNS Topics',
+        )
+        template.set_version()
+        template.add_resource(
+            troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
+        )
 
-{0[parameters]:s}
-
-Resources:
-
-  DummyResource:
-    Type: AWS::CloudFormation::WaitConditionHandle
-
-{0[topics]:s}
-
-{0[outputs]:s}
-"""
-        template_table = {
-          'parameters': "",
-          'topics': "",
-          'outputs': ""
-        }
-        output_fmt = """
-  SNSTopicArn{0[name]:s}:
-    Value: !Ref Topic{0[name]:s}
-
-  SNSTopicName{0[name]:s}:
-    Value: !GetAtt Topic{0[name]:s}.TopicName
-"""
-
-        topic_fmt = """
-  Topic{0[name]:s}:
-    Type: AWS::SNS::Topic
-    {0[properties]:s}
-      # Important: If you specify a TopicName, updates cannot be performed that require
-      # replacement of this resource.
-      # TopicName: !Ref AWS::NoValue{0[display_name]:s}
-{0[subscription]:s}
-
-"""
-
-        topic_table = {
-            'name': None,
-            'properties': None,
-            'display_name': None,
-            'subscription': None
-        }
-
-        parameters_yaml = ""
-        topics_yaml = ""
-        outputs_yaml = ""
+        # Topic Resources and Outputs
         any_topic_enabled = False
         for topic in self.config:
-            if topic.is_enabled() == False:
+            if not topic.is_enabled():
                 continue
-            else:
-                any_topic_enabled = True
-            topic_table['name'] = self.create_cfn_logical_id(topic.name)
-            topic_table['display_name'] = ""
-            topic_table['subscription'] = ""
-            topic_table['properties'] = ""
-            if topic.display_name != None or len(topic.subscriptions) > 0:
-                topic_table['properties'] = "Properties:\n"
-            if topic.display_name:
-                topic_table['display_name'] = "\n      DisplayName: '{}'".format(topic.display_name)
+            any_topic_enabled = True
+            topic_logical_id = self.create_cfn_logical_id(topic.name)
 
+            # Do not specify a TopicName, as then updates cannot be performed that require
+            # replacement of this resource.
+            cfn_export_dict = {}
+            if topic.display_name:
+                cfn_export_dict['DisplayName'] = topic.display_name
+
+            # Subscriptions
             if len(topic.subscriptions) > 0:
-                topic_table['subscription'] += "      Subscription:\n"
+                cfn_export_dict['Subscription'] = []
             for subscription in topic.subscriptions:
-                endpoint = ""
+                sub_dict = {}
                 if references.is_ref(subscription.endpoint):
-                    param_name = 'Endpoint%s' % topic_table['name']
-                    parameters_yaml += self.create_cfn_parameter(
-                        param_type='String',
-                        name=param_name,
-                        description='SNSTopic Endpoint value.',
-                        value=subscription.endpoint
-                        )
-                    endpoint = "!Ref %s" % param_name
+                    param_name = 'Endpoint{}'.format(topic_logical_id)
+                    parameter = self.create_cfn_parameter(
+                        param_type = 'String',
+                        name = param_name,
+                        description = 'SNSTopic Endpoint value',
+                        value = subscription.endpoint,
+                        use_troposphere = True
+                    )
+                    template.add_parameter(parameter)
+                    endpoint = parameter
                 else:
                     endpoint = subscription.endpoint
-                #if subscription.endpoint.is_ref()
-                topic_table['subscription'] += "        - Endpoint: {}\n          Protocol: {}\n".format(
-                    endpoint, subscription.protocol
-                )
+                sub_dict['Endpoint'] = endpoint
+                sub_dict['Protocol'] = subscription.protocol
+                cfn_export_dict['Subscription'].append(sub_dict)
 
-            topics_yaml += topic_fmt.format(topic_table)
-            outputs_yaml += output_fmt.format(topic_table)
-            #self.register_stack_output_config(res_config_ref, 'SNSTopic' + self.create_cfn_logical_id(topic.name))
+            topic_resource = troposphere.sns.Topic.from_dict(
+                'Topic' + topic_logical_id,
+                cfn_export_dict
+            )
+            template.add_resource(topic_resource)
+
+            # Topic Outputs
             output_ref = '.'.join([res_config_ref, topic.name])
-            self.register_stack_output_config(output_ref + '.name', 'SNSTopicName' + self.create_cfn_logical_id(topic.name))
-            self.register_stack_output_config(output_ref + '.arn', 'SNSTopicArn' + self.create_cfn_logical_id(topic.name))
-
-        if parameters_yaml != "":
-            template_table['parameters'] = "Parameters:\n"
-        template_table['parameters'] += parameters_yaml
-        template_table['topics'] = topics_yaml
-        if outputs_yaml != "":
-            outputs_yaml = "Outputs:\n" + outputs_yaml
-        template_table['outputs'] = outputs_yaml
+            topic_output_arn = troposphere.Output(
+                'SNSTopicArn' + topic_logical_id,
+                Value=troposphere.Ref(topic_resource)
+            )
+            template.add_output(topic_output_arn)
+            self.register_stack_output_config(output_ref + '.arn', 'SNSTopicArn' + topic_logical_id)
+            topic_output_name = troposphere.Output(
+                'SNSTopicName' + topic_logical_id,
+                Value=troposphere.GetAtt(topic_resource, "TopicName")
+            )
+            template.add_output(topic_output_name)
+            self.register_stack_output_config(output_ref + '.name', 'SNSTopicName' + topic_logical_id)
 
         self.enabled = any_topic_enabled
 
-        self.set_template(template_fmt.format(template_table))
+        # Generate the Template
+        self.set_template(template.to_yaml())
