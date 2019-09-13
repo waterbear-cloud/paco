@@ -11,6 +11,7 @@ from aim.utils.cache import load_cached_project
 @handle_exceptions
 def describe_command(ctx, home='.'):
     """Describe an AIM project"""
+    ctx.command = 'describe'
     init_aim_home_option(ctx, home)
     if not ctx.home:
         print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')

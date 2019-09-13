@@ -548,22 +548,26 @@ class Stack():
             )
 
     def delete_stack(self):
-        # Delete Stack
-        if self.termination_protection == True:
-            print("\n!! This Stack has 'Termination Protection' enabled.")
-            print("\n!! Stack Name: {}\n".format(self.get_name()))
-            answer = self.aim_ctx.input("Destroy this stack forever?", yes_no_prompt=True)
-            if answer == False:
-                print("Destruction aborted. Allowing stack to exist.")
-                return
-        self.cfn_client.update_termination_protection(
-            EnableTerminationProtection=False,
-            StackName=self.get_name()
-        )
+        self.get_status()
         self.action = "delete"
+        if self.is_exists() == True:
+            # Delete Stack
+            if self.termination_protection == True:
+                print("\n!! This Stack has 'Termination Protection' enabled.")
+                print("\n!! Stack Name: {}\n".format(self.get_name()))
+                answer = self.aim_ctx.input("Destroy this stack forever?", yes_no_prompt=True)
+                if answer == False:
+                    print("Destruction aborted. Allowing stack to exist.")
+                    return
+
+            self.cfn_client.update_termination_protection(
+                EnableTerminationProtection=False,
+                StackName=self.get_name()
+            )
         self.log_action("Provision", "Delete")
         self.hooks.run("delete", "pre", self)
-        self.cfn_client.delete_stack( StackName=self.get_name() )
+        if self.is_exists() == True:
+            self.cfn_client.delete_stack( StackName=self.get_name() )
 
     def get_stack_error_message(self, prefix_message="", skip_status = False):
         if skip_status == False:
@@ -636,7 +640,6 @@ class Stack():
             raise StackException(AimErrorCode.Unknown, message = message)
 
     def delete(self):
-
         self.template.delete()
         self.delete_stack()
         try:

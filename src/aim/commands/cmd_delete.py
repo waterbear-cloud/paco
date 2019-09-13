@@ -12,6 +12,7 @@ from aim.core.exception import StackException
 @handle_exceptions
 def delete_command(aim_ctx, controller_type, arg_1=None, arg_2=None, arg_3=None, arg_4=None, home='.'):
     """Deletes provisioned AWS Resources"""
+    aim_ctx.command = 'delete'
     init_aim_home_option(aim_ctx, home)
     if not aim_ctx.home:
         print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')

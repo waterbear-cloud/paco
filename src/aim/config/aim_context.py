@@ -133,6 +133,7 @@ class AimContext(object):
         self.logger = aim.core.log.get_aim_logger()
         self.project = None
         self.master_account = None
+        self.command = None
 
     def get_account_context(self, account_ref=None, account_name=None, netenv_ref=None):
         if account_ref != None:

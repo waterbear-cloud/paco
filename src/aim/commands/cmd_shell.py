@@ -12,7 +12,7 @@ from aim.commands.helpers import pass_aim_context, controller_args, aim_home_opt
 @pass_aim_context
 def shell_command(aim_ctx, netenv_id, env_id, region, instance_ref, home='.'):
     """Open a shell to an instance"""
-
+    aim_ctx.command = 'shell'
     init_aim_home_option(aim_ctx, home)
     if not aim_ctx.home:
         print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')

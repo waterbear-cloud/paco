@@ -42,7 +42,7 @@ Initializes AIM Project files. The types of resources possible are:
 @pass_aim_context
 def init_command(aim_ctx, controller_type, arg_1=None, arg_2=None, arg_3=None, arg_4=None, home='.'):
     """Initializes AIM Configuration"""
-
+    aim_ctx.command = 'init'
     init_aim_home_option(aim_ctx, home)
     if not aim_ctx.home:
         print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')

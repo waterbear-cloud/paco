@@ -25,7 +25,7 @@ class Controller():
 
     def validate_model_obj(self, model_obj):
         self.model_obj = model_obj
-        if self.model_obj != None:
+        if self.model_obj != None and self.aim_ctx.command != 'delete':
             loader.validate_model_obj(
                 self.model_obj,
                 self.aim_ctx.home,

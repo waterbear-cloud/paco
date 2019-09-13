@@ -18,6 +18,7 @@ STARTING_TEMPLATE must be the name of a aim init starting_template, e.g. 'simple
 @handle_exceptions
 def ftest_command(ctx, starting_template):
     """Functional testing of an AIM project"""
+    ctx.command = 'ftest'
     print("Starting AIM functional tests")
     template_number = starting_template_mapping[starting_template]
     test_cookiecutter_template(starting_template, template_number, ctx.verbose)
