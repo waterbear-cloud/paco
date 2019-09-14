@@ -2,12 +2,14 @@
 CloudFormation template for SNS Topics
 """
 
+import awacs.sns
 import troposphere
 import troposphere.sns
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.models import references
+from aim.models.locations import get_parent_by_interface
 from aim.models.references import Reference
-
+from awacs.aws import Allow, Policy, Statement, Principal, Condition, StringEquals
 
 class SNSTopics(CFTemplate):
     """
@@ -47,6 +49,7 @@ class SNSTopics(CFTemplate):
 
         # Topic Resources and Outputs
         any_topic_enabled = False
+        topics_ref_cross_list = []
         for topic in self.config:
             if not topic.is_enabled():
                 continue
@@ -85,6 +88,8 @@ class SNSTopics(CFTemplate):
                 'Topic' + topic_logical_id,
                 cfn_export_dict
             )
+            topics_ref_cross_list.append(troposphere.Ref(topic_resource))
+            topic.topic_resource = topic_resource
             template.add_resource(topic_resource)
 
             # Topic Outputs
@@ -101,6 +106,35 @@ class SNSTopics(CFTemplate):
             )
             template.add_output(topic_output_name)
             self.register_stack_output_config(output_ref + '.name', 'SNSTopicName' + topic_logical_id)
+
+
+        # Cross-account access policy
+        if len(topics_ref_cross_list) > 0:
+            account_id_list = [
+                account.account_id for account in self.aim_ctx.project.accounts.values()
+            ]
+            topic_policy_resource = troposphere.sns.TopicPolicy(
+                'TopicPolicyCrossAccountAIMProject',
+                Topics = topics_ref_cross_list,
+                PolicyDocument = Policy(
+                    Version = '2012-10-17',
+                    Id = "CrossAccountPublish",
+                    Statement=[
+                        Statement(
+                            Effect = Allow,
+                            Principal = Principal("AWS", "*"),
+                            Action = [ awacs.sns.Publish ],
+                            Resource = topics_ref_cross_list,
+                            Condition = Condition(
+                                StringEquals({
+                                    'AWS:SourceOwner': account_id_list,
+                                })
+                            )
+                        )
+                    ]
+                )
+            )
+            template.add_resource(topic_policy_resource)
 
         self.enabled = any_topic_enabled
 
