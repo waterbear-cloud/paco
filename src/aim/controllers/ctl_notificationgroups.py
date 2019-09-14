@@ -58,6 +58,7 @@ class NotificationGroupsController(Controller):
         self.groups = self.aim_ctx.project['notificationgroups']
         self.aim_ctx.log("NotificationGroups: Configuration")
         self.init_done = False
+        self.active_regions = self.aim_ctx.project.active_regions
 
     def init(self, init_config):
         if self.init_done:
@@ -66,31 +67,38 @@ class NotificationGroupsController(Controller):
         stack_tags = StackTags()
         self.config = self.aim_ctx.project['notificationgroups']
         self.account_ctx = self.aim_ctx.get_account_context(account_ref=self.config.account)
-        self.config_ref = 'service.notificationgroups'
+        self.config_ref = 'notificationgroups'
 
-        # create a stack group
-        self.ng_stackgroup = NotificationGroupsStackGroup(
-            self.aim_ctx,
-            self.account_ctx,
-            self.config.region,
-            'SNS',
-            self,
-            self.config_ref,
-            self.config,
-            StackTags(stack_tags)
-        )
-        self.ng_stackgroup.init()
+        # create a NotificationGroup stack group for each active region
+        self.ng_stackgroups = []
+        for region in self.active_regions:
+            stackgroup = NotificationGroupsStackGroup(
+                self.aim_ctx,
+                self.account_ctx,
+                region,
+                'SNS',
+                self,
+                self.config_ref,
+                self.config,
+                StackTags(stack_tags)
+            )
+            self.ng_stackgroups.append(stackgroup)
+            stackgroup.init()
 
     def validate(self):
         "Validate"
-        self.ng_stackgroup.validate()
+        for stackgroup in self.ng_stackgroups:
+            sstackgroup.validate()
 
     def provision(self):
         "Provision"
-        self.ng_stackgroup.provision()
+        for stackgroup in self.ng_stackgroups:
+            stackgroup.provision()
 
         # Save to Outputs/MonitorConfig/NotificationGroups.yaml file
-        data = self.ng_stackgroup.stacks[0].output_config_dict
+        regional_output = { 'notificationgroups': {} }
+        for stackgroup in self.ng_stackgroups:
+            regional_output['notificationgroups'][stackgroup.region] = stackgroup.stacks[0].output_config_dict['notificationgroups']
         monitor_config_path = os.path.join(
             self.aim_ctx.project_folder,
             'Outputs',
@@ -99,8 +107,9 @@ class NotificationGroupsController(Controller):
         pathlib.Path(monitor_config_path).mkdir(parents=True, exist_ok=True)
         monitor_config_yaml_path = os.path.join(monitor_config_path, 'NotificationGroups.yaml')
         with open(monitor_config_yaml_path, "w") as output_fd:
-            yaml.dump(data=data, stream=output_fd)
+            yaml.dump(data=regional_output, stream=output_fd)
 
     def delete(self):
         "Delete"
-        self.ng_stackgroup.delete()
+        for stackgroup in self.ng_stackgroups():
+            stackgroup.delete()

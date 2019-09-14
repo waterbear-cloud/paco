@@ -88,7 +88,8 @@ class SNSTopics(CFTemplate):
                 'Topic' + topic_logical_id,
                 cfn_export_dict
             )
-            topics_ref_cross_list.append(troposphere.Ref(topic_resource))
+            if topic.cross_account_access:
+                topics_ref_cross_list.append(troposphere.Ref(topic_resource))
             topic.topic_resource = topic_resource
             template.add_resource(topic_resource)
 
