@@ -158,7 +158,6 @@ class StackHooks():
                 for hook in self.hooks[action][timing]:
                     if hook['cache_method'] != None:
                         cache_id += hook['cache_method'](hook, hook['arg'])
-                        break
         return cache_id
 
 class Stack():
@@ -341,7 +340,9 @@ class Stack():
             stack_metadata = self.cfn_client.describe_stacks(StackName=self.get_name())
         except ClientError as e:
             if e.response['Error']['Code'] == 'ValidationError' and e.response['Error']['Message'].find("does not exist") != -1:
-                raise StackException(AimErrorCode.StackDoesNotExist, message = 'Could not describe missing stack "{}".\n'.format(self.get_name()))
+                message = 'Could not describe missing stack "{}".\n'.format(self.get_name())
+                message += 'Account: ' + self.account_ctx.get_name()
+                raise StackException(AimErrorCode.StackDoesNotExist, message = message)
                 # Debug how we got here and what to do about it
                 print("Error: Stack does not exist: {}".format(self.stack_id))
                 print("  If it was manually deleted from the AWS Web Console, then this error is caused")

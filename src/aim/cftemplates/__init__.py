@@ -31,4 +31,5 @@ from aim.cftemplates.vpc_peering import VPCPeering
 from aim.cftemplates.apigateway import ApiGatewayRestApi
 from aim.cftemplates.iam_users import IAMUsers
 from aim.cftemplates.iam_user_account_delegates import IAMUserAccountDelegates
+from aim.cftemplates.efs import EFS
 

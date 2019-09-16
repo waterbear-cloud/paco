@@ -80,7 +80,7 @@ class ApplicationEngine():
                 self.log_resource_init_status(res_config)
                 if init_method == None:
                     reseng_class = getattr(aim.application, res_config.type+'ResourceEngine', None)(self)
-                    reseng_class.init_resource(grp_id, res_id, res_config, StackTags(res_stack_tags))
+                    reseng_class.init_resource(grp_id, res_id, res_config, StackTags(res_stack_tags), self.env_ctx)
                 else:
                     init_method(grp_id, res_id, res_config, StackTags(res_stack_tags))
 
@@ -385,6 +385,8 @@ role_name: %s""" % ("ASGInstance")
         # Monitoring
         if res_config.monitoring != None and res_config.monitoring.enabled != False:
             self.ec2_launch_manager.lb_add_cloudwatch_agent(instance_iam_role_ref, res_config)
+        if len(res_config.efs_mounts) > 0:
+            self.ec2_launch_manager.lb_add_efs_mounts(instance_iam_role_ref, res_config)
         # SSM Agent
         # if when_ssm_is_need():
         #    self.ec2_launch_manager.lb_add_ssm_agent(
@@ -476,6 +478,8 @@ role_name: %s""" % ("ASGInstance")
             ref.region = 'us-east-1'
             return acm_ctl.resolve_ref(ref)
         elif isinstance(ref.resource, models.applications.LBApplication):
+            return self.get_stack_from_ref(ref)
+        elif isinstance(ref.resource, models.applications.EFS):
             return self.get_stack_from_ref(ref)
 
         return None

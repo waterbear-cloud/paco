@@ -5,12 +5,12 @@ from aim.core.yaml import YAML
 yaml=YAML()
 yaml.default_flow_sytle = False
 
-class ElastiCacheRedisResourceEngine(ResourceEngine):
+class EFSResourceEngine(ResourceEngine):
 
     def init_resource(self, grp_id, res_id, res_config, res_stack_tags, env_ctx):
           # ElastiCache Redis CloudFormation
         aws_name = '-'.join([grp_id, res_id])
-        cftemplates.ElastiCache(
+        cftemplates.EFS(
             self.aim_ctx,
             self.account_ctx,
             self.aws_region,
@@ -18,6 +18,7 @@ class ElastiCacheRedisResourceEngine(ResourceEngine):
             res_stack_tags,
 
             aws_name,
+            env_ctx,
             self.app_id,
             grp_id,
             res_config,
