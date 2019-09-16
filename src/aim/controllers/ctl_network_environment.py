@@ -226,7 +226,7 @@ class EnvironmentContext():
 
 
 
-    def gen_ref(self,
+    def env_ref_prefix(self,
                 app_id=None,
                 grp_id=None,
                 res_id=None,
@@ -235,7 +235,6 @@ class EnvironmentContext():
                 segment_id=None,
                 attribute=None,
                 seperator='.'):
-        raise StackException(AimErrorCode.Unknown, message="This method is being deprecated.")
         netenv_ref = 'aim.ref netenv.{0}.{1}.{2}'.format(self.netenv_id, self.env_id, self.region)
         if app_id != None:
             netenv_ref = seperator.join([netenv_ref, 'applications', app_id])

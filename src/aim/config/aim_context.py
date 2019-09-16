@@ -10,7 +10,7 @@ from aim.models import vocabulary
 from aim.models.references import Reference
 from aim.models import references
 from aim import utils
-from aim.utils.cache import load_cached_project
+from aim.models import load_project_from_yaml
 
 
 class AccountContext(object):
@@ -38,15 +38,15 @@ class AccountContext(object):
             '.aws/cli/cache',
             session_cache_filename)
 
-        admin_creds = self.aim_ctx.project['credentials']
+        self.admin_creds = self.aim_ctx.project['credentials']
         self.admin_iam_role_arn = 'arn:aws:iam::{}:role/{}'.format(
                 self.config.account_id,
-                admin_creds.admin_iam_role_name
+                self.admin_creds.admin_iam_role_name
             )
-        self.mfa_session_expiry_secs = admin_creds.mfa_session_expiry_secs
-        self.assume_role_session_expiry_secs = admin_creds.assume_role_session_expiry_secs
+        self.mfa_session_expiry_secs = self.admin_creds.mfa_session_expiry_secs
+        self.assume_role_session_expiry_secs = self.admin_creds.assume_role_session_expiry_secs
         if name == "master":
-            self.get_mfa_session(admin_creds)
+            self.get_mfa_session(self.admin_creds)
 
     def get_name(self):
         return self.name
@@ -79,6 +79,7 @@ class AccountContext(object):
                     session_creds_path=self.session_cache_path,
                     role_creds_path=self.role_cache_path,
                     mfa_account=self.mfa_account,
+                    admin_creds=self.admin_creds,
                     admin_iam_role_arn=self.admin_iam_role_arn,
                     mfa_session_expiry_secs=self.mfa_session_expiry_secs,
                     assume_role_session_expiry_secs=self.assume_role_session_expiry_secs
@@ -173,7 +174,7 @@ class AimContext(object):
             return
 
         # Load the model from YAML
-        self.project = load_cached_project(self.project_folder)
+        self.project = load_project_from_yaml(self.project_folder, None)
 
         # Settings
         self.build_folder = os.path.join(self.home, "build", self.project.name)

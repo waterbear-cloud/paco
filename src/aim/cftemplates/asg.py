@@ -1,6 +1,6 @@
 import os
+from aim import utils
 from aim.cftemplates.cftemplates import CFTemplate
-
 from aim.cftemplates.cftemplates import StackOutputParam
 from aim.models.references import Reference
 from io import StringIO
@@ -109,10 +109,27 @@ class ASG(CFTemplate):
 
         # Scale in/out policies
         if asg_config.scaling_policy_cpu_average > 0:
-          self.set_parameter('CPUAverageScalingEnabled', True)
-          self.set_parameter('CPUAverageScalingTargetValue', asg_config.scaling_policy_cpu_average)
+            self.set_parameter('CPUAverageScalingEnabled', True)
+            self.set_parameter('CPUAverageScalingTargetValue', asg_config.scaling_policy_cpu_average)
         else:
-          self.set_parameter('CPUAverageScalingEnabled', False)
+            self.set_parameter('CPUAverageScalingEnabled', False)
+
+        # EFS Mounts
+        efs_mount_tags = ""
+        efs_mount_params_yaml = ""
+        for efs_mount in asg_config.efs_mounts:
+            target_hash = utils.md5sum(str_data=efs_mount.target)
+            efs_mount_params_yaml += self.create_cfn_parameter(
+                param_type='String',
+                name='EFSId'+target_hash,
+                description='EFS Id',
+                value=efs_mount.target+'.id')
+            mount_key = 'efs-id-' + target_hash
+            mount_value = '!Ref EFSId'+target_hash
+            efs_mount_tags += """
+        - Key: {}
+          Value: {}
+          PropagateAtLaunch: true\n""".format(mount_key, mount_value)
 
         # Define the Template
         template_fmt = """
@@ -251,6 +268,8 @@ Parameters:
     Type: String
     Default: 0
 
+%s
+
 Conditions:
   MetricsCollectionEnabled: !Equals [!Ref EnableMetricsCollection, "true" ]
   LoadBalancersExist: !Not [!Equals [!Join [',', !Ref ASGLoadBalancerNames], "" ]]
@@ -311,6 +330,8 @@ Resources:
         - Key: Name
           Value: !Ref ASGName
           PropagateAtLaunch: true
+        %s
+
     UpdatePolicy:
       AutoScalingRollingUpdate:
         MaxBatchSize: !Ref ASGUpdatePolicyMaxBatchSize
@@ -330,7 +351,7 @@ Resources:
 Outputs:
   ASGName:
     Value: !Ref ASG
-""" % self.ec2_manager_cache_id
+""" % (self.ec2_manager_cache_id, efs_mount_params_yaml, efs_mount_tags)
         self.register_stack_output_config(asg_config_ref, 'ASGName')
         self.register_stack_output_config(asg_config_ref+'.name', 'ASGName')
 

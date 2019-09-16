@@ -19,7 +19,7 @@ import os
 import pathlib
 import tarfile
 from aim.stack_group import StackHooks, Stack, StackTags
-from aim import models
+from aim import models, utils
 from aim.models import schemas, vocabulary
 from aim.models.locations import get_parent_by_interface
 from aim.core.yaml import YAML
@@ -261,15 +261,17 @@ class EC2LaunchManager():
     def user_data_script(self, app_id, grp_id, resource_id, instance_ami_type):
         """BASH script that will load the launch bundle from user_data"""
         script_fmt = """#!/bin/bash
-# EC2 Launch Manager: {0[description]}
+echo "EC2 Launch Manager: {0[description]}"
+echo "CWD: $(pwd)"
+echo "File: $0"
 
 # Update System
 {0[update_system]}
 """
         script_table = {
             'description': self.get_cache_id(app_id, grp_id, resource_id),
-            'update_system': None,
-            'essential_package': None,
+            'update_system': '',
+            'essential_package': '',
             'ec2_manager_s3_bucket': None,
         }
         for command in vocabulary.user_data_script['update_system'][instance_ami_type]:
@@ -295,7 +297,7 @@ aws s3 sync s3://{0[ec2_manager_s3_bucket]}/ $EC2_MANAGER_FOLDER
 cd $EC2_MANAGER_FOLDER/LaunchBundles/
 
 echo "Loading Launch Bundles"
-for BUNDLE_PACKAGE in "$(ls *.tgz)"
+for BUNDLE_PACKAGE in *.tgz
 do
     BUNDLE_FOLDER=${{BUNDLE_PACKAGE//'.tgz'/}}
     echo "$BUNDLE_FOLDER: Unpacking:"
@@ -325,6 +327,96 @@ echo "No Launch bundles to load"
         # Add the bundle to the S3 Context ID bucket
         self.add_bundle_to_s3_bucket(bundle)
         self.launch_bundles[bundle.s3_bucket_ref].append(bundle)
+
+    def lb_add_efs_mounts(self, instance_iam_role_ref, resource):
+        """Creates a launch bundle to configure EFS mounts:
+
+         - Installs an entry in /etc/fstab
+         - On launch runs mount
+        """
+
+        launch_script_template = """#!/bin/bash
+
+# CachId: 2019-09-15.01
+INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+AVAIL_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
+REGION="$(echo \"$AVAIL_ZONE\" | sed 's/[a-z]$//')"
+
+function process_mount_target()
+{
+    MOUNT_FOLDER=$1
+    EFS_ID_HASH=$2
+
+    # Get EFSID from Tag
+    EFS_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=efs-id-$EFS_ID_HASH" --query 'Tags[0].Value' |tr -d '"')
+
+    # Setup the mount folder
+    if [ -e $MOUNT_FODLER ] ; then
+        mv $MOUNT_FOLDER ${MOUNT_FOLDER%%/}.old
+    fi
+    mkdir -p $MOUNT_FOLDER
+
+    # Setup fstab
+    grep -v -E "^$EFS_ID:/" /etc/fstab >/tmp/fstab.efs_new
+    echo "$EFS_ID:/ $MOUNT_FOLDER efs defaults,_netdev 0 0" >>/tmp/fstab.efs_new
+    mv /tmp/fstab.efs_new /etc/fstab
+    chmod 0664 /etc/fstab
+}
+
+yum install -y amazon-efs-utils
+%s
+
+mount -a -t efs defaults
+"""
+        process_mount_targets = ""
+        for efs_mount in resource.efs_mounts:
+            efs_id_hash = utils.md5sum(str_data=efs_mount.target)
+            process_mount_targets += "process_mount_target {} {}\n".format(efs_mount.folder, efs_id_hash)
+
+        launch_script = launch_script_template % process_mount_targets
+
+        app_name = get_parent_by_interface(resource, schemas.IApplication).name
+        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
+
+        policy_config_yaml = """
+name: 'DescribeTags'
+enabled: true
+statement:
+  - effect: Allow
+    action:
+      - "ec2:DescribeTags"
+    resource:
+      - '*'
+"""
+
+        policy_ref = '{}.{}.efs.policy'.format(resource.aim_ref_parts, self.id)
+        policy_id = '-'.join([resource.name, 'efs'])
+        iam_ctl = self.aim_ctx.get_controller('IAM')
+        iam_ctl.add_managed_policy(
+            role_ref=instance_iam_role_ref,
+            parent_config=resource,
+            group_id=group_name,
+            policy_id=policy_id,
+            policy_ref=policy_ref,
+            policy_config_yaml=policy_config_yaml
+        )
+
+        # Create the Launch Bundle and configure it
+        efs_lb = LaunchBundle(
+            self.aim_ctx,
+            "EFS",
+            self,
+            app_name,
+            group_name,
+            resource.name,
+            resource,
+            self.bucket_id(resource.name)
+        )
+        efs_lb.set_launch_script(launch_script)
+
+        # Save Configuration
+        self.add_bundle(efs_lb)
+
 
     def lb_add_cloudwatch_agent(
         self,

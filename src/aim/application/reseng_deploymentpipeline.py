@@ -36,7 +36,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             method = getattr(self, method_name)
             method(action_config)
 
-    def init_resource(self, grp_id, res_id, pipeline_config, res_stack_tags):
+    def init_resource(self, grp_id, res_id, pipeline_config, res_stack_tags, env_ctx):
         self.grp_id = grp_id
         self.res_id = res_id
         self.pipeline_config = pipeline_config

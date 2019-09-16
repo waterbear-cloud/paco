@@ -39,7 +39,7 @@ class Example(CFTemplate):
         )
         template.set_version()
         template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
+            troposphere.cloudformation.WaitConditionHandle(title="EmptyTemplatePlaceholder")
         )
 
         # ---------------------------------------------------------------------------
@@ -50,9 +50,9 @@ class Example(CFTemplate):
             param_type='String',
             description='Example parameter.',
             value=example_config.example_variable,
-            use_troposphere=True
+            use_troposphere=True,
+            troposphere_template=template,
         )
-        template.add_parameter(example_param)
 
         # ---------------------------------------------------------------------------
         # Resource

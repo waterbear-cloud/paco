@@ -385,6 +385,8 @@ class CFTemplate():
             yaml.dump(parameter_list, stream)
 
     def validate_stack_parameters(self, parameter_list):
+        if self.aim_ctx.disable_validation == True:
+            return
         applied_file_path, new_file_path = self.init_template_store_paths()
         param_applied_file_path = applied_file_path.with_suffix('.parameters')
 
@@ -662,7 +664,7 @@ class CFTemplate():
 
     def gen_cf_logical_name(self, name, sep=None):
         """
-        !! DEPRECATED !! Use self.create_cfn_logical_id* methods
+        !! DEPRECATED !! Use self.cfn_logical_id* methods
         Create a CloudFormation safe Logical name
         """
 
@@ -930,7 +932,10 @@ class CFTemplate():
                 troposphere_template.add_parameter(param)
             return param
 
-    def create_cfn_ref_list_param(self, param_type, name, description, value, ref_attribute=None, default=None, noecho=False, use_troposphere=False):
+    def create_cfn_ref_list_param(
+        self, param_type, name, description, value,
+        ref_attribute=None, default=None, noecho=False,
+        use_troposphere=False, troposphere_template=None):
         stack_output_param = StackOutputParam(name, param_template=self)
         for item_ref in value:
             if ref_attribute != None:
@@ -941,7 +946,10 @@ class CFTemplate():
             stack_output_key = self.get_stack_outputs_key_from_ref(Reference(item_ref))
             stack_output_param.add_stack_output(stack, stack_output_key)
 
-        return self.create_cfn_parameter(param_type, name, description, stack_output_param, default, noecho, use_troposphere)
+        return self.create_cfn_parameter(
+            param_type, name, description,
+            stack_output_param, default, noecho,
+            use_troposphere, troposphere_template)
 
     def gen_output(self, name, value):
         "Return name and value as a CFN YAML formatted string"
