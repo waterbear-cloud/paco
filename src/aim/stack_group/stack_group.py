@@ -340,21 +340,10 @@ class Stack():
             stack_metadata = self.cfn_client.describe_stacks(StackName=self.get_name())
         except ClientError as e:
             if e.response['Error']['Code'] == 'ValidationError' and e.response['Error']['Message'].find("does not exist") != -1:
-                message = 'Could not describe missing stack "{}".\n'.format(self.get_name())
+                message = self.get_stack_error_message()
+                message += 'Could not describe stack to get value for Outputs Key: {}\n'.format(key)
                 message += 'Account: ' + self.account_ctx.get_name()
                 raise StackException(AimErrorCode.StackDoesNotExist, message = message)
-                # Debug how we got here and what to do about it
-                print("Error: Stack does not exist: {}".format(self.stack_id))
-                print("  If it was manually deleted from the AWS Web Console, then this error is caused")
-                print("  because the stack.cache file still exists.\n")
-                print("  Try this and re-run aim:\n")
-                print("  rm %s" % (self.cache_filename))
-                try:
-                    os.remove(self.cache_filename)
-                except FileNotFoundError:
-                    pass
-                sys.exit(255)
-                raise StackException(AimErrorCode.StackDoesNotExist)
             else:
                 raise StackException(AimErrorCode.Unknown, message=e.response['Error']['Message'])
 
