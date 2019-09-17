@@ -15,6 +15,8 @@ class CWAlarms(CFTemplate):
     """
     CloudFormation template for CloudWatch Alarms
     """
+    notification_region = None # allow services the chance to send notifications to another region
+
     def __init__(
         self,
         aim_ctx,
@@ -63,6 +65,7 @@ class CWAlarms(CFTemplate):
         )
 
         self.alarm_action_param_map = {}
+        self.notification_param_map = {}
         if resource.is_enabled() and resource.monitoring.enabled:
             self.add_alarms(
                 template,
@@ -70,6 +73,7 @@ class CWAlarms(CFTemplate):
                 resource,
                 res_type,
                 res_config_ref,
+                self.aim_ctx.project,
                 alarm_id,
                 alarm_set_id,
             )
@@ -82,6 +86,7 @@ class CWAlarms(CFTemplate):
             resource,
             res_type,
             res_config_ref,
+            project,
             alarm_id,
             alarm_set_id,
         ):
@@ -120,7 +125,7 @@ class CWAlarms(CFTemplate):
                     alarm_action_param = self.create_cfn_parameter(
                         param_type = 'String',
                         name = param_name,
-                        description = 'The resource id or name for the metric dimension.',
+                        description = 'SNSTopic for Alarm to notify.',
                         value = alarm_action,
                         use_troposphere = True
                     )
@@ -131,7 +136,34 @@ class CWAlarms(CFTemplate):
             alarm_export_dict['AlarmActions'] = alarm_action_list
 
             # AlarmDescription
-            alarm_export_dict['AlarmDescription'] = self.get_alarm_description(alarm, alarm_action_list)
+            notification_aim_refs = []
+            for group in alarm.notification_groups:
+                if not self.notification_region:
+                    region = alarm.region_name
+                else:
+                    region = self.notification_region
+                notification_aim_refs.append(
+                    project['resource']['notificationgroups'][region][group].aim_ref + '.arn'
+                )
+
+            notification_cfn_refs = []
+            for notification_aim_ref in notification_aim_refs:
+                # Create parameter
+                param_name = 'Notification{}'.format(utils.md5sum(str_data=notification_aim_ref))
+                if param_name in self.notification_param_map.keys():
+                    notification_param = self.notification_param_map[param_name]
+                else:
+                    notification_param = self.create_cfn_parameter(
+                        param_type = 'String',
+                        name = param_name,
+                        description = 'SNS Topic to notify',
+                        value = notification_aim_ref,
+                        use_troposphere = True
+                    )
+                    template.add_parameter(notification_param)
+                    self.notification_param_map[param_name] = notification_param
+                notification_cfn_refs.append(troposphere.Ref(notification_param))
+            alarm_export_dict['AlarmDescription'] = self.get_alarm_description(alarm, notification_cfn_refs)
 
             # Namespace - if not supplied default to the Namespace for the Resource type
             if 'Namespace' not in alarm_export_dict:
@@ -169,7 +201,7 @@ class CWAlarms(CFTemplate):
             )
             template.add_output(alarm_output)
 
-    def get_alarm_description(self, alarm, alarm_action_list):
+    def get_alarm_description(self, alarm, notification_cfn_refs):
         """Create an Alarm Description in JSON format with AIM Alarm information"""
         netenv = get_parent_by_interface(alarm, schemas.INetworkEnvironment)
         env = get_parent_by_interface(alarm, schemas.IEnvironment)
@@ -181,7 +213,7 @@ class CWAlarms(CFTemplate):
         # SNS Topic ARNs are supplied Paramter Refs
         topic_arn_subs = []
         sub_dict = {}
-        for action_ref in alarm_action_list:
+        for action_ref in notification_cfn_refs:
             ref_id = action_ref.data['Ref']
             topic_arn_subs.append('${%s}' % ref_id)
             sub_dict[ref_id] = action_ref

@@ -135,6 +135,7 @@ class AimContext(object):
         self.project = None
         self.master_account = None
         self.command = None
+        self.disable_validation = False
 
     def get_account_context(self, account_ref=None, account_name=None, netenv_ref=None):
         if account_ref != None:
@@ -190,6 +191,7 @@ class AimContext(object):
         self.get_controller('Route53')
         self.get_controller('CodeCommit')
         self.get_controller('S3').init({'name': 'buckets'})
+        self.get_controller('NotificationGroups')
 
         # Load the Service plug-ins
         service_plugins = aim.models.services.list_service_plugins()

@@ -13,6 +13,11 @@ Changelog for aim
   same application notifies the lambda and will automatically add a Lambda permission to allow S3 to
   invoke the lambda.
 
+- Lambda AWS::SNS::Subscription resources now have a Region property.
+
+- CloudWatchAlarms template has a `notification_region` class attribute that can be set if
+  notificationgroup subscriptions need to go to a single region.
+
 ### Changed
 
 - S3 controller now relies on the bucket name to come from the S3Bucket model object.
@@ -21,9 +26,11 @@ Changelog for aim
 
 - You can provision without specifying the region and it will include all regions in an env.
 
+- NotificationGroups are loaded from project['resource']['notificationgroups']
+
 ### Fixed
 
-- APIGateway and Lambda now respect the `enabled` field.
+- APIGateway, SNSTopics and Lambda now respect the `enabled` field.
 
 2.0.0 (2019-08-26)
 ------------------

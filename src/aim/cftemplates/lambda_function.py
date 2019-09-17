@@ -3,7 +3,7 @@ from aim.cftemplates.cftemplates import CFTemplate
 
 from aim.models.locations import get_parent_by_interface
 from aim.models.loader import get_all_nodes
-from aim.models.references import resolve_ref
+from aim.models.references import resolve_ref, get_model_obj_from_ref
 from aim.models import schemas
 from io import StringIO
 from enum import Enum
@@ -366,11 +366,13 @@ Outputs:
       Endpoint: !GetAtt Function.Arn
       Protocol: lambda
       TopicArn: {0[topic_arn]:s}
+      Region: {0[topic_region]:s}
 """
 
         sns_subscription_table = {
           'name': None,
-          'topic_arn': None
+          'topic_arn': None,
+          'topic_region': '',
         }
 
         parameters_yaml = ""
@@ -404,14 +406,15 @@ Outputs:
         template_table['permissions'] = ""
         # SNS Topic Permissions and Subscription
         idx = 1
-        for sns_topic_arn in lambda_config.sns_topics:
+
+        for sns_topic_ref in lambda_config.sns_topics:
             # SNS Topic Arn parameters
             param_name = 'SNSTopicArn%d' % idx
             parameters_yaml += self.create_cfn_parameter(
-                param_type='String',
-                name=param_name,
-                description='An SNS Topic ARN to grant permission to.',
-                value=sns_topic_arn+'.arn'
+                param_type = 'String',
+                name = param_name,
+                description = 'An SNS Topic ARN to grant permission to.',
+                value = sns_topic_ref + '.arn'
             )
             # Lambda Permissions
             permission_table['name'] = param_name
@@ -421,6 +424,8 @@ Outputs:
             # SNS Topic Subscription
             sns_subscription_table['name'] = param_name
             sns_subscription_table['topic_arn'] = '!Ref %s' % param_name
+            sns_topic = get_model_obj_from_ref(sns_topic_ref, self.aim_ctx.project)
+            sns_subscription_table['topic_region'] = sns_topic.region_name
             template_table['permissions'] += sns_subscription_fmt.format(sns_subscription_table)
             idx += 1
 

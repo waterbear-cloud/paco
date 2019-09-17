@@ -27,6 +27,11 @@ class SNSTopics(CFTemplate):
         res_config_ref
     ):
         aws_name='-'.join([aws_name, 'SNSTopics'])
+        enabled_topics = False
+        for topic in config:
+            if topic.is_enabled():
+                enabled_topics = True
+
         super().__init__(
             aim_ctx,
             account_ctx,
@@ -34,7 +39,8 @@ class SNSTopics(CFTemplate):
             config_ref=res_config_ref,
             aws_name=aws_name,
             stack_group=stack_group,
-            stack_tags=stack_tags
+            stack_tags=stack_tags,
+            enabled=enabled_topics,
         )
         self.config = config
 

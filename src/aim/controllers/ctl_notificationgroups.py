@@ -36,7 +36,7 @@ class NotificationGroupsStackGroup(StackGroup):
     def init(self):
         "init"
         # create a template
-        sns_topics_config = [topic for topic in self.aim_ctx.project['notificationgroups'].values()]
+        sns_topics_config = [topic for topic in self.config.values()]
         aim.cftemplates.SNSTopics(
             self.aim_ctx,
             self.account_ctx,
@@ -55,17 +55,18 @@ class NotificationGroupsController(Controller):
             "NG",
             None
         )
-        self.groups = self.aim_ctx.project['notificationgroups']
+        self.groups = self.aim_ctx.project['resource']['notificationgroups']
         self.aim_ctx.log("NotificationGroups: Configuration")
         self.init_done = False
         self.active_regions = self.aim_ctx.project.active_regions
+        self.groups.resolve_ref_obj = self # inject the controller into the model
 
     def init(self, init_config):
         if self.init_done:
             return
         self.init_done = True
         stack_tags = StackTags()
-        self.config = self.aim_ctx.project['notificationgroups']
+        self.config = self.aim_ctx.project['resource']['notificationgroups']
         self.account_ctx = self.aim_ctx.get_account_context(account_ref=self.config.account)
         self.config_ref = 'notificationgroups'
 
@@ -79,7 +80,7 @@ class NotificationGroupsController(Controller):
                 'SNS',
                 self,
                 self.config_ref,
-                self.config,
+                self.config[region],
                 StackTags(stack_tags)
             )
             self.ng_stackgroups.append(stackgroup)
@@ -99,17 +100,20 @@ class NotificationGroupsController(Controller):
         regional_output = { 'notificationgroups': {} }
         for stackgroup in self.ng_stackgroups:
             regional_output['notificationgroups'][stackgroup.region] = stackgroup.stacks[0].output_config_dict['notificationgroups']
-        monitor_config_path = os.path.join(
+        resources_config_path = os.path.join(
             self.aim_ctx.project_folder,
             'Outputs',
-            'MonitorConfig'
+            'Resources'
         )
-        pathlib.Path(monitor_config_path).mkdir(parents=True, exist_ok=True)
-        monitor_config_yaml_path = os.path.join(monitor_config_path, 'NotificationGroups.yaml')
-        with open(monitor_config_yaml_path, "w") as output_fd:
+        pathlib.Path(resources_config_path).mkdir(parents=True, exist_ok=True)
+        resources_config_yaml_path = os.path.join(resources_config_path, 'NotificationGroups.yaml')
+        with open(resources_config_yaml_path, "w") as output_fd:
             yaml.dump(data=regional_output, stream=output_fd)
 
     def delete(self):
         "Delete"
         for stackgroup in self.ng_stackgroups():
             stackgroup.delete()
+
+    def resolve_ref(self):
+      pass
