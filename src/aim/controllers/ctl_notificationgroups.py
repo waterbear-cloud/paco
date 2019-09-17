@@ -55,7 +55,11 @@ class NotificationGroupsController(Controller):
             "NG",
             None
         )
-        self.groups = self.aim_ctx.project['resource']['notificationgroups']
+        try:
+            self.groups = self.aim_ctx.project['resource']['notificationgroups']
+        except KeyError:
+            self.init_done = True
+            return
         self.aim_ctx.log("NotificationGroups: Configuration")
         self.init_done = False
         self.active_regions = self.aim_ctx.project.active_regions
