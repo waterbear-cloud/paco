@@ -452,18 +452,21 @@ wget https://s3.amazonaws.com/amazoncloudwatch-agent/assets/amazon-cloudwatch-ag
 gpg --import amazon-cloudwatch-agent.gpg
 
 KEY_ID="$(gpg --list-packets amazon-cloudwatch-agent.gpg 2>&1 | awk '/keyid:/{{ print $2 }}' | tr -d ' ')"
-FINGERPRINT="$(gpg --fingerprint ${{KEY_ID}} 2>&1 | grep 'Key fingerprint =' | awk -F'= ' '{{print $2}}' | tr -d ' ')"
-OBJECT_FINGERPRINT="$(gpg --verify {0[agent_object]:s}.sig {0[agent_object]:s} 2>&1| grep 'Primary key fingerprint: ' | awk -F 't: ' '{{print $2}}' | tr -d ' ')"
-if [ "${{FINGERPRINT}}" != "${{TRUSTED_FINGERPRINT}}" -o "${{OBJECT_FINGERPRINT}}" != "${{TRUSTED_FINGERPRINT}}" ] ; then
+FINGERPRINT="$(gpg --fingerprint ${{KEY_ID}} 2>&1 | tr -d ' ')"
+OBJECT_FINGERPRINT="$(gpg --verify {0[agent_object]:s}.sig {0[agent_object]:s} 2>&1 | tr -d ' ')"
+if [[ ${{FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* || ${{OBJECT_FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* ]]; then
     # Log error here
-    echo "ERROR: CloudWatch Agent signature invalid: ${{KEY_ID}}: ${{FINGERPRINT}}"
+    echo "ERROR: CloudWatch Agent signature invalid: ${{KEY_ID}}: ${{OBJECT_FINGERPRINT}}"
     exit 1
 fi
 
 # Install the agent
+echo "Running: {0[install_command]:s} {0[agent_object]}"
 {0[install_command]:s} {0[agent_object]}
 
 cd ${{LB_DIR}}
+
+echo "Running: /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:amazon-cloudwatch-agent.json -s"
 /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:amazon-cloudwatch-agent.json -s
 """
 

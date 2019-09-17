@@ -68,7 +68,7 @@ Resources:
     Type: "AWS::CloudFront::Distribution"
     Properties:
       DistributionConfig:
-        Aliases:{0[domain_aliases]:s}
+        Aliases: {0[domain_aliases]:s}
         Enabled: !Ref DistributionEnabled
         DefaultCacheBehavior:
           AllowedMethods:{0[allowed_methods]:s}
@@ -402,6 +402,8 @@ Outputs:
         # ---------------------------------------------------------------------
 
         template_table['parameters'] = parameters_yaml
+        if domain_aliases_yaml == "":
+            domain_aliases_yaml = "!Ref 'AWS::NoValue'"
         template_table['domain_aliases'] = domain_aliases_yaml
         template_table['allowed_methods'] = allowed_methods_yaml
         template_table['origins'] = origins_yaml

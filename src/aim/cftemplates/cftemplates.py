@@ -410,7 +410,7 @@ class CFTemplate():
         print("(model) {}".format(self.config_ref))
         print("(template)  {}".format(new_file_path))
         print("(applied template)  {}".format(applied_file_path))
-        print("(applied parameters)  {}".format(applied_file_path))
+        print("(applied parameters)  {}".format(param_applied_file_path))
         print('')
 
         col_3_size = 0

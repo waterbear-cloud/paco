@@ -223,7 +223,7 @@ class Stack():
     @property
     def cfn_client(self):
         if hasattr(self, '_cfn_client') == False:
-            self._cfn_client = self.account_ctx.get_aws_client('cloudformation', self.aws_region)
+            self._cfn_client = self.account_ctx.get_aws_client('cloudformation', self.aws_region, force=True)
         return self._cfn_client
 
 
@@ -287,7 +287,10 @@ class Stack():
                     print(msg_prefix+": Get Status throttled")
                     time.sleep(1)
                     continue
-
+                elif e.response['Error']['Code'] == 'ExpiredToken':
+                    delattr(self, '_cfn_client')
+                    self.log_action("Token", "Expired", "Retry")
+                    continue
                 else:
                     message = self.get_stack_error_message(
                         prefix_message=e.response['Error']['Message'],
@@ -336,16 +339,22 @@ class Stack():
         if key in self.outputs_value_cache.keys():
             return self.outputs_value_cache[key]
 
-        try:
-            stack_metadata = self.cfn_client.describe_stacks(StackName=self.get_name())
-        except ClientError as e:
-            if e.response['Error']['Code'] == 'ValidationError' and e.response['Error']['Message'].find("does not exist") != -1:
-                message = self.get_stack_error_message()
-                message += 'Could not describe stack to get value for Outputs Key: {}\n'.format(key)
-                message += 'Account: ' + self.account_ctx.get_name()
-                raise StackException(AimErrorCode.StackDoesNotExist, message = message)
-            else:
-                raise StackException(AimErrorCode.Unknown, message=e.response['Error']['Message'])
+        while True:
+            try:
+                stack_metadata = self.cfn_client.describe_stacks(StackName=self.get_name())
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'ValidationError' and e.response['Error']['Message'].find("does not exist") != -1:
+                    message = self.get_stack_error_message()
+                    message += 'Could not describe stack to get value for Outputs Key: {}\n'.format(key)
+                    message += 'Account: ' + self.account_ctx.get_name()
+                    raise StackException(AimErrorCode.StackDoesNotExist, message = message)
+                elif e.response['Error']['Code'] == 'ExpiredToken':
+                    delattr(self, '_cfn_client')
+                    self.log_action("Token", "Expired", "Retry")
+                    continue
+                else:
+                    raise StackException(AimErrorCode.Unknown, message=e.response['Error']['Message'])
+            break
 
         if 'Outputs' not in stack_metadata['Stacks'][0].keys():
             raise StackException(AimErrorCode.StackOutputMissing, message='No outputs are registered for this stack. This can happen if there are register_stack_output_config() calls in a cftemplate for Outputs that do not exist.')
@@ -499,37 +508,40 @@ class Stack():
         stack_parameters = self.template.generate_stack_parameters()
         self.template.validate_stack_parameters(stack_parameters)
         self.hooks.run("update", "pre", self)
-        try:
-            self.cfn_client.update_stack(
-                StackName=self.get_name(),
-                TemplateBody=self.template.body,
-                Parameters=stack_parameters,
-                Capabilities=self.template.capabilities,
-                UsePreviousTemplate=False,
-                Tags=self.tags.cf_list()
-            )
-        except ClientError as e:
-            if e.response['Error']['Code'] == 'ValidationError':
-                success = False
-                if e.response['Error']['Message'].endswith("No updates are to be performed."):
-                    success = True
-                elif e.response['Error']['Message'].endswith("is in UPDATE_COMPLETE_CLEANUP_IN_PROGRESS state and can not be updated."):
-                    success = True
+        while True:
+            try:
+                self.cfn_client.update_stack(
+                    StackName=self.get_name(),
+                    TemplateBody=self.template.body,
+                    Parameters=stack_parameters,
+                    Capabilities=self.template.capabilities,
+                    UsePreviousTemplate=False,
+                    Tags=self.tags.cf_list()
+                )
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'ValidationError':
+                    success = False
+                    if e.response['Error']['Message'].endswith("No updates are to be performed."):
+                        success = True
+                    elif e.response['Error']['Message'].endswith("is in UPDATE_COMPLETE_CLEANUP_IN_PROGRESS state and can not be updated."):
+                        success = True
 
-                if success == True:
-                    self.log_action("Provision", "Done")
-                    self.stack_success()
+                    if success == True:
+                        self.log_action("Provision", "Done")
+                        self.stack_success()
+                    else:
+                        message = self.get_stack_error_message()
+                        message += "ValidationError: {}\n".format(e.response['Error']['Message'])
+                        raise StackException(AimErrorCode.Unknown, message = message)
+                elif e.response['Error']['Code'] == 'ExpiredToken':
+                    delattr(self, '_cfn_client')
+                    self.log_action("Token", "Expired", "Retry")
+                    continue
                 else:
-                    message = "Validation Error: {}\nStack: {}\nTemplate: {}\n".format(
-                        e.response['Error']['Message'],
-                        self.get_name(),
-                        self.template.get_yaml_path()
-                    )
+                    #message = "Stack: {}\nError: {}\n".format(self.get_name(), e.response['Error']['Message'])
+                    message = self.get_stack_error_message()
                     raise StackException(AimErrorCode.Unknown, message = message)
-            else:
-                #message = "Stack: {}\nError: {}\n".format(self.get_name(), e.response['Error']['Message'])
-                message = self.get_stack_error_message()
-                raise StackException(AimErrorCode.Unknown, message = message)
+            break
 
         if self.cfn_stack_describe['EnableTerminationProtection'] == False:
             self.cfn_client.update_termination_protection(
@@ -554,7 +566,7 @@ class Stack():
                 EnableTerminationProtection=False,
                 StackName=self.get_name()
             )
-        self.log_action("Provision", "Delete")
+        self.log_action("Delete", "Delete")
         self.hooks.run("delete", "pre", self)
         if self.is_exists() == True:
             self.cfn_client.delete_stack( StackName=self.get_name() )
@@ -575,7 +587,19 @@ class Stack():
             message += "--------- {}  -------------\n".format(
                 ' '*(col_size-len('LogicalId '))
             )
-            stack_events = self.cfn_client.describe_stack_events(StackName=self.get_name())
+            while True:
+                try:
+                    stack_events = self.cfn_client.describe_stack_events(StackName=self.get_name())
+                except ClientError as exc:
+                    if exc.response['Error']['Code'] == 'ExpiredToken':
+                        delattr(self, '_cfn_client')
+                        self.log_action("Token", "Expired", "Retry")
+                        continue
+                    else:
+                        raise sys.exc_info()
+                break
+
+
             for stack_event in stack_events['StackEvents']:
                 if stack_event['ResourceStatus'].find('FAILED') != -1:
                     spaces = col_size-len(stack_event['LogicalResourceId'])
@@ -660,7 +684,7 @@ class Stack():
             msg_stack_name = stack_name
 
         if self.template.template_file_id != None:
-            msg_stack_name += ' - fileid - ' + self.template.template_file_id
+            msg_stack_name += ': dependency group: ' + self.template.template_file_id
         stack_message = msg_stack_name
         if message != None:
             stack_message += ': '+message
@@ -712,7 +736,7 @@ class Stack():
             except WaiterError as waiter_exception:
                 self.log_action("Provision", "Error")
                 message = "Waiter Error:  {}\n".format(waiter_exception)
-                message = self.get_stack_error_message(message)
+                message += self.get_stack_error_message(message)
                 raise StackException(AimErrorCode.WaiterError, message = message)
             self.log_action("Provision", "Done")
 
