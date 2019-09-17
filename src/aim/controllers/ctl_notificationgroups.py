@@ -71,7 +71,7 @@ class NotificationGroupsController(Controller):
         self.config_ref = 'notificationgroups'
 
         # create a NotificationGroup stack group for each active region
-        self.ng_stackgroups = []
+        self.ng_stackgroups = {}
         for region in self.active_regions:
             stackgroup = NotificationGroupsStackGroup(
                 self.aim_ctx,
@@ -83,22 +83,22 @@ class NotificationGroupsController(Controller):
                 self.config[region],
                 StackTags(stack_tags)
             )
-            self.ng_stackgroups.append(stackgroup)
+            self.ng_stackgroups[region] = stackgroup
             stackgroup.init()
 
     def validate(self):
         "Validate"
-        for stackgroup in self.ng_stackgroups:
+        for stackgroup in self.ng_stackgroups.values():
             sstackgroup.validate()
 
     def provision(self):
         "Provision"
-        for stackgroup in self.ng_stackgroups:
+        for stackgroup in self.ng_stackgroups.values():
             stackgroup.provision()
 
         # Save to Outputs/MonitorConfig/NotificationGroups.yaml file
         regional_output = { 'notificationgroups': {} }
-        for stackgroup in self.ng_stackgroups:
+        for stackgroup in self.ng_stackgroups.values():
             regional_output['notificationgroups'][stackgroup.region] = stackgroup.stacks[0].output_config_dict['notificationgroups']
         resources_config_path = os.path.join(
             self.aim_ctx.project_folder,
@@ -112,8 +112,12 @@ class NotificationGroupsController(Controller):
 
     def delete(self):
         "Delete"
-        for stackgroup in self.ng_stackgroups():
+        for stackgroup in self.ng_stackgroups.values():
             stackgroup.delete()
 
-    def resolve_ref(self):
-      pass
+    def resolve_ref(self, ref):
+        # ToDo: only resolves .arn refs
+        stackgroup = self.ng_stackgroups[ref.parts[2]]
+        stack = stackgroup.stacks[0]
+        output_id = stack.template.create_cfn_logical_id('SNSTopicArn' + ref.parts[3])
+        return stack.get_outputs_value(output_id)
