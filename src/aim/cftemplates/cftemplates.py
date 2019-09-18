@@ -283,7 +283,10 @@ class CFTemplate():
                 dollar_idx = self.body.find("${", str_idx, end_str_idx)
                 if dollar_idx == -1:
                     if first_pass == True:
-                        raise StackException(AimErrorCode.Unknown, message = "aim.sub error: First pass true")
+                        message = 'Unable to find aim.ref in aim.sub expression.\n'
+                        message += 'Stack: {}\n'.format(self.stack.get_name())
+                        message += "aim.sub '{}'\n".format(self.body[str_idx:end_str_idx])
+                        raise StackException(AimErrorCode.Unknown, message = message)
                     else:
                         #print("break 2")
                         break

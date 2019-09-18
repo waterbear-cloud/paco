@@ -245,6 +245,8 @@ class ASG(CFTemplate):
         if asg_config.scaling_policies != None:
             for scaling_policy_name in asg_config.scaling_policies.keys():
                 scaling_policy = asg_config.scaling_policies[scaling_policy_name]
+                if scaling_policy.is_enabled() == False:
+                    continue
                 scaling_policy_res = troposphere.autoscaling.ScalingPolicy(
                     title=self.create_cfn_logical_id_join(
                         ['ScalingPolicy', scaling_policy_name],
@@ -276,6 +278,24 @@ class ASG(CFTemplate):
                         EvaluationPeriods=alarm.evaluation_periods,
                         Statistic=alarm.statistic
                     )
+
+        if asg_config.lifecycle_hooks != None:
+            for lifecycle_hook_name in asg_config.lifecycle_hooks:
+                lifecycle_hook = asg_config.lifecycle_hooks[lifecycle_hook_name]
+                if lifecycle_hook.is_enabled() == False:
+                    continue
+                troposphere.autoscaling.LifecycleHook(
+                    title = self.create_cfn_logical_id_join(
+                        ['LifecycleHook', lifecycle_hook_name],
+                        camel_case=True
+                    ),
+                    template=template,
+                    AutoScalingGroupName=troposphere.Ref(asg_res),
+                    DefaultResult=lifecycle_hook.default_result,
+                    LifecycleTransition=lifecycle_hook.lifecycle_transition,
+                    RoleARN=lifecycle_hook.role_arn,
+                    NotificationTargetARN=lifecycle_hook.notification_target_arn
+                )
 
         self.set_template(template.to_yaml())
 
