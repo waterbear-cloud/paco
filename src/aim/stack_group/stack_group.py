@@ -196,6 +196,8 @@ class Stack():
         self.do_not_cache = do_not_cache
         self.update_only = update_only
         self.change_protected = change_protected
+        # Wait for stack to delete if this flag is set
+        self.wait_on_delete = False
 
         self.tags = StackTags(stack_tags)
         self.tags.add_tag('AIM-Stack', 'true')
@@ -561,15 +563,18 @@ class Stack():
                 if answer == False:
                     print("Destruction aborted. Allowing stack to exist.")
                     return
-
-            self.cfn_client.update_termination_protection(
-                EnableTerminationProtection=False,
-                StackName=self.get_name()
-            )
+            if self.is_complete():
+                self.cfn_client.update_termination_protection(
+                    EnableTerminationProtection=False,
+                    StackName=self.get_name()
+                )
         self.log_action("Delete", "Delete")
         self.hooks.run("delete", "pre", self)
         if self.is_exists() == True:
             self.cfn_client.delete_stack( StackName=self.get_name() )
+            if self.wait_on_delete == True:
+                self.wait_for_complete()
+
 
     def get_stack_error_message(self, prefix_message="", skip_status = False):
         if skip_status == False:

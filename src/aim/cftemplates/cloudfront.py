@@ -34,6 +34,8 @@ class CloudFront(CFTemplate):
                          stack_tags=stack_tags,
                          stack_order=stack_order)
 
+        origin_access_id_enabled = False
+
         template_fmt = """
 ---
 AWSTemplateFormatVersion: "2010-09-09"
@@ -366,6 +368,7 @@ Outputs:
                 if s3_config.cloudfront_origin == False:
                     origin_table['origin_access_id'] = "''"
                 else:
+                    origin_access_id_enabled = True
                     param_name = "OriginAccessIdentiy"+domain_hash
                     origin_table['sub_origin_access_id'] = "!Ref "+param_name
                     access_id_ref = origin.s3_bucket+'.origin_id'
@@ -413,3 +416,5 @@ Outputs:
         template_table['forwarded_values'] = forwarded_values_yaml
 
         self.set_template(template_fmt.format(template_table))
+        if origin_access_id_enabled:
+          self.stack.wait_on_delete = True

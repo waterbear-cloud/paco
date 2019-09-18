@@ -77,6 +77,8 @@ class SecurityGroups(CFTemplate):
 
         self.enabled = is_sg_enabled
         self.set_template(template.to_yaml())
+        if template_type == 'Rules':
+            self.stack.wait_for_delete = True
 
     def create_group(self, sg_group_id, sg_name, sg_config, template, vpc_id_param):
 

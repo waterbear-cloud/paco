@@ -110,8 +110,8 @@ class S3Context():
                 stack_hooks = StackHooks(self.aim_ctx)
             # S3 Delete on Stack Delete hook
             stack_hooks.add(
-                'S3StackGroup', 'delete', 'post',
-                self.stack_hook_post_delete, None, self.bucket_context
+                'S3StackGroup', 'delete', 'pre',
+                self.stack_hook_pre_delete, None, self.bucket_context
             )
             self.add_stack(
                 bucket_policy_only=False,
@@ -156,7 +156,7 @@ class S3Context():
         if self.stack_group:
             self.stack_group.delete()
 
-    def stack_hook_post_delete(self, hook, hook_arg):
+    def stack_hook_pre_delete(self, hook, hook_arg):
         "Empty the S3 Bucket if enabled"
         bucket_context = hook_arg
         s3_config = bucket_context['config']
@@ -167,6 +167,7 @@ class S3Context():
             print("Deleting S3 Bucket: %s" % (bucket_name))
             bucket = s3_resource.Bucket(bucket_name)
             try:
+                bucket.object_versions.delete()
                 bucket.objects.all().delete()
                 bucket.delete()
             except botocore.exceptions.ClientError as e:

@@ -60,19 +60,21 @@ def str_spc(str_data, size):
         new_str += " "
     return new_str
 
-def big_join(str_list, separator_ch, camel_case=False):
-    # No Camel Case
-    if camel_case == False:
-        return separator_ch.join(str_list)
+def big_join(str_list, separator_ch, camel_case=False, none_value_ok=False):
     # Camel Case
-    camel_str = ""
+    new_str = ""
     first = True
     for str_item in str_list:
+        if none_value_ok == True and str_item == None:
+            continue
         if first == False:
-            camel_str += separator_ch
-        camel_str += str_item[0].upper()+str_item[1:]
+            new_str += separator_ch
+        if camel_case == True:
+            new_str += str_item[0].upper()+str_item[1:]
+        else:
+            new_str += str_item
         first = False
-    return camel_str
+    return new_str
 
 def prefixed_name(resource, name):
     """Returns a name prefixed to be unique:
