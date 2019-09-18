@@ -1,11 +1,14 @@
+import base64
 import os
+import troposphere
+import troposphere.autoscaling
+import troposphere.policies
 from aim import utils
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import StackOutputParam
 from aim.models.references import Reference
 from io import StringIO
 from enum import Enum
-import base64
 
 
 class ASG(CFTemplate):
@@ -48,334 +51,199 @@ class ASG(CFTemplate):
 
         self.asg_config = asg_config
 
+
         # Troposphere
         template = troposphere.Template(
-            Description = 'Example Template',
+            Description = 'AutoScalingGroup: ' + self.ec2_manager_cache_id,
         )
         template.set_version()
         template.add_resource(
             troposphere.cloudformation.WaitConditionHandle(title="EmptyTemplatePlaceholder")
         )
 
-
-
-
-        # Initialize Parameters
-        self.set_parameter('LCEBSOptimized', asg_config.ebs_optimized)
-        self.set_parameter('LCInstanceAMI', asg_config.instance_ami)
-        self.set_parameter('LCInstanceType', asg_config.instance_type)
-        self.set_parameter('LCInstanceMonitoring', asg_config.instance_monitoring)
-        self.set_parameter('LCInstanceKeyPair', asg_config.instance_key_pair)
-        self.set_parameter('LCAssociatePublicIpAddress', asg_config.associate_public_ip_address)
-        if role_profile_arn != None:
-          self.set_parameter('LCIamInstanceProfile', role_profile_arn)
-
-        # Security Group List
-        self.set_list_parameter('LCSecurityGroupList', asg_config.security_groups, 'id')
-
-        asg_name = self.create_resource_name_join(
-            name_list=[self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, grp_id, asg_id],
-            separator='-',
-            camel_case=True
+        security_group_list_param = self.create_cfn_ref_list_param(
+            param_type='List<AWS::EC2::SecurityGroup::Id>',
+            name='SecurityGroupList',
+            description='List of security group ids to attach to the ASG instances.',
+            value=asg_config.security_groups,
+            ref_attribute='id',
+            use_troposphere=True,
+            troposphere_template=template
         )
-        self.set_parameter('ASGName', asg_name)
-        desired_capacity = asg_config.desired_capacity if asg_config.is_enabled() else 0
-        self.set_parameter('ASGDesiredCapacity', desired_capacity)
-        self.set_parameter('ASGHealthCheckGracePeriodSecs', asg_config.health_check_grace_period_secs)
-        self.set_parameter('ASGHealthCheckType', asg_config.health_check_type)
-        self.set_parameter('ASGMaxSize', asg_config.max_instances)
-        min_instances = asg_config.min_instances if asg_config.is_enabled() else 0
-        self.set_parameter('ASGMinSize', min_instances)
-        self.set_parameter('ASGCooldownSecs', asg_config.cooldown_secs)
-
-        # Termination Policies List
-        self.set_parameter('ASGTerminationPolicies', asg_config.termination_policies)
-
-        self.set_parameter('ASGUpdatePolicyMaxBatchSize', asg_config.update_policy_max_batch_size)
-        self.set_parameter('ASGUpdatePolicyMinInstancesInService', asg_config.update_policy_min_instances_in_service)
-
-        # Segment SubnetList is a Segment stack Output based on availability zones
-        subnet_list_output_key = 'SubnetList' + str(self.env_ctx.availability_zones())
-        self.set_parameter(StackOutputParam('ASGSubnetList', segment_stack, subnet_list_output_key, self))
-
-        # Load Balancers: A list of aim.ref netenv.to ELBs
-        if asg_config.load_balancers != None and len(asg_config.load_balancers) > 0:
-            self.set_list_parameter('ASGLoadBalancerNames', asg_config.load_balancers)
-
-        # Target Group Arns
-        if asg_config.target_groups != None and len(asg_config.target_groups) > 0:
-            self.set_list_parameter('TargetGroupArns', asg_config.target_groups, 'arn')
 
 
+        instance_key_pair_param = self.create_cfn_parameter(
+                param_type='String',
+                name='InstanceKeyPair',
+                description='The EC2 SSH KeyPair to assign each ASG instance.',
+                value=asg_config.instance_key_pair,
+                use_troposphere=True,
+                troposphere_template=template)
+
+        instance_key_pair_param = self.create_cfn_parameter(
+                param_type='String',
+                name='InstanceAMI',
+                description='The Amazon Machine Image Id to launch instances with.',
+                value=asg_config.instance_ami,
+                use_troposphere=True,
+                troposphere_template=template)
+
+        launch_config_dict = {
+            'AssociatePublicIpAddress': asg_config.associate_public_ip_address,
+            'EbsOptimized': asg_config.ebs_optimized,
+            'ImageId': troposphere.Ref(instance_key_pair_param),
+            'InstanceMonitoring': asg_config.instance_monitoring,
+            'InstanceType': asg_config.instance_type,
+            'KeyName': troposphere.Ref(instance_key_pair_param),
+            'SecurityGroups': troposphere.Ref(security_group_list_param),
+        }
+
+        user_data_script = ''
+        if ec2_manager_user_data_script != None:
+            user_data_script += ec2_manager_user_data_script
         if asg_config.user_data_script != '':
-            user_data_script = ec2_manager_user_data_script
+            user_data_script += asg_config.user_data_script.replace('#!/bin/bash', '')
+        if user_data_script != '':
             user_data_64 = base64.b64encode(user_data_script.encode('ascii'))
-            self.set_parameter('UserDataScript', user_data_64.decode('ascii'))
+            user_data_script_param = self.create_cfn_parameter(
+                param_type='String',
+                name='UserDataScript',
+                description='User data script to run at instance launch.',
+                value=user_data_64.decode('ascii'),
+                use_troposphere=True,
+                troposphere_template=template)
+            launch_config_dict['UserData'] = troposphere.Ref(user_data_script_param)
 
-        enable_metrics_collection = False
-        if asg_config.monitoring != None and asg_config.monitoring.is_enabled() == True and len(asg_config.monitoring.asg_metrics) > 0:
-            enable_metrics_collection = True
-            self.set_parameter('MetricsCollectionList', asg_config.monitoring.asg_metrics)
-        self.set_parameter('EnableMetricsCollection', enable_metrics_collection)
+        if role_profile_arn != None:
+            launch_config_dict['IamInstanceProfile'] = role_profile_arn
 
-        # Scale in/out policies
-        if asg_config.scaling_policy_cpu_average > 0:
-            self.set_parameter('CPUAverageScalingEnabled', True)
-            self.set_parameter('CPUAverageScalingTargetValue', asg_config.scaling_policy_cpu_average)
-        else:
-            self.set_parameter('CPUAverageScalingEnabled', False)
+        launch_config_res = troposphere.autoscaling.LaunchConfiguration.from_dict(
+            'LaunchConfiguration',
+            launch_config_dict )
+        template.add_resource(launch_config_res)
 
-        # EFS Mounts
-        efs_mount_tags = ""
-        efs_mount_params_yaml = ""
+        asg_subnet_list_param = self.create_cfn_parameter(
+            param_type='List<AWS::EC2::Subnet::Id>',
+            name='ASGSubnetList',
+            description='A list of subnets where the ASG will launch instances',
+            value='aim.ref {}.subnet_id_list'.format(segment_stack.template.config_ref),
+            use_troposphere=True,
+            troposphere_template=template
+        )
+
+        min_instances = asg_config.min_instances if asg_config.is_enabled() else 0
+        desired_capacity = asg_config.desired_capacity if asg_config.is_enabled() else 0
+        asg_dict = {
+            'AutoScalingGroupName': self.create_resource_name_join(
+                name_list=[self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, grp_id, asg_id],
+                separator='-',
+                camel_case=True
+            ),
+            'DesiredCapacity': desired_capacity,
+            'HealthCheckGracePeriod': asg_config.health_check_grace_period_secs,
+            'LaunchConfigurationName': troposphere.Ref(launch_config_res),
+            'MaxSize': asg_config.max_instances,
+            'MinSize': min_instances,
+            'Cooldown': asg_config.cooldown_secs,
+            'HealthCheckType': asg_config.health_check_type,
+            'TerminationPolicies': asg_config.termination_policies,
+            'VPCZoneIdentifier': troposphere.Ref(asg_subnet_list_param),
+        }
+
+        if asg_config.load_balancers != None and len(asg_config.load_balancers) > 0:
+            load_balancer_names_param = self.create_cfn_ref_list_param(
+                param_type='List<String>',
+                name='LoadBalancerNames',
+                description='A list of load balancer names to attach to the ASG',
+                value=asg_config.load_balancers,
+                use_troposphere=True,
+                troposphere_template=template
+            )
+            asg_dict['LoadBalancerNames'] = troposphere.Ref(load_balancer_names_param)
+
+        if asg_config.target_groups != None and len(asg_config.target_groups) > 0:
+            asg_dict['TargetGroupARNs'] = []
+            for target_group_arn in asg_config.target_groups:
+                target_group_arn_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name='TargetGroupARNs'+utils.md5sum(str_data=target_group_arn),
+                    description='A Target Group ARNs to attach to the ASG',
+                    value=target_group_arn+'.arn',
+                    use_troposphere=True,
+                    troposphere_template=template
+                )
+            asg_dict['TargetGroupARNs'].append(troposphere.Ref(target_group_arn_param))
+
+        if asg_config.monitoring != None and \
+                asg_config.monitoring.is_enabled() == True and \
+                len(asg_config.monitoring.asg_metrics) > 0:
+            asg_dict['MetricsCollection'] = [{
+                'Granularity': '1Minute',
+                'Metrics': asg_config.monitoring.asg_metrics
+            }]
+
+        # ASG Tags
+        asg_dict['Tags'] = [
+            troposphere.autoscaling.Tag('Name', asg_dict['AutoScalingGroupName'], True)
+        ]
+
+        # EFS FileSystemId Tags
         for efs_mount in asg_config.efs_mounts:
             target_hash = utils.md5sum(str_data=efs_mount.target)
-            efs_mount_params_yaml += self.create_cfn_parameter(
+            efs_id_param = self.create_cfn_parameter(
                 param_type='String',
                 name='EFSId'+target_hash,
                 description='EFS Id',
-                value=efs_mount.target+'.id')
-            mount_key = 'efs-id-' + target_hash
-            mount_value = '!Ref EFSId'+target_hash
-            efs_mount_tags += """
-        - Key: {}
-          Value: {}
-          PropagateAtLaunch: true\n""".format(mount_key, mount_value)
+                value=efs_mount.target+'.id',
+                use_troposphere=True,
+                troposphere_template=template)
+            asg_tag = troposphere.autoscaling.Tag(
+                'efs-id-' + target_hash,
+                troposphere.Ref(efs_id_param),
+                True
+            )
+            asg_dict['Tags'].append(asg_tag)
 
-        # Define the Template
-        template_fmt = """
-AWSTemplateFormatVersion: '2010-09-09'
-Description: 'ASG: Auto Scaling Group and Launch Configuration'
 
-# EC2 Manager Cache ID: %s
+        asg_res = troposphere.autoscaling.AutoScalingGroup.from_dict(
+            'ASG', asg_dict )
+        template.add_resource(asg_res)
+        asg_res.DependsOn(launch_config_res)
 
-Parameters:
-  LCEBSOptimized:
-    Description: 'Boolean to toggle Optimized EBS I/O.'
-    Type: String
-    AllowedValues:
-      - true
-      - false
+        asg_res.UpdatePolicy = troposphere.policies.UpdatePolicy(
+                AutoScalingRollingUpdate=troposphere.policies.AutoScalingRollingUpdate(
+                    MaxBatchSize=asg_config.update_policy_max_batch_size,
+                    MinInstancesInService=asg_config.update_policy_min_instances_in_service
+                )
+            )
 
-  LCInstanceAMI:
-    Description: 'The Amazon Machine Image Id to raise instances with.'
-    Type: AWS::EC2::Image::Id
+        troposphere.Output(
+            title='ASGName',
+            template=template,
+            Value=troposphere.Ref(asg_res),
+            Description='Auto Scaling Group Name'
+        )
 
-  LCInstanceType:
-    Description: 'The compute type for EC2 instances'
-    Type: String
-
-  LCInstanceMonitoring:
-    Description: 'Boolean to toggle detailed instance montoring.'
-    Type: String
-    AllowedValues:
-      - true
-      - false
-
-  LCInstanceAMI:
-    Description: 'AMI Id to launch instances with.'
-    Type: String
-
-  LCInstanceKeyPair:
-    Description: SSH Keypair to use for the instances created by the ASG
-    Type: AWS::EC2::KeyPair::KeyName
-
-  LCAssociatePublicIpAddress:
-    Description: Set to True if you wish the instances in the ASG to have a public IP.
-    Type: String
-
-  LCIamInstanceProfile:
-    Description: 'The IAM Role to attach to instances'
-    Type: String
-    Default: ""
-
-  LCSecurityGroupList:
-    Description: 'A list of Security Groups Ids'
-    Type: List<AWS::EC2::SecurityGroup::Id>
-
-  ASGName:
-    Description: 'The name of the Auto Scaling Group'
-    Type: String
-
-  ASGDesiredCapacity:
-    Description: 'The default number of instances to have running'
-    Type: Number
-
-  ASGHealthCheckGracePeriodSecs:
-    Description: 'The amount of time after the ASG launches a new instance beacuse it begins checking its health.'
-    Type: Number
-
-  ASGHealthCheckType:
-    Description: 'Where the ASG will query its status from. ELB or EC2'
-    Type: String
-    AllowedValues:
-      - ELB
-      - EC2
-
-  ASGMaxSize:
-    Description: 'The maximum number of instances the ASG will have running at any time.'
-    Type: Number
-
-  ASGMinSize:
-    Description: 'The minimum number of instances the ASG will have running at any time.'
-    Type: Number
-
-  ASGCooldownSecs:
-    Description: 'The amount of time after a scaling activity before any new activities will start.'
-    Type: Number
-
-  ASGTerminationPolicies:
-    Description: 'ASG Termination Policy'
-    Type: List<String>
-
-  ASGUpdatePolicyMaxBatchSize:
-    Description: Specifies the maximum number of instances that AWS CloudFormation updates at a time.
-    Type: Number
-
-  ASGUpdatePolicyMinInstancesInService:
-    Description: 'The minimum number of instances the ASG must have during an update.'
-    Type: Number
-
-  ASGSubnetList:
-    Description: 'A list of subnets where the ASG will launch instances'
-    Type: List<AWS::EC2::Subnet::Id>
-
-  ASGLoadBalancerNames:
-    Description: 'A list of load balancer names to attach to the ASG'
-    Type: List<String>
-    Default: ""
-
-  TargetGroupArns:
-    Description: 'A list of Target Group ARNs to attach to the ASG'
-    Type: List<String>
-    Default: ""
-
-  UserDataScript:
-    Description: 'User Data script'
-    Type: String
-
-  EnableMetricsCollection:
-    Description: 'Boolean indicating whether Group Metrics collection is enabled.'
-    Type: String
-    AllowedValues:
-      - true
-      - false
-
-  MetricsCollectionList:
-    Description: 'A list of ASG Metrics to collection'
-    Type: List<String>
-    Default: AWS::NoValue
-
-  CPUAverageScalingEnabled:
-    Description: 'A boolean indicating whether the ASG will scale based on CPU load'
-    Type: String
-    Default: false
-    AllowedValues:
-      - true
-      - false
-
-  CPUAverageScalingTargetValue:
-    Description: 'An integer representing the average CPU percent load of the ASG threshold for scaling'
-    Type: String
-    Default: 0
-
-%s
-
-Conditions:
-  MetricsCollectionEnabled: !Equals [!Ref EnableMetricsCollection, "true" ]
-  LoadBalancersExist: !Not [!Equals [!Join [',', !Ref ASGLoadBalancerNames], "" ]]
-  TargetGroupArnsExist: !Not [!Equals [!Join [',', !Ref TargetGroupArns], "" ]]
-  InstanceProfileExists: !Not [!Equals [!Ref LCIamInstanceProfile, "" ]]
-  IsCPUAverageScalingEnabled: !Equals [!Ref CPUAverageScalingEnabled, "true" ]
-
-Resources:
-
-  LaunchConfiguration:
-    Type: AWS::AutoScaling::LaunchConfiguration
-    Properties:
-      AssociatePublicIpAddress: !Ref LCAssociatePublicIpAddress
-      EbsOptimized: !Ref LCEBSOptimized
-      ImageId: !Ref LCInstanceAMI
-      InstanceMonitoring: !Ref LCInstanceMonitoring
-      InstanceType: !Ref LCInstanceType
-      KeyName: !Ref LCInstanceKeyPair
-      IamInstanceProfile:
-        !If
-          - InstanceProfileExists
-          - !Ref LCIamInstanceProfile
-          - !Ref AWS::NoValue
-      SecurityGroups: !Ref LCSecurityGroupList
-      UserData: !Ref UserDataScript
-
-  ASG:
-    Type: AWS::AutoScaling::AutoScalingGroup
-    DependsOn: LaunchConfiguration
-    Properties:
-      AutoScalingGroupName: !Ref ASGName
-      DesiredCapacity: !Ref ASGDesiredCapacity
-      HealthCheckGracePeriod: !Ref ASGHealthCheckGracePeriodSecs
-      LaunchConfigurationName: !Ref LaunchConfiguration
-      MaxSize: !Ref ASGMaxSize
-      MinSize: !Ref ASGMinSize
-      Cooldown: !Ref ASGCooldownSecs
-      HealthCheckType: !Ref ASGHealthCheckType
-      TerminationPolicies: !Ref ASGTerminationPolicies
-      VPCZoneIdentifier: !Ref ASGSubnetList
-      LoadBalancerNames:
-        !If
-          - LoadBalancersExist
-          - !Ref ASGLoadBalancerNames
-          - !Ref AWS::NoValue
-      TargetGroupARNs:
-        !If
-          - TargetGroupArnsExist
-          - !Ref TargetGroupArns
-          - !Ref AWS::NoValue
-      MetricsCollection:
-        - !If
-          - MetricsCollectionEnabled
-          - Granularity: 1Minute  # 1Minute is the only valid value
-            Metrics: !Ref MetricsCollectionList
-          - !Ref AWS::NoValue
-      Tags:
-        - Key: Name
-          Value: !Ref ASGName
-          PropagateAtLaunch: true
-        %s
-
-    UpdatePolicy:
-      AutoScalingRollingUpdate:
-        MaxBatchSize: !Ref ASGUpdatePolicyMaxBatchSize
-        MinInstancesInService: !Ref ASGUpdatePolicyMinInstancesInService
-
-  CPUAverageScalingPolicy:
-    Type: AWS::AutoScaling::ScalingPolicy
-    Condition: IsCPUAverageScalingEnabled
-    Properties:
-      AutoScalingGroupName: !Ref ASG
-      PolicyType: TargetTrackingScaling
-      TargetTrackingConfiguration:
-        PredefinedMetricSpecification:
-          PredefinedMetricType: ASGAverageCPUUtilization
-        TargetValue: !Ref CPUAverageScalingTargetValue
-
-Outputs:
-  ASGName:
-    Value: !Ref ASG
-""" % (self.ec2_manager_cache_id, efs_mount_params_yaml, efs_mount_tags)
         self.register_stack_output_config(asg_config_ref, 'ASGName')
         self.register_stack_output_config(asg_config_ref+'.name', 'ASGName')
 
-        asg_table = {
-            'load_balancer_names': '!Ref AWS::NoValue',
-            'target_group_arns': '!Ref AWS::NoValue'
-        }
-        #if asg_config.load_balancers != None:
-        #    asg_table['load_balancer_names'] = "!Ref ASGLoadBalancerNames"
-        #if asg_config.target_groups != None:
-        #    asg_table['target_group_arns'] = "!Ref TargetGroupArns"
+        # CPU Scaling Policy
+        if asg_config.scaling_policy_cpu_average > 0:
+            troposphere.autoscaling.ScalingPolicy(
+                title='CPUAverageScalingPolicy',
+                template=template,
+                AutoScalingGroupName=troposphere.Ref(asg_res),
+                PolicyType='TargetTrackingScaling',
+                TargetTrackingConfiguration=troposphere.autoscaling.TargetTrackingConfiguration(
+                    PredefinedMetricSpecification=troposphere.autoscaling.PredefinedMetricSpecification(
+                        PredefinedMetricType='ASGAverageCPUUtilization'
+                    ),
+                    TargetValue=asg_config.scaling_policy_cpu_average
+                )
+            )
 
-        self.set_template(template_fmt.format(asg_table))
+
+        self.set_template(template.to_yaml())
 
 
 
