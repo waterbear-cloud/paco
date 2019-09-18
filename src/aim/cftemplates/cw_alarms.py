@@ -203,6 +203,7 @@ class CWAlarms(CFTemplate):
 
     def get_alarm_description(self, alarm, notification_cfn_refs):
         """Create an Alarm Description in JSON format with AIM Alarm information"""
+        project = get_parent_by_interface(alarm, schemas.IProject)
         netenv = get_parent_by_interface(alarm, schemas.INetworkEnvironment)
         env = get_parent_by_interface(alarm, schemas.IEnvironment)
         envreg = get_parent_by_interface(alarm, schemas.IEnvironmentRegion)
@@ -220,6 +221,8 @@ class CWAlarms(CFTemplate):
 
         # Base alarm info - used for standalone alarms not part of an application
         description = {
+            "project_name": project.name,
+            "project_title": project.title,
             "alarm_name": alarm.name,
             "classification": alarm.classification,
             "severity": alarm.severity,
