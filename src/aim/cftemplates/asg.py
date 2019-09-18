@@ -80,7 +80,7 @@ class ASG(CFTemplate):
                 use_troposphere=True,
                 troposphere_template=template)
 
-        instance_key_pair_param = self.create_cfn_parameter(
+        instance_ami_param = self.create_cfn_parameter(
                 param_type='String',
                 name='InstanceAMI',
                 description='The Amazon Machine Image Id to launch instances with.',
@@ -91,7 +91,7 @@ class ASG(CFTemplate):
         launch_config_dict = {
             'AssociatePublicIpAddress': asg_config.associate_public_ip_address,
             'EbsOptimized': asg_config.ebs_optimized,
-            'ImageId': troposphere.Ref(instance_key_pair_param),
+            'ImageId': troposphere.Ref(instance_ami_param),
             'InstanceMonitoring': asg_config.instance_monitoring,
             'InstanceType': asg_config.instance_type,
             'KeyName': troposphere.Ref(instance_key_pair_param),
@@ -208,7 +208,7 @@ class ASG(CFTemplate):
         asg_res = troposphere.autoscaling.AutoScalingGroup.from_dict(
             'ASG', asg_dict )
         template.add_resource(asg_res)
-        asg_res.DependsOn(launch_config_res)
+        asg_res.DependsOn = launch_config_res
 
         asg_res.UpdatePolicy = troposphere.policies.UpdatePolicy(
                 AutoScalingRollingUpdate=troposphere.policies.AutoScalingRollingUpdate(
@@ -242,6 +242,40 @@ class ASG(CFTemplate):
                 )
             )
 
+        if asg_config.scaling_policies != None:
+            for scaling_policy_name in asg_config.scaling_policies.keys():
+                scaling_policy = asg_config.scaling_policies[scaling_policy_name]
+                scaling_policy_res = troposphere.autoscaling.ScalingPolicy(
+                    title=self.create_cfn_logical_id_join(
+                        ['ScalingPolicy', scaling_policy_name],
+                        camel_case=True
+                    ),
+                    template=template,
+                    AdjustmentType=scaling_policy.adjustment_type,
+                    AutoScalingGroupName=troposphere.Ref(asg_res),
+                    PolicyType=scaling_policy.policy_type,
+                    ScalingAdjustment=scaling_policy.scaling_adjustment,
+                    Cooldown=scaling_policy.cooldown
+                )
+                for alarm in scaling_policy.alarms:
+                    alarm_hash = utils.md5sum(str_data='{}'.format(alarm.__dict__))
+                    troposphere.cloudwatch.Alarm(
+                        title=self.create_cfn_logical_id_join(
+                            ['ScalingPolicyAlarm', scaling_policy_name, alarm_hash],
+                            camel_case=True
+                        ),
+                        template=template,
+                        ActionsEnabled=True,
+                        AlarmActions=[troposphere.Ref(scaling_policy_res)],
+                        AlarmDescription=alarm.alarm_description,
+                        ComparisonOperator=alarm.comparison_operator,
+                        MetricName=alarm.metric_name,
+                        Namespace=alarm.namespace,
+                        Period=alarm.period,
+                        Threshold=alarm.threshold,
+                        EvaluationPeriods=alarm.evaluation_periods,
+                        Statistic=alarm.statistic
+                    )
 
         self.set_template(template.to_yaml())
 

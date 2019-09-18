@@ -420,9 +420,9 @@ class CFTemplate():
                 if col_3_size < key_len: col_3_size = key_len
 
         for new_param in parameter_list:
+            col_2_size = 12
             if new_param in applied_parameter_list:
                 applied_parameter_list.remove(new_param)
-                col_2_size = 12
                 if self.aim_ctx.verbose == True:
                     utils.log_action_col(
                         '  ',
