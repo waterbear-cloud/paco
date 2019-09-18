@@ -19,6 +19,7 @@ class IAMUserAccountDelegates(CFTemplate):
         aws_region,
         stack_group,
         stack_tags,
+        stack_order,
 
         user_config,
         permissions_list,
@@ -40,6 +41,7 @@ class IAMUserAccountDelegates(CFTemplate):
             aws_name=aws_name,
             stack_group=stack_group,
             stack_tags=stack_tags,
+            stack_order=stack_order,
             iam_capabilities=['CAPABILITY_NAMED_IAM']
         )
 
@@ -59,8 +61,9 @@ class IAMUserAccountDelegates(CFTemplate):
 
         # Restrict account access here so that we can create an empty CloudFormation
         # template which will then delete permissions that have been revoked.
-        if user_config.account_whitelist[0] == 'all' or account_ctx.get_name() in user_config.account_whitelist:
-            self.user_delegate_role_and_policies(user_config, permissions_list)
+        if user_config.is_enabled() == True:
+            if user_config.account_whitelist[0] == 'all' or account_ctx.get_name() in user_config.account_whitelist:
+                self.user_delegate_role_and_policies(user_config, permissions_list)
 
         # Generate the Template
         self.set_template(self.template.to_yaml())

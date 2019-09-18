@@ -380,6 +380,8 @@ class IAMController(Controller):
 
     def iam_user_access_keys_hook(self, hook, user_config):
         # Access Keys
+        if user_config.is_enabled() == False:
+            return
         master_account_ctx = self.aim_ctx.get_account_context(account_ref='aim.ref accounts.master')
         iam_client = master_account_ctx.get_aws_client('iam')
         access_key_config = user_config.programmatic_access
@@ -523,6 +525,7 @@ class IAMController(Controller):
                     master_account_ctx.config.region,
                     self.iam_user_stack_groups[account_name],
                     None, # stack_tags
+                    [StackOrder.PROVISION ,StackOrder.WAITLAST],
                     user_config,
                     permissions_by_account[account_name],
                     config_ref

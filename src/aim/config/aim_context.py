@@ -43,6 +43,10 @@ class AccountContext(object):
                 self.config.account_id,
                 self.admin_creds.admin_iam_role_name
             )
+        self.org_admin_iam_role_arn = 'arn:aws:iam::{}:role/{}'.format(
+                self.config.account_id,
+                self.config.admin_delegate_role_name
+            )
         self.mfa_session_expiry_secs = self.admin_creds.mfa_session_expiry_secs
         self.assume_role_session_expiry_secs = self.admin_creds.assume_role_session_expiry_secs
         if name == "master":
@@ -66,6 +70,7 @@ class AccountContext(object):
                 mfa_arn=admin_creds.mfa_role_arn,
                 admin_creds=admin_creds,
                 admin_iam_role_arn=self.admin_iam_role_arn,
+                org_admin_iam_role_arn=self.org_admin_iam_role_arn,
                 mfa_session_expiry_secs=self.mfa_session_expiry_secs,
                 assume_role_session_expiry_secs=self.assume_role_session_expiry_secs
             )
@@ -81,6 +86,7 @@ class AccountContext(object):
                     mfa_account=self.mfa_account,
                     admin_creds=self.admin_creds,
                     admin_iam_role_arn=self.admin_iam_role_arn,
+                    org_admin_iam_role_arn=self.org_admin_iam_role_arn,
                     mfa_session_expiry_secs=self.mfa_session_expiry_secs,
                     assume_role_session_expiry_secs=self.assume_role_session_expiry_secs
             )
@@ -270,7 +276,7 @@ class AimContext(object):
                 case_sensitive=True):
 
         if yes_no_prompt == True and self.yes:
-            return 'Y'
+            return True
 
         try_again = True
         while try_again:
@@ -314,3 +320,8 @@ class AimContext(object):
 
             try_again = False
         return value
+
+    def legacy_flag(self, flag):
+        if flag in self.project.legacy_flags:
+            return True
+        return False

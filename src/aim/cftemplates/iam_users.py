@@ -52,6 +52,8 @@ class IAMUsers(CFTemplate):
         # IAM Users
         for user_name in iam_users_config.keys():
             iam_user_config = iam_users_config[user_name]
+            if iam_user_config.is_enabled() == False:
+                continue
             self.add_iam_user(iam_user_config)
 
         # Generate the Template

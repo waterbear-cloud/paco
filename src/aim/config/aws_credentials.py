@@ -28,6 +28,7 @@ class AimSTS(object):
                     mfa_arn=None,
                     admin_creds=None,
                     admin_iam_role_arn=None,
+                    org_admin_iam_role_arn=None,
                     mfa_account=None,
                     mfa_session_expiry_secs=None,
                     assume_role_session_expiry_secs=None,
@@ -45,6 +46,7 @@ class AimSTS(object):
         self.mfa_account = mfa_account
         self.admin_creds = admin_creds
         self.admin_iam_role_arn = admin_iam_role_arn
+        self.org_admin_iam_role_arn = org_admin_iam_role_arn
         self.session = None
         self.sts_client = boto3.client('sts')
 
@@ -102,19 +104,24 @@ class AimSTS(object):
             aws_secret_access_key=session_creds['SecretAccessKey'],
             aws_session_token=session_creds['SessionToken'],
         )
-        try:
-            role_creds = sts_client.assume_role(
-                DurationSeconds=self.assume_role_session_expiry_secs,
-                RoleArn=self.admin_iam_role_arn,
-                RoleSessionName='aim-multiaccount-session',
-                #TokenCode=token_code,
-                #SerialNumber=self.mfa_arn
-            )['Credentials']
-        except ClientError as e:
-            message = '{}\n'.format(e)
-            message += 'Unable to assume role: {}\n'.format(self.admin_iam_role_arn)
-            raise StackException(AimErrorCode.Unknown, message = message)
-        self.save_temp_creds(role_creds, self.role_creds_path)
+        for admin_iam_role_arn in [self.admin_iam_role_arn, self.org_admin_iam_role_arn]:
+            try:
+                role_creds = sts_client.assume_role(
+                    DurationSeconds=self.assume_role_session_expiry_secs,
+                    RoleArn=admin_iam_role_arn,
+                    RoleSessionName='aim-multiaccount-session',
+                    #TokenCode=token_code,
+                    #SerialNumber=self.mfa_arn
+                )['Credentials']
+            except ClientError as e:
+                if admin_iam_role_arn == self.org_admin_iam_role_arn:
+                    message = '{}\n'.format(e)
+                    message += 'Unable to assume roles: {}\n'.format(self.admin_iam_role_arn)
+                    message += '                        {}\n'.format(self.org_admin_iam_role_arn)
+                    raise StackException(AimErrorCode.Unknown, message = message)
+            else:
+                self.save_temp_creds(role_creds, self.role_creds_path)
+                break
         return role_creds
 
     def get_temporary_session(self):

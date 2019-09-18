@@ -563,7 +563,7 @@ class Stack():
                 if answer == False:
                     print("Destruction aborted. Allowing stack to exist.")
                     return
-            if self.is_complete():
+            if self.is_complete() or self.is_failed():
                 self.cfn_client.update_termination_protection(
                     EnableTerminationProtection=False,
                     StackName=self.get_name()
