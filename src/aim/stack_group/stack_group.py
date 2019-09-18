@@ -335,6 +335,7 @@ class Stack():
     def is_exists(self):
         if not "DOES_NOT_EXIST" in self.status.name:
             return True
+        return False
 
     def get_outputs_value(self, key):
 
@@ -563,7 +564,7 @@ class Stack():
                 if answer == False:
                     print("Destruction aborted. Allowing stack to exist.")
                     return
-            if self.is_complete() or self.is_failed():
+            if self.is_deleting() == False:
                 self.cfn_client.update_termination_protection(
                     EnableTerminationProtection=False,
                     StackName=self.get_name()
@@ -661,10 +662,12 @@ class Stack():
     def delete(self):
         self.template.delete()
         self.delete_stack()
+        utils.log_action('Delete', 'Stack', 'Cache', self.cache_filename)
         try:
             os.remove(self.cache_filename)
         except FileNotFoundError:
             pass
+        utils.log_action('Delete', 'Stack', 'Outputs', self.output_filename)
         try:
             os.remove(self.output_filename)
         except FileNotFoundError:

@@ -7,8 +7,12 @@ from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks
 
 class LambdaController(Controller):
     def __init__(self, aim_ctx):
+        if aim_ctx.legacy_flag('lambda_controller_type_2019_09_18') == True:
+            controller_type = 'Service'
+        else:
+            controller_type = 'Resource'
         super().__init__(aim_ctx,
-                         "Service",
+                         controller_type,
                          "Lambda")
 
         self.init_done = False

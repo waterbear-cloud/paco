@@ -9,17 +9,16 @@ from enum import Enum
 class Route53(CFTemplate):
     def __init__(self, aim_ctx, account_ctx, aws_region, stack_group, stack_tags, route53_config, config_ref):
         #aim_ctx.log("Route53 CF Template init")
-
         super().__init__(
             aim_ctx,
             account_ctx,
             aws_region,
             config_ref=None,
-            aws_name="HostedZones",
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
             stack_group=stack_group,
             stack_tags=stack_tags
         )
+        self.set_aws_name('HostedZones')
 
 
         # Define the Template
@@ -27,17 +26,14 @@ class Route53(CFTemplate):
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Route53 Hosted Zone'
 
-#Parameters:
-#{0[parameters_yaml]:s}
-
 Resources:
+  EmptyTemplatePlaceholder:
+    Type: AWS::CloudFormation::WaitConditionHandle
 {0[resources_yaml]:s}
 
-Outputs:
 {0[outputs_yaml]:s}
 """
         template_table = {
-            'parameters_yaml': "",
             'resources_yaml': "",
             'outputs_yaml': ""
         }
@@ -100,13 +96,16 @@ Outputs:
             'resource_record': None
         }
 
-        parameters_yaml = ""
         resources_yaml = ""
         outputs_yaml = ""
         records_set_yaml = ""
 
+        account_zones_enabled = False
         for zone_id in route53_config.get_zone_ids(account_name=account_ctx.get_name()):
             zone_config = route53_config.hosted_zones[zone_id]
+            if zone_config.is_enabled() == False:
+                continue
+            account_zones_enabled = True
             utils.log_action_col("Init", "Route53", "Hosted Zone", "{}".format(zone_config.domain_name))
             res_name_prefix = self.gen_cf_logical_name(zone_id, '_')
             hosted_zone_table['cf_resource_name_prefix'] = res_name_prefix
@@ -140,11 +139,12 @@ Outputs:
             resources_yaml += hosted_zone_fmt.format(hosted_zone_table)
             outputs_yaml += outputs_fmt.format(hosted_zone_table)
 
-        template_table['parameters_yaml'] = parameters_yaml
         template_table['resources_yaml'] = resources_yaml
+        if outputs_yaml != '':
+            outputs_yaml = 'Outputs:\n' + outputs_yaml
         template_table['outputs_yaml'] = outputs_yaml
 
-
+        self.enabled = account_zones_enabled
         self.set_template(template_fmt.format(template_table))
 
 

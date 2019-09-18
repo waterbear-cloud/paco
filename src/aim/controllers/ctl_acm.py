@@ -10,7 +10,7 @@ from aim.controllers.controllers import Controller
 class ACMController(Controller):
     def __init__(self, aim_ctx):
         super().__init__(aim_ctx,
-                         "Service",
+                         "Resource",
                          "ACM")
 
         self.cert_config_map = {}

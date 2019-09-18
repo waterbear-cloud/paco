@@ -7,8 +7,13 @@ from aim.controllers.controllers import Controller
 
 class Route53Controller(Controller):
     def __init__(self, aim_ctx):
+        if aim_ctx.legacy_flag('route53_controller_type_2019_09_18') == True:
+            controller_type = 'Service'
+        else:
+            controller_type = 'Resource'
+
         super().__init__(aim_ctx,
-                         "Service",
+                         controller_type,
                          "Route53")
 
         if not 'route53' in self.aim_ctx.project['resource'].keys():
@@ -53,6 +58,10 @@ class Route53Controller(Controller):
     def provision(self):
         for stack_grp in self.stack_grps:
             stack_grp.provision()
+
+    def delete(self):
+        for stack_grp in reversed(self.stack_grps):
+            stack_grp.delete()
 
     def get_stack(self, zone_id):
         for stack_grp in self.stack_grps:

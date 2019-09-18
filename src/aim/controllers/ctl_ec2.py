@@ -11,7 +11,7 @@ yaml.default_flow_sytle = False
 class EC2Controller(Controller):
     def __init__(self, aim_ctx):
         super().__init__(aim_ctx,
-                         "Service",
+                         "Resource",
                          "EC2")
 
         self.config = self.aim_ctx.project['resource']['ec2']

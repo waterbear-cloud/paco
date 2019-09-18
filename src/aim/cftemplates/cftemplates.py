@@ -1119,7 +1119,7 @@ class CFTemplate():
                 break
         print('', end='\n')
 
-    def set_aws_name(self, template_name, grp_id, res_id=None):
+    def set_aws_name(self, template_name, grp_id=None, res_id=None):
         if self.aim_ctx.legacy_flag('cftemplate_aws_name_2019_09_17') == True:
             self.aws_name = utils.big_join(
                 str_list=[template_name, grp_id, res_id],
