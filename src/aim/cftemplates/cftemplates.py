@@ -147,7 +147,7 @@ class CFTemplate():
                  account_ctx,
                  aws_region,
                  config_ref,
-                 aws_name,
+                 aws_name=None,
                  enabled=True,
                  environment_name = None,
                  stack_group=None,
@@ -168,7 +168,7 @@ class CFTemplate():
         self.parameters = []
         self.capabilities = iam_capabilities
         self.body = None
-        self.aws_name = aws_name.replace('_', '-')
+        self.aws_name = aws_name
         self.config_ref = config_ref
         self.template_file_id = None
         self.environment_name = environment_name
@@ -352,7 +352,8 @@ class CFTemplate():
         self.generate_template()
         self.validate_template_changes()
 
-    def delete_applied_data(self):
+    def delete(self):
+        # Applied Template Data
         applied_template_path, _ = self.init_template_store_paths()
         applied_parameters_path = self.init_applied_parameters_path(applied_template_path)
         utils.log_action_col('Delete', 'Template', 'Applied', str(applied_template_path))
@@ -363,8 +364,11 @@ class CFTemplate():
         except FileNotFoundError:
             pass
 
-    def delete(self):
-        self.delete_applied_data()
+        # The template itself
+        try:
+            pathlib.Path(self.get_yaml_path()).unlink()
+        except FileNotFoundError:
+            pass
         pass
 
     def generate_template(self):
@@ -1113,3 +1117,16 @@ class CFTemplate():
             else:
                 break
         print('', end='\n')
+
+    def set_aws_name(self, template_name, grp_id, res_id=None):
+        if self.aim_ctx.legacy_flag('cftemplate_aws_name_2019_09_17') == True:
+            self.aws_name = utils.big_join(
+                str_list=[template_name, grp_id, res_id],
+                separator_ch='-',
+                none_value_ok=True)
+        else:
+            self.aws_name = utils.big_join(
+                str_list=[grp_id, res_id, template_name],
+                separator_ch='-',
+                none_value_ok=True)
+        self.aws_name.replace('_', '-')

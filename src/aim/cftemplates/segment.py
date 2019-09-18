@@ -27,11 +27,11 @@ class Segment(CFTemplate):
             aws_region,
             enabled=segment_config.is_enabled(),
             config_ref=segment_config_ref,
-            aws_name='-'.join(["Segments", segment_id]),
             stack_group=stack_group,
             stack_tags=stack_tags,
             stack_order=stack_order
         )
+        self.set_aws_name('Segments', segment_id)
 
         vpc_stack = self.env_ctx.get_vpc_stack()
         availability_zones = self.env_ctx.availability_zones()
