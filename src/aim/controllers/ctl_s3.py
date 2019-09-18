@@ -164,7 +164,7 @@ class S3Context():
         deletion_policy = s3_config.deletion_policy
         bucket_name = s3_config.get_bucket_name()
         if deletion_policy == "delete":
-            print("Deleting S3 Bucket: %s" % (bucket_name))
+            utils.log_action_col('Run', 'Hook', 'Delete', bucket_name)
             bucket = s3_resource.Bucket(bucket_name)
             try:
                 bucket.object_versions.delete()
@@ -175,7 +175,7 @@ class S3Context():
                     print("%s: %s" % (e.response['Error']['Code'], e.response['Error']['Message']))
                     raise StackException(AimErrorCode.Unknown)
         else:
-            print("Retaining S3 Bucket: %s" % (bucket_name))
+            utils.log_action_col('Run', 'Hook', 'Retain', bucket_name)
 
     def empty_bucket(self):
         if self.bucket_context == None:

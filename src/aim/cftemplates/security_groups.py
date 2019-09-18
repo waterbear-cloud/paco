@@ -27,20 +27,24 @@ class SecurityGroups(CFTemplate):
 
         self.env_ctx = env_ctx
 
-        aws_name = '-'.join(['SecurityGroups', sg_group_id])
-        if template_type == 'Rules':
-            aws_name += '-Rules'
-
         super().__init__(
             aim_ctx,
             account_ctx,
             aws_region,
             config_ref=sg_groups_config_ref,
-            aws_name=aws_name,
             stack_group=stack_group,
             stack_tags=stack_tags,
             environment_name=self.env_ctx.env_id,
         )
+
+        rules_id = None
+        if template_type == 'Rules':
+            rules_id = 'Rules'
+        if self.aim_ctx.legacy_flag('cftemplate_aws_name_2019_09_17') == True:
+            template_name = 'SecurityGroups'
+        else:
+            template_name = 'SG'
+        self.set_aws_name(template_name, sg_group_id, rules_id)
 
         self.source_group_param_cache = {}
 

@@ -365,6 +365,7 @@ class CFTemplate():
             pass
 
         # The template itself
+        utils.log_action_col('Delete', 'Template', 'Build', str(self.get_yaml_path()))
         try:
             pathlib.Path(self.get_yaml_path()).unlink()
         except FileNotFoundError:

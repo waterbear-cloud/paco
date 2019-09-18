@@ -417,4 +417,4 @@ Outputs:
 
         self.set_template(template_fmt.format(template_table))
         if origin_access_id_enabled:
-          self.stack.wait_on_delete = True
+          self.stack.wait_for_delete = True

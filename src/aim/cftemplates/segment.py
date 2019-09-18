@@ -20,6 +20,7 @@ class Segment(CFTemplate):
 
         #aim_ctx.log("Segment CF Template init")
         self.env_ctx = env_ctx
+
         # Super
         super().__init__(
             aim_ctx,

@@ -148,7 +148,7 @@ class StackHooks():
 
     def run(self, stack_action, stack_timing, stack):
         for hook in self.hooks[stack_action][stack_timing]:
-            stack.log_action("Provision", "Hook", message=": {}: {}: {}".format(hook['name'], stack_timing, stack_action))
+            stack.log_action('Run', "Hook", message=": {}: {}: {}".format(hook['name'], stack_timing, stack_action))
             hook['method'](hook, hook['arg'])
 
     def gen_cache_id(self):
@@ -197,7 +197,7 @@ class Stack():
         self.update_only = update_only
         self.change_protected = change_protected
         # Wait for stack to delete if this flag is set
-        self.wait_on_delete = False
+        self.wait_for_delete = False
 
         self.tags = StackTags(stack_tags)
         self.tags.add_tag('AIM-Stack', 'true')
@@ -572,7 +572,7 @@ class Stack():
         self.hooks.run("delete", "pre", self)
         if self.is_exists() == True:
             self.cfn_client.delete_stack( StackName=self.get_name() )
-            if self.wait_on_delete == True:
+            if self.wait_for_delete == True:
                 self.wait_for_complete()
 
 
