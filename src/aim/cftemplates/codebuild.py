@@ -26,13 +26,14 @@ class CodeBuild(CFTemplate):
                  artifacts_bucket_name,
                  config_ref):
         self.env_ctx = env_ctx
-        #aim_ctx.log("S3 CF Template init")
+
+        aws_name = '-'.join(["CodeBuild", aws_name])
         super().__init__(aim_ctx,
                          account_ctx,
                          aws_region,
                          enabled=action_config.is_enabled(),
                          config_ref=config_ref,
-                         aws_name='-'.join(["CodeBuild", aws_name]),
+                         aws_name=aws_name,
                          iam_capabilities=["CAPABILITY_NAMED_IAM"],
                          stack_group=stack_group,
                          stack_tags=stack_tags)
@@ -188,6 +189,39 @@ class CodeBuild(CFTemplate):
             Roles=[troposphere.Ref(project_role_res)]
         )
         template.add_resource(project_policy_res)
+
+        # User defined policies
+        for policy in action_config.role_policies:
+            policy_name = self.create_resource_name_join(
+                name_list=[self.res_name_prefix, 'CodeBuild-Project', policy.name],
+                separator='-',
+                filter_id='IAM.Policy.PolicyName',
+                hash_long_names=True,
+                camel_case=True
+            )
+            statement_list = []
+
+            for statement in policy.statement:
+                action_list = []
+                for action in statement.action:
+                    action_parts = action.split(':')
+                    action_list.append(Action(action_parts[0], action_parts[1]))
+                statement_list.append(
+                    Statement(
+                        Effect=statement.effect,
+                        Action=action_list,
+                        Resource=statement.resource
+                    )
+                )
+            troposphere.iam.PolicyType(
+                title=self.create_cfn_logical_id('CodeBuildProjectPolicy'+policy.name, camel_case=True),
+                template=template,
+                PolicyName=policy_name,
+                PolicyDocument=PolicyDocument(
+                    Statement=statement_list,
+                ),
+                Roles=[troposphere.Ref(project_role_res)]
+            )
 
         # CodeBuild Project Resource
         timeout_mins_param = self.create_cfn_parameter(

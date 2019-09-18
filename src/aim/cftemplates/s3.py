@@ -111,6 +111,8 @@ class S3(CFTemplate):
             )
             self.register_stack_output_config(config_ref + '.name', bucket_name_output_id)
 
+        # Bucket Policy
+        policy_statements = []
         if bucket.cloudfront_origin == True:
             # CloudFront OriginAccessIdentity resource
             cloudfront_origin_resource = troposphere.cloudfront.CloudFrontOriginAccessIdentity.from_dict(
@@ -119,28 +121,37 @@ class S3(CFTemplate):
             )
             template.add_resource(cloudfront_origin_resource)
 
+            policy_statements.append(
+                Statement(
+                    Effect = Allow,
+                    Principal = Principal('CanonicalUser',troposphere.GetAtt('CloudFrontOriginAccessIdentity','S3CanonicalUserId')),
+                    Action = [awacs.s3.GetObject],
+                    Resource = ['arn:aws:s3:::{}/*'.format(bucket_name)],
+                )
+            )
+
             # S3 BucketPolicy resource
-            policy = Policy(
-                Version='2012-10-17',
-                Statement=[
-                    Statement(
-                        Effect = Allow,
-                        Principal = Principal('CanonicalUser',troposphere.GetAtt('CloudFrontOriginAccessIdentity','S3CanonicalUserId')),
-                        Action = [awacs.s3.GetObject],
-                        Resource = ['arn:aws:s3:::{}/*'.format(bucket_name)],
-                    )
-                ]
-            )
-            bucket_policy_resource = troposphere.s3.BucketPolicy(
-                'CloudFrontBucketPolicy',
-                Bucket = bucket_name,
-                PolicyDocument = policy,
-            )
-            bucket_policy_resource.DependsOn = [
-                'CloudFrontOriginAccessIdentity',
-                s3_logical_id
-            ]
-            template.add_resource(bucket_policy_resource)
+            #policy = Policy(
+            #    Version='2012-10-17',
+            #    Statement=[
+            #        Statement(
+            #            Effect = Allow,
+            #            Principal = Principal('CanonicalUser',troposphere.GetAtt('CloudFrontOriginAccessIdentity','S3CanonicalUserId')),
+            #            Action = [awacs.s3.GetObject],
+            #            Resource = ['arn:aws:s3:::{}/*'.format(bucket_name)],
+            #        )
+            #    ]
+            #)
+            #bucket_policy_resource = troposphere.s3.BucketPolicy(
+            #    'CloudFrontBucketPolicy',
+            #    Bucket = bucket_name,
+            #    PolicyDocument = policy,
+            #)
+            #bucket_policy_resource.DependsOn = [
+            #    'CloudFrontOriginAccessIdentity',
+            #    s3_logical_id
+            #]
+            #template.add_resource(bucket_policy_resource)
 
             # Output CloudFrontOriginAccessIdentity
             template.add_output(
@@ -151,15 +162,16 @@ class S3(CFTemplate):
             )
             self.register_stack_output_config(config_ref + '.origin_id', 'CloudFrontOriginAccessIdentity')
 
-        elif len(bucket.policy) > 0:
+        if len(bucket.policy) > 0:
             # Bucket Policy
             # ToDo: allow mixing CloudFront Origin policies and other bucket policies together
 
             # Statement
-            statements = []
             for policy_statement in bucket.policy:
-                if policy_statement.processed == True:
-                    continue
+                # XXX: Disabled: Bucket policies are overwritten when updated with a new stack.
+                #                This means we want all of the policies previously provisioned.
+                #if policy_statement.processed == True:
+                #    continue
                 statement_dict = {
                     'Effect': policy_statement.effect,
                     'Action': [
@@ -190,22 +202,26 @@ class S3(CFTemplate):
                 else:
                     statement_dict['Resource'] = [bucket_arn]
 
-                statements.append(
+                policy_statements.append(
                     Statement(**statement_dict)
                 )
-
+        if len(policy_statements) > 0:
             bucket_policy_resource = troposphere.s3.BucketPolicy(
                 cfn_logical_id_prefix + 'BucketPolicy',
                 template = template,
                 Bucket = bucket_name,
                 PolicyDocument = Policy(
                     Version = '2012-10-17',
-                    Statement = statements,
-                ),
+                    Statement = policy_statements,
+                )
             )
 
+            depends_on = []
             if bucket_policy_only == False:
-                bucket_policy_resource.DependsOn = s3_resource
+                depends_on.append(s3_resource)
+            if bucket.cloudfront_origin == True:
+                depends_on.append('CloudFrontOriginAccessIdentity')
+            bucket_policy_resource.DependsOn = depends_on
 
         # Generate the Template
         self.set_template(template.to_yaml())

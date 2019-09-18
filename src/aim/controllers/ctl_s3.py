@@ -121,11 +121,13 @@ class S3Context():
 
     def add_bucket_policy(self, policy_dict, stack_hooks=None, new_stack=True):
         bucket_config = self.bucket_context['config']
+        # XXX: Disabled: Bucket policies are overwritten when updated with a new stack.
+        #                This means we want all of the policies previously provisioned.
         # If this is a new stack, mark previous policies as processed so they
         # are not written twice.
-        if new_stack == True:
-            for policy in bucket_config.policy:
-                policy.processed = True
+        #if new_stack == True:
+            #for policy in bucket_config.policy:
+            #    policy.processed = True
         bucket_config.add_policy(policy_dict)
         self.add_stack(
             bucket_policy_only=True,

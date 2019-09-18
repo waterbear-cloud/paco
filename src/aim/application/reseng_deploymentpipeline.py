@@ -28,6 +28,8 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         self.source_stage = None
 
     def init_stage(self, stage_config):
+        if stage_config == None:
+            return
         for action_name in stage_config.keys():
             action_config = stage_config[action_name]
             action_config.resolve_ref_obj = self

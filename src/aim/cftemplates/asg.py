@@ -48,6 +48,18 @@ class ASG(CFTemplate):
 
         self.asg_config = asg_config
 
+        # Troposphere
+        template = troposphere.Template(
+            Description = 'Example Template',
+        )
+        template.set_version()
+        template.add_resource(
+            troposphere.cloudformation.WaitConditionHandle(title="EmptyTemplatePlaceholder")
+        )
+
+
+
+
         # Initialize Parameters
         self.set_parameter('LCEBSOptimized', asg_config.ebs_optimized)
         self.set_parameter('LCInstanceAMI', asg_config.instance_ami)
@@ -97,7 +109,6 @@ class ASG(CFTemplate):
 
         if asg_config.user_data_script != '':
             user_data_script = ec2_manager_user_data_script
-            user_data_script += asg_config.user_data_script.replace('#!/bin/bash', '')
             user_data_64 = base64.b64encode(user_data_script.encode('ascii'))
             self.set_parameter('UserDataScript', user_data_64.decode('ascii'))
 
