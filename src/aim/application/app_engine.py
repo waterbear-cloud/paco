@@ -98,7 +98,7 @@ class ApplicationEngine():
                 res_config.title_or_name + ': '+ res_config.name,
                 enabled = res_config.is_enabled())
 
-    def init_alarms(self, template_name, grp_id, res_id, res_config, res_stack_tags):
+    def init_alarms(self, resoruce_type, grp_id, res_id, res_config, res_stack_tags):
         aim.cftemplates.CWAlarms(
             self.aim_ctx,
             self.account_ctx,
@@ -110,9 +110,9 @@ class ApplicationEngine():
             res_config.type,
             res_config.aim_ref_parts,
             res_config,
-            template_name,
             grp_id,
-            res_id
+            res_id,
+            resoruce_type
         )
 
     def init_apigatewayrestapi_resource(self, grp_id, res_id, res_config, res_stack_tags):

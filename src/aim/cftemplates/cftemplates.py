@@ -350,7 +350,6 @@ class CFTemplate():
     def provision(self):
         #print("cftemplate: provision: " + self.get_yaml_path())
         self.generate_template()
-        self.validate_template_changes()
 
     def delete(self):
         # Applied Template Data

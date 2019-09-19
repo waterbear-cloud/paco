@@ -509,6 +509,15 @@ class Stack():
         self.log_action("Provision", "Update")
         stack_parameters = self.template.generate_stack_parameters()
         self.template.validate_stack_parameters(stack_parameters)
+        self.template.validate_template_changes()
+
+        if self.aim_ctx.yes == False:
+            print("A Stack is about to be modified: {}".format(self.get_name()))
+            answer = self.aim_ctx.input("Make changes to the stack?", yes_no_prompt=True)
+            if answer == False:
+                print("Stack update aborted.")
+                return
+
         self.hooks.run("update", "pre", self)
         while True:
             try:
