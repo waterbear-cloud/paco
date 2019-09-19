@@ -17,8 +17,6 @@ class NATGateway(CFTemplate):
                  stack_tags,
                  stack_order,
                  nat_config):
-        #aim_ctx.log("NATGateway CF Template init")
-        aws_name = '-'.join(["NGW", nat_config.name])
 
         super().__init__(
             aim_ctx,
@@ -26,12 +24,12 @@ class NATGateway(CFTemplate):
             aws_region,
             enabled=nat_config.is_enabled(),
             config_ref=nat_config.aim_ref_parts,
-            aws_name=aws_name,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
             stack_group=stack_group,
             stack_tags=stack_tags,
             stack_order=stack_order
         )
+        self.set_aws_name('NGW', nat_config.name)
 
         network_config = get_parent_by_interface(nat_config, schemas.INetworkEnvironment)
 

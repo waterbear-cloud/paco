@@ -14,21 +14,20 @@ class RDS(CFTemplate):
                  aws_region,
                  stack_group,
                  stack_tags,
-                 aws_name,
                  app_id,
                  grp_id,
+                 res_id,
                  rds_config,
                  config_ref=None):
 
-        aws_name = '-'.join(['RDS', aws_name])
         super().__init__(aim_ctx,
                          account_ctx,
                          aws_region,
                          enabled=rds_config.is_enabled(),
                          config_ref=config_ref,
-                         aws_name=aws_name,
                          stack_group=stack_group,
                          stack_tags=stack_tags)
+        self.set_aws_name('RDS', grp_id, res_id)
 
         # Define the Template
         template_yaml_fmt = """

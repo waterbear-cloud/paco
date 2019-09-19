@@ -24,20 +24,24 @@ class S3(CFTemplate):
                 config_ref):
 
         bucket = bucket_context['config']
-        aws_name = 'S3'
+
         # Application Group
+        aws_name_list = []
         if bucket_context['group_id'] != None:
-            aws_name = '-'.join([aws_name, bucket_context['group_id']])
+            aws_name_list.append(bucket_context['group_id'])
+
         # Bucket Name
         if schemas.IResource.providedBy(bucket.__parent__) == True:
-            aws_name = '-'.join([aws_name, bucket.__parent__.name, bucket.name ])
+            aws_name_list.extend([bucket.__parent__.name, bucket.name])
             cfn_logical_id_prefix = self.create_cfn_logical_id_join([bucket.__parent__.name, bucket.name ], True)
         else:
-            aws_name = '-'.join([aws_name, bucket.name ])
+            aws_name_list.append(bucket.name)
             cfn_logical_id_prefix = self.create_cfn_logical_id_join([bucket.name ], True)
+
         # Policy
         if bucket_policy_only == True:
-            aws_name += '-policy'
+            aws_name_list.append('policy')
+            #aws_name += '-policy'
 
         super().__init__(
             aim_ctx,
@@ -45,12 +49,12 @@ class S3(CFTemplate):
             aws_region,
             enabled=bucket_context['config'].is_enabled(),
             config_ref=config_ref,
-            aws_name=aws_name,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
             stack_group=stack_group,
             stack_tags=stack_tags,
             stack_hooks=stack_hooks,
         )
+        self.set_aws_name('S3', aws_name_list)
 
         self.s3_context_id = config_ref
         self.bucket_context = bucket_context

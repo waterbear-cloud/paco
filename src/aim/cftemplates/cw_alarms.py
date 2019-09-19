@@ -28,19 +28,20 @@ class CWAlarms(CFTemplate):
         res_type,
         res_config_ref,
         resource,
-        aws_name
+        template_name,
+        grp_id,
+        res_id,
     ):
-        aws_name='-'.join([aws_name, 'Alarms'])
         super().__init__(
             aim_ctx,
             account_ctx,
             aws_region,
             enabled=resource.is_enabled(),
             config_ref=res_config_ref,
-            aws_name=aws_name,
             stack_group=stack_group,
             stack_tags=stack_tags
         )
+        self.set_aws_name(template_name, grp_id, res_id, 'Alarms')
         self.alarm_sets = alarm_sets
         self.dimension = vocabulary.cloudwatch[res_type]['dimension']
 

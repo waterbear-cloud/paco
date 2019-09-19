@@ -25,11 +25,10 @@ class VPC(CFTemplate):
             aws_region=aws_region,
             enabled=vpc_config.is_enabled(),
             config_ref=vpc_config_ref,
-            aws_name='-'.join(["VPC"]),
             stack_group=stack_group,
             stack_tags=stack_tags
         )
-
+        self.set_aws_name('VPC')
         template = troposphere.Template()
         template.add_version('2010-09-09')
         template.add_description('Virtual Private Network')

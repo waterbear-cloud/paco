@@ -14,11 +14,11 @@ class CloudTrail(CFTemplate):
             account_ctx,
             aws_region,
             config_ref=None,
-            aws_name="CloudTrail",
             iam_capabilities=["CAPABILITY_IAM"],
             stack_group=stack_group,
             stack_tags=stack_tags
         )
+        self.set_aws_name('CloudTrail')
         template = troposphere.Template()
 
         # create Trail resource

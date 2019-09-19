@@ -15,24 +15,23 @@ class ELB(CFTemplate):
                  stack_tags,
                  env_ctx,
                  app_id,
+                 grp_id,
                  elb_id,
-                 aws_name,
                  elb_config,
                  elb_config_ref):
         #aim_ctx.log("ELB CF Template init")
 
         self.env_ctx = env_ctx
-        segment_stack = self.env_ctx.get_segment_stack(alb_config['segment'])
+        segment_stack = self.env_ctx.get_segment_stack(elb_config['segment'])
 
         super().__init__(aim_ctx=aim_ctx,
                          account_ctx=account_ctx,
                          aws_region=aws_region,
                          enabled=elb_config.is_enabled(),
                          config_ref=elb_config_ref,
-                         aws_name='-'.join([ "ELB", aws_name]),
                          stack_group=stack_group,
                          stack_tags=stack_tags)
-
+        self.set_aws_name('ELB', grp_id, elb_id)
 
         # Initialize Parameters
         self.set_parameter('HealthyThreshold', elb_config['health_check']['healthy_threshold'])

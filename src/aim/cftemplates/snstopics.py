@@ -22,11 +22,11 @@ class SNSTopics(CFTemplate):
         aws_region,
         stack_group,
         stack_tags,
-        aws_name,
+        grp_id,
+        res_id,
         config,
         res_config_ref
     ):
-        aws_name='-'.join([aws_name, 'SNSTopics'])
         enabled_topics = False
         for topic in config:
             if topic.is_enabled():
@@ -37,11 +37,11 @@ class SNSTopics(CFTemplate):
             account_ctx,
             aws_region,
             config_ref=res_config_ref,
-            aws_name=aws_name,
             stack_group=stack_group,
             stack_tags=stack_tags,
             enabled=enabled_topics,
         )
+        self.set_aws_name('SNSTopics', grp_id, res_id)
         self.config = config
 
         # Troposphere Template Initialization

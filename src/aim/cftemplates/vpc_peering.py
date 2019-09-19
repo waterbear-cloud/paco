@@ -26,11 +26,11 @@ class VPCPeering(CFTemplate):
             account_ctx=account_ctx,
             aws_region=aws_region,
             config_ref=vpc_config_ref,
-            aws_name='-'.join(["VPCPeering"]),
             stack_group=stack_group,
             stack_tags=stack_tags,
             environment_name = env_name
         )
+        self.set_aws_name('VPCPeering')
 
         vpc_config = network_config.vpc
         template = troposphere.Template()

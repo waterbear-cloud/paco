@@ -21,7 +21,6 @@ class ASG(CFTemplate):
         stack_tags,
 
         env_ctx,
-        aws_name,
         app_id,
         grp_id,
         asg_id,
@@ -38,17 +37,15 @@ class ASG(CFTemplate):
         segment_stack = self.env_ctx.get_segment_stack(asg_config.segment)
 
         # Super Init:
-        aws_name='-'.join(["ASG", aws_name])
         super().__init__(aim_ctx,
                          account_ctx,
                          aws_region,
                          enabled=asg_config.is_enabled(),
                          config_ref=asg_config_ref,
-                         aws_name=aws_name,
                          stack_group=stack_group,
                          stack_tags=stack_tags,
                          change_protected=asg_config.change_protected)
-
+        self.set_aws_name('ASG', grp_id, asg_id)
         self.asg_config = asg_config
 
 

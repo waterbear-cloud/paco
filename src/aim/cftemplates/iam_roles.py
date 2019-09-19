@@ -14,25 +14,23 @@ class IAMRoles(CFTemplate):
                  aws_region,
                  stack_group,
                  stack_tags,
-                 template_name,
                  role_ref,
+                 grp_id,
                  role_id,
                  role_config,
                  template_params):
-        #aim_ctx.log("IAMRoles CF Template init")
-        aws_name = '-'.join(['Role', template_name])
-        #aws_name = '-'.join([template_name, 'Role'])
+
         super().__init__(
             aim_ctx,
             account_ctx,
             aws_region,
             enabled=role_config.is_enabled(),
             config_ref=role_ref,
-            aws_name=aws_name,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
             stack_group=stack_group,
             stack_tags=stack_tags
         )
+        self.set_aws_name('Role', grp_id, role_id)
 
         self.role_ref = role_ref
 

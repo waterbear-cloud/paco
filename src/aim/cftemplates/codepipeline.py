@@ -17,7 +17,6 @@ class CodePipeline(CFTemplate):
                  stack_group,
                  stack_tags,
                  env_ctx,
-                 aws_name,
                  app_id,
                  grp_id,
                  res_id,
@@ -32,12 +31,11 @@ class CodePipeline(CFTemplate):
                          aws_region,
                          enabled=res_config.is_enabled(),
                          config_ref=cpbd_config_ref,
-                         aws_name='-'.join(["CodePipeline", aws_name]),
                          iam_capabilities=["CAPABILITY_NAMED_IAM"],
                          stack_group=stack_group,
                          stack_tags=stack_tags)
 
-
+        self.set_aws_name('CodePipeline', grp_id, res_id)
         # Troposphere Template Initialization
         template = troposphere.Template()
         template.add_version('2010-09-09')

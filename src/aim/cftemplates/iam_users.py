@@ -26,18 +26,17 @@ class IAMUsers(CFTemplate):
 
         # ---------------------------------------------------------------------------
         # CFTemplate Initialization
-        aws_name = '-'.join(['Accounts'])
         super().__init__(
             aim_ctx,
             account_ctx,
             aws_region,
             config_ref=config_ref,
-            aws_name=aws_name,
             stack_group=stack_group,
             stack_tags=stack_tags,
             stack_hooks=stack_hooks,
             iam_capabilities=['CAPABILITY_NAMED_IAM']
         )
+        self.aws_set_name('Accounts')
 
         # ---------------------------------------------------------------------------
         # Troposphere Template Initialization

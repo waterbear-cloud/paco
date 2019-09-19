@@ -17,7 +17,6 @@ class CodeBuild(CFTemplate):
                  stack_group,
                  stack_tags,
                  env_ctx,
-                 aws_name,
                  app_id,
                  grp_id,
                  res_id,
@@ -27,17 +26,15 @@ class CodeBuild(CFTemplate):
                  config_ref):
         self.env_ctx = env_ctx
 
-        aws_name = '-'.join(["CodeBuild", aws_name])
         super().__init__(aim_ctx,
                          account_ctx,
                          aws_region,
                          enabled=action_config.is_enabled(),
                          config_ref=config_ref,
-                         aws_name=aws_name,
                          iam_capabilities=["CAPABILITY_NAMED_IAM"],
                          stack_group=stack_group,
                          stack_tags=stack_tags)
-
+        self.set_aws_name('CodeBuild', grp_id, res_id)
 
         # Troposphere Template Initialization
         template = troposphere.Template()

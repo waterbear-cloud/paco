@@ -28,22 +28,17 @@ class IAMUserAccountDelegates(CFTemplate):
 
         # ---------------------------------------------------------------------------
         # CFTemplate Initialization
-        aws_name = self.create_resource_name_join(
-            name_list=['Account', 'Delegates', user_config.name],
-            separator='-',
-            camel_case=True
-        )
         super().__init__(
             aim_ctx,
             account_ctx,
             aws_region,
             config_ref=config_ref,
-            aws_name=aws_name,
             stack_group=stack_group,
             stack_tags=stack_tags,
             stack_order=stack_order,
             iam_capabilities=['CAPABILITY_NAMED_IAM']
         )
+        self.set_aws_name('Account-Delegates', user_config.name[0].upper())
 
         self.account_id = account_ctx.id
         self.master_account_id = self.aim_ctx.get_ref('aim.ref accounts.master.id')

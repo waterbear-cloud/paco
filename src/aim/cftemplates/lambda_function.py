@@ -17,24 +17,23 @@ class Lambda(CFTemplate):
         aws_region,
         stack_group,
         stack_tags,
-        aws_name,
+        grp_id,
+        res_id,
         lambda_config,
         lambda_config_ref
     ):
-        #aim_ctx.log("Lambda CF Template init")
-        aws_name += '-Lambda'
 
         super().__init__(
             aim_ctx,
             account_ctx,
             aws_region,
             config_ref=lambda_config_ref,
-            aws_name=aws_name,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
             stack_group=stack_group,
             stack_tags=stack_tags,
             enabled=lambda_config.is_enabled()
         )
+        self.set_aws_name('Lambda', grp_id, res_id)
         self.set_parameter('FunctionDescription', lambda_config.description)
         self.set_parameter('Handler', lambda_config.handler)
         self.set_parameter('Runtime', lambda_config.runtime)

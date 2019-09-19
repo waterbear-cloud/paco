@@ -25,25 +25,24 @@ class ApiGatewayRestApi(CFTemplate):
         aws_region,
         stack_group,
         stack_tags,
-        aws_name,
         app_id,
         grp_id,
+        res_id,
         apigatewayrestapi,
         config_ref=None,
     ):
-        aws_name='-'.join([aws_name, 'ApiGatewayRestApi'])
         super().__init__(
             aim_ctx,
             account_ctx,
             aws_region,
             config_ref=config_ref,
-            aws_name=aws_name,
             stack_group=stack_group,
             stack_tags=stack_tags,
             iam_capabilities=["CAPABILITY_IAM"],
             enabled=apigatewayrestapi.is_enabled(),
         )
         self.apigatewayrestapi = apigatewayrestapi
+        self.set_aws_name('ApiGatewayRestApi', grp_id, res_id)
 
         # ---------------------------------------------------------------------------
         # Troposphere Template Initialization

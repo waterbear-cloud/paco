@@ -14,26 +14,25 @@ class EFS(CFTemplate):
         stack_group,
         stack_tags,
 
-        aws_name,
         env_ctx,
         app_id,
         grp_id,
+        res_id,
         efs_config,
         config_ref):
 
         # ---------------------------------------------------------------------------
         # CFTemplate Initialization
-        aws_name = '-'.join(['EFS', aws_name])
         super().__init__(
             aim_ctx,
             account_ctx,
             aws_region,
             enabled=efs_config.is_enabled(),
             config_ref=config_ref,
-            aws_name=aws_name,
             stack_group=stack_group,
             stack_tags=stack_tags
         )
+        self.set_aws_name('EFS', grp_id, res_id)
 
 
         # ---------------------------------------------------------------------------

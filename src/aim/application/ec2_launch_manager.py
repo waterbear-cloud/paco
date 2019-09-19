@@ -587,15 +587,16 @@ statement:
 
         # Create the CloudWatch Log Groups so that Retention and MetricFilters can be set
         if monitoring.log_sets:
+            log_groups_config_ref = resource.aim_ref_parts+'.log_groups'
             aim.cftemplates.LogGroups(
                 self.aim_ctx,
                 self.account_ctx,
                 self.aws_region,
                 self.stack_group,
                 None, # stack_tags
-                'LG',
+                'LG', # TODO: This should be something unique?
                 resource,
-                'some ref?'
+                log_groups_config_ref,
             )
 
         # Save Configuration

@@ -13,7 +13,6 @@ class CodeDeploy(CFTemplate):
                  stack_group,
                  stack_tags,
                  env_ctx,
-                 aws_name,
                  app_id,
                  grp_id,
                  res_id,
@@ -30,11 +29,11 @@ class CodeDeploy(CFTemplate):
             aws_region,
             enabled=action_config.is_enabled(),
             config_ref=cpbd_config_ref,
-            aws_name='-'.join(["CodeDeploy", aws_name]),
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
             stack_group=stack_group,
             stack_tags=stack_tags
         )
+        self.set_aws_name('CodeDeploy', grp_id, res_id)
 
         self.res_name_prefix = self.create_resource_name_join(
             name_list=[self.env_ctx.get_aws_name(), app_id, grp_id, res_id],

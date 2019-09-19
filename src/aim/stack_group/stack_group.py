@@ -459,7 +459,6 @@ class Stack():
         if self.action != "delete":
             # Create cache file
             new_cache_id = self.gen_cache_id()
-
             with open(self.cache_filename, "w") as cache_fd:
                 cache_fd.write(new_cache_id)
 

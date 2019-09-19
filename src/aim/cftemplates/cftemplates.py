@@ -1056,7 +1056,8 @@ class CFTemplate():
             return
         applied_file_path, new_file_path = self.init_template_store_paths()
         if applied_file_path.exists() == False:
-            copyfile(new_file_path, applied_file_path)
+            log_action_col("Validate", self.account_ctx.get_name(), "New", str(new_file_path))
+            breakpoint()
             return
 
         yaml = YAML(pure=True)
@@ -1119,15 +1120,24 @@ class CFTemplate():
                 break
         print('', end='\n')
 
-    def set_aws_name(self, template_name, grp_id=None, res_id=None):
-        if self.aim_ctx.legacy_flag('cftemplate_aws_name_2019_09_17') == True:
+    def set_aws_name(self, template_name, first_id=None, second_id=None, third_id=None):
+        if isinstance(first_id, list):
+            id_list = first_id
+        else:
+            id_list = [first_id, second_id, third_id]
+
+        # Exceptions: ApiGatewayRestApi | Lambda
+        if self.aim_ctx.legacy_flag('cftemplate_aws_name_2019_09_17') == True and \
+            template_name not in ['ApiGatewayRestApi', 'Lambda', 'SNSTopics']:
+            id_list.insert(0, template_name)
             self.aws_name = utils.big_join(
-                str_list=[template_name, grp_id, res_id],
+                str_list=id_list,
                 separator_ch='-',
                 none_value_ok=True)
         else:
+            id_list.append(template_name)
             self.aws_name = utils.big_join(
-                str_list=[grp_id, res_id, template_name],
+                str_list=id_list,
                 separator_ch='-',
                 none_value_ok=True)
         self.aws_name.replace('_', '-')

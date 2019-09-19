@@ -15,10 +15,9 @@ class ALB(CFTemplate):
                  stack_group,
                  stack_tags,
                  env_ctx,
-                 aws_name,
                  app_id,
-                 alb_id,
                  grp_id,
+                 alb_id,
                  alb_config,
                  alb_config_ref):
         #aim_ctx.log("ALB CF Template init")
@@ -31,10 +30,10 @@ class ALB(CFTemplate):
                          aws_region=aws_region,
                          enabled=alb_config.is_enabled(),
                          config_ref=alb_config_ref,
-                         aws_name='-'.join([ "ALB", aws_name]),
                          stack_group=stack_group,
                          stack_tags=stack_tags,
                          environment_name=self.env_ctx.env_id)
+        self.set_aws_name('ALB', grp_id, alb_id)
 
         # Initialize Parameters
         self.set_parameter('ALBEnabled', alb_config.is_enabled())

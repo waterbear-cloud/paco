@@ -6,30 +6,31 @@ from aim.cftemplates.cftemplates import CFTemplate
 
 
 class Example(CFTemplate):
-    def __init__(self,
-                 aim_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
+    def __init__(
+        self,
+        aim_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
 
-                 example_config,
-                 config_ref):
+        grp_id,
+        res_id,
+        example_config,
+        config_ref):
 
         # ---------------------------------------------------------------------------
         # CFTemplate Initialization
-        aws_name = '-'.join(['Example'])
         super().__init__(
             aim_ctx,
             account_ctx,
             aws_region,
             enabled=example_config.is_enabled(),
             config_ref=config_ref,
-            aws_name=aws_name,
             stack_group=stack_group,
             stack_tags=stack_tags
         )
-
+        self.set_aws_name('Example', grp_id, res_id)
 
         # ---------------------------------------------------------------------------
         # Troposphere Template Initialization

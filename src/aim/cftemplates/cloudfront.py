@@ -15,25 +15,24 @@ class CloudFront(CFTemplate):
                  aws_region,
                  stack_group,
                  stack_tags,
-                 aws_name,
                  app_id,
                  grp_id,
+                 res_id,
+                 factory_name,
                  cloudfront_config,
                  config_ref,
                  stack_order):
 
         # Super Init:
-        aws_name='-'.join(["CloudFront", aws_name])
         super().__init__(aim_ctx,
                          account_ctx,
                          aws_region,
                          enabled=cloudfront_config.is_enabled(),
                          config_ref=config_ref,
-                         aws_name=aws_name,
                          stack_group=stack_group,
                          stack_tags=stack_tags,
                          stack_order=stack_order)
-
+        self.set_aws_name('CloudFront', grp_id, res_id, factory_name)
         origin_access_id_enabled = False
 
         template_fmt = """

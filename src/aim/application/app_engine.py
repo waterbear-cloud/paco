@@ -98,7 +98,7 @@ class ApplicationEngine():
                 res_config.title_or_name + ': '+ res_config.name,
                 enabled = res_config.is_enabled())
 
-    def init_alarms(self, aws_name, res_config, res_stack_tags):
+    def init_alarms(self, template_name, grp_id, res_id, res_config, res_stack_tags):
         aim.cftemplates.CWAlarms(
             self.aim_ctx,
             self.account_ctx,
@@ -110,20 +110,21 @@ class ApplicationEngine():
             res_config.type,
             res_config.aim_ref_parts,
             res_config,
-            aws_name
+            template_name,
+            grp_id,
+            res_id
         )
 
     def init_apigatewayrestapi_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        aws_name = "-".join([grp_id, res_id])
         aim.cftemplates.ApiGatewayRestApi(
             self.aim_ctx,
             self.account_ctx,
             self.aws_region,
             self.stack_group,
             res_stack_tags,
-            aws_name,
             self.app_id,
             grp_id,
+            res_id,
             res_config,
             res_config.aim_ref_parts
         )
@@ -137,9 +138,9 @@ class ApplicationEngine():
             self.aws_region,
             self.stack_group,
             res_stack_tags,
-            aws_name,
             self.app_id,
             grp_id,
+            res_id,
             res_config,
             res_config.aim_ref_parts
         )
@@ -165,23 +166,22 @@ class ApplicationEngine():
             res_config.viewer_certificate.resolve_ref_obj = self
             factory_config.viewer_certificate.resolve_ref_obj = self
             # CloudFront CloudFormation
-            aws_name = '-'.join([grp_id, res_id, factory_name])
             aim.cftemplates.CloudFront(
                 self.aim_ctx,
                 self.account_ctx,
                 self.aws_region,
                 self.stack_group,
                 res_stack_tags,
-                aws_name,
                 self.app_id,
                 grp_id,
+                res_id,
+                factory_name,
                 res_config,
                 cloudfront_config_ref,
                 [StackOrder.PROVISION, StackOrder.WAITLAST]
             )
 
     def init_snstopic_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        aws_name = '-'.join([grp_id, res_id])
         sns_topics_config = [res_config]
         # Strip the last part as SNSTopics loops thorugh a list and will
         # append the name to ref when it needs.
@@ -192,7 +192,8 @@ class ApplicationEngine():
             self.aws_region,
             self.stack_group,
             res_stack_tags,
-            aws_name,
+            grp_id,
+            res_id,
             sns_topics_config,
             res_config_ref
         )
@@ -252,14 +253,14 @@ statement:
             stack_tags=res_stack_tags
         )
 
-        aws_name = '-'.join([grp_id, res_id])
         aim.cftemplates.Lambda(
             self.aim_ctx,
             self.account_ctx,
             self.aws_region,
             self.stack_group,
             res_stack_tags,
-            aws_name,
+            grp_id,
+            res_id,
             res_config,
             res_config.aim_ref_parts
         )
@@ -267,8 +268,7 @@ statement:
         if getattr(res_config, 'monitoring', None) != None and \
             getattr(res_config.monitoring, 'alarm_sets', None) != None and \
                 len(res_config.monitoring.alarm_sets.values()) > 0:
-            aws_name = '-'.join(['Lambda', grp_id, res_id])
-            self.init_alarms(aws_name, res_config, StackTags(res_stack_tags))
+            self.init_alarms('Lambda', grp_id, res_id, res_config, StackTags(res_stack_tags))
 
     def init_acm_resource(self, grp_id, res_id, res_config, res_stack_tags):
         acm_ctl = self.aim_ctx.get_controller('ACM')
@@ -308,8 +308,8 @@ statement:
             res_stack_tags,
             self.env_ctx,
             self.app_id,
+            grp_id,
             res_id,
-            aws_name,
             elb_config,
             res_config.aim_ref_parts
         )
@@ -318,7 +318,6 @@ statement:
         # resolve_ref object for TargetGroups
         for target_group in res_config.target_groups.values():
             target_group.resolve_ref_obj = self
-        aws_name = '-'.join([grp_id, res_id])
         aim.cftemplates.ALB(
             self.aim_ctx,
             self.account_ctx,
@@ -326,17 +325,15 @@ statement:
             self.stack_group,
             res_stack_tags,
             self.env_ctx,
-            aws_name,
             self.app_id,
-            res_id,
             grp_id,
+            res_id,
             res_config,
             res_config.aim_ref_parts
         )
         # add alarms if there is monitoring configuration
         if hasattr(res_config, 'monitoring') and len(res_config.monitoring.alarm_sets.values()) > 0:
-            aws_name = '-'.join(['ALB', grp_id, res_id])
-            self.init_alarms(aws_name, res_config, StackTags(res_stack_tags))
+            self.init_alarms('ALB', grp_id, res_id, res_config, StackTags(res_stack_tags))
 
     def init_asg_resource(self, grp_id, res_id, res_config, res_stack_tags):
 
@@ -396,7 +393,6 @@ role_name: %s""" % ("ASGInstance")
         #        res_id,
         #        res_config
         #    )
-        aws_name = '-'.join([grp_id, res_id])
         aim.cftemplates.ASG(
             self.aim_ctx,
             self.account_ctx,
@@ -405,7 +401,6 @@ role_name: %s""" % ("ASGInstance")
             res_stack_tags,
 
             self.env_ctx,
-            aws_name,
             self.app_id,
             grp_id,
             res_id,
@@ -419,12 +414,10 @@ role_name: %s""" % ("ASGInstance")
         )
 
         if res_config.monitoring and len(res_config.monitoring.alarm_sets.values()) > 0:
-            aws_name = '-'.join(['ASG', grp_id, res_id])
-            self.init_alarms(aws_name, res_config, StackTags(res_stack_tags))
+            self.init_alarms('ASG', grp_id, res_id, res_config, StackTags(res_stack_tags))
 
     def init_ec2_resource(self, grp_id, res_id, res_config, res_stack_tags):
 
-        aws_name = '-'.join([grp_id, res_id])
         aim.cftemplates.EC2(
             self.aim_ctx,
             self.account_ctx,
@@ -432,8 +425,8 @@ role_name: %s""" % ("ASGInstance")
             self.stack_group,
             res_stack_tags,
             self.env_id,
-            aws_name,
             self.app_id,
+            grp_id,
             res_id,
             res_config,
             res_config.aim_ref_parts

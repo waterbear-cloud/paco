@@ -72,7 +72,6 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
                 'aws': self.kms_crypto_principle_list
             }
         }
-        aws_name = '-'.join([grp_id, res_id])
         kms_config_ref = pipeline_config.aim_ref_parts + '.kms'
         self.kms_template = cftemplates.KMS(
             self.aim_ctx,
@@ -80,7 +79,8 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             self.aws_region,
             self.stack_group,
             res_stack_tags,
-            aws_name,
+            grp_id,
+            res_id,
             pipeline_config,
             kms_config_ref,
             kms_config_dict
@@ -94,7 +94,6 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
 
         # CodePipeline
         codepipeline_config_ref = pipeline_config.aim_ref_parts + '.codepipeline'
-        aws_name = '-'.join([grp_id, res_id])
         pipeline_config._template = cftemplates.CodePipeline(
             self.aim_ctx,
             self.pipeline_account_ctx,
@@ -102,7 +101,6 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             self.stack_group,
             res_stack_tags,
             self.env_ctx,
-            aws_name,
             self.app_id,
             grp_id,
             res_id,
@@ -114,14 +112,14 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
 
         # Add CodeBuild Role ARN to KMS Key principal now that the role is created
         kms_config_dict['crypto_principal']['aws'] = self.kms_crypto_principle_list
-        aws_name = '-'.join([grp_id, res_id])
         kms_template = cftemplates.KMS(
             self.aim_ctx,
             self.pipeline_account_ctx,
             self.aws_region,
             self.stack_group,
             res_stack_tags,
-            aws_name,
+            grp_id,
+            res_id,
             pipeline_config,
             kms_config_ref,
             kms_config_dict
@@ -308,7 +306,6 @@ policies:
     def init_stage_action_codedeploy_deploy(self, action_config):
         self.artifacts_bucket_policy_resource_arns.append("aim.sub '${%s}'" % (action_config.aim_ref + '.codedeploy_tools_delegate_role.arn'))
         self.artifacts_bucket_policy_resource_arns.append(self.aim_ctx.get_ref(action_config.auto_scaling_group+'.instance_iam_role.arn'))
-        aws_name = '-'.join([self.grp_id, self.res_id])
         codedeploy_config_ref = action_config.aim_ref_parts
         action_config._template = cftemplates.CodeDeploy(
             self.aim_ctx,
@@ -317,7 +314,6 @@ policies:
             self.stack_group,
             self.res_stack_tags,
             self.env_ctx,
-            aws_name,
             self.app_id,
             self.grp_id,
             self.res_id,
@@ -330,7 +326,6 @@ policies:
     def init_stage_action_codebuild_build(self, action_config):
         self.artifacts_bucket_policy_resource_arns.append("aim.sub '${%s}'" % (action_config.aim_ref + '.project_role.arn'))
         self.kms_crypto_principle_list.append("aim.sub '${%s}'" % (action_config.aim_ref+'.project_role.arn'))
-        aws_name = '-'.join([self.grp_id, self.res_id])
         codebuild_config_ref = action_config.aim_ref_parts + '.codebuild.' + action_config.name
         action_config._template = cftemplates.CodeBuild(
             self.aim_ctx,
@@ -339,7 +334,6 @@ policies:
             self.stack_group,
             self.res_stack_tags,
             self.env_ctx,
-            aws_name,
             self.app_id,
             self.grp_id,
             self.res_id,

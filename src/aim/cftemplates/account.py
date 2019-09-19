@@ -22,11 +22,11 @@ class Account(CFTemplate):
             account_ctx,
             aws_region=account_config.region,
             config_ref=account_config_ref,
-            aws_name=self.account_id,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
             stack_group=stack_group,
             stack_tags=stack_tags
         )
+        self.set_aws_name(self.account_id)
 
         # Define the Template
         template = """

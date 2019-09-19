@@ -19,20 +19,19 @@ class LogGroups(CFTemplate):
         aws_region,
         stack_group,
         stack_tags,
-        aws_name,
+        log_groups_id,
         resource,
         res_config_ref
     ):
-        aws_name='-'.join([aws_name, 'LogGroups'])
         super().__init__(
             aim_ctx,
             account_ctx,
             aws_region,
             config_ref=res_config_ref,
-            aws_name=aws_name,
             stack_group=stack_group,
             stack_tags=stack_tags
         )
+        self.set_aws_name('LogGroups', log_groups_id)
         self.resource = resource
 
         # Define the Template

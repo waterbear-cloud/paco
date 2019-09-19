@@ -12,7 +12,8 @@ class KMS(CFTemplate):
                  aws_region,
                  stack_group,
                  stack_tags,
-                 aws_name,
+                 grp_id,
+                 res_id,
                  res_config,
                  kms_config_ref,
                  kms_config_dict):
@@ -23,10 +24,10 @@ class KMS(CFTemplate):
                          aws_region,
                          enabled=res_config.is_enabled(),
                          config_ref=kms_config_ref,
-                         aws_name='-'.join(["KMS", aws_name]),
                          iam_capabilities=["CAPABILITY_NAMED_IAM"],
                          stack_group=stack_group,
                          stack_tags=stack_tags)
+        self.set_aws_name('KMS', grp_id, res_id)
 
         # Define the Template
         template_fmt = """

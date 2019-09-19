@@ -61,14 +61,14 @@ class PolicyContext():
 
         policy_stack_tags = StackTags(self.stack_tags)
         policy_stack_tags.add_tag('AIM-IAM-Resource-Type', 'ManagedPolicy')
-        template_name = '-'.join([self.group_id, self.policy_id])
         policy_context['template'] = IAMManagedPolicies(self.aim_ctx,
                                                         self.account_ctx,
                                                         self.region,
                                                         self.stack_group,
                                                         policy_stack_tags,
                                                         policy_context,
-                                                        template_name)
+                                                        self.group_id,
+                                                        self.policy_id)
 
         policy_context['stack'] = policy_context['template'].stack
 
@@ -155,14 +155,14 @@ class RoleContext():
 
         policy_stack_tags = StackTags(self.stack_tags)
         policy_stack_tags.add_tag('AIM-IAM-Resource-Type', 'ManagedPolicy')
-        template_name = '-'.join([self.group_id, policy_id])
         policy_context['template'] = IAMManagedPolicies(self.aim_ctx,
                                                         self.account_ctx,
                                                         self.region,
                                                         self.stack_group,
                                                         policy_stack_tags,
                                                         policy_context,
-                                                        template_name)
+                                                        self.group_id,
+                                                        policy_id)
 
         policy_context['stack'] = policy_context['template'].stack
 
@@ -176,14 +176,13 @@ class RoleContext():
         role_stack_tags = StackTags(self.stack_tags)
         role_stack_tags.add_tag('AIM-IAM-Resource-Type', 'Role')
         self.role_config.resolve_ref_obj = self
-        template_name = '-'.join([self.group_id, self.role_id])
         self.role_template = IAMRoles(self.aim_ctx,
                                       self.account_ctx,
                                       self.region,
                                       self.stack_group,
                                       role_stack_tags,
-                                      template_name,
                                       self.role_ref,
+                                      self.group_id,
                                       self.role_id,
                                       self.role_config,
                                       self.template_params)

@@ -28,7 +28,7 @@ class EC2Controller(Controller):
 
     def print_ec2(self, message, sub_entry=False):
         service_name = self.ec2_service_name + ": "
-        if self.ec2_service_name == 'keypair':
+        if self.ec2_service_name == 'keypairs':
             component_name = self.keypair_config.name
         else:
             component_name = 'unknown'
@@ -49,7 +49,7 @@ class EC2Controller(Controller):
         if controller_args['command'] == 'init':
             return
         self.ec2_service_name = controller_args['arg_1']
-        if self.ec2_service_name == 'keypair':
+        if self.ec2_service_name == 'keypairs':
             self.keypair_id = controller_args['arg_2']
             if self.keypair_id == None:
                 print("error: missing keypair id")
@@ -69,12 +69,13 @@ class EC2Controller(Controller):
                 else:
                     # TOOD: Make this more verbose
                     raise StackException(AimErrorCode.Unknown)
+
         else:
             print("EC2 Service: Unknown EC2 service name: %s" % self.ec2_service_name)
 
     def init_command(self, controller_args):
         ec2_component = controller_args['arg_1']
-        if ec2_component != 'keypair':
+        if ec2_component != 'keypairs':
             print("Unknown EC2 init component: {}".format(ec2_component))
             return
         keypair_name = controller_args['arg_2']
@@ -117,7 +118,7 @@ class EC2Controller(Controller):
 
 
     def validate(self):
-        if self.ec2_service_name == 'keypair':
+        if self.ec2_service_name == 'keypairs':
             if self.keypair_info == None:
                 self.print_ec2("Key pair has NOT been provisioned.")
             else:
@@ -126,7 +127,7 @@ class EC2Controller(Controller):
 
 
     def provision(self):
-        if self.ec2_service_name == 'keypair':
+        if self.ec2_service_name == 'keypairs':
             if self.keypair_info != None:
                 self.print_ec2("Key pair has already been provisioned.")
                 return
@@ -139,7 +140,7 @@ class EC2Controller(Controller):
             self.print_ec2("Key: \n%s" % (self.keypair_info['KeyMaterial']), sub_entry=True)
 
     def delete(self):
-        if self.ec2_service_name == 'keypair':
+        if self.ec2_service_name == 'keypairs':
             if self.keypair_info != None:
                 self.print_ec2("Deleting key pair.")
                 self.ec2_client.delete_key_pair(KeyName=self.keypair_config.name)

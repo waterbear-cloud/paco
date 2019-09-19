@@ -15,22 +15,21 @@ class EC2(CFTemplate):
                  stack_group,
                  stack_tags,
                  env_id,
-                 aws_name,
                  app_id,
+                 grp_id,
                  ec2_id,
                  ec2_config,
                  ec2_config_ref):
         #aim_ctx.log("EC2 CF Template init")
 
-        aws_name = '-'.join(["EC2", aws_name])
         super().__init__(aim_ctx,
                          account_ctx,
                          aws_region,
                          enabled=ec2_config.is_enabled(),
                          config_ref=ec2_config_ref,
-                         aws_name=aws_name,
                          stack_group=stack_group,
                          stack_tags=stack_tags)
+        self.set_aws_name('EC2', grp_id, ec2_id)
 
         # Initialize Parameters
         instance_name = self.create_resource_name_join([self.env_ctx.netenv_id, env_id, app_id, ec2_id],

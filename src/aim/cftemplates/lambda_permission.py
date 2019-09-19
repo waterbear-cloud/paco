@@ -20,19 +20,19 @@ class LambdaPermission(CFTemplate):
                  source_arn,
                  config_ref):
 
-        #aim_ctx.log("CLoudWatch Alarms CF Template init")
-        # Super Init:
-        aws_name='-'.join(['LambdaPermission'])
         super().__init__(
             aim_ctx,
             account_ctx,
             aws_region,
             config_ref=config_ref,
-            aws_name=aws_name,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
             stack_group=stack_group,
             stack_tags=stack_tags
         )
+        # TODO: We need to build a more unique name here
+        breakpoint()
+        self.set_aws_name('LambdaPermission')
+
 
         # Initialize Parameters
         if source_arn == None:

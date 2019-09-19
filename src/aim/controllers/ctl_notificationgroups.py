@@ -44,6 +44,7 @@ class NotificationGroupsStackGroup(StackGroup):
             self,
             StackTags(self.stack_tags),
             'NG',
+            None,
             sns_topics_config,
             self.resource_ref
         )

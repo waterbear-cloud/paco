@@ -18,21 +18,20 @@ class ElastiCache(CFTemplate):
                  stack_group,
                  stack_tags,
 
-                 aws_name,
                  app_id,
                  grp_id,
+                 res_id,
                  elasticache_config,
                  config_ref=None):
 
-        aws_name = '-'.join([aws_name, 'ElastiCache', elasticache_config.engine])
         super().__init__(aim_ctx,
                          account_ctx,
                          aws_region,
                          enabled=elasticache_config.is_enabled(),
                          config_ref=config_ref,
-                         aws_name=aws_name,
                          stack_group=stack_group,
                          stack_tags=stack_tags)
+        self.set_aws_name('ElastiCache', grp_id, res_id, elasticache_config.engine )
 
         if elasticache_config.is_enabled() == True:
             # ---------------------------------------------------------------------------
