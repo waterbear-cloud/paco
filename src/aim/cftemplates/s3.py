@@ -5,8 +5,7 @@ import troposphere.cloudfront
 import troposphere.s3
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.models import schemas
-
-from awacs.aws import Action, Allow, Statement, Policy, Principal
+from awacs.aws import Action, Allow, Statement, Policy, Principal, Condition, StringEquals
 from io import StringIO
 from enum import Enum
 
@@ -194,7 +193,18 @@ class S3(CFTemplate):
 
                 # Condition
                 if policy_statement.condition != {}:
-                    statement_dict['Condition'] = policy_statement.condition
+                    # ToDo: support all conditions!
+                    # currently only invoked by ctl_cloudtrail.py
+                    conditions = []
+                    for condition_key, condition_value in policy_statement.condition.items():
+                        if condition_key == 'StringEquals':
+                            conditions.append(StringEquals(condition_value))
+                        else:
+                            raise StackException(
+                                AimErrorCode.Unknown,
+                                message="Only StringEquals is a supported condition (*fix-me!*). Bucket name: {}".format(bucket_name)
+                            )
+                    statement_dict['Condition'] = Condition(conditions)
 
                 # Resource
                 bucket_arn = s3_ctl.get_bucket_arn(self.s3_context_id)

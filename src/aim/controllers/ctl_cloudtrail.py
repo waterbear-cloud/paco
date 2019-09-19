@@ -3,6 +3,7 @@ import aim.models.applications
 import os
 from aim.controllers.controllers import Controller
 from aim.stack_group import Stack, StackGroup
+from aim.models.loader import apply_attributes_from_config
 
 
 class CloudTrailStackGroup(StackGroup):
@@ -15,6 +16,7 @@ class CloudTrailStackGroup(StackGroup):
             aws_name,
             controller
         )
+        project = self.aim_ctx.project
         self.cloudtrail = cloudtrail
         self.account_default_region = account_default_region
         self.stack_list = []
@@ -26,17 +28,18 @@ class CloudTrailStackGroup(StackGroup):
 
             # Create an S3 bucket to store the CloudTrail in
             s3_ctl = self.aim_ctx.get_controller('S3')
-            s3_config_ref = "aim.ref resource.cloudtrail.trails.{}.s3bucket".format(trail.name)
+            s3_config_ref = trail.aim_ref + '.s3bucket'
             # ToDo: StackTags is None
             s3_ctl.init_context(account_ctx, region, s3_config_ref, self, None)
-            group_id = 'CloudTrail'
-            bucket_name_prefix = '-'.join([aws_name, group_id])
             if trail.s3_key_prefix:
                 put_suffix = "/{}/AWSLogs/{}/*".format(trail.s3_key_prefix, account_ctx.get_id())
             else:
                 put_suffix = "/AWSLogs/{}/*".format(account_ctx.get_id())
             bucket_config_dict = {
+                'region': region,
+                'account': account_ctx.gen_ref(),
                 'bucket_name': 'cloudtrail',
+                'enabled': True,
                 'deletion_policy': 'delete',
                 'policy': [ {
                     'principal': {"Service": "cloudtrail.amazonaws.com"},
@@ -52,16 +55,15 @@ class CloudTrailStackGroup(StackGroup):
                     'condition': {"StringEquals": {"s3:x-amz-acl": "bucket-owner-full-control"}}
                 } ],
             }
-            s3bucket = aim.models.applications.S3Bucket(trail.name, None)
-            s3bucket.update(bucket_config_dict)
+            global_buckets = project['resource']['s3']
+            s3bucket = aim.models.applications.S3Bucket(trail.name, global_buckets)
+            apply_attributes_from_config(s3bucket, bucket_config_dict, read_file_path = 'dynamically generated in code aim.controllers.ctl_cloudtrail')
+            global_buckets.buckets[trail.name] = s3bucket
+            s3bucket.resolve_ref_object = self
+            s3bucket.enabled = trail.is_enabled()
             s3_ctl.add_bucket(
-                resource_ref=s3_config_ref,
-                region=region,
-                bucket_id=trail.name,
-                bucket_group_id=group_id,
-                bucket_name_prefix=bucket_name_prefix,
-                bucket_name_suffix=trail.name,
-                bucket_config=s3bucket
+                s3bucket,
+                config_ref = s3_config_ref,
             )
 
             # Create the CloudTrail stack and prepare it
@@ -72,7 +74,7 @@ class CloudTrailStackGroup(StackGroup):
                 self,
                 None, #stack_tags
                 trail,
-                s3_ctl.get_bucket_name(s3_config_ref)
+                s3bucket.get_bucket_name()
             )
             self.stack_list.append(cloudtrail_template.stack)
 
@@ -84,11 +86,11 @@ class CloudTrailController(Controller):
             "Resource",
             "CloudTrail"
         )
-        if not 'cloudtrail' in self.aim_ctx.project:
+        if not 'cloudtrail' in self.aim_ctx.project['resource']:
             self.init_done = True
             return
         self.init_done = False
-        self.cloudtrail = self.aim_ctx.project['cloudtrail']
+        self.cloudtrail = self.aim_ctx.project['resource']['cloudtrail']
         self.stack_grps = []
 
     def init(self, controller_args):

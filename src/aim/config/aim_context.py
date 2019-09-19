@@ -56,7 +56,7 @@ class AccountContext(object):
         return self.name
 
     def gen_ref(self):
-        return 'aim.ref account.%s' % (self.get_name())
+        return 'aim.ref accounts.%s' % (self.get_name())
 
     def get_temporary_credentials(self):
         return self.aws_session.get_temporary_credentials()
