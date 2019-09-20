@@ -38,3 +38,6 @@ class StackException(AimException):
     def get_error_str(self):
         error_str =  "StackException: " + self.code.name + ": " + self.message
         return error_str
+
+class AimBucketExists(Exception):
+    "S3 Bucket already exists"

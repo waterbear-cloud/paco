@@ -4,6 +4,8 @@ import pathlib
 from aim.controllers.controllers import Controller
 from aim.stack_group import StackGroup, Stack, StackTags
 from aim.core.yaml import YAML
+from aim.core.exception import StackException
+
 
 yaml=YAML()
 yaml.default_flow_sytle = False
@@ -125,4 +127,11 @@ class NotificationGroupsController(Controller):
         stackgroup = self.ng_stackgroups[ref.parts[2]]
         stack = stackgroup.stacks[0]
         output_id = stack.template.create_cfn_logical_id('SNSTopicArn' + ref.parts[3])
-        return stack.get_outputs_value(output_id)
+        try:
+            return stack.get_outputs_value(output_id)
+        except StackException:
+             # ToDo: this get tripped during initialization for applications that
+             # depend upon notification, e.g. `aim provision notificationgroups` then
+             # an application has alarms that need notification outputs is initialized:
+             # `aim provsion service notification`
+             return ''

@@ -1,5 +1,5 @@
 import os
-from aim.core.exception import StackException
+from aim.core.exception import StackException, AimBucketExists
 from aim.core.exception import AimErrorCode
 from aim.models import schemas
 from aim.models.locations import get_parent_by_interface
@@ -84,8 +84,7 @@ class S3Context():
     ):
         "Add a bucket: will create a stack and stack hooks as needed"
         if self.bucket_context['config'] != None:
-            print("Bucket already exists: %s" % (self.resource_ref))
-            raise StackException(AimErrorCode.Unknown)
+            raise AimBucketExists("Bucket already exists: %s" % (self.resource_ref))
 
         bucket.bucket_name_prefix = bucket_name_prefix
         bucket.bucket_name_suffix = bucket_name_suffix
