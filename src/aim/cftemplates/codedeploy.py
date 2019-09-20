@@ -274,7 +274,7 @@ Resources:
               - !Ref CMKArn
           - Effect: Allow
             Action:
-              - s3:GetObject
+              - 's3:Get*'
             Resource:
               - !Sub 'arn:aws:s3:::${ArtifactsBucketName}/*'
               - !Sub 'arn:aws:s3:::aws-codedeploy-${AWS::Region}/*'
