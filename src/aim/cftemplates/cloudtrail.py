@@ -39,8 +39,9 @@ class CloudTrail(CFTemplate):
             }
             if log_group.expire_events_after_days != 'Never' and log_group.expire_events_after_days != '':
                 cfn_export_dict['RetentionInDays'] = int(log_group.expire_events_after_days)
+            log_group.logical_id = 'CloudTrailLogGroup'
             log_group_resource = troposphere.logs.LogGroup.from_dict(
-                'CloudTrailLogGroup',
+                log_group.logical_id,
                 cfn_export_dict
             )
             template.add_resource(log_group_resource)
@@ -68,12 +69,12 @@ class CloudTrail(CFTemplate):
                                 Statement(
                                     Effect=Allow,
                                     Action=[awacs.logs.CreateLogStream],
-                                    Resource=[log_group_arn]
+                                    Resource=[ trail_dict['CloudWatchLogsLogGroupArn'] ]
                                 ),
                                 Statement(
                                     Effect=Allow,
                                     Action=[awacs.logs.PutLogEvents],
-                                    Resource=[log_group_arn]
+                                    Resource=[ trail_dict['CloudWatchLogsLogGroupArn'] ]
                                 )
                             ]
                         )
@@ -83,13 +84,29 @@ class CloudTrail(CFTemplate):
             template.add_resource(trail_role_resource)
             trail_dict['CloudWatchLogsRoleArn'] = troposphere.GetAtt(trail_role_resource, "Arn")
 
+            # LogGroup Output
+            self.register_stack_output_config(log_group.aim_ref_parts + '.arn', log_group.logical_id + 'Arn')
+            log_group_output = troposphere.Output(
+                log_group.logical_id + 'Arn',
+                Value=troposphere.GetAtt(log_group_resource, "Arn")
+            )
+            template.add_output(log_group_output)
+
+        # CloudTrail resource
+        trail.logical_id = 'CloudTrail' + self.create_cfn_logical_id(trail.name)
         trail_resource = troposphere.cloudtrail.Trail.from_dict(
-            'CloudTrail' + self.create_cfn_logical_id(trail.name),
+            trail.logical_id,
             trail_dict
         )
         trail_resource.DependsOn = 'CloudTrailLogDeliveryRole'
         template.add_resource(trail_resource)
+
+        # CloudTrail output
+        self.register_stack_output_config(trail.aim_ref_parts + '.arn', trail.logical_id + 'Arn')
+        trail_output = troposphere.Output(
+            trail.logical_id + 'Arn',
+            Value=troposphere.GetAtt(trail_resource, "Arn"),
+        )
+        template.add_output(trail_output)
+
         self.set_template(template.to_yaml())
-
-
-

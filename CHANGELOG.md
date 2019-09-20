@@ -30,6 +30,8 @@ Changelog for aim
 
 ### Fixed
 
+- CloudTrail generates it's own CloudWatch LogGroup if needed. Outputs for CloudTrail and CloudWatch LogGroup.
+
 - APIGateway, SNSTopics and Lambda now respect the `enabled` field.
 
 2.0.0 (2019-08-26)
