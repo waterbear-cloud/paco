@@ -1,6 +1,7 @@
 import awacs.logs
 import troposphere
 import troposphere.cloudtrail
+import troposphere.cloudwatch
 import troposphere.iam
 from aim.models import references
 from aim.cftemplates.cftemplates import CFTemplate
@@ -33,14 +34,17 @@ class CloudTrail(CFTemplate):
         }
         if trail.cloudwatchlogs_log_group:
             log_group = trail.cloudwatchlogs_log_group
-            log_group = log_group.replace("<account>", self.account_ctx.get_name())
-            log_group = log_group.replace("<region>", self.aws_region)
-            log_group_arn = references.resolve_ref(
-                log_group,
-                self.aim_ctx.project,
-                account_ctx=account_ctx
+            cfn_export_dict = {
+                'LogGroupName': log_group.log_group_name,
+            }
+            if log_group.expire_events_after_days != 'Never' and log_group.expire_events_after_days != '':
+                cfn_export_dict['RetentionInDays'] = int(log_group.expire_events_after_days)
+            log_group_resource = troposphere.logs.LogGroup.from_dict(
+                'CloudTrailLogGroup',
+                cfn_export_dict
             )
-            trail_dict['CloudWatchLogsLogGroupArn'] = log_group_arn
+            template.add_resource(log_group_resource)
+            trail_dict['CloudWatchLogsLogGroupArn'] = troposphere.GetAtt(log_group_resource, "Arn")
 
             # Create a Role
             trail_role_resource = troposphere.iam.Role(
