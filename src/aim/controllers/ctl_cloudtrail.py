@@ -119,3 +119,7 @@ class CloudTrailController(Controller):
     def provision(self):
         for stack_grp in self.stack_grps:
             stack_grp.provision()
+
+    def delete(self):
+        for stack_grp in self.stack_grps:
+            stack_grp.delete()
