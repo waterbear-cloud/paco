@@ -252,8 +252,8 @@ class CWAlarms(CFTemplate):
             description["netenv_title"] = netenv.title
             description["env_name"] = env.name
             description["env_title"] = env.title
-            description["envreg_name"] = env.name
-            description["envreg_title"] = env.title
+            description["envreg_name"] = envreg.name
+            description["envreg_title"] = envreg.title
 
         description_json = json.dumps(description)
 
