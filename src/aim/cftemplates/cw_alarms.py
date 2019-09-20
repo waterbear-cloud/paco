@@ -224,6 +224,7 @@ class CWAlarms(CFTemplate):
         description = {
             "project_name": project.name,
             "project_title": project.title,
+            "account_name": alarm.account_name,
             "alarm_name": alarm.name,
             "classification": alarm.classification,
             "severity": alarm.severity,
