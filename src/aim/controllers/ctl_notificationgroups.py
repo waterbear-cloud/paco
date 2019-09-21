@@ -1,6 +1,7 @@
 import aim.cftemplates
 import os
 import pathlib
+from aim import utils
 from aim.controllers.controllers import Controller
 from aim.stack_group import StackGroup, Stack, StackTags
 from aim.core.yaml import YAML
@@ -63,7 +64,7 @@ class NotificationGroupsController(Controller):
         except KeyError:
             self.init_done = True
             return
-        self.aim_ctx.log("NotificationGroups: Configuration")
+        #utils.log_action_col('Init', 'Service', 'NotificationGroups')
         self.init_done = False
         self.active_regions = self.aim_ctx.project.active_regions
         self.groups.resolve_ref_obj = self # inject the controller into the model

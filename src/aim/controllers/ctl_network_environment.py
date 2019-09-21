@@ -196,7 +196,6 @@ class EnvironmentContext():
     def provision(self):
         utils.log_action_col("Provision", "Environment", self.env_id+' '+self.region)
         if len(self.stack_grps) > 0:
-            stack_group.log_next_header = "Provision"
             for stack_grp in self.stack_grps:
                 stack_grp.provision()
             self.save_stack_output_config()

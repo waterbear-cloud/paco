@@ -292,6 +292,8 @@ class Stack():
                 elif e.response['Error']['Code'] == 'ExpiredToken':
                     delattr(self, '_cfn_client')
                     self.log_action("Token", "Expired", "Retry")
+                    # XXX: This doesn't seem to work and its tricky to get here. Debug it!
+                    breakpoint()
                     continue
                 else:
                     message = self.get_stack_error_message(
@@ -354,6 +356,8 @@ class Stack():
                 elif e.response['Error']['Code'] == 'ExpiredToken':
                     delattr(self, '_cfn_client')
                     self.log_action("Token", "Expired", "Retry")
+                    # XXX: This doesn't seem to work and its tricky to get here. Debug it!
+                    breakpoint()
                     continue
                 else:
                     raise StackException(AimErrorCode.Unknown, message=e.response['Error']['Message'])
@@ -511,7 +515,7 @@ class Stack():
         self.template.validate_stack_parameters(stack_parameters)
         self.template.validate_template_changes()
 
-        if self.aim_ctx.yes == False:
+        if True == False and self.aim_ctx.yes == False:
             print("A Stack is about to be modified: {}".format(self.get_name()))
             answer = self.aim_ctx.input("Make changes to the stack?", yes_no_prompt=True)
             if answer == False:
@@ -547,6 +551,8 @@ class Stack():
                 elif e.response['Error']['Code'] == 'ExpiredToken':
                     delattr(self, '_cfn_client')
                     self.log_action("Token", "Expired", "Retry")
+                    # XXX: This doesn't seem to work and its tricky to get here. Debug it!
+                    breakpoint()
                     continue
                 else:
                     #message = "Stack: {}\nError: {}\n".format(self.get_name(), e.response['Error']['Message'])
@@ -577,7 +583,7 @@ class Stack():
                     EnableTerminationProtection=False,
                     StackName=self.get_name()
                 )
-        self.log_action("Delete", "Delete")
+        self.log_action("Delete", "Stack")
         self.hooks.run("delete", "pre", self)
         if self.is_exists() == True:
             self.cfn_client.delete_stack( StackName=self.get_name() )
@@ -608,6 +614,8 @@ class Stack():
                     if exc.response['Error']['Code'] == 'ExpiredToken':
                         delattr(self, '_cfn_client')
                         self.log_action("Token", "Expired", "Retry")
+                        # XXX: This doesn't seem to work and its tricky to get here. Debug it!
+                        breakpoint()
                         continue
                     else:
                         raise sys.exc_info()
@@ -636,10 +644,15 @@ class Stack():
 
         self.get_status()
         if self.is_failed():
-            answer = self.aim_ctx.input(
-                "The stack is in a '{}' state. Delete it?".format(self.status),
+            print("--")
+            self.log_action("Provision", "Failed")
+            print("The stack is in a '{}' state.".format(self.status))
+            stack_message = self.get_stack_error_message(skip_status=True)
+            print(stack_message)
+            answer = self.aim_ctx.input("Delete it?",
                  yes_no_prompt=True,
                  default='y')
+            print('')
             if answer == True:
                 self.delete()
                 self.wait_for_complete()
@@ -652,16 +665,15 @@ class Stack():
             self.create_stack()
         elif self.is_complete():
             self.update_stack()
-        elif self.is_creating() or self.is_updating() or self.is_deleting():
-            if self.is_creating():
-                self.log_action("Provision", "Create")
-                self.action = "create"
-            elif self.is_deleting():
-                self.log_action("Provision", "Delete")
-                self.action = "delete"
-            else:
-                self.log_action("Provision", "Update")
-                self.action = "update"
+        elif self.is_creating():
+            self.log_action("Provision", "Create")
+            self.action = "create"
+        elif self.is_deleting():
+            self.log_action("Delete", "Stack")
+            self.action = "delete"
+        elif self.is_updating():
+            self.log_action("Provision", "Update")
+            self.action = "update"
         elif self.is_creating() == False and self.is_updating() == False:
             self.log_action("Provision", "Error")
             message = self.get_stack_error_message()
@@ -722,6 +734,7 @@ class Stack():
             return
         self.get_status()
         waiter = None
+        action_name = "Provision"
         if self.is_updating():
             if verbose:
                 self.log_action("Provision", "Update")
@@ -732,7 +745,8 @@ class Stack():
             waiter = self.cfn_client.get_waiter('stack_create_complete')
         elif self.is_deleting():
             if verbose:
-                self.log_action("Provision", "Delete")
+                self.log_action("Delete", "Stack")
+            action_name = "Delete"
             waiter = self.cfn_client.get_waiter('stack_delete_complete')
         elif self.is_complete():
             pass
@@ -746,15 +760,15 @@ class Stack():
             )
 
         if waiter != None:
-            self.log_action("Provision", "Wait")
+            self.log_action(action_name, "Wait")
             try:
                 waiter.wait(StackName=self.get_name())
             except WaiterError as waiter_exception:
-                self.log_action("Provision", "Error")
+                self.log_action(action_name, "Error")
                 message = "Waiter Error:  {}\n".format(waiter_exception)
                 message += self.get_stack_error_message(message)
                 raise StackException(AimErrorCode.WaiterError, message = message)
-            self.log_action("Provision", "Done")
+            self.log_action(action_name, "Done")
 
         if self.is_exists():
             self.stack_success()

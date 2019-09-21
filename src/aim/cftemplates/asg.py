@@ -235,7 +235,7 @@ class ASG(CFTemplate):
                     PredefinedMetricSpecification=troposphere.autoscaling.PredefinedMetricSpecification(
                         PredefinedMetricType='ASGAverageCPUUtilization'
                     ),
-                    TargetValue=asg_config.scaling_policy_cpu_average
+                    TargetValue=float(asg_config.scaling_policy_cpu_average)
                 )
             )
 

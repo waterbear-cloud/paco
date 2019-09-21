@@ -107,7 +107,7 @@ def create_log_col(col='', col_size=0, message_len=0, wrap_text=False):
 def log_action_col(
         col_1, col_2=None, col_3=None, col_4=None,
         return_it=False, enabled=True,
-        col_1_size=10, col_2_size=15, col_3_size=15, col_4_size = None
+        col_1_size=10, col_2_size=11, col_3_size=15, col_4_size = None
         ):
     if col_2 == '': col_2 = None
     if col_3 == '': col_3 = None

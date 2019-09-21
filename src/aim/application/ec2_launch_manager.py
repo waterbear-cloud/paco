@@ -334,7 +334,7 @@ echo "No Launch bundles to load"
          - Installs an entry in /etc/fstab
          - On launch runs mount
         """
-
+        # TODO: Add ubuntu and other distro support
         launch_script_template = """#!/bin/bash
 
 # CachId: 2019-09-15.01
@@ -358,12 +358,15 @@ function process_mount_target()
 
     # Setup fstab
     grep -v -E "^$EFS_ID:/" /etc/fstab >/tmp/fstab.efs_new
-    echo "$EFS_ID:/ $MOUNT_FOLDER efs defaults,_netdev 0 0" >>/tmp/fstab.efs_new
+    echo "$EFS_ID:/ $MOUNT_FOLDER efs defaults,_netdev,fsc 0 0" >>/tmp/fstab.efs_new
     mv /tmp/fstab.efs_new /etc/fstab
     chmod 0664 /etc/fstab
 }
 
-yum install -y amazon-efs-utils
+yum install -y amazon-efs-utils cachefilesd
+/sbin/service cachefilesd start
+systemctl enable cachefilesd
+
 %s
 
 mount -a -t efs defaults

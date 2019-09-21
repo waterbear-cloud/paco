@@ -333,7 +333,12 @@ class CFTemplate():
         if self.enabled == False:
             return
         self.generate_template()
-        self.aim_ctx.log("Validate template: " + self.get_yaml_path())
+        applied_file_path, new_file_path = self.init_template_store_paths()
+        short_yaml_path = str(new_file_path).replace(self.aim_ctx.home, '')
+        new_str = ''
+        if applied_file_path.exists() == False:
+            new_str = ':new'
+        log_action_col("Validate", self.account_ctx.get_name(), "Template"+new_str, short_yaml_path)
         try:
             self.cfn_client.validate_template(TemplateBody=self.body)
         except ClientError as e:
@@ -355,8 +360,10 @@ class CFTemplate():
         # Applied Template Data
         applied_template_path, _ = self.init_template_store_paths()
         applied_parameters_path = self.init_applied_parameters_path(applied_template_path)
-        utils.log_action_col('Delete', 'Template', 'Applied', str(applied_template_path))
-        utils.log_action_col('Delete', 'Template', 'Applied', str(applied_parameters_path))
+        short_applied_template_path = str(applied_template_path).replace(self.aim_ctx.home, '')
+        short_applied_parameters_path = str(applied_parameters_path).replace(self.aim_ctx.home, '')
+        utils.log_action_col('Delete', 'Template', 'Applied', short_applied_template_path)
+        utils.log_action_col('Delete', 'Parameters', 'Applied', short_applied_parameters_path)
         try:
             applied_template_path.unlink()
             applied_parameters_path.unlink()
@@ -364,7 +371,8 @@ class CFTemplate():
             pass
 
         # The template itself
-        utils.log_action_col('Delete', 'Template', 'Build', str(self.get_yaml_path()))
+        short_yaml_path = self.get_yaml_path().replace(self.aim_ctx.home, '')
+        utils.log_action_col('Delete', 'Template', 'Build', short_yaml_path)
         try:
             pathlib.Path(self.get_yaml_path()).unlink()
         except FileNotFoundError:
@@ -559,9 +567,12 @@ class CFTemplate():
             ref = Reference(param_value)
             ref_value = ref.resolve(self.aim_ctx.project, account_ctx=self.account_ctx)
             if ref_value == None:
+                message = "Error: Unable to locate value for ref: {}\n".format(param_value)
+                message += "Template: {}\n".format(self.aws_name)
+                message += "Parameter: {}\n".format(param_key)
                 raise StackException(
                     AimErrorCode.Unknown,
-                    message="cftemplate: set_parameter: Unable to locate value for ref: " + param_value
+                    message=message
                 )
             if isinstance(ref_value, Stack):
                 # If we need to query another stack, but that stack is not
@@ -849,35 +860,40 @@ class CFTemplate():
         Resource names are only alphanumberic (A-Za-z0-9) and dashes.
         Invalid characters are removed or changed into a dash.
         """
-#        if name == 'S3_assets':
-#            breakpoint()
-        if name.isalnum() == True:
-            return name
-        new_name = ""
-        uppercase_next_char = False
-        for ch in name:
-            if filter_id != None:
-                ch = self.resource_char_filter(ch, filter_id, remove_invalids)
-                if ch == '' and camel_case == True:
-                    uppercase_next_char = True
-            elif ch.isalnum() == True:
-                ch = ch
-            elif remove_invalids == False:
-                ch = '-'
-            elif remove_invalids == True:
-                ch = ''
-                if camel_case == True:
-                    uppercase_next_char = True
+        def normalize(name, remove_invalids, filter_id, camel_case):
+            uppercase_next_char = False
+            new_name = ''
+            for ch in name:
+                if filter_id != None:
+                    ch = self.resource_char_filter(ch, filter_id, remove_invalids)
+                    if ch == '' and camel_case == True:
+                        uppercase_next_char = True
+                elif ch.isalnum() == True:
+                    ch = ch
+                elif remove_invalids == False:
+                    ch = '-'
+                elif remove_invalids == True:
+                    ch = ''
+                    if camel_case == True:
+                        uppercase_next_char = True
 
-            if remove_invalids == True and ch != '' and uppercase_next_char == True:
-                new_name += ch.upper()
-                uppercase_next_char = False
-            else:
-                new_name += ch
+                if remove_invalids == True and ch != '' and uppercase_next_char == True:
+                    new_name += ch.upper()
+                    uppercase_next_char = False
+                else:
+                    new_name += ch
+            return new_name
+
+        if name.isalnum() == True:
+            new_name = name
+        else:
+            new_name = normalize(name, remove_invalids=remove_invalids, filter_id=filter_id, camel_case=camel_case)
 
         if filter_id != None:
             new_name = self.resource_name_filter(new_name, filter_id, hash_long_names)
+
         return new_name
+
 
     def create_resource_name_join(self, name_list, separator, camel_case=False, filter_id=None, hash_long_names=False):
         name = big_join(name_list, separator, camel_case)
@@ -1055,8 +1071,6 @@ class CFTemplate():
             return
         applied_file_path, new_file_path = self.init_template_store_paths()
         if applied_file_path.exists() == False:
-            log_action_col("Validate", self.account_ctx.get_name(), "New", str(new_file_path))
-            breakpoint()
             return
 
         yaml = YAML(pure=True)

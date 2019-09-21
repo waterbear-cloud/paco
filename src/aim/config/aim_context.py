@@ -213,11 +213,11 @@ class AimContext(object):
                 utils.log_action_col("Skipping", 'Service', plugin_name)
                 continue
 
-            utils.log_action_col('Init', 'Service Plugin', plugin_name)
+            utils.log_action_col('Init', 'Service', plugin_name)
             service = plugin_module.instantiate_class(self, self.project['service'][plugin_name.lower()])
             service.init(None)
             self.services[plugin_name.lower()] = service
-            utils.log_action_col('Init', 'Service Plugin', plugin_name, 'Completed')
+            utils.log_action_col('Init', 'Service', plugin_name, 'Completed')
 
     def get_controller(self, controller_type, controller_args=None):
         """Gets a controller by name and calls .init() on it with any controller args"""

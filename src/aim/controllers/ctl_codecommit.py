@@ -34,7 +34,6 @@ class CodeCommitController(Controller):
             return
         self.init_done = True
         utils.log_action_col("Init", "CodeCommit")
-        stack_group.log_next_header = "Init"
         if controller_args:
             self.name = controller_args['arg_1']
         self.config = self.aim_ctx.project['resource']['codecommit']
