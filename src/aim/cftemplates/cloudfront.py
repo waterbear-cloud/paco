@@ -44,6 +44,15 @@ class CloudFront(CFTemplate):
         template.add_resource(
             troposphere.cloudformation.WaitConditionHandle(title="EmptyTemplatePlaceholder")
         )
+
+        target_origin_param = self.create_cfn_parameter(
+                param_type='String',
+                name='TargetOrigin',
+                description='Target Origin',
+                value=cloudfront_config.default_cache_behavior.target_origin,
+                use_troposphere=True,
+                troposphere_template=template)
+
         distribution_config_dict = {
             'Enabled': cloudfront_config.is_enabled(),
             'DefaultRootObject': cloudfront_config.default_root_object,
@@ -51,7 +60,7 @@ class CloudFront(CFTemplate):
             'DefaultCacheBehavior': {
                 'AllowedMethods': cloudfront_config.default_cache_behavior.allowed_methods,
                 'DefaultTTL': cloudfront_config.default_cache_behavior.default_ttl,
-                'TargetOriginId': cloudfront_config.default_cache_behavior.target_origin,
+                'TargetOriginId': troposphere.Ref(target_origin_param),
                 'ViewerProtocolPolicy': cloudfront_config.default_cache_behavior.viewer_protocol_policy
             },
             'PriceClass': 'PriceClass_'+cloudfront_config.price_class,
