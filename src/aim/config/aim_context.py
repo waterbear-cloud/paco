@@ -77,7 +77,7 @@ class AccountContext(object):
 
         return self.aws_session.get_temporary_session()
 
-    def get_session(self):
+    def get_session(self, force=False):
         if self.aws_session == None:
             self.aws_session = aim.config.aws_credentials.AimSTS(
                     self,
@@ -91,7 +91,7 @@ class AccountContext(object):
                     assume_role_session_expiry_secs=self.assume_role_session_expiry_secs
             )
 
-        if self.temp_aws_session == None:
+        if self.temp_aws_session == None or force == True:
             self.temp_aws_session = self.aws_session.get_temporary_session()
 
         return self.temp_aws_session
@@ -108,7 +108,7 @@ class AccountContext(object):
         if aws_region != None:
             client_id += aws_region
         if client_id not in self.client_cache.keys() or force == True:
-            session = self.get_session()
+            session = self.get_session(force)
             self.client_cache[client_id] = session.client(
                 client_name, region_name=aws_region, config=client_config)
         return self.client_cache[client_id]
