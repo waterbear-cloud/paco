@@ -1,6 +1,7 @@
 import click
 import os
 import time
+from aim import utils
 from aim.aws_api.acm import DNSValidatedACMCertClient
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
@@ -36,13 +37,16 @@ class ACMController(Controller):
             cert_config = acm_config['config']
             if cert_config.is_enabled() == False:
                 continue
-            if cert_config.external_resource == True or cert_config.is_dns_enabled() == False:
+            if cert_config.external_resource == True: # or cert_config.is_dns_enabled() == False:
                 return
             if 'cert_arn_cache' in acm_config.keys():
                 continue
             cert_domain = cert_config.domain_name
             acm_client = DNSValidatedACMCertClient(acm_config['account_ctx'], cert_domain, acm_config['region'])
             # Creates the certificate if it does not exists here.
+            utils.log_action_col(
+                'Provision', acm_config['account_ctx'].get_name(),
+                'ACM', acm_config['region']+': '+cert_config.domain_name+': alt-names: {}'.format(cert_config.subject_alternative_names))
             cert_arn = acm_client.request_certificate(cert_config.subject_alternative_names)
             acm_config['cert_arn_cache'] = cert_arn
             validation_records = None
@@ -50,6 +54,9 @@ class ACMController(Controller):
                 validation_records = acm_client.get_domain_validation_records(cert_arn)
                 if len(validation_records) == 0 or 'ResourceRecord' not in validation_records[0]:
                     print("Waiting for DNS Validation records...")
+                    utils.log_action_col(
+                        'Waiting', acm_config['account_ctx'].get_name(),
+                        'ACM', acm_config['region']+': '+cert_config.domain_name)
                     time.sleep(1)
                     validation_records = None
 
@@ -64,7 +71,7 @@ class ACMController(Controller):
         return None
 
     def resolve_ref(self, ref):
-        if ref.resource_ref == 'arn':
+        if ref.last_part == 'arn':
             group_id = '.'.join(ref.parts[:-1])
             cert_id = ref.parts[-2]
             res_config = self.get_cert_config(group_id, cert_id)
@@ -76,7 +83,7 @@ class ACMController(Controller):
                 if cert_arn == None:
                     self.provision()
                     cert_arn = acm_client.get_certificate_arn()
-                if res_config['config'].external_resource == False and res_config['config'].is_dns_enabled() == True:
+                if res_config['config'].external_resource == False:
                     acm_client.wait_for_certificate_validation( cert_arn )
                 # print("Certificate ARN: " + cert_domain + ": " + cert_arn)
                 return cert_arn

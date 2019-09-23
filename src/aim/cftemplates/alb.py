@@ -447,7 +447,7 @@ Outputs:
 
         record_set_table['idx'] = 0
         for alb_dns in alb_config.dns:
-            if alb_config.is_dns_enabled() == True or alb_dns.domain_name.startswith('origin.'):
+            if alb_config.is_dns_enabled() == True:
               record_set_table['hosted_zone_id'] = alb_dns.hosted_zone+'.id'
               record_set_table['domain_name'] = alb_dns.domain_name
               self.set_parameter('HostedZoneID%d' % (record_set_table['idx']), alb_dns.hosted_zone+'.id')

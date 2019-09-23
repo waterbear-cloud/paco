@@ -1,10 +1,13 @@
-import os
-from aim.cftemplates.cftemplates import CFTemplate
-
-from io import StringIO
-from enum import Enum
 import base64
+import os
+import troposphere
+import troposphere.rds
+
+from aim import utils
+from aim.cftemplates.cftemplates import CFTemplate
 from aim.models import vocabulary, schemas
+from enum import Enum
+from io import StringIO
 
 
 class RDS(CFTemplate):
@@ -28,6 +31,201 @@ class RDS(CFTemplate):
                          stack_group=stack_group,
                          stack_tags=stack_tags)
         self.set_aws_name('RDS', grp_id, res_id)
+
+        template = troposphere.Template(
+            Description = 'RDS',
+        )
+        template.set_version()
+        template.add_resource(
+            troposphere.cloudformation.WaitConditionHandle(title="EmptyTemplatePlaceholder")
+        )
+
+        # DB Subnet Group
+        db_subnet_id_list_param = self.create_cfn_parameter(
+            param_type='List<AWS::EC2::Subnet::Id>',
+            name='DBSubnetIdList',
+            description='The list of subnet IDs where this database will be provisioned.',
+            value=rds_config.segment+'.subnet_id_list',
+            use_troposphere=True,
+            troposphere_template=template
+        )
+
+        db_subnet_group_res = troposphere.rds.DBSubnetGroup(
+            title = 'DBSubnetGroup',
+            template  = template,
+            DBSubnetGroupDescription = troposphere.Ref('AWS::StackName'),
+            SubnetIds = troposphere.Ref(db_subnet_id_list_param)
+        )
+
+        # DB Parameter Group
+        engine_major_version = '.'.join(rds_config.engine_version.split('.')[0:2])
+        param_group_family = vocabulary.rds_engine_versions[rds_config.engine][engine_major_version]['param_group_family']
+        db_param_group_res = troposphere.rds.DBParameterGroup(
+            "DBParameterGroup",
+            template = template,
+            Family=param_group_family,
+            Description=troposphere.Ref('AWS::StackName')
+        )
+
+        # Option Group
+        option_group_res = None
+        if len(rds_config.option_configurations) > 0:
+            option_group_dict = {
+                'EngineName': rds_config.engine,
+                'MajorEngineVersion': engine_major_version,
+                'OptionGroupDescription': troposphere.Ref('AWS::StackName')
+            }
+            if len(rds_config.option_configurations) > 0:
+                option_config_list = []
+                for option_config in rds_config.option_configurations:
+                    option_config_dict = {
+                        'OptionName': option_config.option_name,
+                    }
+                    if len(option_config.option_settings) > 0:
+                        option_config_dict['OptionSettings'] = []
+                        for option_setting in option_config.option_settings:
+                            option_setting_dict = {
+                                'Name': option_setting.name,
+                                'Value': option_setting.value
+                            }
+                            option_config_dict['OptionSettings'].append(option_setting_dict)
+                    option_config_list.append(option_config_dict)
+                option_group_dict['OptionConfigurations'] = option_config_list
+
+            option_group_res = troposphere.rds.OptionGroup.from_dict(
+                'OptionGroup',
+                option_group_dict )
+            template.add_resource(option_group_res)
+
+        # RDSMySql
+        # RDS Mysql
+        if schemas.IRDSMysql.providedBy(rds_config):
+            sg_param_ref_list = []
+            for sg_ref in rds_config.security_groups:
+                sg_hash = utils.md5sum(str_data=sg_ref)
+                sg_param = self.create_cfn_parameter(
+                    param_type='AWS::EC2::SecurityGroup::Id',
+                    name=self.create_cfn_logical_id('SecurityGroup'+sg_hash),
+                    description='VPC Security Group to attach to the RDS.',
+                    value=sg_ref+'.id',
+                    use_troposphere=True,
+                    troposphere_template=template
+                )
+                sg_param_ref_list.append(troposphere.Ref(sg_param))
+
+            db_instance_dict = {
+                'Engine': rds_config.engine,
+                'EngineVersion': rds_config.engine_version,
+                'DBInstanceIdentifier': troposphere.Ref('AWS::StackName'),
+                'DBInstanceClass': rds_config.db_instance_type,
+                'DBSubnetGroupName': troposphere.Ref(db_subnet_group_res),
+                'DBParameterGroupName': troposphere.Ref(db_param_group_res),
+                'CopyTagsToSnapshot': True,
+                'AllowMajorVersionUpgrade': rds_config.allow_major_version_upgrade,
+                'AutoMinorVersionUpgrade': rds_config.auto_minor_version_upgrade,
+                'MultiAZ': rds_config.multi_az,
+                'AllocatedStorage': rds_config.storage_size_gb,
+                'StorageType': rds_config.storage_type,
+                'BackupRetentionPeriod': rds_config.backup_retention_period,
+                'Port': rds_config.port,
+                'PreferredBackupWindow': rds_config.backup_preferred_window,
+                'PreferredMaintenanceWindow': rds_config.maintenance_preferred_window,
+                'VPCSecurityGroups': sg_param_ref_list
+            }
+
+            # Option Grouup
+            if option_group_res != None:
+                db_instance_dict['OptionGroupName'] = troposphere.Ref(option_group_res)
+
+            # DB Snapshot Identifier
+            if rds_config.db_snapshot_identifier == '' or rds_config.db_snapshot_identifier == None:
+                db_snapshot_id_enabled = False
+            else:
+                db_snapshot_id_enabled = True
+            if db_snapshot_id_enabled == True:
+                db_instance_dict['DBSnapshotIdentifier'] = rds_config.db_snapshot_identifier
+
+            # Encryption
+            if rds_config.kms_key_id == '' or rds_config.kms_key_id == None:
+                encryption_enabled = False
+            else:
+                encryption_enabled = True
+            if db_snapshot_id_enabled == False:
+                db_instance_dict['StorageEncrypted'] = encryption_enabled
+                if encryption_enabled:
+                    db_instance_dict['KmsKeyId'] = rds_config.kms_key_id
+
+            # Username and Passsword
+            if db_snapshot_id_enabled == False:
+                master_password_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name='MasterUserPassword',
+                    description='The master user password.',
+                    value=rds_config.master_user_password,
+                    noecho=True,
+                    use_troposphere=True,
+                    troposphere_template=template
+                )
+                db_instance_dict['MasterUsername'] = rds_config.master_username
+                db_instance_dict['MasterUserPassword'] = troposphere.Ref(master_password_param)
+
+            db_instance_res = troposphere.rds.DBInstance.from_dict(
+                'PrimaryDBInstance',
+                db_instance_dict )
+            template.add_resource(db_instance_res)
+
+            if rds_config.primary_domain_name != None and rds_config.is_dns_enabled() == True:
+                primary_hosted_zone_id_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name='PrimaryHostedZoneId',
+                    description='The primary domain name hosted zone id.',
+                    value=rds_config.primary_hosted_zone+'.id',
+                    use_troposphere=True,
+                    troposphere_template=template
+                )
+                record_set_res = troposphere.route53.RecordSetType(
+                    title = 'PrimaryRecordSet',
+                    template = template,
+                    Comment = 'RDS Primary DNS',
+                    HostedZoneId = troposphere.Ref(primary_hosted_zone_id_param),
+                    Name = rds_config.primary_domain_name,
+                    Type = 'CNAME',
+                    TTL = 300,
+                    ResourceRecords = [ troposphere.GetAtt(db_instance_res, 'Endpoint.Address')]
+                )
+                record_set_res.DependsOn = db_instance_res
+
+        self.set_template(template.to_yaml())
+
+        return
+        """
+        # DB Cluster
+        db_cluster_res = troposphere.rds.DBCluster(
+            title='PipelineDBCluster',
+            DatabaseName=<your-db-name>,
+            DBClusterIdentifier=<your-cluster-name>,
+            DBSubnetGroupName=<your-subnet-group>,
+            DBClusterParameterGroupName='default.aurora-postgresql9.6',
+            DeletionProtection=False,
+            Engine='aurora-postgresql',
+            EngineVersion='9.6.8',
+            MasterUsername=<your-username>,
+            MasterUserPassword=<your-password>,
+            Port=5432,
+            VpcSecurityGroupIds=<your-primary-vpc-id>, #(required if creating aurora cluster in a VPC)
+        )
+        pipelinedb = rds.DBInstance(
+                title='PipelineDBInstance',
+                DBInstanceIdentifier=<your-instance-name>,
+                DBClusterIdentifier=Ref(pipelinedbcluster),
+                DBInstanceClass='db.r4.large',
+                Engine='aurora-postgresql',
+                EngineVersion='9.6.8',
+                PubliclyAccessible=False,
+                Tags=<your-tags>,
+                AutoMinorVersionUpgrade=True,
+                StorageType='aurora'
+            )"""
 
         # Define the Template
         template_yaml_fmt = """
@@ -65,7 +263,7 @@ Resources:
     Properties:
       EngineName: !Ref Engine
       MajorEngineVersion: !Ref EngineMajorVersion
-      OptionConfigurations:{0[option_configurations]}
+      OptionConfigurations: {0[option_configurations]}
       OptionGroupDescription: !Ref 'AWS::StackName'
 
 {0[resources]:s}
@@ -302,7 +500,7 @@ Resources:
           param_type='String',
           name='AllowMinorVersionUpgrade',
           description='Allow automated minor version upgrades.',
-          value=rds_config.allow_minor_version_upgrade
+          value=rds_config.auto_minor_version_upgrade
         )
 
         # Subnet IDs
@@ -369,6 +567,8 @@ Resources:
         template_table['resources'] = resources_yaml
         template_table['engine'] = rds_config.engine
         template_table['engine_version'] = rds_config.engine_version
+        if option_configurations_yaml == '':
+          option_configurations_yaml = "!Ref 'AWS::NoValue'"
         template_table['option_configurations'] = option_configurations_yaml
         template_table['outputs'] = ""
 

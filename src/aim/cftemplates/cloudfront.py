@@ -4,9 +4,9 @@ import troposphere
 import troposphere.cloudfront
 import troposphere.route53
 
+from aim import utils
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.models.references import Reference, is_ref, resolve_ref
-from aim.utils import md5sum
 from enum import Enum
 from io import StringIO
 
@@ -74,7 +74,7 @@ class CloudFront(CFTemplate):
         # Domain Alises and Record Sets
         aliases_list = []
         for alias in cloudfront_config.domain_aliases:
-            alias_hash = md5sum(str_data=alias.domain_name)
+            alias_hash = utils.md5sum(str_data=alias.domain_name)
 
             domain_name_param = 'DomainAlias' + alias_hash
             alias_param = self.create_cfn_parameter(
@@ -107,6 +107,52 @@ class CloudFront(CFTemplate):
             forwarded_values_dict['Headers'] = cloudfront_config.default_cache_behavior.forwarded_values.headers
         distribution_config_dict['DefaultCacheBehavior']['ForwardedValues'] = forwarded_values_dict
 
+        # Cache Behaviors
+        if len(cloudfront_config.cache_behaviors) > 0:
+            cache_behaviors_list = []
+            target_origin_param_map = {}
+            for cache_behavior in cloudfront_config.cache_behaviors:
+                target_origin_hash = utils.md5sum(str_data=cache_behavior.target_origin)
+                if target_origin_hash not in target_origin_param_map.keys():
+                    cb_target_origin_param = self.create_cfn_parameter(
+                        param_type='String',
+                        name=self.create_cfn_logical_id('TargetOriginCacheBehavior'+target_origin_hash),
+                        description='Target Origin',
+                        value=cache_behavior.target_origin,
+                        use_troposphere=True,
+                        troposphere_template=template)
+                    target_origin_param_map[target_origin_hash] = cb_target_origin_param
+                else:
+                    cb_target_origin_param = target_origin_param_map[target_origin_hash]
+
+                cache_behavior_dict = {
+                    'PathPattern': cache_behavior.path_pattern,
+                    'AllowedMethods': cache_behavior.allowed_methods,
+                    'DefaultTTL': cache_behavior.default_ttl,
+                    'TargetOriginId': troposphere.Ref(cb_target_origin_param),
+                    'ViewerProtocolPolicy': cache_behavior.viewer_protocol_policy
+                }
+                cb_forwarded_values_config = cache_behavior.forwarded_values
+                cb_forwarded_values_dict = {
+                    'Cookies': {
+                        'Forward': 'none',
+                    },
+                    'QueryString': str(cb_forwarded_values_config.query_string)
+                }
+                # Cookies
+                cb_forwarded_values_dict['Cookies']['Forward'] = cb_forwarded_values_config.cookies.forward
+                if len(cb_forwarded_values_config.cookies.whitelisted_names) > 0:
+                    cb_forwarded_values_dict['Cookies']['WhitelistedNames'] = cb_forwarded_values_config.cookies.whitelisted_names
+                # Headers
+                if cloudfront_config.s3_origin_exists() == False:
+                    cb_forwarded_values_dict['Headers'] = cache_behavior.forwarded_values.headers
+                cache_behavior_dict['ForwardedValues'] = cb_forwarded_values_dict
+                cache_behaviors_list.append(cache_behavior_dict)
+
+            distribution_config_dict['CacheBehaviors'] = cache_behaviors_list
+
+
+
         # Origin Access Identity
         if cloudfront_config.s3_origin_exists() == True:
             origin_id_res = troposphere.cloudfront.CloudFrontOriginAccessIdentity(
@@ -126,10 +172,10 @@ class CloudFront(CFTemplate):
         origins_list = []
         for origin_name, origin in cloudfront_config.origins.items():
             if origin.s3_bucket != None:
-                domain_hash = md5sum(str_data=origin.s3_bucket)
+                domain_hash = utils.md5sum(str_data=origin.s3_bucket)
                 origin_domain_name = self.aim_ctx.get_ref(origin.s3_bucket+'.url')
             else:
-                domain_hash = md5sum(str_data=origin.domain_name)
+                domain_hash = utils.md5sum(str_data=origin.domain_name)
                 origin_domain_name = origin.domain_name
             origin_dict = {
                 'Id': origin_name,
@@ -203,7 +249,7 @@ class CloudFront(CFTemplate):
 
         if cloudfront_config.is_dns_enabled() == True:
             for alias in cloudfront_config.domain_aliases:
-                alias_hash = md5sum(str_data=alias.domain_name)
+                alias_hash = utils.md5sum(str_data=alias.domain_name)
                 zone_param_name = 'AliasHostedZoneId' + alias_hash
                 alias_zone_id_param = self.create_cfn_parameter(
                     param_type='String',

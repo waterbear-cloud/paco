@@ -373,6 +373,8 @@ mount -a -t efs defaults
 """
         process_mount_targets = ""
         for efs_mount in resource.efs_mounts:
+            if efs_mount.enabled == False:
+                continue
             efs_id_hash = utils.md5sum(str_data=efs_mount.target)
             process_mount_targets += "process_mount_target {} {}\n".format(efs_mount.folder, efs_id_hash)
 
