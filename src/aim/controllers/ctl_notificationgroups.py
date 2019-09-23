@@ -97,7 +97,7 @@ class NotificationGroupsController(Controller):
     def validate(self):
         "Validate"
         for stackgroup in self.ng_stackgroups.values():
-            sstackgroup.validate()
+            stackgroup.validate()
 
     def provision(self):
         "Provision"
