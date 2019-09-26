@@ -101,7 +101,7 @@ class CWAlarms(CFTemplate):
         )
         template.add_parameter(dimension_param)
         for alarm in alarms:
-            if len(alarm.dimensions) > 1:
+            if len(alarm.dimensions) > 0:
                 for dimension in alarm.dimensions:
                     dimension.parameter = self.create_cfn_parameter(
                         param_type = 'String',
