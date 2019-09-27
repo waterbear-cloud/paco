@@ -135,6 +135,10 @@ class CWAlarms(CFTemplate):
                 alarm_action_list.append(troposphere.Ref(alarm_action_param))
 
             alarm_export_dict['AlarmActions'] = alarm_action_list
+            if getattr(alarm, 'enable_ok_actions', False):
+                alarm_export_dict['OKActions'] = alarm_action_list
+            if getattr(alarm, 'enable_insufficient_data_actions', False):
+                alarm_export_dict['InsufficientDataActions'] = alarm_action_list
 
             # AlarmDescription
             notification_aim_refs = []
