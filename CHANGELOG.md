@@ -1,10 +1,30 @@
 Changelog for aim
 =================
 
-2.1.0 (unreleased)
+3.0.0 (unreleased)
 ------------------
 
 ### Added
+
+- New directory `aimdata` is created within an AIM Project by AIM. This is used to record state
+  of AIM provisioning. CloudFormation templates used to create stacks in AWS are cached as well
+  as the last copy of the AIM Project YAML files. These files are used to speed up subsequent
+  runs and more importantly can show you what is changed between AIM runs to make it easier to
+  review new changes before they are actaully made to AWS.
+
+- CLI: Display a diff of changes from last AIM run and new run in the AIM Project YAML configuration.
+  The `-d`, `--disable-validation` flag can be used to
+
+- CLI: Display changes and ask for verification before updating CF templates. This can be disabled
+  with the `-y` flag.
+
+- CLI: Offer to delete a stack in a CREATE FAILED state so that a new stack can be provisioned in it's place.
+
+- AWS credentials can now be set to live for up to 12 hours. You can set the .credentials field to
+ `mfa_session_expiry_secs: 43200 # 12 hours` to enable this. The default is still one hour.
+
+- Resources with the `change_protected` flag set to true will not have their CloudFormation stacks
+  updated.
 
 - API Gateway REST API can now have models, methods and stages. It supports Lambda integration
   with either 'AWS_PROXY' via an assumed Role or 'AWS' via a Lambda Permission.
@@ -18,7 +38,28 @@ Changelog for aim
 - CloudWatchAlarms template has a `notification_region` class attribute that can be set if
   notificationgroup subscriptions need to go to a single region.
 
+- CloudFront has Origin ID support.
+
+- EFS Resource support.
+
 ### Changed
+
+- Breaking! CF Template names have been refactored so that they are more user friendly when listed in the
+  AWS Console. This requires deletion and reprovisioning of AWS resources. Templates now have new
+  consistent ways to create their names, so this should be the last time this change happens.
+
+- CLI: References to NetworkEnvironments now use consistent `aim.ref` syntax, e.g.
+  `aim provision netenv <ne>.<env>.<region>`
+
+- All stacks are created with Termination Protection set.
+
+- CF template base class `aim.cftemplates.cftemplates.CFTemplate` has new methods for creating consistent
+  AWS names: `create_resource_name()`, `create_resoruce_name_join()`, `create_cfn_logical_id()`,
+  and `create_cfn_logical_id_join()`.
+
+- Console messages reworked to show relevant information in columns.
+
+- CF template base class method `gen_parameter` renamed to `create_cfn_parameter`.
 
 - S3 controller now relies on the bucket name to come from the S3Bucket model object.
 
