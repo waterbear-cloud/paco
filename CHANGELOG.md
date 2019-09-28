@@ -1,11 +1,15 @@
 Changelog for aim
 =================
 
-3.0.1 (unreleased)
+3.1.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Changed
 
+- Improvements to the CLI. Verbose flag is now respected.
+  Yes/no questions are consistent and can be answered with 'y', 'n', 'yes' or 'no'.
+  Clean-up to formatting. Only prompt for provision changes when running the provision
+  sub-command.
 
 3.0.0 (2019-09-27)
 ------------------

@@ -1,7 +1,6 @@
 import click
 import os
 import time
-from aim import utils
 from aim.aws_api.acm import DNSValidatedACMCertClient
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
@@ -44,7 +43,7 @@ class ACMController(Controller):
             cert_domain = cert_config.domain_name
             acm_client = DNSValidatedACMCertClient(acm_config['account_ctx'], cert_domain, acm_config['region'])
             # Creates the certificate if it does not exists here.
-            utils.log_action_col(
+            self.aim_ctx.log_action_col(
                 'Provision', acm_config['account_ctx'].get_name(),
                 'ACM', acm_config['region']+': '+cert_config.domain_name+': alt-names: {}'.format(cert_config.subject_alternative_names))
             cert_arn = acm_client.request_certificate(cert_config.subject_alternative_names)
@@ -54,7 +53,7 @@ class ACMController(Controller):
                 validation_records = acm_client.get_domain_validation_records(cert_arn)
                 if len(validation_records) == 0 or 'ResourceRecord' not in validation_records[0]:
                     print("Waiting for DNS Validation records...")
-                    utils.log_action_col(
+                    self.aim_ctx.log_action_col(
                         'Waiting', acm_config['account_ctx'].get_name(),
                         'ACM', acm_config['region']+': '+cert_config.domain_name)
                     time.sleep(1)

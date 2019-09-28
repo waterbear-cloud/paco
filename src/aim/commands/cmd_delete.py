@@ -18,19 +18,13 @@ def delete_command(aim_ctx, controller_type, arg_1=None, arg_2=None, arg_3=None,
         print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')
         sys.exit()
 
-    #project = aim.models.load_project_from_yaml(aim_ctx.home)
-    #aim_obj = project.find_object_from_cli(
-    #    controller_type,
-    #    component_name,
-    #    config_name
-    #)
     delete_name = "{0} {1}".format(controller_type, arg_1)
     if arg_2:
         delete_name += " {0}".format(arg_2)
-    #print("This will delete {} - (model: {} - {})".format(delete_name, aim_obj.name, aim_obj.title))
-    answer = input("Proceed with deletion (y/N)? ")
-    if answer.lower() != 'y':
-        print("Aborting delete operation")
+
+    answer = aim_ctx.input_confirm_action("Proceed with deletion?")
+    if answer == False:
+        print("Aborted delete operation.")
         return
 
     aim_ctx.log("Delete: Controller: {}  arg_1({}) arg_2({}) arg_3({}) arg_4({})".format(controller_type, arg_1, arg_2, arg_3, arg_4) )

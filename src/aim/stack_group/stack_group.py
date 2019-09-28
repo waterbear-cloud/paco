@@ -510,12 +510,12 @@ class Stack():
         self.action = "update"
         self.log_action("Provision", "Update")
         stack_parameters = self.template.generate_stack_parameters()
-        self.template.validate_stack_parameters(stack_parameters)
+        self.template.confirm_stack_parameter_changes(stack_parameters)
         self.template.validate_template_changes()
 
         if True == False and self.aim_ctx.yes == False:
             print("A Stack is about to be modified: {}".format(self.get_name()))
-            answer = self.aim_ctx.input("Make changes to the stack?", yes_no_prompt=True)
+            answer = self.aim_ctx.input_confirm_action("Make changes to the stack?")
             if answer == False:
                 print("Stack update aborted.")
                 return
@@ -572,7 +572,7 @@ class Stack():
             if self.termination_protection == True:
                 print("\n!! This Stack has 'Termination Protection' enabled.")
                 print("\n!! Stack Name: {}\n".format(self.get_name()))
-                answer = self.aim_ctx.input("Destroy this stack forever?", yes_no_prompt=True)
+                answer = self.aim_ctx.input_confirm_action("Destroy this stack forever?")
                 if answer == False:
                     print("Destruction aborted. Allowing stack to exist.")
                     return
@@ -642,16 +642,15 @@ class Stack():
 
         self.get_status()
         if self.is_failed():
-            print("--")
+            print("--------------------------------------------------------")
             self.log_action("Provision", "Failed")
             print("The stack is in a '{}' state.".format(self.status))
             stack_message = self.get_stack_error_message(skip_status=True)
             print(stack_message)
-            answer = self.aim_ctx.input("Delete it?",
-                 yes_no_prompt=True,
-                 default='y')
+            print("--------------------------------------------------------")
+            answer = self.aim_ctx.input_confirm_action("\nDelete it?", default='y')
             print('')
-            if answer == True:
+            if answer:
                 self.delete()
                 self.wait_for_complete()
             else:
@@ -694,7 +693,7 @@ class Stack():
     def log_action_header(self):
         global log_next_header
         if log_next_header != None:
-            utils.log_action_col(log_next_header, 'Account', 'Action', 'Stack Name')
+            self.aim_ctx.log_action_col(log_next_header, 'Account', 'Action', 'Stack Name')
             log_next_header = None
 
 
@@ -717,7 +716,7 @@ class Stack():
         global log_next_header
         if return_it == False:
             self.log_action_header()
-        log_message = utils.log_action_col(
+        log_message = self.aim_ctx.log_action_col(
             action,
             msg_account_name,
             stack_action,
@@ -852,7 +851,7 @@ class StackGroup():
                     cur_state['regions'][idx],
                     cur_state['stack_names'][idx]
                 ))
-            answer = self.aim_ctx.input("\nDelete them from your AWS environment?", default="N", yes_no_prompt=True)
+            answer = self.aim_ctx.input_confirm_action("\nDelete them from your AWS environment?")
             if answer == True:
                 for idx in deleted_stacks:
                     self.delete_stack(

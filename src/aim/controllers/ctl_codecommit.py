@@ -1,6 +1,5 @@
 import click
 import os
-from aim import utils
 from aim.stack_group import CodeCommitStackGroup, stack_group
 from aim.stack_group import IAMStackGroup
 from aim.core.exception import StackException
@@ -33,17 +32,16 @@ class CodeCommitController(Controller):
         if self.init_done:
             return
         self.init_done = True
-        utils.log_action_col("Init", "CodeCommit")
+        self.aim_ctx.log_action_col("Init", "CodeCommit")
         if controller_args:
             self.name = controller_args['arg_1']
         self.config = self.aim_ctx.project['resource']['codecommit']
-        self.validate_model_obj(self.config)
         # Sets the CodeCommit reference resolver object to forward all
         # all aim.ref resource.codecommit.* calls to self.resolve_ref()
         if self.config != None:
             self.config.resolve_ref_obj = self
             self.init_stack_groups()
-        utils.log_action_col("Init", "CodeCommit", "Completed")
+        self.aim_ctx.log_action_col("Init", "CodeCommit", "Completed")
 
     def init_stack_groups(self):
         # CodeCommit Repository
@@ -106,6 +104,7 @@ policies:
             stack_grp.validate()
 
     def provision(self):
+        self.confirm_yaml_changes(self.config)
         for stack_grp in self.stack_grps:
             stack_grp.provision()
         self.apply_model_obj()

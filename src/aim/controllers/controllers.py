@@ -23,22 +23,14 @@ class Controller():
             return
         self.init_done = True
 
-    def validate_model_obj(self, model_obj):
+    def confirm_yaml_changes(self, model_obj):
         self.model_obj = model_obj
         if self.model_obj != None and self.aim_ctx.command != 'delete':
-            loader.validate_model_obj(
-                self.model_obj,
-                self.aim_ctx.home,
-                self.aim_ctx.disable_validation,
-                self.aim_ctx.yes,
-            )
+            self.aim_ctx.confirm_yaml_changes(self.model_obj)
 
     def apply_model_obj(self):
         if self.model_obj != None:
-            loader.apply_model_obj(
-                self.model_obj,
-                self.aim_ctx.home,
-            )
+            self.aim_ctx.apply_model_obj(self.model_obj)
         else:
             raise StackException(
                 AimErrorCode.Unknown,

@@ -5,7 +5,7 @@ CloudFormation templates, organizing the stacks into groups and configuring supp
 
 import aim.cftemplates
 import os
-from aim import models, utils
+from aim import models
 from aim.application.ec2_launch_manager import EC2LaunchManager
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
@@ -57,7 +57,7 @@ class ApplicationEngine():
         return self.stack_group.get_aws_name()
 
     def init(self):
-        utils.log_action_col('Init', 'Application', self.app_id, enabled=self.config.is_enabled())
+        self.aim_ctx.log_action_col('Init', 'Application', self.app_id, enabled=self.config.is_enabled())
         self.ec2_launch_manager = EC2LaunchManager(
             self.aim_ctx,
             self,
@@ -84,7 +84,7 @@ class ApplicationEngine():
                 else:
                     init_method(grp_id, res_id, res_config, StackTags(res_stack_tags))
 
-        utils.log_action_col('Init', 'Application', self.app_id, 'Completed', enabled=self.config.is_enabled())
+        self.aim_ctx.log_action_col('Init', 'Application', self.app_id, 'Completed', enabled=self.config.is_enabled())
 
 
 
@@ -93,7 +93,7 @@ class ApplicationEngine():
 
     def log_resource_init_status(self, res_config):
         "Logs the init status of a resource"
-        utils.log_action_col(
+        self.aim_ctx.log_action_col(
             'Init', 'Application', 'Resource',
                 res_config.title_or_name + ': '+ res_config.name,
                 enabled = res_config.is_enabled())

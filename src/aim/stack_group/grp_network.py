@@ -3,17 +3,17 @@ from aim import models
 from aim.models import schemas
 from pprint import pprint
 import aim.cftemplates
-from aim import utils
+
 
 class NetworkStackGroup(StackGroup):
     def __init__(self, aim_ctx, account_ctx, env_ctx, stack_tags):
-
-        super().__init__(aim_ctx,
-                         account_ctx,
-                         env_ctx.netenv_id,
-                         "Net",
-                         env_ctx)
-
+        super().__init__(
+            aim_ctx,
+            account_ctx,
+            env_ctx.netenv_id,
+            "Net",
+            env_ctx
+        )
         self.env_ctx = env_ctx
         self.config_ref_prefix = self.env_ctx.config_ref_prefix
         self.region = self.env_ctx.region
@@ -21,7 +21,7 @@ class NetworkStackGroup(StackGroup):
 
     def log_init_status(self, name, description, is_enabled):
         "Logs the init status of a network component"
-        utils.log_action_col('Init', 'Network', name, description, enabled=is_enabled)
+        self.aim_ctx.log_action_col('Init', 'Network', name, description, enabled=is_enabled)
 
     def init(self):
         # Network Stack Templates
@@ -159,7 +159,7 @@ class NetworkStackGroup(StackGroup):
         for nat_stack in self.nat_list:
             self.add_stack_order(nat_stack, [StackOrder.WAIT])
 
-        utils.log_action_col('Init', 'Network', 'Completed', enabled=self.env_ctx.config.network.is_enabled())
+        self.aim_ctx.log_action_col('Init', 'Network', 'Completed', enabled=self.env_ctx.config.network.is_enabled())
 
     def get_vpc_stack(self):
         return self.vpc_stack

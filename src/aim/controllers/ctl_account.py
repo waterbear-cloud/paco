@@ -138,8 +138,9 @@ class AccountController(Controller):
                 print("\n--- %s Configuration ---" % org_account_id)
                 yaml.dump(account_config, sys.stdout)
                 print("---\n")
-                correct_value = self.aim_ctx.input("Is this the correct configuration for: %s ?" % (org_account_id),
-                                                    yes_no_prompt=True)
+                correct_value = self.aim_ctx.input_confirm_action(
+                    "Is this the correct configuration for: %s ?" % (org_account_id)
+                )
 
                 # Save account config to yaml
                 account_yaml_path = os.path.join(self.aim_ctx.home, 'Accounts', org_account_id+".yaml")
@@ -162,7 +163,7 @@ class AccountController(Controller):
             stack_group.init()
 
     def provision_organization_accounts(self, org_client):
-        # Next we process the Master account's organization accounts
+        "Process the Master account's organization accounts"
         for org_account_id in self.master_account_config.organization_account_ids:
             # Check if things already exist
             # Config Check
@@ -197,19 +198,21 @@ class AccountController(Controller):
             print("\n--- %s Configuration ---" % org_account_id)
             yaml.dump(account_config, sys.stdout)
             print("---\n")
-            correct_value = self.aim_ctx.input("Is this the correct configuration for '%s'?" % (org_account_id),
-                                                yes_no_prompt=True)
-
+            correct_value = self.aim_ctx.input_confirm_action(
+                "Is this the correct configuration for '%s'?" % (org_account_id)
+            )
             if correct_value == False:
                 print("Configuration is not correct, skipping...\n")
                 continue
+
             # Create the account unter the Organization
             print("Creating account: %s" % (org_account_id))
             try:
-                account_status = org_client.create_account( Email=account_config['root_email'],
-                                                        AccountName=org_account_id,
-                                                        RoleName=account_config['admin_delegate_role_name'] )
-
+                account_status = org_client.create_account(
+                    Email=account_config['root_email'],
+                    AccountName=org_account_id,
+                    RoleName=account_config['admin_delegate_role_name']
+                )
             except ClientError as e:
                 if e.response['Error']['Message'] == 'You have exceeded the allowed number of AWS accounts.':
                     print("Error: The number of AWS Accounts limit has been reached, contact AWS support to increase.")
@@ -218,8 +221,8 @@ class AccountController(Controller):
             while account_status['CreateAccountStatus']['State'] == 'IN_PROGRESS':
                 print("{}: Waiting for account to be created: Status: {}".format(org_account_id, account_status['CreateAccountStatus']['State']))
                 account_status = org_client.describe_create_account_status(
-                                CreateAccountRequestId=account_status['CreateAccountStatus']['Id']
-                            )
+                    CreateAccountRequestId=account_status['CreateAccountStatus']['Id']
+                )
                 time.sleep(10)
             if account_status['CreateAccountStatus']['State'] == 'FAILED':
                 print("ERROR: Create account FAILED: {}".format(account_status['CreateAccountStatus']['FailureReason']))
@@ -232,7 +235,7 @@ class AccountController(Controller):
                 yaml.dump(
                     data=account_config,
                     stream=stream
-                    )
+                )
 
     def provision_organization(self):
         org_client = self.master_account_ctx.get_aws_client('organizations')
