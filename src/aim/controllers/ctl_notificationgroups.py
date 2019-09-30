@@ -64,7 +64,6 @@ class NotificationGroupsController(Controller):
         except KeyError:
             self.init_done = True
             return
-        #utils.log_action_col('Init', 'Service', 'NotificationGroups')
         self.init_done = False
         self.active_regions = self.aim_ctx.project.active_regions
         self.groups.resolve_ref_obj = self # inject the controller into the model

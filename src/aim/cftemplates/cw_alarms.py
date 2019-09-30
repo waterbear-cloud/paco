@@ -101,7 +101,7 @@ class CWAlarms(CFTemplate):
         )
         template.add_parameter(dimension_param)
         for alarm in alarms:
-            if len(alarm.dimensions) > 1:
+            if len(alarm.dimensions) > 0:
                 for dimension in alarm.dimensions:
                     dimension.parameter = self.create_cfn_parameter(
                         param_type = 'String',
@@ -135,6 +135,10 @@ class CWAlarms(CFTemplate):
                 alarm_action_list.append(troposphere.Ref(alarm_action_param))
 
             alarm_export_dict['AlarmActions'] = alarm_action_list
+            if getattr(alarm, 'enable_ok_actions', False):
+                alarm_export_dict['OKActions'] = alarm_action_list
+            if getattr(alarm, 'enable_insufficient_data_actions', False):
+                alarm_export_dict['InsufficientDataActions'] = alarm_action_list
 
             # AlarmDescription
             notification_aim_refs = []

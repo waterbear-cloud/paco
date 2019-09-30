@@ -52,7 +52,7 @@ class EnvironmentContext():
         if self.init_done:
             return
         self.init_done = True
-        utils.log_action_col('Init', 'Environment', self.env_id+' '+self.region)
+        self.aim_ctx.log_action_col('Init', 'Environment', self.env_id+' '+self.region)
         # Network Stack: VPC, Subnets, Etc
         self.network_stack_grp = NetworkStackGroup(self.aim_ctx,
                                                    self.account_ctx,
@@ -87,7 +87,7 @@ class EnvironmentContext():
             self.stack_grps.append(application_stack_grp)
             application_stack_grp.init()
 
-        utils.log_action_col('Init', 'Environment', self.env_id+' '+self.region)
+        self.aim_ctx.log_action_col('Init', 'Environment', self.env_id+' '+self.region)
 
     def get_aws_name(self):
         aws_name = '-'.join([self.netenv_ctl.get_aws_name(),
@@ -194,14 +194,14 @@ class EnvironmentContext():
             stack_grp.validate()
 
     def provision(self):
-        utils.log_action_col("Provision", "Environment", self.env_id+' '+self.region)
+        self.aim_ctx.log_action_col("Provision", "Environment", self.env_id+' '+self.region)
         if len(self.stack_grps) > 0:
             for stack_grp in self.stack_grps:
                 stack_grp.provision()
             self.save_stack_output_config()
         else:
-            utils.log_action_col("Provision", "Nothing to provision.")
-        utils.log_action_col("Provision", "Environment", self.env_id+' '+self.region, "Completed")
+            self.aim_ctx.log_action_col("Provision", "Nothing to provision.")
+        self.aim_ctx.log_action_col("Provision", "Environment", self.env_id+' '+self.region, "Completed")
 
     def delete(self):
         for stack_grp in reversed(self.stack_grps):
@@ -355,30 +355,30 @@ class NetEnvController(Controller):
                 else:
                     config_obj = config_obj[res_part]
                 first = False
-        self.validate_model_obj(self.config)
 
-        utils.log_action_col("Init", "NetEnv", self.netenv_id)
+        self.aim_ctx.log_action_col("Init", "NetEnv", self.netenv_id)
         self.stack_group_filter = 'netenv.' + netenv_arg
         if regions:
             for region in regions:
                 self.init_sub_env(env_id, region)
-        utils.log_action_col("Init", "NetEnv", self.netenv_id, "Complete")
+        self.aim_ctx.log_action_col("Init", "NetEnv", self.netenv_id, "Complete")
 
     def validate(self):
-        utils.log_action_col("Validate", "NetEnv", self.netenv_id)
+        self.aim_ctx.log_action_col("Validate", "NetEnv", self.netenv_id)
         for env_id in self.sub_envs.keys():
             for region in self.sub_envs[env_id].keys():
-                utils.log_action_col('Validate', 'Environment', env_id+' '+region)
+                self.aim_ctx.log_action_col('Validate', 'Environment', env_id+' '+region)
                 self.sub_envs[env_id][region].validate()
-        utils.log_action_col("Validate", "NetEnv", self.netenv_id, 'Completed')
+        self.aim_ctx.log_action_col("Validate", "NetEnv", self.netenv_id, 'Completed')
 
     def provision(self):
-        utils.log_action_col("Provision", "NetEnv", self.netenv_id)
+        self.confirm_yaml_changes(self.config)
+        self.aim_ctx.log_action_col("Provision", "NetEnv", self.netenv_id)
         for env_id in self.sub_envs.keys():
             for region in self.sub_envs[env_id].keys():
                 self.sub_envs[env_id][region].provision()
         self.apply_model_obj()
-        utils.log_action_col("Provision", "NetEnv", self.netenv_id, "Completed")
+        self.aim_ctx.log_action_col("Provision", "NetEnv", self.netenv_id, "Completed")
 
     def backup(self, config_arg):
         env_ctx = self.sub_envs[config_arg['env_id']][config_arg['region']]

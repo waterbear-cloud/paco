@@ -86,65 +86,6 @@ def prefixed_name(resource, name):
 
     return '-'.join([env_name, app_name, group_name, resource.name, name])
 
-def create_log_col(col='', col_size=0, message_len=0, wrap_text=False):
-    if col == '' or col == None:
-        return ' '*col_size
-    message_spc = ' '*message_len
-
-    if col.find('\n') != -1:
-        message = col.replace('\n', '\n'+message_spc)
-    elif wrap_text == True and len(col) > col_size:
-        pos = col_size
-        while pos < len(col):
-            col = col[:pos] + '\n' + message_spc + col[pos:]
-            pos += message_len + col_size
-        message = col
-    else:
-        message = '{}{} '.format(col[:col_size], ' '*(col_size-len(col[:col_size])))
-    return message
-
-
-def log_action_col(
-        col_1, col_2=None, col_3=None, col_4=None,
-        return_it=False, enabled=True,
-        col_1_size=10, col_2_size=11, col_3_size=15, col_4_size = None
-        ):
-    if col_2 == '': col_2 = None
-    if col_3 == '': col_3 = None
-    if col_4 == '': col_4 = None
-    if col_4 != None and col_4_size == None: col_4_size = len(col_4)
-
-    if enabled == False:
-        col_1 = 'Disabled'
-
-    col_2_wrap_text = False
-    col_3_wrap_text = False
-    col_4_wrap_text = False
-    if col_2 == None:
-        col_1_size = len(col_1)
-        col_3 = None
-        col_4 = None
-    if col_3 == None and col_2 != None:
-        col_2_size = len(col_2)
-        col_4 = None
-        col_2_wrap_text = True
-    if col_4 == None and col_3 != None:
-        col_3_size = len(col_3)
-        col_3_wrap_text = True
-    if col_4 != None:
-        col_4_wrap_text = True
-
-    message = create_log_col(col_1, col_1_size, 0)
-    if col_2 != None:
-        message += create_log_col(col_2, col_2_size, len(message), col_2_wrap_text)
-        if col_3 != None:
-            message += create_log_col(col_3, col_3_size, len(message), col_3_wrap_text)
-            if col_4 != None:
-                message += create_log_col(col_4, col_4_size, len(message), col_4_wrap_text)
-    if return_it == True:
-        return message+'\n'
-    print(message)
-
 def log_action(action, message, return_it=False, enabled=True):
     log_message = action+": "+message
     if enabled == False:

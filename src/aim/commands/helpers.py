@@ -10,6 +10,52 @@ from functools import wraps
 
 pass_aim_context = click.make_pass_decorator(AimContext, ensure=True)
 
+controller_types = """
+\b
+  account: Accounts.
+    File at ./Accounts/<NAME>.yaml
+
+\b
+  acm: ACM resources.
+    File at ./Resources/acm.yaml
+
+\b
+  cloudtrail: CloudTrail resources.
+    File at ./Resources/cloudtrail.yaml
+
+\b
+  codecommit: CodeCommit resources.
+    File at ./Resources/codecommit.yaml
+
+\b
+  ec2: EC2 resources.
+    File at ./Resources/ec2.yaml
+
+\b
+  iam: IAM resources.
+    File at ./Resources/iam.yaml
+
+\b
+  netenv: NetworkEnvironment.
+    The NAME argument must be an aim.ref style dotted name in the format:
+      "<ne_name>.<environment>.<region_name>.applications.<app_name>.groups.<resource_group_name>.resources.<resource_name>"
+    Only the NetworkEnvironment name and Environment name are required. Examples:
+      netenv mynet.dev
+      netenv mynet.dev.us-west-2.applications.myapp.groups.mygroup.resources.myresource
+    File at ./NetworkEnvironments/<NAME>.yaml
+
+\b
+  notificationgroups: NotificationGroups.
+    File at ./Resources/NotificationGroups.yaml
+
+\b
+  route53: Route53 resources.
+    File at ./NetworkEnvironments/route53.yaml
+
+\b
+  s3: S3 Bucket resources.
+    File at ./Resources/s3.yaml
+"""
 
 def controller_args(func):
     """

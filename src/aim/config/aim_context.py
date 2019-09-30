@@ -2,15 +2,24 @@ import aim.config.aws_credentials
 import aim.core.log
 import aim.controllers
 import aim.models.services
-import os, sys
+import os, sys, re
+import pathlib
 import pkg_resources
+import ruamel.yaml
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.models import vocabulary
 from aim.models.references import Reference
 from aim.models import references
-from aim import utils
 from aim.models import load_project_from_yaml
+from aim.models.loader import read_yaml_file
+from shutil import copyfile
+
+# deepdiff turns on Deprecation warnings, we need to turn them back off
+# again right after import, otherwise 3rd libs spam dep warnings all over the place
+from deepdiff import DeepDiff
+import warnings
+warnings.simplefilter("ignore")
 
 
 class AccountContext(object):
@@ -121,8 +130,80 @@ class AccountContext(object):
         return self.resource_cache[resource_name]
 
 
-# ----------------------------------------------------------------------------------
+# deep diff formatting
+def getFromSquareBrackets(s):
+    return re.findall(r"\['?([A-Za-z0-9_]+)'?\]", s)
+
+def print_diff_list(change_t, level=1):
+    print('', end='\n')
+    for value in change_t:
+        print("  {}-".format(' '*(level*2)), end='')
+        if isinstance(value, list) == True:
+            print_diff_list(value, level+1)
+        elif isinstance(value, dict) == True:
+            print_diff_dict(value, level+1)
+        else:
+            print("  {}".format(value))
+
+def print_diff_dict(change_t, level=1):
+    print('', end='\n')
+    for key, value in change_t.items():
+        print("  {}{}:".format(' '*(level*2), key), end='')
+        if isinstance(value, list) == True:
+            print_diff_list(value, level+1)
+        elif isinstance(value, dict) == True:
+            print_diff_dict(value, level+1)
+        else:
+            print("  {}".format(value))
+
+def print_diff_object(diff_obj, diff_obj_key):
+    if diff_obj_key not in diff_obj.keys():
+        return
+    for root_change in diff_obj[diff_obj_key]:
+        node_str = '.'.join(getFromSquareBrackets(root_change.path()))
+        if diff_obj_key.endswith('_removed'):
+            change_t = root_change.t1
+        elif diff_obj_key.endswith('_added'):
+            change_t = root_change.t2
+        elif diff_obj_key == 'values_changed':
+            change_t = root_change.t1
+        elif diff_obj_key == 'type_changes':
+            change_t = root_change.t1
+
+        print("    ({}) {}".format(type(change_t).__name__, node_str))
+        if diff_obj_key == 'values_changed':
+            print("\told: {}".format(root_change.t1))
+            print("\tnew: {}\n".format(root_change.t2))
+        elif isinstance(change_t, list) == True:
+            print_diff_list(change_t)
+        elif isinstance(change_t, dict) == True:
+            print_diff_dict(change_t)
+        else:
+            print("{}".format(change_t))
+        print('')
+
+def create_log_col(col='', col_size=0, message_len=0, wrap_text=False):
+    if col == '' or col == None:
+        return ' '*col_size
+    message_spc = ' '*message_len
+
+    if col.find('\n') != -1:
+        message = col.replace('\n', '\n'+message_spc)
+    elif wrap_text == True and len(col) > col_size:
+        pos = col_size
+        while pos < len(col):
+            col = col[:pos] + '\n' + message_spc + col[pos:]
+            pos += message_len + col_size
+        message = col
+    else:
+        message = '{}{} '.format(col[:col_size], ' '*(col_size-len(col[:col_size])))
+    return message
+
+
 class AimContext(object):
+    """
+    Contains `aim` CLI arguments and options and manages command-line interactions.
+    """
 
     def __init__(self, home=None):
         self.home = home
@@ -175,7 +256,7 @@ class AimContext(object):
 
     def load_project(self, project_init=False):
         "Load an AIM Project from YAML,c initialize settings and controllers, and load Service plug-ins."
-        print("Project: %s" % (self.home))
+        print("Loading AIM Project at %s" % (self.home))
         self.project_folder = self.home
         if project_init == True:
             return
@@ -204,20 +285,20 @@ class AimContext(object):
         for plugin_name, plugin_module in service_plugins.items():
             # Skip it for now
             if plugin_name.lower() == 'patch':
-                utils.log_action_col("Skipping", 'Service', plugin_name)
+                self.log_action_col("Skipping", 'Service', plugin_name)
                 continue
             try:
                 self.project['service'][plugin_name.lower()]
             except KeyError:
                 # ignore if no config files for a registered service
-                utils.log_action_col("Skipping", 'Service', plugin_name)
+                self.log_action_col("Skipping", 'Service', plugin_name)
                 continue
 
-            utils.log_action_col('Init', 'Service', plugin_name)
+            self.log_action_col('Init', 'Service', plugin_name)
             service = plugin_module.instantiate_class(self, self.project['service'][plugin_name.lower()])
             service.init(None)
             self.services[plugin_name.lower()] = service
-            utils.log_action_col('Init', 'Service', plugin_name, 'Completed')
+            self.log_action_col('Init', 'Service', plugin_name, 'Completed')
 
     def get_controller(self, controller_type, controller_args=None):
         """Gets a controller by name and calls .init() on it with any controller args"""
@@ -240,7 +321,9 @@ class AimContext(object):
         return controller
 
     def log(self, msg, *args):
-        """Logs a message to aim logger."""
+        """Logs a message to aim logger if verbose is enabled."""
+        if not self.verbose:
+            return
         if args:
             msg %= args
         self.logger.info(msg)
@@ -267,40 +350,99 @@ class AimContext(object):
             account_ctx=account_ctx
         )
 
-    def input(self,
-                prompt,
-                default=None,
-                yes_no_prompt=False,
-                allowed_values=None,
-                return_bool_on_allowed_value=False,
-                case_sensitive=True):
+    def confirm_yaml_changes(self, model_obj):
+        """Confirm changes made to the AIM Project YAML from the last run"""
+        if self.disable_validation == True:
+            return
+        applied_file_path, new_file_path = self.init_model_obj_store(model_obj)
+        if applied_file_path.exists() == False:
+            return
+        applied_file_dict = read_yaml_file(applied_file_path)
+        new_file_dict = read_yaml_file(new_file_path)
+        deep_diff = DeepDiff(
+            applied_file_dict,
+            new_file_dict,
+            verbose_level=1,
+            view='tree'
+        )
+        if len(deep_diff.keys()) == 0:
+            return
 
-        if yes_no_prompt == True and self.yes:
+        print("--------------------------------------------------------")
+        print("AIM Project changes from last provision of YAML file at:\n")
+        print("{}".format(new_file_path))
+        if self.verbose:
+            print("applied file: {}".format(applied_file_path))
+        print()
+        if 'values_changed' in deep_diff or \
+            'type_changes' in deep_diff:
+            print("\nChanged:")
+            print_diff_object(deep_diff, 'values_changed')
+            print_diff_object(deep_diff, 'type_changes')
+
+        if 'dictionary_item_removed' in deep_diff or \
+            'iterable_item_removed' in deep_diff or \
+            'set_item_added' in deep_diff:
+            print("Removed:")
+            print_diff_object(deep_diff, 'dictionary_item_removed')
+            print_diff_object(deep_diff, 'iterable_item_removed')
+            print_diff_object(deep_diff, 'set_item_added')
+
+        if 'dictionary_item_added' in deep_diff or \
+            'iterable_item_added' in deep_diff or \
+            'set_item_removed' in deep_diff:
+            print("Added:")
+            print_diff_object(deep_diff, 'dictionary_item_added')
+            print_diff_object(deep_diff, 'iterable_item_added')
+            print_diff_object(deep_diff, 'set_item_removed')
+
+        print("--------------------------------------------------------")
+        if self.yes == True:
+            return
+        answer = self.input_confirm_action("\nAre these changes acceptable?")
+        if answer == False:
+            print("Aborted run.")
+            sys.exit(1)
+        print()
+
+    def input_confirm_action(
+        self,
+        question,
+        default="n"
+    ):
+        """Ask for a input on the CLI unless the -y, --yes flag has been specified."""
+        if self.yes:
             return True
+        valid = {"yes": True, "y": True, "no": False, "n": False}
+        if default == "y":
+            prompt = " [Y/n] "
+        elif default == "n":
+            prompt = " [y/N] "
+        else:
+            raise ValueError("Invalid default answer: '%s'" % default)
+        while True:
+            answer = input(question + prompt).lower()
+            if default is not None and answer == '':
+                return valid[default]
+            elif answer in valid:
+                return valid[answer]
+            else:
+                print("Please respond with 'y' or 'n' (or 'yes' or 'no').\n")
 
+    def input(
+        self,
+        prompt,
+        default=None,
+        allowed_values=None,
+        return_bool_on_allowed_value=False,
+        case_sensitive=True
+    ):
         try_again = True
         while try_again:
             suffix = ": "
-            if yes_no_prompt == True:
-                suffix += "Y/N: "
-                if default == None:
-                    default = "N"
             if default != None:
                 suffix += "[%s]: " % str(default)
-
             value = input(prompt+suffix) or default
-
-            if yes_no_prompt == True:
-                if value == None:
-                    return False
-                if value.lower() == "y" or value.lower() == "yes":
-                    return True
-                elif value.lower() == "n" or value.lower() == "no":
-                    return False
-                else:
-                    print("Invalid response: %s: Try again." % (value))
-                    continue
-
             if allowed_values != None:
                 for allowed_value in allowed_values:
                     value_match = False
@@ -317,7 +459,6 @@ class AimContext(object):
                 print("Invalid value: %s" % (value))
                 print("Allowed values: %s\n" % ', '.join(allowed_values))
                 continue
-
             try_again = False
         return value
 
@@ -325,3 +466,80 @@ class AimContext(object):
         if flag in self.project.legacy_flags:
             return True
         return False
+
+    def init_model_obj_store(self, model_obj):
+        """Create a directory for the applied YAML file.
+        Returns a tuple of pathlib Paths for the already applied file
+        and the new actual file to be applied.
+        """
+        project_folder_path = pathlib.Path(self.project_folder)
+        changed_file_path = project_folder_path.joinpath(model_obj._read_file_path)
+        applied_file_path = project_folder_path.joinpath(
+            'aimdata',
+            'applied',
+            'model',
+            model_obj._read_file_path
+        )
+        applied_file_path.parent.mkdir(parents=True, exist_ok=True)
+
+        return (applied_file_path, changed_file_path)
+
+    def apply_model_obj(self, model_obj):
+        "Copies the YAML file after it has been provisioned to an applied cache dir"
+        applied_file_path, new_file_path = self.init_model_obj_store(model_obj)
+        copyfile(new_file_path, applied_file_path)
+
+    def log_action_col(
+        self,
+        col_1,
+        col_2=None,
+        col_3=None,
+        col_4=None,
+        return_it=False,
+        enabled=True,
+        col_1_size=10,
+        col_2_size=11,
+        col_3_size=15,
+        col_4_size=None
+    ):
+        # Skip verbose messages unless -v verbose is flagged
+        if not self.verbose:
+            if col_1 == 'Init':
+                return
+            elif col_1 == 'Skipping':
+                return
+        if col_2 == '': col_2 = None
+        if col_3 == '': col_3 = None
+        if col_4 == '': col_4 = None
+        if col_4 != None and col_4_size == None: col_4_size = len(col_4)
+
+        if enabled == False:
+            col_1 = 'Disabled'
+
+        col_2_wrap_text = False
+        col_3_wrap_text = False
+        col_4_wrap_text = False
+        if col_2 == None:
+            col_1_size = len(col_1)
+            col_3 = None
+            col_4 = None
+        if col_3 == None and col_2 != None:
+            col_2_size = len(col_2)
+            col_4 = None
+            col_2_wrap_text = True
+        if col_4 == None and col_3 != None:
+            col_3_size = len(col_3)
+            col_3_wrap_text = True
+        if col_4 != None:
+            col_4_wrap_text = True
+
+        message = create_log_col(col_1, col_1_size, 0)
+        if col_2 != None:
+            message += create_log_col(col_2, col_2_size, len(message), col_2_wrap_text)
+            if col_3 != None:
+                message += create_log_col(col_3, col_3_size, len(message), col_3_wrap_text)
+                if col_4 != None:
+                    message += create_log_col(col_4, col_4_size, len(message), col_4_wrap_text)
+        if return_it == True:
+            return message+'\n'
+        print(message)

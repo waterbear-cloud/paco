@@ -7,7 +7,7 @@ from aim.stack_group import StackGroup
 from aim.controllers.controllers import Controller
 from botocore.exceptions import ClientError
 from aim.models import vocabulary
-from aim import models, utils
+from aim import models
 import aim.cftemplates
 from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks, StackTags
 import copy
@@ -98,11 +98,11 @@ class S3Context():
 
         if bucket.external_resource == True:
             # if the bucket already exists, do not create a stack for it
-            utils.log_action_col(
+            self.aim_ctx.log_action_col(
                 "Init", "S3", "External", bucket.name + ": " + bucket.get_bucket_name(), False, bucket.is_enabled()
             )
         else:
-            utils.log_action_col(
+            self.aim_ctx.log_action_col(
                 "Init", "S3", "Bucket", bucket.name + ": " + bucket.get_bucket_name(), False, bucket.is_enabled()
             )
             if stack_hooks == None:
@@ -163,7 +163,7 @@ class S3Context():
         deletion_policy = s3_config.deletion_policy
         bucket_name = s3_config.get_bucket_name()
         if deletion_policy == "delete":
-            utils.log_action_col('Run', 'Hook', 'Delete', bucket_name)
+            self.aim_ctx.log_action_col('Run', 'Hook', 'Delete', bucket_name)
             bucket = s3_resource.Bucket(bucket_name)
             try:
                 bucket.object_versions.delete()
@@ -174,7 +174,7 @@ class S3Context():
                     print("%s: %s" % (e.response['Error']['Code'], e.response['Error']['Message']))
                     raise StackException(AimErrorCode.Unknown)
         else:
-            utils.log_action_col('Run', 'Hook', 'Retain', bucket_name)
+            self.aim_ctx.log_action_col('Run', 'Hook', 'Retain', bucket_name)
 
     def empty_bucket(self):
         if self.bucket_context == None:
@@ -249,7 +249,7 @@ class S3Controller(Controller):
     def init_s3_resource(self, controller_args, stack_tags):
         if self.init_s3_resource_done == True:
             return
-        utils.log_action_col("Init", "S3")
+        self.aim_ctx.log_action_col("Init", "S3")
         self.init_s3_resource_done = True
         s3_env_map = {}
         for bucket_id in self.aim_ctx.project['resource']['s3'].buckets.keys():
@@ -268,7 +268,7 @@ class S3Controller(Controller):
             s3_env_map[s3_env_id]['buckets'].append([bucket_id, bucket_config])
 
         self.init_bucket_environments(s3_env_map, stack_tags)
-        utils.log_action_col("Init", "S3", "Completed")
+        self.aim_ctx.log_action_col("Init", "S3", "Completed")
 
     def init(self, controller_args):
         if controller_args != None:

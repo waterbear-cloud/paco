@@ -1,10 +1,12 @@
 import aim.models
 import click
 import sys
-from aim.commands.helpers import controller_args, aim_home_option, init_aim_home_option, pass_aim_context, handle_exceptions
+from aim.commands.helpers import controller_args, aim_home_option, init_aim_home_option, pass_aim_context, \
+    handle_exceptions, controller_types
 from aim.core.exception import StackException
 
-@click.command(name='provision', short_help='Provision an AIM project or a specific environment.')
+
+@click.command(name='provision', short_help='Provision resources to the cloud.')
 @controller_args
 @aim_home_option
 @pass_aim_context
@@ -29,3 +31,10 @@ def provision_command(aim_ctx, controller_type, arg_1=None, arg_2=None, arg_3=No
     }
     controller = aim_ctx.get_controller(controller_type, controller_args)
     controller.provision()
+
+provision_command.help = """
+Provision AWS Resources.
+
+CONTROLLER_TYPE can be one of:
+
+""" + controller_types

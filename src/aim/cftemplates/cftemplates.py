@@ -12,7 +12,7 @@ from aim.core.exception import StackException, AimErrorCode, AimException
 from aim.models import references
 from aim.models.references import Reference
 from aim.stack_group import Stack, StackOrder
-from aim.utils import dict_of_dicts_merge, md5sum, big_join, list_to_comma_string, log_action_col
+from aim.utils import dict_of_dicts_merge, md5sum, big_join, list_to_comma_string
 from botocore.exceptions import ClientError
 from pprint import pprint
 from shutil import copyfile
@@ -132,16 +132,13 @@ class Parameter():
         self.resolved_value = resolved_value
 
     def gen_parameter_value(self):
-        # print("Key: " + self.key + ": Value: " + self.value)
-        #utils.log_action_col(
-        #    'Info', 'Get', 'Parameter', '{} = {}'.format(self.key, self.value)
-        #)
         return self.value
 
     def gen_parameter(self):
         return self
 
 class CFTemplate():
+    """A CloudFormation template"""
     def __init__(self,
                  aim_ctx,
                  account_ctx,
@@ -338,7 +335,7 @@ class CFTemplate():
         new_str = ''
         if applied_file_path.exists() == False:
             new_str = ':new'
-        log_action_col("Validate", self.account_ctx.get_name(), "Template"+new_str, short_yaml_path)
+        self.aim_ctx.log_action_col("Validate", self.account_ctx.get_name(), "Template"+new_str, short_yaml_path)
         try:
             self.cfn_client.validate_template(TemplateBody=self.body)
         except ClientError as e:
@@ -362,8 +359,8 @@ class CFTemplate():
         applied_parameters_path = self.init_applied_parameters_path(applied_template_path)
         short_applied_template_path = str(applied_template_path).replace(self.aim_ctx.home, '')
         short_applied_parameters_path = str(applied_parameters_path).replace(self.aim_ctx.home, '')
-        utils.log_action_col('Delete', 'Template', 'Applied', short_applied_template_path)
-        utils.log_action_col('Delete', 'Parameters', 'Applied', short_applied_parameters_path)
+        self.aim_ctx.log_action_col('Delete', 'Template', 'Applied', short_applied_template_path)
+        self.aim_ctx.log_action_col('Delete', 'Parameters', 'Applied', short_applied_parameters_path)
         try:
             applied_template_path.unlink()
             applied_parameters_path.unlink()
@@ -372,7 +369,7 @@ class CFTemplate():
 
         # The template itself
         short_yaml_path = self.get_yaml_path().replace(self.aim_ctx.home, '')
-        utils.log_action_col('Delete', 'Template', 'Build', short_yaml_path)
+        self.aim_ctx.log_action_col('Delete', 'Template', 'Build', short_yaml_path)
         try:
             pathlib.Path(self.get_yaml_path()).unlink()
         except FileNotFoundError:
@@ -399,7 +396,10 @@ class CFTemplate():
         with open(applied_param_file_path, 'w') as stream:
             yaml.dump(parameter_list, stream)
 
-    def validate_stack_parameters(self, parameter_list):
+    def confirm_stack_parameter_changes(self, parameter_list):
+        """
+        Display changes to a stack's Parameters and confirm changes
+        """
         if self.aim_ctx.disable_validation == True:
             return
         applied_file_path, new_file_path = self.init_template_store_paths()
@@ -407,25 +407,23 @@ class CFTemplate():
 
         if param_applied_file_path.exists() == False:
             return
-
         yaml = YAML(pure=True)
         yaml.allow_duplicate_keys = True
         with open(param_applied_file_path, 'r') as stream:
             applied_parameter_list = yaml.load(stream)
 
-        print("==========================")
-        print("Validate Stack Parameters")
-
+        # No changes detected
         if parameter_list == applied_parameter_list:
-            print("No changes detected")
-            print("==========================")
             return
 
-        print("(stack) {}".format(self.stack.get_name()))
-        print("(model) {}".format(self.config_ref))
-        print("(template)  {}".format(new_file_path))
-        print("(applied template)  {}".format(applied_file_path))
-        print("(applied parameters)  {}".format(param_applied_file_path))
+        print("--------------------------------------------------------")
+        print("Confirm changes to CloudFormation Stack Parameters for :")
+        print("{}".format(self.stack.get_name()))
+        if self.aim_ctx.verbose:
+            print("Model: {}".format(self.config_ref))
+            print("Template:  {}".format(new_file_path))
+            print("Applied template:  {}".format(applied_file_path))
+            print("Applied parameters:  {}".format(param_applied_file_path))
         print('')
 
         col_3_size = 0
@@ -439,7 +437,7 @@ class CFTemplate():
             if new_param in applied_parameter_list:
                 applied_parameter_list.remove(new_param)
                 if self.aim_ctx.verbose == True:
-                    utils.log_action_col(
+                    self.aim_ctx.log_action_col(
                         '  ',
                         col_2 = 'Unchanged',
                         col_3 = new_param['ParameterKey'],
@@ -451,13 +449,13 @@ class CFTemplate():
             else:
                 for applied_param in applied_parameter_list:
                     if new_param['ParameterKey'] == applied_param['ParameterKey']:
-                        utils.log_action_col(
+                        self.aim_ctx.log_action_col(
                             '  ', col_2 = 'Changed', col_3 = applied_param['ParameterKey'],
                             col_4 = 'old: {}'.format(applied_param['ParameterValue']),
                             col_1_size = 2, col_2_size = col_2_size, col_3_size = col_3_size,
                             col_4_size = 80
                             )
-                        utils.log_action_col(
+                        self.aim_ctx.log_action_col(
                             '  ', col_2 = 'Changed', col_3 = new_param['ParameterKey'],
                             col_4 = 'new: {}'.format(new_param['ParameterValue']),
                             col_1_size = 2, col_2_size = col_2_size, col_3_size = col_3_size,
@@ -470,13 +468,13 @@ class CFTemplate():
                         if new_param['ParameterKey'] == 'UserDataScript':
                             old_decoded = base64.b64decode(applied_param['ParameterValue'])
                             new_decoded = base64.b64decode(new_param['ParameterValue'])
-                            utils.log_action_col(
+                            self.aim_ctx.log_action_col(
                                 '  ', col_2 = 'Decoded', col_3 = 'UserDataScript',
                                 col_4 = 'old: {}'.format(old_decoded.decode()),
                                 col_1_size = 2, col_2_size = col_2_size, col_3_size = col_3_size,
                                 col_4_size = 80
                                 )
-                            utils.log_action_col(
+                            self.aim_ctx.log_action_col(
                                 '  ', col_2 = 'Decoded', col_3 = 'UserDataScript',
                                 col_4 = 'new: {}'.format(new_decoded.decode()),
                                 col_1_size = 2, col_2_size = col_2_size, col_3_size = col_3_size,
@@ -486,7 +484,7 @@ class CFTemplate():
                     else:
                         # New parameter
                         #
-                        utils.log_action_col(
+                        self.aim_ctx.log_action_col(
                             '  ',
                             col_2 = 'New Param',
                             col_3 = new_param['ParameterKey'],
@@ -502,21 +500,13 @@ class CFTemplate():
         for applied_param in applied_parameter_list:
             print("Removed Parameter: {} = {}".format(applied_param['ParameterKey'], applied_param['ParameterValue']))
 
-        print("==========================")
+        print("--------------------------------------------------------")
 
-        prompt_user = True
-        while prompt_user:
-            answer = self.aim_ctx.input(
-                "\nAre these changes acceptable?",
-                yes_no_prompt=True,
-                default='N'
-            )
-            if answer == False:
-                print("aborting...")
-                sys.exit(1)
-            else:
-                break
-        print('', end='\n')
+        answer = self.aim_ctx.input_confirm_action("\nAre these changes acceptable?")
+        if answer == False:
+            print("Aborted run.")
+            sys.exit(1)
+        print()
 
     def generate_stack_parameters(self):
         """Sets Scheduled output parameters to be collected from one stacks Outputs.
@@ -1121,13 +1111,9 @@ class CFTemplate():
         print("\n==========================")
 
         while prompt_user:
-            answer = self.aim_ctx.input(
-                "\nAre these changes acceptable?",
-                yes_no_prompt=True,
-                default='N'
-            )
+            answer = self.aim_ctx.input_confirm_action("\nAre these changes acceptable?")
             if answer == False:
-                print("aborting...")
+                print("Aborted run.")
                 sys.exit(1)
             else:
                 break
