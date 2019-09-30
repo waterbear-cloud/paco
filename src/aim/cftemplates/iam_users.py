@@ -36,7 +36,7 @@ class IAMUsers(CFTemplate):
             stack_hooks=stack_hooks,
             iam_capabilities=['CAPABILITY_NAMED_IAM']
         )
-        self.aws_set_name('Accounts')
+        self.set_aws_name('Accounts')
 
         # ---------------------------------------------------------------------------
         # Troposphere Template Initialization

@@ -38,7 +38,16 @@ class IAMUserAccountDelegates(CFTemplate):
             stack_order=stack_order,
             iam_capabilities=['CAPABILITY_NAMED_IAM']
         )
-        self.set_aws_name('Account-Delegates', user_config.name[0].upper())
+
+        #self.set_aws_name('Account-Delegates', user_config.name)
+
+        username = self.create_resource_name(
+            user_config.name,
+            camel_case=True
+        )
+        username = username[0].upper() + username[1:]
+
+        self.set_aws_name(username, 'Account-Delegates')
 
         self.account_id = account_ctx.id
         self.master_account_id = self.aim_ctx.get_ref('aim.ref accounts.master.id')
