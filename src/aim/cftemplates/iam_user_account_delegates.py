@@ -5,6 +5,7 @@ import troposphere.iam
 
 from aim import utils
 from aim.cftemplates.cftemplates import CFTemplate
+from aim.models.references import Reference
 from awacs.aws import Allow, Action, Principal, Statement, Condition, MultiFactorAuthPresent, PolicyDocument
 from awacs.aws import Bool as AWACSBool
 from awacs.sts import AssumeRole
@@ -120,20 +121,66 @@ class IAMUserAccountDelegates(CFTemplate):
         assume_role_res.properties['ManagedPolicyArns'].append(policy_arn)
 
     def init_codebuild_permission(self, permission_config, assume_role_res):
-        """CodeCommit Web Console Permissions"""
-        return
+        """CodeBuild Web Console Permissions"""
         if 'ManagedPolicyArns' not in assume_role_res.properties.keys():
             assume_role_res.properties['ManagedPolicyArns'] = []
 
+        statement_list = []
+        #readwrite_codebuild_arns = []
+        readonly_codebuild_arns = []
         for resource in permission_config.resources:
-            codebuild_arn = self.aim_ctx.get_ref(resource.codebuild+'.arn')
-            breakpoint()
+            codebuild_ref = Reference(resource.codebuild)
+            codebuild_account_ref = 'aim.ref ' + '.'.join(codebuild_ref.parts[:-2]) + '.configuration.account'
+            codebuild_account_ref = self.aim_ctx.get_ref(codebuild_account_ref)
+            codebuild_account_id = self.aim_ctx.get_ref(codebuild_account_ref+'.id')
+            if codebuild_account_id != self.account_id:
+                continue
 
-            if permission_config.read_only == True:
-                policy_arn = 'arn:aws:iam::aws:policy/ReadOnlyAccess'
-            else:
-                policy_arn = 'arn:aws:iam::aws:policy/AdministratorAccess'
-            assume_role_res.properties['ManagedPolicyArns'].append(policy_arn)
+            codebuild_arn = self.aim_ctx.get_ref(resource.codebuild+'.project.arn')
+
+            if resource.permission == 'ReadOnly':
+                if codebuild_arn not in readonly_codebuild_arns:
+                    readonly_codebuild_arns.append(codebuild_arn)
+
+        readonly_codebuild_actions = [
+            Action('codebuild', 'BatchGet*'),
+            Action('codebuild', 'Get*'),
+            Action('codebuild', 'List*'),
+        ]
+        readonly_other_actions = [
+            Action('cloudwatch', 'GetMetricStatistics*'),
+            Action('events', 'DescribeRule'),
+            Action('events', 'ListTargetsByRule'),
+            Action('events', 'ListRuleNamesByTarget'),
+            Action('logs', 'GetLogEvents')
+        ]
+        if len(readonly_codebuild_arns) > 0:
+            statement_list.append(
+                Statement(
+                    Sid='CodeBuildReadOnly',
+                    Effect=Allow,
+                    Action=readonly_codebuild_actions,
+                    Resource=readonly_codebuild_arns
+                )
+            )
+            statement_list.append(
+                Statement(
+                    Sid='OtherReadOnly',
+                    Effect=Allow,
+                    Action=readonly_other_actions,
+                    Resource=['*']
+                )
+            )
+
+        managed_policy_res = troposphere.iam.ManagedPolicy(
+            title=self.create_cfn_logical_id("CodeBuildPolicy"),
+            PolicyDocument=PolicyDocument(
+                Version="2012-10-17",
+                Statement=statement_list
+            ),
+            Roles=[ troposphere.Ref(assume_role_res) ]
+        )
+        self.template.add_resource(managed_policy_res)#
 
     def init_codecommit_permission(self, permission_config, assume_role_res):
 

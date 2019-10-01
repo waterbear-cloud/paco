@@ -45,6 +45,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         self.res_stack_tags = res_stack_tags
 
         self.pipeline_config.resolve_ref_obj = self
+        self.pipeline_config.configuration.resolve_ref_obj = self
 
         self.pipeline_account_ctx = self.aim_ctx.get_account_context(pipeline_config.configuration.account)
         #data_account_ctx = self.aim_ctx.get_account_context("aim.ref accounts.data")
