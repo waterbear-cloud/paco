@@ -21,7 +21,7 @@ class LogGroups(CFTemplate):
         aws_region,
         stack_group,
         stack_tags,
-        log_groups_id,
+        group_name,
         resource,
         res_config_ref
     ):
@@ -33,12 +33,12 @@ class LogGroups(CFTemplate):
             stack_group=stack_group,
             stack_tags=stack_tags
         )
-        self.set_aws_name('LogGroups', log_groups_id)
+        self.set_aws_name('LogGroups', group_name, resource.name)
         self.resource = resource
 
         # Troposphere Template Initialization
         template = troposphere.Template(
-            Description = 'SNS Topics',
+            Description = 'LogGroups',
         )
         template.set_version()
         template.add_resource(
@@ -68,7 +68,6 @@ class LogGroups(CFTemplate):
             # 1. log_group.expire_events_after_days <- specific to single log group
             # 2. log_set.expire_events_after_days <- applies to an entire log set
             # 3. cw_logging.expire_events_after_days <- global default
-            override_retention = None
             log_set = get_parent_by_interface(log_group, schemas.ICloudWatchLogSet)
             if log_group.expire_events_after_days:
                 retention = log_group.expire_events_after_days
