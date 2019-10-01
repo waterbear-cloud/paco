@@ -551,18 +551,38 @@ name: 'CloudWatchAgent'
 enabled: true
 statement:
   - effect: Allow
+    resource: "*"
     action:
       - "cloudwatch:PutMetricData"
       - "autoscaling:Describe*"
       - "ec2:DescribeTags"
-      - "logs:PutLogEvents"
+"""
+        if monitoring.log_sets:
+            # append a logs:CreateLogGroup to the AllResources sid
+            policy_config_yaml += """      - "logs:CreateLogGroup"\n"""
+            log_group_resources = ""
+            log_stream_resources = ""
+            for log_group in monitoring.log_sets.get_all_log_groups():
+                log_group_resources += "      - arn:aws:logs:{}:{}:log-group:{}:*\n".format(
+                    self.aws_region, self.account_ctx.id, prefixed_name(resource, log_group.get_log_group_name())
+                )
+                log_stream_resources += "      - arn:aws:logs:{}:{}:log-group:{}:log-stream:*\n".format(
+                    self.aws_region, self.account_ctx.id, prefixed_name(resource, log_group.get_log_group_name())
+                )
+            policy_config_yaml += """
+  - effect: Allow
+    action:
       - "logs:DescribeLogStreams"
       - "logs:DescribeLogGroups"
       - "logs:CreateLogStream"
-      - "logs:CreateLogGroup"
     resource:
-      - '*'
-"""
+{}
+  - effect: Allow
+    action:
+     - "logs:PutLogEvents"
+    resource:
+{}
+""".format(log_group_resources, log_stream_resources)
 
         policy_ref = '{}.{}.cloudwatchagent.policy'.format(resource.aim_ref_parts, self.id)
         policy_id = '-'.join([resource.name, 'cloudwatchagent'])
@@ -592,7 +612,7 @@ statement:
 
         # Create the CloudWatch Log Groups so that Retention and MetricFilters can be set
         if monitoring.log_sets:
-            log_groups_config_ref = resource.aim_ref_parts+'.log_groups'
+            log_groups_config_ref = resource.aim_ref_parts + '.log_groups'
             aim.cftemplates.LogGroups(
                 self.aim_ctx,
                 self.account_ctx,
