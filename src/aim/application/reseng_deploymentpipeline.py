@@ -326,7 +326,7 @@ policies:
     def init_stage_action_codebuild_build(self, action_config):
         self.artifacts_bucket_policy_resource_arns.append("aim.sub '${%s}'" % (action_config.aim_ref + '.project_role.arn'))
         self.kms_crypto_principle_list.append("aim.sub '${%s}'" % (action_config.aim_ref+'.project_role.arn'))
-        codebuild_config_ref = action_config.aim_ref_parts + '.codebuild.' + action_config.name
+        codebuild_config_ref = action_config.aim_ref_parts
         action_config._template = cftemplates.CodeBuild(
             self.aim_ctx,
             self.pipeline_account_ctx,

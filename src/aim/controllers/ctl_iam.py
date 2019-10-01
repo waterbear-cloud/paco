@@ -244,6 +244,26 @@ class IAMController(Controller):
 
     # Administrator
     def init_administrator_permission(self, permission_config, permissions_by_account):
+        """
+        Adds each permission config to a map of permissions by account. This map
+        is used to determines the policies a user will have created in each
+        account.
+        """
+        accounts = permission_config.accounts
+        if 'all' in accounts:
+            accounts = self.aim_ctx.project['accounts'].keys()
+
+        for account_name in accounts:
+            permissions_by_account[account_name].append(permission_config)
+
+    # CodeBuild
+    def init_codebuild_permission(self, permission_config, permissions_by_account):
+        permissions_by_account['test'].append(permission_config)
+        for resource in permission_config.resources:
+            codebuild_arn = self.aim_ctx.get_ref(resource.codebuild + '.project.arn')
+            breakpoint()
+
+        return
         accounts = permission_config.accounts
         if 'all' in accounts:
             accounts = self.aim_ctx.project['accounts'].keys()

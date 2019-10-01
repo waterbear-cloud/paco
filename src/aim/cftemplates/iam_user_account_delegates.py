@@ -119,6 +119,21 @@ class IAMUserAccountDelegates(CFTemplate):
             policy_arn = 'arn:aws:iam::aws:policy/AdministratorAccess'
         assume_role_res.properties['ManagedPolicyArns'].append(policy_arn)
 
+    def init_codebuild_permission(self, permission_config, assume_role_res):
+        """CodeCommit Web Console Permissions"""
+        return
+        if 'ManagedPolicyArns' not in assume_role_res.properties.keys():
+            assume_role_res.properties['ManagedPolicyArns'] = []
+
+        for resource in permission_config.resources:
+            codebuild_arn = self.aim_ctx.get_ref(resource.codebuild+'.arn')
+            breakpoint()
+
+            if permission_config.read_only == True:
+                policy_arn = 'arn:aws:iam::aws:policy/ReadOnlyAccess'
+            else:
+                policy_arn = 'arn:aws:iam::aws:policy/AdministratorAccess'
+            assume_role_res.properties['ManagedPolicyArns'].append(policy_arn)
 
     def init_codecommit_permission(self, permission_config, assume_role_res):
 
@@ -202,4 +217,5 @@ class IAMUserAccountDelegates(CFTemplate):
 
         # AIM Stack Output Registration
         #self.register_stack_output_config(self.config_ref + ".id", example_output.title)
+
 
