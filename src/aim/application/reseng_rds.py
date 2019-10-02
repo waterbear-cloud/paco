@@ -1,21 +1,21 @@
-from aim import models, cftemplates
+import aim.cftemplates
 from aim.application.res_engine import ResourceEngine
 from aim.core.yaml import YAML
 
 yaml=YAML()
 yaml.default_flow_sytle = False
 
-class EFSResourceEngine(ResourceEngine):
+class RDSMysqlResourceEngine(ResourceEngine):
 
     def init_resource(self):
-        # ElastiCache Redis CloudFormation
-        cftemplates.EFS(
+        # RDS Mysql CloudFormation
+        aws_name = '-'.join([self.grp_id, self.res_id])
+        aim.cftemplates.RDS(
             self.aim_ctx,
             self.account_ctx,
             self.aws_region,
             self.stack_group,
             self.stack_tags,
-            self.env_ctx,
             self.app_id,
             self.grp_id,
             self.res_id,

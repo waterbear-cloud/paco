@@ -1,15 +1,16 @@
-from aim import models, cftemplates
+import aim.cftemplates
 from aim.application.res_engine import ResourceEngine
 from aim.core.yaml import YAML
 
 yaml=YAML()
 yaml.default_flow_sytle = False
 
-class EFSResourceEngine(ResourceEngine):
+class LBClassicResourceEngine(ResourceEngine):
 
     def init_resource(self):
-        # ElastiCache Redis CloudFormation
-        cftemplates.EFS(
+        elb_config = self.resource[res_id]
+        aws_name = '-'.join([self.grp_id, self.res_id])
+        aim.cftemplates.ELB(
             self.aim_ctx,
             self.account_ctx,
             self.aws_region,
@@ -19,6 +20,6 @@ class EFSResourceEngine(ResourceEngine):
             self.app_id,
             self.grp_id,
             self.res_id,
-            self.resource,
+            elb_config,
             self.resource.aim_ref_parts
         )

@@ -8,14 +8,10 @@ yaml.default_flow_sytle = False
 
 class DeploymentPipelineResourceEngine(ResourceEngine):
 
-    def __init__(self, app_engine):
-        super().__init__(app_engine)
-
-        self.grp_id = None
-        self.res_id = None
-        self.res_stack_tags = None
+    def __init__(self, app_engine, grp_id, res_id, resource, stack_tags):
+        super().__init__(app_engine, grp_id, res_id, resource, stack_tags)
         self.pipeline_account_ctx = None
-        self.pipeline_config = None
+        self.pipeline_config = resource
         self.kms_template = None
         self.kms_crypto_principle_list = []
         self.artifacts_bucket_policy_resource_arns = []
@@ -24,7 +20,6 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             'arn': None,
             'name': None,
         }
-
         self.source_stage = None
 
     def init_stage(self, stage_config):
@@ -38,21 +33,14 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             method = getattr(self, method_name)
             method(action_config)
 
-    def init_resource(self, grp_id, res_id, pipeline_config, res_stack_tags, env_ctx):
-        self.grp_id = grp_id
-        self.res_id = res_id
-        self.pipeline_config = pipeline_config
-        self.res_stack_tags = res_stack_tags
-
+    def init_resource(self):
         self.pipeline_config.resolve_ref_obj = self
-
-        self.pipeline_account_ctx = self.aim_ctx.get_account_context(pipeline_config.configuration.account)
-        #data_account_ctx = self.aim_ctx.get_account_context("aim.ref accounts.data")
+        self.pipeline_account_ctx = self.aim_ctx.get_account_context(self.pipeline_config.configuration.account)
 
         # -----------------
         # S3 Artifacts Bucket:
         s3_ctl = self.aim_ctx.get_controller('S3')
-        self.artifacts_bucket_meta['ref'] = pipeline_config.configuration.artifacts_bucket
+        self.artifacts_bucket_meta['ref'] = self.pipeline_config.configuration.artifacts_bucket
         self.artifacts_bucket_meta['arn'] = s3_ctl.get_bucket_arn(self.artifacts_bucket_meta['ref'])
         self.artifacts_bucket_meta['name'] = s3_ctl.get_bucket_name(self.artifacts_bucket_meta['ref'])
 
@@ -72,39 +60,38 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
                 'aws': self.kms_crypto_principle_list
             }
         }
-        kms_config_ref = pipeline_config.aim_ref_parts + '.kms'
+        kms_config_ref = self.pipeline_config.aim_ref_parts + '.kms'
         self.kms_template = cftemplates.KMS(
             self.aim_ctx,
             self.pipeline_account_ctx,
             self.aws_region,
             self.stack_group,
-            res_stack_tags,
-            grp_id,
-            res_id,
-            pipeline_config,
+            self.stack_tags,
+            self.grp_id,
+            self.res_id,
+            self.resource,
             kms_config_ref,
             kms_config_dict
         )
 
-
         # Stages
-        self.init_stage(pipeline_config.source)
-        self.init_stage(pipeline_config.build)
-        self.init_stage(pipeline_config.deploy)
+        self.init_stage(self.pipeline_config.source)
+        self.init_stage(self.pipeline_config.build)
+        self.init_stage(self.pipeline_config.deploy)
 
         # CodePipeline
-        codepipeline_config_ref = pipeline_config.aim_ref_parts + '.codepipeline'
-        pipeline_config._template = cftemplates.CodePipeline(
+        codepipeline_config_ref = self.pipeline_config.aim_ref_parts + '.codepipeline'
+        self.pipeline_config._template = cftemplates.CodePipeline(
             self.aim_ctx,
             self.pipeline_account_ctx,
             self.aws_region,
             self.stack_group,
-            res_stack_tags,
+            self.stack_tags,
             self.env_ctx,
             self.app_id,
-            grp_id,
-            res_id,
-            pipeline_config,
+            self.grp_id,
+            self.res_id,
+            self.resource,
             self.artifacts_bucket_meta['name'],
             codepipeline_config_ref
         )
@@ -117,10 +104,10 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             self.pipeline_account_ctx,
             self.aws_region,
             self.stack_group,
-            res_stack_tags,
-            grp_id,
-            res_id,
-            pipeline_config,
+            self.stack_tags,
+            self.grp_id,
+            self.res_id,
+            self.resource,
             kms_config_ref,
             kms_config_dict
         )
@@ -130,11 +117,11 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         kms_template.set_dependency(self.kms_template, 'post-pipeline')
 
         # Get the ASG Instance Role ARN
-        #asg_instance_role_ref = pipeline_config.asg+'.instance_iam_role.arn'
-        #codebuild_role_ref = pipeline_config.aim_ref_parts + '.codebuild_role.arn'
-        #codedeploy_tools_delegate_role_ref = pipeline_config.aim_ref_parts + '.codedeploy_tools_delegate_role.arn'
-        #codecommit_role_ref = pipeline_config.aim_ref_parts + '.codecommit_role.arn'
-        self.artifacts_bucket_policy_resource_arns.append("aim.sub '${%s}'" % (pipeline_config.aim_ref + '.codepipeline_role.arn'))
+        #asg_instance_role_ref = self.pipeline_config.asg+'.instance_iam_role.arn'
+        #codebuild_role_ref = self.pipeline_config.aim_ref_parts + '.codebuild_role.arn'
+        #codedeploy_tools_delegate_role_ref = self.pipeline_config.aim_ref_parts + '.codedeploy_tools_delegate_role.arn'
+        #codecommit_role_ref = self.pipeline_config.aim_ref_parts + '.codecommit_role.arn'
+        self.artifacts_bucket_policy_resource_arns.append("aim.sub '${%s}'" % (self.pipeline_config.aim_ref + '.codepipeline_role.arn'))
         cpbd_s3_bucket_policy = {
             'aws': self.artifacts_bucket_policy_resource_arns,
             #[
@@ -224,7 +211,7 @@ policies:
             role_config=codecommit_iam_role_config,
             stack_group=self.stack_group,
             template_params=iam_role_params,
-            stack_tags=self.res_stack_tags
+            stack_tags=self.stack_tags
         )
 
     # S3 Deploy
@@ -297,7 +284,7 @@ policies:
             role_config=role_config,
             stack_group=self.stack_group,
             template_params=iam_role_params,
-            stack_tags=self.res_stack_tags
+            stack_tags=self.stack_tags
         )
         action_config._delegate_role_arn = iam_ctl.role_arn(role_ref)
 
@@ -312,7 +299,7 @@ policies:
             self.account_ctx,
             self.aws_region,
             self.stack_group,
-            self.res_stack_tags,
+            self.stack_tags,
             self.env_ctx,
             self.app_id,
             self.grp_id,
@@ -332,7 +319,7 @@ policies:
             self.pipeline_account_ctx,
             self.aws_region,
             self.stack_group,
-            self.res_stack_tags,
+            self.stack_tags,
             self.env_ctx,
             self.app_id,
             self.grp_id,
