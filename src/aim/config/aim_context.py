@@ -369,9 +369,10 @@ class AimContext(object):
             return
 
         print("--------------------------------------------------------")
-        print("AIM Project changes from last provision of YAML file at:\n")
+        print("Confirm AIM Project changes from previous YAML file:\n")
         print("{}".format(new_file_path))
         if self.verbose:
+            print()
             print("applied file: {}".format(applied_file_path))
         print()
         if 'values_changed' in deep_diff or \

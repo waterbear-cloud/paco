@@ -1,15 +1,17 @@
-from aim import models, cftemplates
+import aim.cftemplates
 from aim.application.res_engine import ResourceEngine
 from aim.core.yaml import YAML
 
 yaml=YAML()
 yaml.default_flow_sytle = False
 
-class EFSResourceEngine(ResourceEngine):
+class LBApplicationResourceEngine(ResourceEngine):
 
     def init_resource(self):
-        # ElastiCache Redis CloudFormation
-        cftemplates.EFS(
+        # resolve_ref object for TargetGroups
+        for target_group in self.resource.target_groups.values():
+            target_group.resolve_ref_obj = self.app_engine
+        aim.cftemplates.ALB(
             self.aim_ctx,
             self.account_ctx,
             self.aws_region,

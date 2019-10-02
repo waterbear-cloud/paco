@@ -25,12 +25,10 @@ class CWAlarms(CFTemplate):
         stack_group,
         stack_tags,
         alarm_sets,
-        res_type,
         res_config_ref,
         resource,
-        grp_id,
-        res_id,
-        resource_type,
+        grp_id=None,
+        res_id=None,
     ):
         super().__init__(
             aim_ctx,
@@ -41,9 +39,13 @@ class CWAlarms(CFTemplate):
             stack_group=stack_group,
             stack_tags=stack_tags
         )
-        self.set_aws_name('Alarms', grp_id, res_id, resource_type)
+        if grp_id and res_id:
+            self.set_aws_name('Alarms', grp_id, res_id, resource.type)
+        else:
+            # Application-level Alarms
+            self.set_aws_name('Alarms')
         self.alarm_sets = alarm_sets
-        self.dimension = vocabulary.cloudwatch[res_type]['dimension']
+        self.dimension = vocabulary.cloudwatch[resource.type]['dimension']
 
         # build a list of Alarm objects
         alarms = []
@@ -72,7 +74,6 @@ class CWAlarms(CFTemplate):
                 template,
                 alarms,
                 resource,
-                res_type,
                 res_config_ref,
                 self.aim_ctx.project,
                 alarm_id,
@@ -85,21 +86,21 @@ class CWAlarms(CFTemplate):
             template,
             alarms,
             resource,
-            res_type,
             res_config_ref,
             project,
             alarm_id,
             alarm_set_id,
         ):
         # Add Parameters
-        dimension_param = self.create_cfn_parameter(
-            param_type = 'String',
-            name = 'DimensionResource',
-            description = 'The resource id or name for the metric dimension.',
-            value = resource.aim_ref + '.name',
-            use_troposphere = True
-        )
-        template.add_parameter(dimension_param)
+        if schemas.IResource.providedBy(resource):
+            dimension_param = self.create_cfn_parameter(
+                param_type = 'String',
+                name = 'DimensionResource',
+                description = 'The resource id or name for the metric dimension.',
+                value = resource.aim_ref + '.name',
+                use_troposphere = True
+            )
+            template.add_parameter(dimension_param)
         for alarm in alarms:
             if len(alarm.dimensions) > 0:
                 for dimension in alarm.dimensions:
@@ -172,14 +173,15 @@ class CWAlarms(CFTemplate):
 
             # Namespace - if not supplied default to the Namespace for the Resource type
             if 'Namespace' not in alarm_export_dict:
-                alarm_export_dict['Namespace'] = vocabulary.cloudwatch[res_type]['namespace']
+                alarm_export_dict['Namespace'] = vocabulary.cloudwatch[resource.type]['namespace']
 
             # Dimensions
             # if there are no dimensions, then fallback to the default of
             # a primary dimension and the resource's resource_name
-            if len(alarm.dimensions) < 1:
+            # This only happens for Resource-level Alarms
+            if schemas.IResource.providedBy(resource) and len(alarm.dimensions) < 1:
                 dimensions = [
-                    {'Name': vocabulary.cloudwatch[res_type]['dimension'],
+                    {'Name': vocabulary.cloudwatch[resource.type]['dimension'],
                      'Value': troposphere.Ref(dimension_param)}
                 ]
             else:
@@ -245,6 +247,8 @@ class CWAlarms(CFTemplate):
             # Service applications and apps not part of a NetEnv
             description["app_name"] = app.name
             description["app_title"] = app.title
+        if group != None:
+            # Application level Alarms do not have resource group and resource
             description["resource_group_name"] = group.name
             description["resource_group_title"] = group.title
             description["resource_name"] = resource.name

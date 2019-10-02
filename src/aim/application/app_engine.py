@@ -10,17 +10,15 @@ from aim.application.ec2_launch_manager import EC2LaunchManager
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.core.yaml import YAML
-from aim.models import references, vocabulary
-from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks, StackTags
+from aim.stack_group import StackTags
 
 yaml=YAML()
 yaml.default_flow_sytle = False
 
 class ApplicationEngine():
-    """This class initializes and configures applications.
+    """An ApplicationEngine initializes and configures applications.
     Applications are logical groupings of AWS Resources designed
     to suport a single workload.
-
     """
 
     def __init__(
@@ -45,11 +43,6 @@ class ApplicationEngine():
         self.stack_group = stack_group
         self.ref_type = ref_type
         self.env_ctx = env_ctx
-        self.iam_contexts = []
-        self.cpbd_codepipebuild_template = None
-        self.cpbd_codecommit_role_template = None
-        self.cpbd_kms_template = None
-        self.cpbd_codedeploy_template = None
         self.stack_tags = stack_tags
         self.stack_tags.add_tag( 'AIM-Application-Name', self.app_id )
 
@@ -57,6 +50,17 @@ class ApplicationEngine():
         return self.stack_group.get_aws_name()
 
     def init(self):
+        """
+        Initializes an Application.
+
+        Creates an EC2LaunchManager then iterates through the Application's ResourceGroups
+        in order, then each Resource in that group in order, and calls an init specific
+        to each Resource type.
+
+        This will allow each Resource for an Application to do what it needs to be initialized,
+        typically creating a CFTemplate for the Resource and adding it to the Application's
+        StackGroup, and any supporting CFTemplates needed such as Alarms or IAM Policies.
+        """
         self.aim_ctx.log_action_col('Init', 'Application', self.app_id, enabled=self.config.is_enabled())
         self.ec2_launch_manager = EC2LaunchManager(
             self.aim_ctx,
@@ -71,366 +75,46 @@ class ApplicationEngine():
 
         # Resource Groups
         for grp_id, grp_config in self.config.groups_ordered():
-            for res_id, res_config in grp_config.resources_ordered():
-                res_stack_tags = StackTags(self.stack_tags)
-                res_stack_tags.add_tag('AIM-Application-Group-Name', grp_id)
-                res_stack_tags.add_tag('AIM-Application-Resource-Name', res_id)
-                res_config.resolve_ref_obj = self
-                init_method = getattr(self, "init_{}_resource".format(res_config.type.lower()), None)
-                self.log_resource_init_status(res_config)
-                if init_method == None:
-                    reseng_class = getattr(aim.application, res_config.type+'ResourceEngine', None)(self)
-                    reseng_class.init_resource(grp_id, res_id, res_config, StackTags(res_stack_tags), self.env_ctx)
-                else:
-                    init_method(grp_id, res_id, res_config, StackTags(res_stack_tags))
+            for res_id, resource in grp_config.resources_ordered():
+                # initial resource
+                stack_tags = StackTags(self.stack_tags)
+                stack_tags.add_tag('AIM-Application-Group-Name', grp_id)
+                stack_tags.add_tag('AIM-Application-Resource-Name', res_id)
+                resource.resolve_ref_obj = self
+                # Create a resource_engine object and initialize it
+                resource_engine = getattr(aim.application, resource.type + 'ResourceEngine', None)(
+                    self,
+                    grp_id,
+                    res_id,
+                    resource,
+                    StackTags(stack_tags),
+                )
+                resource_engine.log_init_status()
+                resource_engine.init_resource()
+                resource_engine.init_alarms()
 
+        self.init_app_alarms()
         self.aim_ctx.log_action_col('Init', 'Application', self.app_id, 'Completed', enabled=self.config.is_enabled())
 
-
-
-    def gen_iam_role_id(self, res_id, role_id):
-        return '-'.join([res_id, role_id])
-
-    def log_resource_init_status(self, res_config):
-        "Logs the init status of a resource"
-        self.aim_ctx.log_action_col(
-            'Init', 'Application', 'Resource',
-                res_config.title_or_name + ': '+ res_config.name,
-                enabled = res_config.is_enabled())
-
-    def init_alarms(self, resoruce_type, grp_id, res_id, res_config, res_stack_tags):
-        aim.cftemplates.CWAlarms(
-            self.aim_ctx,
-            self.account_ctx,
-            self.aws_region,
-            self.stack_group,
-            res_stack_tags,
-
-            res_config.monitoring.alarm_sets,
-            res_config.type,
-            res_config.aim_ref_parts,
-            res_config,
-            grp_id,
-            res_id,
-            resoruce_type
-        )
-
-    def init_apigatewayrestapi_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        aim.cftemplates.ApiGatewayRestApi(
-            self.aim_ctx,
-            self.account_ctx,
-            self.aws_region,
-            self.stack_group,
-            res_stack_tags,
-            self.app_id,
-            grp_id,
-            res_id,
-            res_config,
-            res_config.aim_ref_parts
-        )
-
-    def init_rdsmysql_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        # RDS Mysql CloudFormation
-        aws_name = '-'.join([grp_id, res_id])
-        aim.cftemplates.RDS(
-            self.aim_ctx,
-            self.account_ctx,
-            self.aws_region,
-            self.stack_group,
-            res_stack_tags,
-            self.app_id,
-            grp_id,
-            res_id,
-            res_config,
-            res_config.aim_ref_parts
-        )
-
-    def init_cloudfront_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        for factory_name, factory_config in res_config.factory.items():
-            cloudfront_config_ref = res_config.aim_ref_parts + '.factory.' + factory_name
-            res_config.domain_aliases = factory_config.domain_aliases
-            res_config.viewer_certificate.certificate = factory_config.viewer_certificate.certificate
-
-            # Create Certificate in us-east-1 because that is where CloudFront lives.
-            acm_ctl = self.aim_ctx.get_controller('ACM')
-            cert_group_id = cloudfront_config_ref+'.viewer_certificate'
-            cert_group_id = cert_group_id.replace(self.aws_region, 'us-east-1')
-            cert_config = self.aim_ctx.get_ref(res_config.viewer_certificate.certificate)
-            acm_ctl.add_certificate_config(
-                self.account_ctx,
-                'us-east-1',
-                cert_group_id,
-                'viewer_certificate',
-                cert_config
-            )
-            res_config.viewer_certificate.resolve_ref_obj = self
-            factory_config.viewer_certificate.resolve_ref_obj = self
-            # CloudFront CloudFormation
-            aim.cftemplates.CloudFront(
+    def init_app_alarms(self):
+        "Application level Alarms are not specific to any Resource"
+        # If alarm_sets exist init alarms for them
+        if getattr(self.config, 'monitoring', None) != None and \
+            getattr(self.config.monitoring, 'alarm_sets', None) != None and \
+            len(self.config.monitoring.alarm_sets.values()) > 0:
+            aim.cftemplates.CWAlarms(
                 self.aim_ctx,
                 self.account_ctx,
                 self.aws_region,
                 self.stack_group,
-                res_stack_tags,
-                self.app_id,
-                grp_id,
-                res_id,
-                factory_name,
-                res_config,
-                cloudfront_config_ref,
-                [StackOrder.PROVISION, StackOrder.WAITLAST]
+                self.stack_tags,
+                self.config.monitoring.alarm_sets,
+                self.config.aim_ref_parts,
+                self.config,
             )
 
-    def init_snstopic_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        sns_topics_config = [res_config]
-        # Strip the last part as SNSTopics loops thorugh a list and will
-        # append the name to ref when it needs.
-        res_config_ref = '.'.join(res_config.aim_ref_parts.split('.')[:-1])
-        aim.cftemplates.SNSTopics(
-            self.aim_ctx,
-            self.account_ctx,
-            self.aws_region,
-            self.stack_group,
-            res_stack_tags,
-            grp_id,
-            res_id,
-            sns_topics_config,
-            res_config_ref
-        )
-
-    def init_lambda_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        # Create function execution role
-        if res_config.iam_role.enabled == False:
-            role_config_yaml = """
-instance_profile: false
-path: /
-role_name: %s""" % ("LambdaFunction")
-            role_config_dict = yaml.load(role_config_yaml)
-            role_config = models.iam.Role()
-            role_config.apply_config(role_config_dict)
-        else:
-            role_config = res_config.iam_role
-
-        # Add CloudWatch Logs permissions
-        cw_logs_policy = """
-name: CloudWatchLogs
-statement:
-  - effect: Allow
-    action:
-      - logs:CreateLogGroup
-      - logs:CreateLogStream
-      - logs:PutLogEvents
-    resource:
-      - '*'
-"""
-        role_config.add_policy(yaml.load(cw_logs_policy))
-
-        # The ID to give this role is: group.resource.iam_role
-        iam_role_ref = res_config.aim_ref_parts + '.iam_role'
-        iam_role_id = self.gen_iam_role_id(res_id, 'iam_role')
-        # If no assume policy has been added, force one here since we know its
-        # a Lambda function using it.
-        # Set defaults if assume role policy was not explicitly configured
-        if not hasattr(role_config, 'assume_role_policy') or role_config.assume_role_policy == None:
-            policy_dict = { 'effect': 'Allow',
-                            'aws': ["aim.sub 'arn:aws:iam::${aim.ref accounts.%s}:root'" % (self.account_ctx.get_name())],
-                            'service': ['lambda.amazonaws.com'] }
-            role_config.set_assume_role_policy(policy_dict)
-        # Always turn off instance profiles for Lambda functions
-        role_config.instance_profile = False
-        role_config.enabled = res_config.is_enabled()
-        iam_ctl = self.aim_ctx.get_controller('IAM')
-        iam_ctl.add_role(
-            aim_ctx=self.aim_ctx,
-            account_ctx=self.account_ctx,
-            region=self.aws_region,
-            group_id=grp_id,
-            role_id=iam_role_id,
-            role_ref=iam_role_ref,
-            role_config=role_config,
-            stack_group=self.stack_group,
-            template_params=None,
-            stack_tags=res_stack_tags
-        )
-
-        aim.cftemplates.Lambda(
-            self.aim_ctx,
-            self.account_ctx,
-            self.aws_region,
-            self.stack_group,
-            res_stack_tags,
-            grp_id,
-            res_id,
-            res_config,
-            res_config.aim_ref_parts
-        )
-        # add alarms if there is monitoring configuration
-        if getattr(res_config, 'monitoring', None) != None and \
-            getattr(res_config.monitoring, 'alarm_sets', None) != None and \
-                len(res_config.monitoring.alarm_sets.values()) > 0:
-            self.init_alarms('Lambda', grp_id, res_id, res_config, StackTags(res_stack_tags))
-
-    def init_acm_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        acm_ctl = self.aim_ctx.get_controller('ACM')
-        cert_group_id = res_config.aim_ref_parts
-        acm_ctl.add_certificate_config(
-            self.account_ctx,
-            self.aws_region,
-            cert_group_id,
-            res_id,
-            res_config
-        )
-
-    def init_s3bucket_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        s3_ctl = self.aim_ctx.get_controller('S3')
-        # If an account was not set, use the network default
-        if res_config.account == None:
-            # XXX parent_config_ref does not work for S3Buckets in services
-            res_config.account = self.aim_ctx.get_ref('aim.ref ' + self.parent_config_ref + '.network.aws_account')
-        account_ctx = self.aim_ctx.get_account_context(account_ref=res_config.account)
-        s3_ctl.init_context(
-            account_ctx,
-            self.aws_region,
-            res_config.aim_ref_parts,
-            self.stack_group,
-            res_stack_tags
-        )
-        s3_ctl.add_bucket(res_config)
-
-    def init_lbclassic_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        elb_config = res_config[res_id]
-        aws_name = '-'.join([grp_id, res_id])
-        aim.cftemplates.ELB(
-            self.aim_ctx,
-            self.account_ctx,
-            self.aws_region,
-            self.stack_group,
-            res_stack_tags,
-            self.env_ctx,
-            self.app_id,
-            grp_id,
-            res_id,
-            elb_config,
-            res_config.aim_ref_parts
-        )
-
-    def init_lbapplication_resource(self, grp_id, res_id, res_config, res_stack_tags):
-        # resolve_ref object for TargetGroups
-        for target_group in res_config.target_groups.values():
-            target_group.resolve_ref_obj = self
-        aim.cftemplates.ALB(
-            self.aim_ctx,
-            self.account_ctx,
-            self.aws_region,
-            self.stack_group,
-            res_stack_tags,
-            self.env_ctx,
-            self.app_id,
-            grp_id,
-            res_id,
-            res_config,
-            res_config.aim_ref_parts
-        )
-        # add alarms if there is monitoring configuration
-        if hasattr(res_config, 'monitoring') and len(res_config.monitoring.alarm_sets.values()) > 0:
-            self.init_alarms('ALB', grp_id, res_id, res_config, StackTags(res_stack_tags))
-
-    def init_asg_resource(self, grp_id, res_id, res_config, res_stack_tags):
-
-        # Create instance role
-        role_profile_arn = None
-        if res_config.instance_iam_role.enabled == False:
-            role_config_yaml = """
-instance_profile: false
-path: /
-role_name: %s""" % ("ASGInstance")
-            role_config_dict = yaml.load(role_config_yaml)
-            role_config = models.iam.Role()
-            role_config.apply_config(role_config_dict)
-
-        else:
-            role_config = res_config.instance_iam_role
-
-        # The ID to give this role is: group.resource.instance_iam_role
-        instance_iam_role_ref = res_config.aim_ref_parts + '.instance_iam_role'
-        instance_iam_role_id = self.gen_iam_role_id(res_id, 'instance_iam_role')
-        # If no assume policy has been added, force one here since we know its
-        # an EC2 instance using it.
-        # Set defaults if assume role policy was not explicitly configured
-        if not hasattr(role_config, 'assume_role_policy') or role_config.assume_role_policy == None:
-            policy_dict = { 'effect': 'Allow',
-                            'service': ['ec2.amazonaws.com'] }
-            role_config.set_assume_role_policy(policy_dict)
-        # Always turn on instance profiles for ASG instances
-        role_config.instance_profile = True
-        role_config.enabled = res_config.is_enabled()
-        iam_ctl = self.aim_ctx.get_controller('IAM')
-        iam_ctl.add_role(
-            aim_ctx=self.aim_ctx,
-            account_ctx=self.account_ctx,
-            region=self.aws_region,
-            group_id=grp_id,
-            role_id=instance_iam_role_id,
-            role_ref=instance_iam_role_ref,
-            role_config=role_config,
-            stack_group=self.stack_group,
-            template_params=None,
-            stack_tags=res_stack_tags
-        )
-        role_profile_arn = iam_ctl.role_profile_arn(instance_iam_role_ref)
-
-        # Monitoring
-        if res_config.monitoring != None and res_config.monitoring.enabled != False:
-            self.ec2_launch_manager.lb_add_cloudwatch_agent(instance_iam_role_ref, res_config)
-        if len(res_config.efs_mounts) > 0:
-            self.ec2_launch_manager.lb_add_efs_mounts(instance_iam_role_ref, res_config)
-        # SSM Agent
-        # if when_ssm_is_need():
-        #    self.ec2_launch_manager.lb_add_ssm_agent(
-        #        instance_iam_role_ref,
-        #        self.app_id,
-        #        grp_id,
-        #        res_id,
-        #        res_config
-        #    )
-        aim.cftemplates.ASG(
-            self.aim_ctx,
-            self.account_ctx,
-            self.aws_region,
-            self.stack_group,
-            res_stack_tags,
-
-            self.env_ctx,
-            self.app_id,
-            grp_id,
-            res_id,
-            res_config,
-            res_config.aim_ref_parts,
-            role_profile_arn,
-            self.ec2_launch_manager.user_data_script(
-                self.app_id, grp_id, res_id,
-                res_config.instance_ami_type),
-            self.ec2_launch_manager.get_cache_id(self.app_id, grp_id, res_id)
-        )
-
-        if res_config.monitoring and len(res_config.monitoring.alarm_sets.values()) > 0:
-            self.init_alarms('ASG', grp_id, res_id, res_config, StackTags(res_stack_tags))
-
-    def init_ec2_resource(self, grp_id, res_id, res_config, res_stack_tags):
-
-        aim.cftemplates.EC2(
-            self.aim_ctx,
-            self.account_ctx,
-            self.aws_region,
-            self.stack_group,
-            res_stack_tags,
-            self.env_id,
-            self.app_id,
-            grp_id,
-            res_id,
-            res_config,
-            res_config.aim_ref_parts
-        )
+    def gen_iam_role_id(self, res_id, role_id):
+        return '-'.join([res_id, role_id])
 
     def get_stack_from_ref(self, ref):
         for stack in self.stack_group.stacks:

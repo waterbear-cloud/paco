@@ -417,9 +417,11 @@ class CFTemplate():
             return
 
         print("--------------------------------------------------------")
-        print("Confirm changes to CloudFormation Stack Parameters for :")
+        print("Confirm changes to Parameters for CloudFormation Stack:")
+        print()
         print("{}".format(self.stack.get_name()))
         if self.aim_ctx.verbose:
+            print()
             print("Model: {}".format(self.config_ref))
             print("Template:  {}".format(new_file_path))
             print("Applied template:  {}".format(applied_file_path))
@@ -1079,13 +1081,16 @@ class CFTemplate():
         )
         if len(deep_diff.keys()) == 0:
             return
-        print("==========================")
-        print("Validate Template Changes")
-        print("(stack) {}".format(self.stack.get_name()))
-        print("(model) {}".format(self.config_ref))
-        print("(file)  {}".format(new_file_path))
-        print("(applied file)  {}".format(applied_file_path))
-        prompt_user = True
+        print("--------------------------------------------------------")
+        print("Confirm template changes to CloudFormation Stack:")
+        print()
+        print("{}".format(self.stack.get_name()))
+        if self.aim_ctx.verbose:
+            print()
+            print("model: {}".format(self.config_ref))
+            print("file: {}".format(new_file_path))
+            print("applied file: {}".format(applied_file_path))
+
         if 'values_changed' in deep_diff.keys():
             print("\nooo Changed")
             self.print_diff_object(deep_diff, 'values_changed')
@@ -1099,6 +1104,7 @@ class CFTemplate():
             self.print_diff_object(deep_diff, 'iterable_item_removed')
             self.print_diff_object(deep_diff, 'set_item_added')
             print("---")
+
         if  'dictionary_item_added' in deep_diff.keys() or \
             'iterable_item_added' in deep_diff.keys() or \
             'set_item_removed' in deep_diff.keys():
@@ -1107,16 +1113,12 @@ class CFTemplate():
             self.print_diff_object(deep_diff, 'iterable_item_added')
             self.print_diff_object(deep_diff, 'set_item_removed')
             print("+++")
-            # attribute_added
-        print("\n==========================")
 
-        while prompt_user:
-            answer = self.aim_ctx.input_confirm_action("\nAre these changes acceptable?")
-            if answer == False:
-                print("Aborted run.")
-                sys.exit(1)
-            else:
-                break
+        print("\n--------------------------------------------------------")
+        answer = self.aim_ctx.input_confirm_action("\nAre these changes acceptable?")
+        if answer == False:
+            print("Aborted run.")
+            sys.exit(1)
         print('', end='\n')
 
     def set_aws_name(self, template_name, first_id=None, second_id=None, third_id=None):
