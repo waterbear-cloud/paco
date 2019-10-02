@@ -8,6 +8,7 @@ from aim.models.locations import get_parent_by_interface
 from aim.models.references import Reference
 from aim.utils import prefixed_name
 import troposphere
+import troposphere.logs
 
 
 class LogGroups(CFTemplate):

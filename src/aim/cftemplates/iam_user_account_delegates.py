@@ -146,8 +146,6 @@ class IAMUserAccountDelegates(CFTemplate):
             Action('codebuild', 'BatchGet*'),
             Action('codebuild', 'Get*'),
             Action('codebuild', 'List*'),
-        ]
-        readonly_other_actions = [
             Action('cloudwatch', 'GetMetricStatistics*'),
             Action('events', 'DescribeRule'),
             Action('events', 'ListTargetsByRule'),
@@ -160,17 +158,17 @@ class IAMUserAccountDelegates(CFTemplate):
                     Sid='CodeBuildReadOnly',
                     Effect=Allow,
                     Action=readonly_codebuild_actions,
-                    Resource=readonly_codebuild_arns
+                    Resource=['*']#readonly_codebuild_arns
                 )
             )
-            statement_list.append(
-                Statement(
-                    Sid='OtherReadOnly',
-                    Effect=Allow,
-                    Action=readonly_other_actions,
-                    Resource=['*']
-                )
-            )
+            #statement_list.append(
+            #    Statement(
+            #        Sid='OtherReadOnly',
+            #        Effect=Allow,
+            #        Action=readonly_other_actions,
+            #        Resource=['*']
+            #    )
+            #)
 
         managed_policy_res = troposphere.iam.ManagedPolicy(
             title=self.create_cfn_logical_id("CodeBuildPolicy"),
