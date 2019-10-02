@@ -33,7 +33,8 @@ class CloudFront(CFTemplate):
                          config_ref=config_ref,
                          stack_group=stack_group,
                          stack_tags=stack_tags,
-                         stack_order=stack_order)
+                         stack_order=stack_order,
+                         change_protected=cloudfront_config.change_protected)
         self.set_aws_name('CloudFront', grp_id, res_id, factory_name)
         origin_access_id_enabled = False
 

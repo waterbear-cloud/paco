@@ -78,7 +78,8 @@ class CodeBuild(CFTemplate):
         self.codebuild_project_res = self.create_codebuild_cfn(
             template,
             pipeline_config,
-            action_config
+            action_config,
+            config_ref
         )
 
         self.set_template(template.to_yaml())
@@ -90,6 +91,7 @@ class CodeBuild(CFTemplate):
         template,
         pipeline_config,
         action_config,
+        config_ref
     ):
         # CodeBuild
         compute_type_param = self.create_cfn_parameter(
@@ -265,6 +267,15 @@ class CodeBuild(CFTemplate):
                 Name = troposphere.Ref(self.resource_name_prefix_param)
             )
         )
+
+        troposphere.Output(
+            title='ProjectArn',
+            template=template,
+            Value=troposphere.GetAtt(project_res, 'Arn'),
+            Description='CodeBuild Project Arn'
+        )
+
+        self.register_stack_output_config(config_ref+'.project.arn', 'ProjectArn')
 
         return project_res
 

@@ -35,7 +35,10 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
 
     def init_resource(self):
         self.pipeline_config.resolve_ref_obj = self
-        self.pipeline_account_ctx = self.aim_ctx.get_account_context(self.pipeline_config.configuration.account)
+        self.pipeline_config.configuration.resolve_ref_obj = self
+
+        self.pipeline_account_ctx = self.aim_ctx.get_account_context(pipeline_config.configuration.account)
+        #data_account_ctx = self.aim_ctx.get_account_context("aim.ref accounts.data")
 
         # -----------------
         # S3 Artifacts Bucket:
@@ -313,7 +316,7 @@ policies:
     def init_stage_action_codebuild_build(self, action_config):
         self.artifacts_bucket_policy_resource_arns.append("aim.sub '${%s}'" % (action_config.aim_ref + '.project_role.arn'))
         self.kms_crypto_principle_list.append("aim.sub '${%s}'" % (action_config.aim_ref+'.project_role.arn'))
-        codebuild_config_ref = action_config.aim_ref_parts + '.codebuild.' + action_config.name
+        codebuild_config_ref = action_config.aim_ref_parts
         action_config._template = cftemplates.CodeBuild(
             self.aim_ctx,
             self.pipeline_account_ctx,

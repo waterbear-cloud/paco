@@ -7,6 +7,7 @@ from aim.controllers.controllers import Controller
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.core.yaml import YAML
+from aim.models.references import Reference
 from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackTags, StackHooks
 from aim.utils import md5sum
 
@@ -244,12 +245,31 @@ class IAMController(Controller):
 
     # Administrator
     def init_administrator_permission(self, permission_config, permissions_by_account):
+        """
+        Adds each permission config to a map of permissions by account. This map
+        is used to determines the policies a user will have created in each
+        account.
+        """
         accounts = permission_config.accounts
         if 'all' in accounts:
             accounts = self.aim_ctx.project['accounts'].keys()
 
         for account_name in accounts:
             permissions_by_account[account_name].append(permission_config)
+
+    # CodeBuild
+    def init_codebuild_permission(self, permission_config, permissions_by_account):
+        """
+        Iterates over each codebuild reference and adds its permission config
+        to the map of permissions by account.
+        """
+        for resource in permission_config.resources:
+            codebuild_ref = Reference(resource.codebuild)
+            account_ref = 'aim.ref ' + '.'.join(codebuild_ref.parts[:-2]) + '.configuration.account'
+            account_ref = self.aim_ctx.get_ref(account_ref)
+            account_name = self.aim_ctx.get_ref(account_ref + '.name')
+            if permission_config not in permissions_by_account[account_name]:
+                permissions_by_account[account_name].append(permission_config)
 
     def get_sdb_attribute_value(self, sdb_client, sdb_domain, item_name, attribute_name):
         attributes = sdb_client.get_attributes(
