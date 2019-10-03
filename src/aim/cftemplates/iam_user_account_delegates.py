@@ -48,7 +48,10 @@ class IAMUserAccountDelegates(CFTemplate):
         )
         username = username[0].upper() + username[1:]
 
-        self.set_aws_name('Account-Delegates', username)
+        if self.aim_ctx.legacy_flag('cftemplate_iam_user_delegates_2019_10_02') == True:
+            self.set_aws_name(username, 'Account-Delegates')
+        else:
+            self.set_aws_name('Account-Delegates', username)
 
         self.account_id = account_ctx.id
         self.master_account_id = self.aim_ctx.get_ref('aim.ref accounts.master.id')
