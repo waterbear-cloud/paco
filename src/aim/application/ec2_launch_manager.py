@@ -284,8 +284,9 @@ REGION="$(echo \"$AVAIL_ZONE\" | sed 's/[a-z]$//')"
         script_table = {
             'description': self.get_cache_id(app_id, grp_id, resource_id),
             'update_system': '',
-            'essential_package': '',
+            'essential_packages': '',
             'eip': '',
+            'install_aws_cli': '',
             'ec2_manager_s3_bucket': None,
         }
         for command in vocabulary.user_data_script['update_system'][resource.instance_ami_type]:
