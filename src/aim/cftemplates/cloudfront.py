@@ -74,6 +74,7 @@ class CloudFront(CFTemplate):
 
         # Domain Alises and Record Sets
         aliases_list = []
+        aliases_param_map = {}
         for alias in cloudfront_config.domain_aliases:
             alias_hash = utils.md5sum(str_data=alias.domain_name)
 
@@ -86,6 +87,10 @@ class CloudFront(CFTemplate):
                 use_troposphere=True,
                 troposphere_template=template)
             aliases_list.append(troposphere.Ref(alias_param))
+            aliases_param_map[alias.domain_name] = alias_param
+
+
+
 
         distribution_config_dict['Aliases'] = aliases_list
 
@@ -264,9 +269,8 @@ class CloudFront(CFTemplate):
                     title = self.create_cfn_logical_id_join(['RecordSet', alias_hash]),
                     template = template,
                     HostedZoneId = troposphere.Ref(alias_zone_id_param),
-                    Name = alias.domain_name,
+                    Name = troposphere.Ref(aliases_param_map[alias.domain_name]),
                     Type = 'A',
-                    TTL = 300,
                     AliasTarget = troposphere.route53.AliasTarget(
                         DNSName = troposphere.GetAtt(distribution_res, 'DomainName'),
                         HostedZoneId = 'Z2FDTNDATAQYW2'
