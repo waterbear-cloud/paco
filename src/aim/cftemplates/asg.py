@@ -6,6 +6,7 @@ import troposphere.policies
 from aim import utils
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import StackOutputParam
+from aim.models import references
 from aim.models.references import Reference
 from io import StringIO
 from enum import Enum
@@ -183,6 +184,23 @@ class ASG(CFTemplate):
         asg_dict['Tags'] = [
             troposphere.autoscaling.Tag('Name', asg_dict['AutoScalingGroupName'], True)
         ]
+
+        # EIP
+        if asg_config.eip != None:
+            if references.is_ref(asg_config.eip) == True:
+                eip_value = asg_config.eip + '.allocation_id'
+            else:
+                eip_value = asg_config.eip
+            efs_id_param = self.create_cfn_parameter(
+                param_type='String',
+                name='EIPAllocationId',
+                description='The allocation Id of the EIP to attach to the instance.',
+                value=eip_value,
+                use_troposphere=True,
+                troposphere_template=template)
+            asg_dict['Tags'].append(
+                troposphere.autoscaling.Tag('AIM-EIP-Allocation-Id', troposphere.Ref(efs_id_param), True)
+            )
 
         # EFS FileSystemId Tags
         for efs_mount in asg_config.efs_mounts:

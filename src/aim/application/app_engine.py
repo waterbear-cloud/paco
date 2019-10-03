@@ -158,5 +158,8 @@ class ApplicationEngine():
             return self.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.EFS):
             return self.get_stack_from_ref(ref)
+        elif isinstance(ref.resource, models.applications.EIP):
+            return self.get_stack_from_ref(ref)
+
 
         return None

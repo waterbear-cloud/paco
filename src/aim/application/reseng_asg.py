@@ -64,6 +64,7 @@ role_name: %s""" % ("ASGInstance")
         #        self.res_id,
         #        self.resource
         #    )
+        # Add EIP AllocationId Tag
         aim.cftemplates.ASG(
             self.aim_ctx,
             self.account_ctx,
@@ -81,7 +82,8 @@ role_name: %s""" % ("ASGInstance")
                 self.app_id,
                 self.grp_id,
                 self.res_id,
-                self.resource.instance_ami_type
+                self.resource,
+                instance_iam_role_ref
             ),
             self.app_engine.ec2_launch_manager.get_cache_id(self.app_id, self.grp_id, self.res_id)
         )

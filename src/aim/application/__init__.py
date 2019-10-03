@@ -12,3 +12,4 @@ from aim.application.reseng_lbclassic import LBClassicResourceEngine
 from aim.application.reseng_rds import RDSMysqlResourceEngine
 from aim.application.reseng_snstopic import SNSTopicResourceEngine
 from aim.application.reseng_s3bucket import S3BucketResourceEngine
+from aim.application.reseng_eip import EIPResourceEngine

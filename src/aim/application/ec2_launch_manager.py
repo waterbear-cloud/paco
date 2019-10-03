@@ -258,7 +258,7 @@ class EC2LaunchManager():
                 return s3_ctl.get_bucket_name(bundle.s3_bucket_ref)
         return None
 
-    def user_data_script(self, app_id, grp_id, resource_id, instance_ami_type):
+    def user_data_script(self, app_id, grp_id, resource_id, resource, instance_iam_role_ref):
         """BASH script that will load the launch bundle from user_data"""
         script_fmt = """#!/bin/bash
 echo "EC2 Launch Manager: {0[description]}"
@@ -267,28 +267,67 @@ echo "File: $0"
 
 # Update System
 {0[update_system]}
+
+# Essential Packages
+{0[essential_packages]}
+
+INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+AVAIL_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
+REGION="$(echo \"$AVAIL_ZONE\" | sed 's/[a-z]$//')"
+
+# AWS CLI
+{0[install_aws_cli]}
+
+# EIP
+{0[eip]}
 """
         script_table = {
             'description': self.get_cache_id(app_id, grp_id, resource_id),
             'update_system': '',
             'essential_package': '',
+            'eip': '',
             'ec2_manager_s3_bucket': None,
         }
-        for command in vocabulary.user_data_script['update_system'][instance_ami_type]:
+        for command in vocabulary.user_data_script['update_system'][resource.instance_ami_type]:
             script_table['update_system'] = command + '\n'
+
+        if resource.eip != None:
+            script_table['eip'] = """
+EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=AIM-EIP-Allocation-Id" --query 'Tags[0].Value' |tr -d '"')
+aws ec2 associate-address --instance-id $INSTANCE_ID --allocation-id $EIP_ALLOC_ID --region $REGION
+"""
+            policy_config_yaml = """
+name: 'AssociateEIP'
+enabled: true
+statement:
+  - effect: Allow
+    action:
+      - "ec2:AssociateAddress"
+    resource:
+      - '*'
+"""
+
+            policy_ref = '{}.{}.eip.policy'.format(resource.aim_ref_parts, self.id)
+            policy_id = '-'.join([resource.name, 'eip'])
+            iam_ctl = self.aim_ctx.get_controller('IAM')
+            iam_ctl.add_managed_policy(
+                role_ref=instance_iam_role_ref,
+                parent_config=resource,
+                group_id=grp_id,
+                policy_id=policy_id,
+                policy_ref=policy_ref,
+                policy_config_yaml=policy_config_yaml
+            )
 
         s3_bucket = self.get_s3_bucket_name(app_id, grp_id, self.bucket_id(resource_id))
         if s3_bucket != None:
             script_table['ec2_manager_s3_bucket'] = s3_bucket
 
             script_table['essential_packages'] = ""
-            for command in vocabulary.user_data_script['essential_packages'][instance_ami_type]:
+            for command in vocabulary.user_data_script['essential_packages'][resource.instance_ami_type]:
                 script_table['essential_packages'] += command + '\n'
 
             script_fmt += """
-# Essential Packages
-{0[essential_packages]}
-
 # Launch Bundles
 EC2_MANAGER_FOLDER='/opt/aim/EC2Manager/'
 mkdir -p $EC2_MANAGER_FOLDER
@@ -301,6 +340,10 @@ for BUNDLE_PACKAGE in *.tgz
 do
     BUNDLE_FOLDER=${{BUNDLE_PACKAGE//'.tgz'/}}
     echo "$BUNDLE_FOLDER: Unpacking:"
+    if [ ! -f "$BUNDLE_PACKAGE" ] ; then
+       echo "Unable to find package: $BUNNDLE_PACKAGE"
+       continue
+    fi
     tar xvfz $BUNDLE_PACKAGE
     chown -R root.root $BUNDLE_FOLDER
     echo "$BUNDLE_FOLDER: Launching bundle"
@@ -310,12 +353,16 @@ do
     cd ..
     echo "$BUNDLE_FOLDER: Done"
 done
-            """
+"""
         else:
             script_fmt += """
 # Launch Bundles
 echo "No Launch bundles to load"
 """
+
+        if resource.eip != None or s3_bucket != None:
+            script_table['install_aws_cli'] = vocabulary.user_data_script['install_aws_cli'][resource.instance_ami_type]
+
         return script_fmt.format(script_table)
 
     def add_bundle(self, bundle):
