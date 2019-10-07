@@ -79,7 +79,7 @@ class Route53HealthCheck(CFBaseAlarm):
         alarm.evaluation_periods = 1
         alarm.threshold = 18.0 # As recommended by AWS
         alarm.comparison_operator = 'LessThanOrEqualToThreshold'
-        alarm.statistic = "Minimum"
+        alarm.statistic = "Average"
         alarm.treat_missing_data = 'breaching'
         cfn_export_dict = alarm.cfn_export_dict
         cfn_export_dict['Dimensions'] = [{
