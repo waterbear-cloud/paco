@@ -120,11 +120,17 @@ class ASG(CFTemplate):
             launch_config_dict )
         template.add_resource(launch_config_res)
 
+        subnet_list_ref = 'aim.ref {}'.format(segment_stack.template.config_ref)
+        if asg_config.availability_zone == 'all':
+            subnet_list_ref += '.subnet_id_list'
+        else:
+            subnet_list_ref += '.az{}.subnet_id'.format(asg_config.availability_zone)
+
         asg_subnet_list_param = self.create_cfn_parameter(
             param_type='List<AWS::EC2::Subnet::Id>',
             name='ASGSubnetList',
             description='A list of subnets where the ASG will launch instances',
-            value='aim.ref {}.subnet_id_list'.format(segment_stack.template.config_ref),
+            value=subnet_list_ref,
             use_troposphere=True,
             troposphere_template=template
         )

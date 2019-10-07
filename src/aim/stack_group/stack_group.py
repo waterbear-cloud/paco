@@ -292,6 +292,8 @@ class Stack():
                 elif e.response['Error']['Code'] == 'ExpiredToken':
                     delattr(self, '_cfn_client')
                     self.log_action("Token", "Expired", "Retry")
+                    # XXX: This doesn't seem to work and its tricky to get here. Debug it!
+                    breakpoint()
                     continue
                 else:
                     message = self.get_stack_error_message(
@@ -504,9 +506,6 @@ class Stack():
 
     def update_stack(self):
         # Update Stack
-        if self.change_protected == True:
-            self.log_action("Provision", "Protected")
-            return
         self.action = "update"
         self.log_action("Provision", "Update")
         stack_parameters = self.template.generate_stack_parameters()
@@ -565,6 +564,9 @@ class Stack():
             )
 
     def delete_stack(self):
+        if self.change_protected == True:
+            self.log_action("Delete", "Protected")
+            return
         self.get_status()
         self.action = "delete"
         if self.is_exists() == True:
@@ -677,6 +679,9 @@ class Stack():
             raise StackException(AimErrorCode.Unknown, message = message)
 
     def delete(self):
+        if self.change_protected == True:
+            self.log_action("Delete", "Protected")
+            return
         self.template.delete()
         self.delete_stack()
         utils.log_action('Delete', 'Stack', 'Cache', self.cache_filename)
