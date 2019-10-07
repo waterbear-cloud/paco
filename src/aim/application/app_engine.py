@@ -91,16 +91,36 @@ class ApplicationEngine():
                 )
                 resource_engine.log_init_status()
                 resource_engine.init_resource()
-                resource_engine.init_alarms()
+                resource_engine.init_monitoring()
 
-        self.init_app_alarms()
+        self.init_app_monitoring()
         self.aim_ctx.log_action_col('Init', 'Application', self.app_id, 'Completed', enabled=self.config.is_enabled())
 
-    def init_app_alarms(self):
+    def init_app_monitoring(self):
         "Application level Alarms are not specific to any Resource"
+        if getattr(self.config, 'monitoring', None) == None:
+            return
+
+        # If health_checks exist, init them
+        if getattr(self.config.monitoring, 'health_checks', None) != None and \
+            len(self.config.monitoring.health_checks.values()) > 0:
+            for health_check in self.config.monitoring.health_checks.values():
+                stack_tags = StackTags(self.stack_tags)
+                stack_tags.add_tag('AIM-Application-HealthCheck-Name', health_check.name)
+                health_check.resolve_ref_obj = self
+                # ToDo: enable other types when there is more than one
+                if health_check.type == 'Route53HealthCheck':
+                    aim.cftemplates.Route53HealthCheck(
+                        self.aim_ctx,
+                        self.account_ctx,
+                        self.aws_region,
+                        self.stack_group,
+                        stack_tags,
+                        health_check
+                    )
+
         # If alarm_sets exist init alarms for them
-        if getattr(self.config, 'monitoring', None) != None and \
-            getattr(self.config.monitoring, 'alarm_sets', None) != None and \
+        if getattr(self.config.monitoring, 'alarm_sets', None) != None and \
             len(self.config.monitoring.alarm_sets.values()) > 0:
             aim.cftemplates.CWAlarms(
                 self.aim_ctx,
