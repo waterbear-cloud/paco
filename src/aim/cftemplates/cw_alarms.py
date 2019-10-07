@@ -11,11 +11,73 @@ from aim.models import vocabulary
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.models.locations import get_parent_by_interface
 
-class CWAlarms(CFTemplate):
+class CFBaseAlarm(CFTemplate):
+    "Methods shared by different CFTemplates that can create a CloudWatch Alarm"
+    # allow services the chance to send notifications to another region
+    notification_region = None
+
+    def create_notification_params(self, alarm):
+        "Create a Parameter for each SNS Topic an alarm should notify. Return a list of Refs to those Params."
+        notification_aim_refs = []
+        for group in alarm.notification_groups:
+            if not self.notification_region:
+                region = alarm.region_name
+            else:
+                region = self.notification_region
+            notification_aim_refs.append(
+                self.aim_ctx.project['resource']['notificationgroups'][region][group].aim_ref + '.arn'
+            )
+
+        notification_cfn_refs = []
+        for notification_aim_ref in notification_aim_refs:
+            # Create parameter
+            param_name = 'Notification{}'.format(utils.md5sum(str_data=notification_aim_ref))
+            if param_name in self.notification_param_map.keys():
+                notification_param = self.notification_param_map[param_name]
+            else:
+                notification_param = self.create_cfn_parameter(
+                    param_type = 'String',
+                    name = param_name,
+                    description = 'SNS Topic to notify',
+                    value = notification_aim_ref,
+                    use_troposphere = True
+                )
+                self.template.add_parameter(notification_param)
+                self.notification_param_map[param_name] = notification_param
+            notification_cfn_refs.append(troposphere.Ref(notification_param))
+        return notification_cfn_refs
+
+    def set_alarm_actions_to_cfn_export(self, alarm, cfn_export_dict):
+        "Sets the AlarmActions, OKActions and InsufficientDataActions for a Troposphere dict"
+        alarm_action_list = []
+        for alarm_action in alarm.get_alarm_actions_aim_refs():
+            # Create parameter
+            param_name = 'AlarmAction{}'.format(utils.md5sum(str_data=alarm_action))
+            if param_name in self.alarm_action_param_map.keys():
+                alarm_action_param = self.alarm_action_param_map[param_name]
+            else:
+                alarm_action_param = self.create_cfn_parameter(
+                    param_type = 'String',
+                    name = param_name,
+                    description = 'SNSTopic for Alarm to notify.',
+                    value = alarm_action,
+                    use_troposphere = True
+                )
+                self.template.add_parameter(alarm_action_param)
+                self.alarm_action_param_map[param_name] = alarm_action_param
+            alarm_action_list.append(troposphere.Ref(alarm_action_param))
+
+        cfn_export_dict['AlarmActions'] = alarm_action_list
+        if getattr(alarm, 'enable_ok_actions', False):
+            cfn_export_dict['OKActions'] = alarm_action_list
+        if getattr(alarm, 'enable_insufficient_data_actions', False):
+            cfn_export_dict['InsufficientDataActions'] = alarm_action_list
+
+
+class CWAlarms(CFBaseAlarm):
     """
     CloudFormation template for CloudWatch Alarms
     """
-    notification_region = None # allow services the chance to send notifications to another region
 
     def __init__(
         self,
@@ -60,12 +122,8 @@ class CWAlarms(CFTemplate):
                 alarms.append(alarm_set[alarm_id])
 
         # Define the Template
-        template = troposphere.Template()
-        template.add_version('2010-09-09')
-        template.add_description('CloudWatch Alarms')
-        template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
-        )
+        self.init_template('CloudWatch Alarms')
+        template = self.template
 
         self.alarm_action_param_map = {}
         self.notification_param_map = {}
@@ -117,59 +175,11 @@ class CWAlarms(CFTemplate):
         for alarm in alarms:
             # compute dynamic attributes for cfn_export_dict
             alarm_export_dict = alarm.cfn_export_dict
-            alarm_action_list = []
-            for alarm_action in alarm.get_alarm_actions_aim_refs():
-                # Create parameter
-                param_name = 'AlarmAction{}'.format(utils.md5sum(str_data=alarm_action))
-                if param_name in self.alarm_action_param_map.keys():
-                    alarm_action_param = self.alarm_action_param_map[param_name]
-                else:
-                    alarm_action_param = self.create_cfn_parameter(
-                        param_type = 'String',
-                        name = param_name,
-                        description = 'SNSTopic for Alarm to notify.',
-                        value = alarm_action,
-                        use_troposphere = True
-                    )
-                    template.add_parameter(alarm_action_param)
-                    self.alarm_action_param_map[param_name] = alarm_action_param
-                alarm_action_list.append(troposphere.Ref(alarm_action_param))
-
-            alarm_export_dict['AlarmActions'] = alarm_action_list
-            if getattr(alarm, 'enable_ok_actions', False):
-                alarm_export_dict['OKActions'] = alarm_action_list
-            if getattr(alarm, 'enable_insufficient_data_actions', False):
-                alarm_export_dict['InsufficientDataActions'] = alarm_action_list
+            self.set_alarm_actions_to_cfn_export(alarm, alarm_export_dict)
 
             # AlarmDescription
-            notification_aim_refs = []
-            for group in alarm.notification_groups:
-                if not self.notification_region:
-                    region = alarm.region_name
-                else:
-                    region = self.notification_region
-                notification_aim_refs.append(
-                    project['resource']['notificationgroups'][region][group].aim_ref + '.arn'
-                )
-
-            notification_cfn_refs = []
-            for notification_aim_ref in notification_aim_refs:
-                # Create parameter
-                param_name = 'Notification{}'.format(utils.md5sum(str_data=notification_aim_ref))
-                if param_name in self.notification_param_map.keys():
-                    notification_param = self.notification_param_map[param_name]
-                else:
-                    notification_param = self.create_cfn_parameter(
-                        param_type = 'String',
-                        name = param_name,
-                        description = 'SNS Topic to notify',
-                        value = notification_aim_ref,
-                        use_troposphere = True
-                    )
-                    template.add_parameter(notification_param)
-                    self.notification_param_map[param_name] = notification_param
-                notification_cfn_refs.append(troposphere.Ref(notification_param))
-            alarm_export_dict['AlarmDescription'] = self.get_alarm_description(alarm, notification_cfn_refs)
+            notification_cfn_refs = self.create_notification_params(alarm)
+            alarm_export_dict['AlarmDescription'] = alarm.get_alarm_description(notification_cfn_refs)
 
             # Namespace - if not supplied default to the Namespace for the Resource type
             if 'Namespace' not in alarm_export_dict:
@@ -207,65 +217,3 @@ class CWAlarms(CFTemplate):
                 Value=troposphere.Ref(alarm_resource)
             )
             template.add_output(alarm_output)
-
-    def get_alarm_description(self, alarm, notification_cfn_refs):
-        """Create an Alarm Description in JSON format with AIM Alarm information"""
-        project = get_parent_by_interface(alarm, schemas.IProject)
-        netenv = get_parent_by_interface(alarm, schemas.INetworkEnvironment)
-        env = get_parent_by_interface(alarm, schemas.IEnvironment)
-        envreg = get_parent_by_interface(alarm, schemas.IEnvironmentRegion)
-        app = get_parent_by_interface(alarm, schemas.IApplication)
-        group = get_parent_by_interface(alarm, schemas.IResourceGroup)
-        resource = get_parent_by_interface(alarm, schemas.IResource)
-
-        # SNS Topic ARNs are supplied Paramter Refs
-        topic_arn_subs = []
-        sub_dict = {}
-        for action_ref in notification_cfn_refs:
-            ref_id = action_ref.data['Ref']
-            topic_arn_subs.append('${%s}' % ref_id)
-            sub_dict[ref_id] = action_ref
-
-        # Base alarm info - used for standalone alarms not part of an application
-        description = {
-            "project_name": project.name,
-            "project_title": project.title,
-            "account_name": alarm.account_name,
-            "alarm_name": alarm.name,
-            "classification": alarm.classification,
-            "severity": alarm.severity,
-            "topic_arns": topic_arn_subs
-        }
-
-        # conditional fields:
-        if alarm.description:
-            description['description'] = alarm.description
-        if alarm.runbook_url:
-            description['runbook_url'] = alarm.runbook_url
-
-        if app != None:
-            # Service applications and apps not part of a NetEnv
-            description["app_name"] = app.name
-            description["app_title"] = app.title
-        if group != None:
-            # Application level Alarms do not have resource group and resource
-            description["resource_group_name"] = group.name
-            description["resource_group_title"] = group.title
-            description["resource_name"] = resource.name
-            description["resource_title"] = resource.title
-
-        if netenv != None:
-            # NetEnv information
-            description["netenv_name"] = netenv.name
-            description["netenv_title"] = netenv.title
-            description["env_name"] = env.name
-            description["env_title"] = env.title
-            description["envreg_name"] = envreg.name
-            description["envreg_title"] = envreg.title
-
-        description_json = json.dumps(description)
-
-        return troposphere.Sub(
-            description_json,
-            sub_dict
-        )

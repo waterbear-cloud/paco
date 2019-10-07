@@ -202,6 +202,16 @@ class CFTemplate():
             self._cfn_client = self.account_ctx.get_aws_client('cloudformation', self.aws_region)
         return self._cfn_client
 
+    def init_template(self, description):
+        "Initializes a Troposphere template"
+        self.template = troposphere.Template(
+            Description = description,
+        )
+        self.template.set_version()
+        self.template.add_resource(
+            troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
+        )
+
     def set_template_file_id(self, file_id):
         self.template_file_id = file_id
         self.yaml_path = None

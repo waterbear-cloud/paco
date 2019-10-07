@@ -6,7 +6,11 @@ Changelog for aim
 
 ### Added
 
-- Alarms can be provisioned at the Application level being specific to a Resoure context.
+- Alarms can be provisioned at the Application level without being specific to a Resoure context.
+
+- Route53HealthChecks can be provisioned. These are global resources with the application region
+  suffixed to the health check name. The CloudFormation template and CLoudWatch Alarm are provisioned
+  in us-east-1, as that is where the metrics are hard-coded to by AWS.
 
 ### Changed
 

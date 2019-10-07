@@ -35,7 +35,7 @@ class ResourceEngine():
             enabled = self.resource.is_enabled()
         )
 
-    def init_alarms(self):
+    def init_monitoring(self):
         "Add an Alarms template with Alarms specific to the Resource"
         # If alarm_sets exist init alarms for them
         if getattr(self.resource, 'monitoring', None) != None and \

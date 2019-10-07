@@ -33,4 +33,4 @@ from aim.cftemplates.iam_users import IAMUsers
 from aim.cftemplates.iam_user_account_delegates import IAMUserAccountDelegates
 from aim.cftemplates.efs import EFS
 from aim.cftemplates.eip import EIP
-
+from aim.cftemplates.route53healthcheck import Route53HealthCheck
