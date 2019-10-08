@@ -338,7 +338,9 @@ class CFTemplate():
 
     def validate(self):
         applied_file_path, new_file_path = self.init_template_store_paths()
-        short_yaml_path = str(new_file_path).replace(self.aim_ctx.home, '')[1:]
+        short_yaml_path = str(new_file_path).replace(self.aim_ctx.home, '')
+        if short_yaml_path[0] == '/':
+            short_yaml_path = short_yaml_path[1:]
         if self.enabled == False:
             self.aim_ctx.log_action_col("Validate", self.account_ctx.get_name(), "Disabled", short_yaml_path)
             return
