@@ -225,7 +225,11 @@ class Stack():
     @property
     def cfn_client(self):
         if hasattr(self, '_cfn_client') == False:
-            self._cfn_client = self.account_ctx.get_aws_client('cloudformation', self.aws_region, force=True)
+            force = False
+            if hasattr(self, "_cfn_client_expired") and self._cfn_client_expired == True:
+                force = True
+                self._cfn_client_expired = False
+            self._cfn_client = self.account_ctx.get_aws_client('cloudformation', self.aws_region, force=force)
         return self._cfn_client
 
 
@@ -291,10 +295,8 @@ class Stack():
                     continue
                 elif e.response['Error']['Code'] == 'ExpiredToken':
                     delattr(self, '_cfn_client')
+                    self._cfn_client_expired = True
                     self.log_action("Token", "Expired", "Retry")
-                    # XXX: This doesn't seem to work and its tricky to get here. Debug it!
-                    breakpoint()
-                    continue
                 else:
                     message = self.get_stack_error_message(
                         prefix_message=e.response['Error']['Message'],
@@ -355,6 +357,7 @@ class Stack():
                     raise StackException(AimErrorCode.StackDoesNotExist, message = message)
                 elif e.response['Error']['Code'] == 'ExpiredToken':
                     delattr(self, '_cfn_client')
+                    self._cfn_client_expired = True
                     self.log_action("Token", "Expired", "Retry")
                     # XXX: This doesn't seem to work and its tricky to get here. Debug it!
                     breakpoint()
@@ -506,6 +509,9 @@ class Stack():
 
     def update_stack(self):
         # Update Stack
+        if self.change_protected == True:
+            self.log_action("Provision", "Protected")
+            return
         self.action = "update"
         self.log_action("Provision", "Update")
         stack_parameters = self.template.generate_stack_parameters()
@@ -547,9 +553,8 @@ class Stack():
                         raise StackException(AimErrorCode.Unknown, message = message)
                 elif e.response['Error']['Code'] == 'ExpiredToken':
                     delattr(self, '_cfn_client')
+                    self._cfn_client_expired = True
                     self.log_action("Token", "Expired", "Retry")
-                    # XXX: This doesn't seem to work and its tricky to get here. Debug it!
-                    breakpoint()
                     continue
                 else:
                     #message = "Stack: {}\nError: {}\n".format(self.get_name(), e.response['Error']['Message'])
@@ -613,9 +618,8 @@ class Stack():
                 except ClientError as exc:
                     if exc.response['Error']['Code'] == 'ExpiredToken':
                         delattr(self, '_cfn_client')
+                        self._cfn_client_expired = True
                         self.log_action("Token", "Expired", "Retry")
-                        # XXX: This doesn't seem to work and its tricky to get here. Debug it!
-                        breakpoint()
                         continue
                     else:
                         raise sys.exc_info()
@@ -762,14 +766,20 @@ class Stack():
             )
 
         if waiter != None:
-            self.log_action(action_name, "Wait")
-            try:
-                waiter.wait(StackName=self.get_name())
-            except WaiterError as waiter_exception:
-                self.log_action(action_name, "Error")
-                message = "Waiter Error:  {}\n".format(waiter_exception)
-                message += self.get_stack_error_message(message)
-                raise StackException(AimErrorCode.WaiterError, message = message)
+            while True:
+                self.log_action(action_name, "Wait")
+                try:
+                    waiter.wait(StackName=self.get_name())
+                except WaiterError as waiter_exception:
+                    if str(waiter_exception).find('ExpiredToken') != -1:
+                        breakpoint()
+                        continue
+                    self.log_action(action_name, "Error")
+                    message = "Waiter Error:  {}\n".format(waiter_exception)
+                    message += self.get_stack_error_message(message)
+                    raise StackException(AimErrorCode.WaiterError, message = message)
+                else:
+                    break
             self.log_action(action_name, "Done")
 
         if self.is_exists():

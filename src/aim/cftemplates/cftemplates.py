@@ -337,11 +337,15 @@ class CFTemplate():
         #print("End sub")
 
     def validate(self):
+        applied_file_path, new_file_path = self.init_template_store_paths()
+        short_yaml_path = str(new_file_path).replace(self.aim_ctx.home, '')[1:]
         if self.enabled == False:
+            self.aim_ctx.log_action_col("Validate", self.account_ctx.get_name(), "Disabled", short_yaml_path)
+            return
+        elif self.change_protected:
+            self.aim_ctx.log_action_col("Validate", self.account_ctx.get_name(), "Protected", short_yaml_path)
             return
         self.generate_template()
-        applied_file_path, new_file_path = self.init_template_store_paths()
-        short_yaml_path = str(new_file_path).replace(self.aim_ctx.home, '')
         new_str = ''
         if applied_file_path.exists() == False:
             new_str = ':new'
@@ -804,6 +808,10 @@ class CFTemplate():
             if len(name) > 128:
                 max_name_len = 128
                 message = "Name must not be longer than 128 characters."
+        elif filter_id == 'ElastiCache.ReplicationGroup.ReplicationGroupId':
+            if len(name) > 40:
+                max_name_len = 255
+                message = "ReplicationGroupId must be 40 characters or less"
         elif filter_id == 'SecurityGroup.GroupName':
             pass
         else:
@@ -841,6 +849,9 @@ class CFTemplate():
             'IAM.ManagedPolicy.ManagedPolicyName',
             'IAM.Policy.PolicyName']:
             if ch in '_+=,.@-.':
+                return ch
+        elif filter_id == 'ElastiCache.ReplicationGroup.ReplicationGroupId':
+            if ch in '-':
                 return ch
         elif filter_id in [
             'EC2.ElasticLoadBalancingV2.LoadBalancer.Name',
@@ -1069,7 +1080,9 @@ class CFTemplate():
     def validate_template_changes(self):
         if self.aim_ctx.disable_validation == True:
             return
-        if self.enabled == False:
+        elif self.enabled == False:
+            return
+        elif self.change_protected == True:
             return
         applied_file_path, new_file_path = self.init_template_store_paths()
         if applied_file_path.exists() == False:

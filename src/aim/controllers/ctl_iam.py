@@ -81,7 +81,7 @@ class PolicyContext():
 
 
 class RoleContext():
-    def __init__(self, aim_ctx, account_ctx, region, group_id, role_id, role_ref, role_config, stack_group, template_params, stack_tags):
+    def __init__(self, aim_ctx, account_ctx, region, group_id, role_id, role_ref, role_config, stack_group, template_params, stack_tags, change_protected=False):
         self.aim_ctx = aim_ctx
         self.account_ctx = account_ctx
         self.region = region
@@ -96,6 +96,7 @@ class RoleContext():
         self.role_template = None
         self.role_stack = None
         self.template_params = template_params
+        self.change_protected = change_protected
 
         self.policy_context = {}
 
@@ -186,7 +187,8 @@ class RoleContext():
                                       self.group_id,
                                       self.role_id,
                                       self.role_config,
-                                      self.template_params)
+                                      self.template_params,
+                                      self.change_protected)
 
         self.role_stack = self.role_template.stack
         self.role_name = self.role_template.gen_iam_role_name("Role", self.role_id)
@@ -597,7 +599,7 @@ class IAMController(Controller):
     def add_managed_policy(self, role_ref, *args, **kwargs):
         return self.role_context[role_ref].add_managed_policy(*args, **kwargs)
 
-    def add_role(self, aim_ctx, account_ctx, region, group_id, role_id, role_ref, role_config, stack_group, template_params, stack_tags):
+    def add_role(self, aim_ctx, account_ctx, region, group_id, role_id, role_ref, role_config, stack_group, template_params, stack_tags, change_protected=False):
         if role_ref not in self.role_context.keys():
             self.role_context[role_ref] = RoleContext(aim_ctx=self.aim_ctx,
                                                       account_ctx=account_ctx,
@@ -608,7 +610,8 @@ class IAMController(Controller):
                                                       role_config=role_config,
                                                       stack_group=stack_group,
                                                       template_params=template_params,
-                                                      stack_tags=stack_tags)
+                                                      stack_tags=stack_tags,
+                                                      change_protected=change_protected)
 
         else:
             print("Role already exists: %s" % (role_ref))

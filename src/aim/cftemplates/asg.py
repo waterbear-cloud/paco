@@ -165,18 +165,20 @@ class ASG(CFTemplate):
             )
             asg_dict['LoadBalancerNames'] = troposphere.Ref(load_balancer_names_param)
 
-        if asg_config.target_groups != None and len(asg_config.target_groups) > 0:
-            asg_dict['TargetGroupARNs'] = []
-            for target_group_arn in asg_config.target_groups:
-                target_group_arn_param = self.create_cfn_parameter(
-                    param_type='String',
-                    name='TargetGroupARNs'+utils.md5sum(str_data=target_group_arn),
-                    description='A Target Group ARNs to attach to the ASG',
-                    value=target_group_arn+'.arn',
-                    use_troposphere=True,
-                    troposphere_template=template
-                )
-            asg_dict['TargetGroupARNs'].append(troposphere.Ref(target_group_arn_param))
+        if asg_config.is_enabled():
+            if asg_config.target_groups != None and len(asg_config.target_groups) > 0:
+                asg_dict['TargetGroupARNs'] = []
+                for target_group_arn in asg_config.target_groups:
+                    target_group_arn_param = self.create_cfn_parameter(
+                        param_type='String',
+                        name='TargetGroupARNs'+utils.md5sum(str_data=target_group_arn),
+                        description='A Target Group ARNs to attach to the ASG',
+                        value=target_group_arn+'.arn',
+                        use_troposphere=True,
+                        troposphere_template=template
+                    )
+                    asg_dict['TargetGroupARNs'].append(troposphere.Ref(target_group_arn_param))
+
 
         if asg_config.monitoring != None and \
                 asg_config.monitoring.is_enabled() == True and \

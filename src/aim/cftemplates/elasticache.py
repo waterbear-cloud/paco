@@ -2,7 +2,6 @@ import os
 import troposphere
 import troposphere.elasticache
 from aim.cftemplates.cftemplates import CFTemplate
-
 from aim.models.references import Reference
 from io import StringIO
 from enum import Enum
@@ -89,6 +88,12 @@ class ElastiCache(CFTemplate):
             # ---------------------------------------------------------------------------
             # Elasticache Resource
             elasticache_dict = {
+                'ReplicationGroupId': self.create_resource_name_join(
+                    name_list=[app_id, grp_id, res_id],
+                    separator='-',
+                    filter_id='ElastiCache.ReplicationGroup.ReplicationGroupId',
+                    hash_long_names=True
+                ),
                 'Engine': elasticache_config.engine,
                 'EngineVersion': elasticache_config.engine_version,
                 'Port': elasticache_config.port,
@@ -103,6 +108,9 @@ class ElastiCache(CFTemplate):
                 #'CacheParameterGroupName': troposphere.Ref(param_group_res),
                 'CacheSubnetGroupName': troposphere.Ref(subnet_group_res)
             }
+
+            if elasticache_config.parameter_group != None:
+                elasticache_dict['CacheParameterGroupName'] = elasticache_config.parameter_group
 
             # Redis Cache Cluster
             cfn_cache_cluster_name = 'ReplicationGroup'

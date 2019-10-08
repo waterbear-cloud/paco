@@ -18,7 +18,8 @@ class IAMRoles(CFTemplate):
                  grp_id,
                  role_id,
                  role_config,
-                 template_params):
+                 template_params,
+                 change_protected):
 
         super().__init__(
             aim_ctx,
@@ -28,7 +29,8 @@ class IAMRoles(CFTemplate):
             config_ref=role_ref,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
             stack_group=stack_group,
-            stack_tags=stack_tags
+            stack_tags=stack_tags,
+            change_protected=change_protected
         )
         self.set_aws_name('Role', grp_id, role_id)
 

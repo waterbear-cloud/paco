@@ -123,11 +123,14 @@ class AccountContext(object):
         return self.client_cache[client_id]
 
     def get_aws_resource(self, resource_name, aws_region=None, resource_config=None):
-        if resource_name not in self.resource_cache.keys():
+        resource_id = resource_name
+        if aws_region != None:
+            resource_id += aws_region
+        if resource_id not in self.resource_cache.keys():
             session = self.get_session()
-            self.resource_cache[resource_name] = session.resource(
+            self.resource_cache[resource_id] = session.resource(
                 resource_name, region_name=aws_region, config=resource_config)
-        return self.resource_cache[resource_name]
+        return self.resource_cache[resource_id]
 
 
 # deep diff formatting

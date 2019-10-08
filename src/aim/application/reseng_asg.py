@@ -11,6 +11,7 @@ class ASGResourceEngine(ResourceEngine):
     def init_resource(self):
         # Create instance role
         role_profile_arn = None
+
         if self.resource.instance_iam_role.enabled == False:
             role_config_yaml = """
 instance_profile: false
@@ -46,7 +47,8 @@ role_name: %s""" % ("ASGInstance")
             role_config=role_config,
             stack_group=self.stack_group,
             template_params=None,
-            stack_tags=self.stack_tags
+            stack_tags=self.stack_tags,
+            change_protected=self.resource.change_protected
         )
         role_profile_arn = iam_ctl.role_profile_arn(instance_iam_role_ref)
 
