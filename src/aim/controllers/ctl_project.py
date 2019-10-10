@@ -7,7 +7,7 @@ import sys
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.controllers.controllers import Controller
-from aim.stack_group import AccountStackGroup
+from aim.stack_grps.grp_account import AccountStackGroup
 from aim.models import loader, vocabulary
 from aim.core.yaml import YAML
 from cookiecutter.main import cookiecutter

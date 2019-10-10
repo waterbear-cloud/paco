@@ -3,7 +3,8 @@ import os, sys, time
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.controllers.controllers import Controller
-from aim.stack_group import AccountStackGroup, StackHooks
+from aim.stack_group import StackHooks
+from aim.stack_grps.grp_account import AccountStackGroup
 from aim.models import loader
 from botocore.exceptions import ClientError
 from aim.core.yaml import YAML

@@ -6,7 +6,8 @@ from aim.controllers.controllers import Controller
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.core.yaml import YAML
-from aim.stack_group import NetworkStackGroup, ApplicationStackGroup
+from aim.stack_grps.grp_application import ApplicationStackGroup
+from aim.stack_grps.grp_network import NetworkStackGroup
 from aim.stack_group import StackTags, stack_group
 
 yaml=YAML(typ="safe", pure=True)

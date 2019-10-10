@@ -1,7 +1,8 @@
 import click
 import os
-from aim.stack_group import CodeCommitStackGroup, stack_group
-from aim.stack_group import IAMStackGroup
+from aim.stack_grps.grp_codecommit import CodeCommitStackGroup
+from aim.stack_grps.grp_iam import IAMStackGroup
+from aim.stack_group import stack_group
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.controllers.controllers import Controller
