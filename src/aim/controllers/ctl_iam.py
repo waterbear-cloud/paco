@@ -164,7 +164,8 @@ class RoleContext():
                                                         policy_stack_tags,
                                                         policy_context,
                                                         self.group_id,
-                                                        policy_id)
+                                                        policy_id,
+                                                        self.change_protected)
 
         policy_context['stack'] = policy_context['template'].stack
 

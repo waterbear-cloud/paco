@@ -29,7 +29,8 @@ class ElastiCache(CFTemplate):
                          enabled=elasticache_config.is_enabled(),
                          config_ref=config_ref,
                          stack_group=stack_group,
-                         stack_tags=stack_tags)
+                         stack_tags=stack_tags,
+                         change_protected=elasticache_config.change_protected)
         self.set_aws_name('ElastiCache', grp_id, res_id, elasticache_config.engine )
 
         if elasticache_config.is_enabled() == True:

@@ -16,7 +16,8 @@ class IAMManagedPolicies(CFTemplate):
                  stack_tags,
                  policy_context,
                  grp_id,
-                 res_id):
+                 res_id,
+                 change_protected):
 
         super().__init__(
             aim_ctx,
@@ -26,7 +27,8 @@ class IAMManagedPolicies(CFTemplate):
             config_ref=policy_context['ref'],
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
             stack_group=stack_group,
-            stack_tags=stack_tags
+            stack_tags=stack_tags,
+            change_protected=change_protected
         )
         self.set_aws_name('Policy', grp_id, res_id)
         self.policy_context = policy_context

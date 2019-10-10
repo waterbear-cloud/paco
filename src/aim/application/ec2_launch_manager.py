@@ -265,6 +265,22 @@ echo "EC2 Launch Manager: {0[description]}"
 echo "CWD: $(pwd)"
 echo "File: $0"
 
+# Swap
+function swap_on() {{
+    SWAP_SIZE_GB=$1
+    if [ "$(swapon -s|wc -c)" == "0" ]; then
+        echo "Enabling a ${{SWAP_SIZE_GB}}GB Swapfile"
+        dd if=/dev/zero of=/swapfile bs=1024 count=$(($SWAP_SIZE_GB*1024))k
+        chmod 0600 /swapfile
+        mkswap /swapfile
+        swapon /swapfile
+    else
+        echo "Swap already enabled"
+    fi
+    swapon -s
+    free
+}}
+
 # Update System
 {0[update_system]}
 
