@@ -265,12 +265,13 @@ echo "EC2 Launch Manager: {0[description]}"
 echo "CWD: $(pwd)"
 echo "File: $0"
 
+cat << EOF >/tmp/ec2lm_functions.bash
 # Swap
 function swap_on() {{
-    SWAP_SIZE_GB=$1
-    if [ "$(swapon -s|wc -c)" == "0" ]; then
-        echo "Enabling a ${{SWAP_SIZE_GB}}GB Swapfile"
-        dd if=/dev/zero of=/swapfile bs=1024 count=$(($SWAP_SIZE_GB*1024))k
+    SWAP_SIZE_GB=\$1
+    if [ "\$(swapon -s|wc -c)" == "0" ]; then
+        echo "Enabling a \${{SWAP_SIZE_GB}}GB Swapfile"
+        dd if=/dev/zero of=/swapfile bs=1024 count=\$((\$SWAP_SIZE_GB*1024))k
         chmod 0600 /swapfile
         mkswap /swapfile
         swapon /swapfile
@@ -280,6 +281,17 @@ function swap_on() {{
     swapon -s
     free
 }}
+
+# HTTP Client Path
+function install_wget() {{
+    CLIENT_PATH=\$(which wget)
+    if [ \$? -eq 1 ] ; then
+        {0[install_wget]}
+    fi
+}}
+EOF
+
+. /tmp/ec2lm_functions.bash
 
 # Update System
 {0[update_system]}
@@ -304,6 +316,7 @@ REGION="$(echo \"$AVAIL_ZONE\" | sed 's/[a-z]$//')"
             'eip': '',
             'install_aws_cli': '',
             'ec2_manager_s3_bucket': None,
+            'install_wget': vocabulary.user_data_script['install_wget'][resource.instance_ami_type]
         }
         for command in vocabulary.user_data_script['update_system'][resource.instance_ami_type]:
             script_table['update_system'] = command + '\n'
@@ -508,16 +521,20 @@ statement:
         # Launch script
         launch_script_template = """#!/bin/bash
 
+# Load EC2 Launch Manager helper functions
+. /tmp/ec2lm_functions.bash
+
 # Download the agent
 LB_DIR=$(pwd)
 mkdir /tmp/aim/
 cd /tmp/aim/
-wget https://s3.amazonaws.com/amazoncloudwatch-agent{0[agent_path]:s}/{0[agent_object]:s}
-wget https://s3.amazonaws.com/amazoncloudwatch-agent{0[agent_path]:s}/{0[agent_object]:s}.sig
+install_wget # build in function
+wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{0[agent_path]:s}/{0[agent_object]:s}
+wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{0[agent_path]:s}/{0[agent_object]:s}.sig
 
 # Verify the agent
 TRUSTED_FINGERPRINT=$(echo "9376 16F3 450B 7D80 6CBD 9725 D581 6730 3B78 9C72" | tr -d ' ')
-wget https://s3.amazonaws.com/amazoncloudwatch-agent/assets/amazon-cloudwatch-agent.gpg
+wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent/assets/amazon-cloudwatch-agent.gpg
 gpg --import amazon-cloudwatch-agent.gpg
 
 KEY_ID="$(gpg --list-packets amazon-cloudwatch-agent.gpg 2>&1 | awk '/keyid:/{{ print $2 }}' | tr -d ' ')"
