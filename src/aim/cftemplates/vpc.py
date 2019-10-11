@@ -113,14 +113,21 @@ class VPC(CFTemplate):
                 value=vpc_config.private_hosted_zone.name,
                 use_troposphere=True
             )
-            private_zone_vpcs = troposphere.route53.HostedZoneVPCs(
+            private_zone_vpcs = []
+            private_zone_vpcs.append(troposphere.route53.HostedZoneVPCs(
                 VPCId=troposphere.Ref(vpc_res),
                 VPCRegion=troposphere.Ref('AWS::Region')
-            )
+            ))
+
+            for vpc_id in vpc_config.private_hosted_zone.vpc_associations:
+                private_zone_vpcs.append(troposphere.route53.HostedZoneVPCs(
+                    VPCId=vpc_id,
+                    VPCRegion=troposphere.Ref('AWS::Region')
+                ))
             private_zone_res = troposphere.route53.HostedZone(
                 'PrivateHostedZone',
                 Name=troposphere.Ref(internal_domain_name_param),
-                VPCs=[private_zone_vpcs]
+                VPCs=private_zone_vpcs
             )
             private_zone_id_output = troposphere.Output(
                 'PrivateHostedZoneId',

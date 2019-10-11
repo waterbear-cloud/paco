@@ -296,7 +296,7 @@ class Stack():
                 elif e.response['Error']['Code'] == 'ExpiredToken':
                     delattr(self, '_cfn_client')
                     self._cfn_client_expired = True
-                    self.log_action("Token", "Expired", "Retry")
+                    self.log_action("Token", "Retry", "Expired")
                 else:
                     message = self.get_stack_error_message(
                         prefix_message=e.response['Error']['Message'],
@@ -358,7 +358,7 @@ class Stack():
                 elif e.response['Error']['Code'] == 'ExpiredToken':
                     delattr(self, '_cfn_client')
                     self._cfn_client_expired = True
-                    self.log_action("Token", "Expired", "Retry")
+                    self.log_action("Token", "Retry", "Expired")
                     # XXX: This doesn't seem to work and its tricky to get here. Debug it!
                     breakpoint()
                     continue
@@ -554,7 +554,7 @@ class Stack():
                 elif e.response['Error']['Code'] == 'ExpiredToken':
                     delattr(self, '_cfn_client')
                     self._cfn_client_expired = True
-                    self.log_action("Token", "Expired", "Retry")
+                    self.log_action("Token", "Retry", "Expired")
                     continue
                 else:
                     #message = "Stack: {}\nError: {}\n".format(self.get_name(), e.response['Error']['Message'])
@@ -619,7 +619,7 @@ class Stack():
                     if exc.response['Error']['Code'] == 'ExpiredToken':
                         delattr(self, '_cfn_client')
                         self._cfn_client_expired = True
-                        self.log_action("Token", "Expired", "Retry")
+                        self.log_action("Token", "Retry", "Expired")
                         continue
                     else:
                         raise sys.exc_info()
