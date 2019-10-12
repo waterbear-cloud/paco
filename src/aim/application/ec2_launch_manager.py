@@ -246,7 +246,8 @@ class EC2LaunchManager():
         )
         s3_ctl.add_bucket(
             bucket_config,
-            config_ref = bundle.s3_bucket_ref
+            config_ref = bundle.s3_bucket_ref,
+            change_protected = bundle.resource_config.change_protected
         )
 
     def get_s3_bucket_name(self, app_id, grp_id, bucket_id):
@@ -346,7 +347,8 @@ statement:
                 group_id=grp_id,
                 policy_id=policy_id,
                 policy_ref=policy_ref,
-                policy_config_yaml=policy_config_yaml
+                policy_config_yaml=policy_config_yaml,
+                change_protected=resource.change_protected
             )
 
         s3_bucket = self.get_s3_bucket_name(app_id, grp_id, self.bucket_id(resource_id))
@@ -480,7 +482,8 @@ statement:
             group_id=group_name,
             policy_id=policy_id,
             policy_ref=policy_ref,
-            policy_config_yaml=policy_config_yaml
+            policy_config_yaml=policy_config_yaml,
+            change_protected=resource.change_protected
         )
 
         # Create the Launch Bundle and configure it
@@ -674,7 +677,8 @@ statement:
             group_id=group_name,
             policy_id=policy_id,
             policy_ref=policy_ref,
-            policy_config_yaml=policy_config_yaml
+            policy_config_yaml=policy_config_yaml,
+            change_protected=resource.change_protected
         )
 
         # Create the Launch Bundle and configure it
@@ -752,7 +756,7 @@ statement:
     resource:
       - '*'
 """
-        policy_ref = '{}.{}.ssmagent.policy'.format(resource_config.aim_ref_parts, self.id)
+        policy_ref = '{}.{}.ssmagent.policy'.format(res_config.aim_ref_parts, self.id)
         policy_id = '-'.join([resource_id, 'ssmagent-policy'])
         iam_ctl = self.aim_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
@@ -761,7 +765,8 @@ statement:
             group_id=group_id,
             policy_id=policy_id,
             policy_ref=policy_ref,
-            policy_config_yaml=policy_config_yaml
+            policy_config_yaml=policy_config_yaml,
+            change_protected=res_config.change_protected
         )
 
         # Create the Launch Bundle and configure it

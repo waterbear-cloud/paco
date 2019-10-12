@@ -57,7 +57,8 @@ class S3Context():
         bucket_policy_only=False,
         stack_hooks=None,
         new_stack=True,
-        stack_tags=None
+        stack_tags=None,
+        change_protected=False
     ):
         s3_template = aim.cftemplates.S3(
             self.aim_ctx,
@@ -68,7 +69,8 @@ class S3Context():
             stack_hooks,
             self.bucket_context,
             bucket_policy_only,
-            self.resource_ref
+            self.resource_ref,
+            change_protected=change_protected
         )
         if bucket_policy_only == False:
             if self.bucket_context['stack'] != None:
@@ -80,7 +82,8 @@ class S3Context():
         bucket,
         bucket_name_prefix=None,
         bucket_name_suffix=None,
-        stack_hooks=None
+        stack_hooks=None,
+        change_protected=False
     ):
         "Add a bucket: will create a stack and stack hooks as needed"
         if self.bucket_context['config'] != None:
@@ -105,18 +108,20 @@ class S3Context():
             self.aim_ctx.log_action_col(
                 "Init", "S3", "Bucket", bucket.name + ": " + bucket.get_bucket_name(), False, bucket.is_enabled()
             )
-            if stack_hooks == None:
-                stack_hooks = StackHooks(self.aim_ctx)
-            # S3 Delete on Stack Delete hook
-            stack_hooks.add(
-                'S3StackGroup', 'delete', 'pre',
-                self.stack_hook_pre_delete, None, self.bucket_context
-            )
-            self.add_stack(
-                bucket_policy_only=False,
-                stack_hooks=stack_hooks,
-                stack_tags=self.stack_tags
-            )
+            if change_protected == False:
+                if stack_hooks == None:
+                    stack_hooks = StackHooks(self.aim_ctx)
+                # S3 Delete on Stack Delete hook
+                stack_hooks.add(
+                    'S3StackGroup', 'delete', 'pre',
+                    self.stack_hook_pre_delete, None, self.bucket_context
+                )
+                self.add_stack(
+                    bucket_policy_only=False,
+                    stack_hooks=stack_hooks,
+                    stack_tags=self.stack_tags,
+                    change_protected=change_protected
+                )
 
     def add_bucket_policy(self, policy_dict, stack_hooks=None, new_stack=True):
         bucket_config = self.bucket_context['config']

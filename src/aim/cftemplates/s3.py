@@ -20,7 +20,8 @@ class S3(CFTemplate):
                 stack_hooks,
                 bucket_context,
                 bucket_policy_only,
-                config_ref):
+                config_ref,
+                change_protected):
 
         bucket = bucket_context['config']
 
@@ -52,6 +53,7 @@ class S3(CFTemplate):
             stack_group=stack_group,
             stack_tags=stack_tags,
             stack_hooks=stack_hooks,
+            change_protected=change_protected
         )
         self.set_aws_name('S3', aws_name_list)
 

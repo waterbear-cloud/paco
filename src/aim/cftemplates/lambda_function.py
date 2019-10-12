@@ -3,7 +3,7 @@ from aim.cftemplates.cftemplates import CFTemplate
 
 from aim.models.locations import get_parent_by_interface
 from aim.models.loader import get_all_nodes
-from aim.models.references import resolve_ref, get_model_obj_from_ref
+from aim.models.references import resolve_ref, get_model_obj_from_ref, Reference
 from aim.models import schemas
 from io import StringIO
 from enum import Enum
@@ -212,6 +212,7 @@ Resources:
           - LayersExist
           - !Ref Layers
           - !Ref AWS::NoValue
+{0[vpc_config]:s}
 
   InvokePolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -430,7 +431,6 @@ Outputs:
 
         # S3 Bucket notification permission
         app = get_parent_by_interface(lambda_config, schemas.IApplication)
-        project = get_parent_by_interface(lambda_config, schemas.IProject)
         # detect if an S3Bucket resource in the application is configured to notify the Lambda
         for obj in get_all_nodes(app):
             if schemas.IS3Bucket.providedBy(obj):
@@ -448,6 +448,29 @@ Outputs:
                                     permission_table['source_arn'] = 'arn:aws:s3:::' + obj.get_bucket_name()
                                     template_table['permissions'] += permission_fmt.format(permission_table)
                                     seen[s3_logical_name] = True
+
+
+        # VPC Config
+        template_table['vpc_config'] = ""
+        if lambda_config.vpc_config != None:
+            template_table['vpc_config'] += """
+      VpcConfig:
+        SecurityGroupIds: !Ref VpcSecurityGroupIdList
+        SubnetIds: !Ref VpcSubnetIdList"""
+            # Segment SubnetList is a Segment stack Output based on availability zones
+            ref = Reference('aim.ref '+lambda_config_ref)
+
+            segment_ref = lambda_config.vpc_config.segments[0] + '.subnet_id_list'
+            parameters_yaml += self.create_cfn_parameter('List<AWS::EC2::Subnet::Id>', 'VpcSubnetIdList', 'VPC Subnet Id List', segment_ref)
+            #self.set_parameter(StackOutputParam('SubnetList', segment_stack, subnet_list_key, self))
+
+            #self.set_list_parameter('VpcSecurityGroupIdList', lambda_config.vpc_config.security_groups, 'id')
+            parameters_yaml += self.create_cfn_ref_list_param(
+                'List<AWS::EC2::SecurityGroup::Id>',
+                'VpcSecurityGroupIdList',
+                'VPC Security Group Id List',
+                lambda_config.vpc_config.security_groups,
+                'id')
 
         template_table['parameters'] = parameters_yaml
 

@@ -342,10 +342,12 @@ class CFTemplate():
         if short_yaml_path[0] == '/':
             short_yaml_path = short_yaml_path[1:]
         if self.enabled == False:
-            self.aim_ctx.log_action_col("Validate", self.account_ctx.get_name(), "Disabled", short_yaml_path)
+            if self.aim_ctx.quiet_changes_only == False:
+                self.aim_ctx.log_action_col("Validate", self.account_ctx.get_name(), "Disabled", short_yaml_path)
             return
         elif self.change_protected:
-            self.aim_ctx.log_action_col("Validate", self.account_ctx.get_name(), "Protected", short_yaml_path)
+            if self.aim_ctx.quiet_changes_only == False:
+                self.aim_ctx.log_action_col("Validate", self.account_ctx.get_name(), "Protected", short_yaml_path)
             return
         self.generate_template()
         new_str = ''
@@ -375,8 +377,9 @@ class CFTemplate():
         applied_parameters_path = self.init_applied_parameters_path(applied_template_path)
         short_applied_template_path = str(applied_template_path).replace(self.aim_ctx.home, '')
         short_applied_parameters_path = str(applied_parameters_path).replace(self.aim_ctx.home, '')
-        self.aim_ctx.log_action_col('Delete', 'Template', 'Applied', short_applied_template_path)
-        self.aim_ctx.log_action_col('Delete', 'Parameters', 'Applied', short_applied_parameters_path)
+        if self.aim_ctx.verbose == True:
+            self.aim_ctx.log_action_col('Delete', 'Template', 'Applied', short_applied_template_path)
+            self.aim_ctx.log_action_col('Delete', 'Parameters', 'Applied', short_applied_parameters_path)
         try:
             applied_template_path.unlink()
             applied_parameters_path.unlink()
@@ -385,7 +388,8 @@ class CFTemplate():
 
         # The template itself
         short_yaml_path = self.get_yaml_path().replace(self.aim_ctx.home, '')
-        self.aim_ctx.log_action_col('Delete', 'Template', 'Build', short_yaml_path)
+        if self.aim_ctx.verbose == True:
+            self.aim_ctx.log_action_col('Delete', 'Template', 'Build', short_yaml_path)
         try:
             pathlib.Path(self.get_yaml_path()).unlink()
         except FileNotFoundError:
@@ -943,6 +947,10 @@ class CFTemplate():
         if noecho == True:
             other_yaml += '\n    NoEcho: true'
             desc_value = '**********'
+        elif isinstance(value, StackOutputParam):
+            desc_value = 'StackOutputParam'
+        elif isinstance(value, str) == False and isinstance(value, int) == False:
+            desc_value = type(value)
         else:
             desc_value = value
         if use_troposphere == False:

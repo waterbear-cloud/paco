@@ -466,8 +466,9 @@ class Stack():
         if self.action != "delete":
             # Create cache file
             new_cache_id = self.gen_cache_id()
-            with open(self.cache_filename, "w") as cache_fd:
-                cache_fd.write(new_cache_id)
+            if new_cache_id != None:
+                with open(self.cache_filename, "w") as cache_fd:
+                    cache_fd.write(new_cache_id)
 
             # Save stack outputs to yaml
             self.save_stack_outputs()
@@ -643,7 +644,10 @@ class Stack():
 
         # If last md5 is equal, then we no changes are required
         if self.is_stack_cached() == True:
-            self.log_action("Provision", "Cache")
+            if self.change_protected:
+                self.log_action("Provision", "Protected")
+            else:
+                self.log_action("Provision", "Cache")
             return
 
         self.get_status()
@@ -707,6 +711,9 @@ class Stack():
 
 
     def log_action(self, action, stack_action, account_name=None, stack_name=None, message=None, return_it=False):
+        if self.aim_ctx.quiet_changes_only == True:
+            if stack_action in ['Protected', 'Disabled', 'Cache']:
+                return
         if account_name == None:
             msg_account_name = self.account_ctx.get_name()
         else:
@@ -771,7 +778,7 @@ class Stack():
                 try:
                     waiter.wait(StackName=self.get_name())
                 except WaiterError as waiter_exception:
-                    if str(waiter_exception).find('ExpiredToken') != -1:
+                    if str(waiter_exception).find('The security token included in the request is expired') != -1:
                         breakpoint()
                         continue
                     self.log_action(action_name, "Error")
@@ -883,7 +890,10 @@ class StackGroup():
 
     def filtered_stack_action(self, stack, action_method):
         if self.filter_config != None:
-            if stack.template.config_ref.startswith(self.filter_config):
+            # Exact match or append '.' otherwise we might match
+            # foo.bar wtih foo.bar_bad
+            if stack.template.config_ref == self.filter_config or \
+                stack.template.config_ref.startswith(self.filter_config+'.'):
                 action_method()
             else:
                 stack.log_action(

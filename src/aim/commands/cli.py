@@ -35,14 +35,21 @@ from aim.commands.helpers import pass_aim_context
     default=False,
     help='Supresses validation differences.'
 )
+@click.option(
+    '-c', '--quiet-changes-only',
+    is_flag=True,
+    default=False,
+    help='Supresses Cache, Protected, and Disabled messages.'
+)
 
 @pass_aim_context
-def cli(ctx, verbose, nocache, yes, disable_validation):
+def cli(ctx, verbose, nocache, yes, disable_validation, quiet_changes_only):
     """AIM: Application Infrastructure Manager"""
     ctx.verbose = verbose
     ctx.nocache = nocache
     ctx.yes = yes
     ctx.disable_validation = disable_validation
+    ctx.quiet_changes_only = quiet_changes_only
 
 cli.add_command(provision_command)
 cli.add_command(init_command)

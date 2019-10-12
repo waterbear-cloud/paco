@@ -137,7 +137,8 @@ class RoleContext():
                            policy_id,
                            policy_ref,
                            policy_config_yaml=None,
-                           template_params=None):
+                           template_params=None,
+                           change_protected=False):
 
         if policy_ref in self.policy_context.keys():
             print("Managed policy already exists: %s" % (policy_ref) )
@@ -165,7 +166,7 @@ class RoleContext():
                                                         policy_context,
                                                         self.group_id,
                                                         policy_id,
-                                                        self.change_protected)
+                                                        change_protected)
 
         policy_context['stack'] = policy_context['template'].stack
 

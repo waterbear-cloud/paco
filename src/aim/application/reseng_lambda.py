@@ -35,6 +35,20 @@ statement:
 """
         role_config.add_policy(yaml.load(cw_logs_policy))
 
+        if self.resource.vpc_config != None:
+            vpc_config_policy = """
+name: VPCAccess
+statement:
+  - effect: Allow
+    action:
+      - ec2:CreateNetworkInterface
+      - ec2:DescribeNetworkInterfaces
+      - ec2:DeleteNetworkInterface
+    resource:
+      - '*'
+"""
+            role_config.add_policy(yaml.load(vpc_config_policy))
+
         # The ID to give this role is: group.resource.iam_role
         iam_role_ref = self.resource.aim_ref_parts + '.iam_role'
         iam_role_id = self.gen_iam_role_id(self.res_id, 'iam_role')
