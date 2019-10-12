@@ -35,14 +35,7 @@ class Example(CFTemplate):
 
         # ---------------------------------------------------------------------------
         # Troposphere Template Initialization
-
-        template = troposphere.Template(
-            Description = 'Example Template',
-        )
-        template.set_version()
-        template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="EmptyTemplatePlaceholder")
-        )
+        self.init_template('Example Template')
 
         # ---------------------------------------------------------------------------
         # Parameters
@@ -53,7 +46,7 @@ class Example(CFTemplate):
             description='Example parameter.',
             value=example_config.example_variable,
             use_troposphere=True,
-            troposphere_template=template,
+            troposphere_template=self.template,
         )
 
         # ---------------------------------------------------------------------------
@@ -65,7 +58,7 @@ class Example(CFTemplate):
             'ExampleResource',
             example_dict
         )
-        template.add_resource( example_res )
+        self.template.add_resource( example_res )
 
         # ---------------------------------------------------------------------------
         # Outputs
@@ -74,11 +67,11 @@ class Example(CFTemplate):
             Description="Example resource Id.",
             Value=troposphere.Ref(example_res)
         )
-        template.add_output(example_output)
+        self.template.add_output(example_output)
 
         # AIM Stack Output Registration
         self.register_stack_output_config(config_ref + ".id", example_output.title)
 
         # Generate the Template
-        self.set_template(template.to_yaml())
+        self.set_template(self.template.to_yaml())
 

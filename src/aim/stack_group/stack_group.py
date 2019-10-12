@@ -234,6 +234,10 @@ class Stack():
 
 
     #--------------------------------------------------------
+    def handle_token_expired(self):
+        delattr(self, '_cfn_client')
+        self._cfn_client_expired = True
+        self.log_action("Token", "Retry", "Expired")
 
     def set_template(self, template):
         self.template = template
@@ -294,9 +298,8 @@ class Stack():
                     time.sleep(1)
                     continue
                 elif e.response['Error']['Code'] == 'ExpiredToken':
-                    delattr(self, '_cfn_client')
-                    self._cfn_client_expired = True
-                    self.log_action("Token", "Retry", "Expired")
+                    self.handle_token_expired()
+                    continue
                 else:
                     message = self.get_stack_error_message(
                         prefix_message=e.response['Error']['Message'],
@@ -356,11 +359,7 @@ class Stack():
                     message += 'Account: ' + self.account_ctx.get_name()
                     raise StackException(AimErrorCode.StackDoesNotExist, message = message)
                 elif e.response['Error']['Code'] == 'ExpiredToken':
-                    delattr(self, '_cfn_client')
-                    self._cfn_client_expired = True
-                    self.log_action("Token", "Retry", "Expired")
-                    # XXX: This doesn't seem to work and its tricky to get here. Debug it!
-                    breakpoint()
+                    self.handle_token_expired()
                     continue
                 else:
                     raise StackException(AimErrorCode.Unknown, message=e.response['Error']['Message'])
@@ -553,9 +552,7 @@ class Stack():
                         message += "ValidationError: {}\n".format(e.response['Error']['Message'])
                         raise StackException(AimErrorCode.Unknown, message = message)
                 elif e.response['Error']['Code'] == 'ExpiredToken':
-                    delattr(self, '_cfn_client')
-                    self._cfn_client_expired = True
-                    self.log_action("Token", "Retry", "Expired")
+                    self.handle_token_expired()
                     continue
                 else:
                     #message = "Stack: {}\nError: {}\n".format(self.get_name(), e.response['Error']['Message'])
@@ -618,9 +615,7 @@ class Stack():
                     stack_events = self.cfn_client.describe_stack_events(StackName=self.get_name())
                 except ClientError as exc:
                     if exc.response['Error']['Code'] == 'ExpiredToken':
-                        delattr(self, '_cfn_client')
-                        self._cfn_client_expired = True
-                        self.log_action("Token", "Retry", "Expired")
+                        self.handle_token_expired()
                         continue
                     else:
                         raise sys.exc_info()
@@ -779,7 +774,7 @@ class Stack():
                     waiter.wait(StackName=self.get_name())
                 except WaiterError as waiter_exception:
                     if str(waiter_exception).find('The security token included in the request is expired') != -1:
-                        breakpoint()
+                        self.handle_token_expired()
                         continue
                     self.log_action(action_name, "Error")
                     message = "Waiter Error:  {}\n".format(waiter_exception)
