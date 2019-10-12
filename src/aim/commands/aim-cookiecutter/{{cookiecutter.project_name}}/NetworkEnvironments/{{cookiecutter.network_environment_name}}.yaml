@@ -1,7 +1,7 @@
 network:
 {% if cookiecutter.starting_template == 'simple-web-app' %}
   title: "{{cookiecutter.network_environment_title}}"
-  availability_zones: 2
+  availability_zones: 3
   enabled: true
   vpc:
     enable_dns_hostnames: true
@@ -11,9 +11,9 @@ network:
       {{cookiecutter.application_name}}:
         enabled: true
         availability_zone: 1
-        segment: public
+        segment: aim.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.segments.public
         default_route_segments:
-          - web
+          - aim.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.segments.web
     vpn_gateway:
       {{cookiecutter.application_name}}:
         enabled: false
@@ -135,7 +135,7 @@ environments:
           enabled: true
       network:
         aws_account: aim.ref accounts.master
-        availability_zones: 2
+        availability_zones: 3
         name: example
         vpc:
           cidr: 10.20.0.0/16
@@ -165,7 +165,7 @@ environments:
                 desired_capacity: 2
       network:
         aws_account: aim.ref accounts.master
-        availability_zones: 2
+        availability_zones: 3
         name: example
         vpc:
           cidr: 10.20.0.0/16

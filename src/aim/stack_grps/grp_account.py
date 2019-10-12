@@ -21,7 +21,6 @@ class AccountStackGroup(StackGroup):
         self.stack_hooks = stack_hooks
 
     def init(self, do_not_cache=False):
-
         if self.account_config.is_master == True:
             # Create Managed Policy to allow the Administrator to switch to this org accounts delegagte role
             resource_list = ""
@@ -31,19 +30,22 @@ class AccountStackGroup(StackGroup):
             #user_list = "\n  - {}".format(self.aim_ctx.project['credentials'].master_admin_iam_username)
 
             user_list = ""
-            for iam_user in self.account_config.admin_iam_users.keys():
-                user_list += "\n  - {}".format(self.account_config.admin_iam_users[iam_user].username)
+            if self.account_config.admin_iam_users != None:
+                for iam_user in self.account_config.admin_iam_users.keys():
+                    user_list += "\n  - {}".format(self.account_config.admin_iam_users[iam_user].username)
 
             # Build Policy
             policy_config_yaml = """
+enabled: true
 name: 'OrgAccountDelegate-{}'
 statement:
   - effect: Allow
     action:
       - sts:AssumeRole
     resource:{}
-users:{}
-    """.format(org_account_name, resource_list, user_list)
+users:
+  - aim-project-init
+    """.format(org_account_name, resource_list)
             ctl_iam = self.aim_ctx.get_controller('iam')
             ctl_iam.create_managed_policy(  self.aim_ctx,
                                             self.account_ctx,
@@ -55,7 +57,8 @@ users:{}
                                             parent_config=self.account_config,
                                             stack_group=self,
                                             template_params=None,
-                                            stack_tags=None)
+                                            stack_tags=None,
+                                            change_protected=False)
 
             # Account Stack
             #
@@ -64,17 +67,17 @@ users:{}
             # we do not want to recreate it here until we have a cloudformation custom resource
             # that can handle existing users.
             # TODO: Switch to CustomResource to allow for existing users
-            custom_resource_complete = False
-            if custom_resource_complete:
-                account_template = aim.cftemplates.Account(self.aim_ctx,
-                                                        self.account_ctx,
-                                                        self,
-                                                        self.stack_hooks,
-                                                        self.account_id,
-                                                        self.account_config,
-                                                        self.account_config_ref)
+            #custom_resource_complete = False
+            #if custom_resource_complete:
+            #    account_template = aim.cftemplates.Account(self.aim_ctx,
+            #                                            self.account_ctx,
+            #                                            self,
+            #                                            self.stack_hooks,
+            #                                            self.account_id,
+            #                                            self.account_config,
+            #                                            self.account_config_ref)
 
-                self.account_stack = account_template.stack
+            #    self.account_stack = account_template.stack
 
         print("Account Group Init: %s: Completed" % self.account_id)
 

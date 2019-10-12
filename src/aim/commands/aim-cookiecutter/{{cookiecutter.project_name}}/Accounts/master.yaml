@@ -1,10 +1,7 @@
 name: Master
 title: Master AWS Account
-account_type: AWS
-account_id: '{{cookiecutter.master_account_id}}'
-admin_delegate_role_name: 'WaterbearCloud-AIM-Administrator-Access-Role'
-region: '{{cookiecutter.aws_default_region}}'
 is_master: true
-admin_iam_users:
-  master_admin:
-    username: '{{cookiecutter.master_admin_iam_username}}'
+account_id: '{{cookiecutter.master_account_id}}'
+region: '{{cookiecutter.aws_default_region}}'
+root_email: '{{cookiecutter.master_root_email}}'
+admin_delegate_role_name: 'WaterbearCloud-AIM-Administrator-Access-Role'

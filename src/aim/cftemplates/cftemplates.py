@@ -1085,7 +1085,8 @@ class CFTemplate():
 
     def apply_template_changes(self):
         applied_file_path, new_file_path = self.init_template_store_paths()
-        copyfile(new_file_path, applied_file_path)
+        if new_file_path.exists():
+            copyfile(new_file_path, applied_file_path)
 
     def validate_template_changes(self):
         if self.aim_ctx.disable_validation == True:

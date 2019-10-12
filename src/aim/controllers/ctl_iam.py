@@ -25,7 +25,17 @@ class IAMUserStackGroup(StackGroup):
         )
 
 class PolicyContext():
-    def __init__(self, aim_ctx, account_ctx, region, group_id, policy_id, policy_ref, policy_config_yaml, parent_config, stack_group, template_params, stack_tags):
+    def __init__(
+        self,
+        aim_ctx, account_ctx, region,
+        group_id, policy_id,
+        policy_ref,
+        policy_config_yaml,
+        parent_config,
+        stack_group,
+        template_params,
+        stack_tags,
+        change_protected = False):
         self.aim_ctx = aim_ctx
         self.account_ctx = account_ctx
         self.region = region
@@ -41,6 +51,7 @@ class PolicyContext():
         self.policy_template = None
         self.policy_stack = None
         self.template_params = template_params
+        self.change_protected = change_protected
         self.policy_context = {}
 
         self.policy_context = {}
@@ -69,7 +80,8 @@ class PolicyContext():
                                                         policy_stack_tags,
                                                         policy_context,
                                                         self.group_id,
-                                                        self.policy_id)
+                                                        self.policy_id,
+                                                        change_protected=self.change_protected)
 
         policy_context['stack'] = policy_context['template'].stack
 
@@ -581,7 +593,17 @@ class IAMController(Controller):
         if controller_args['arg_1'] == 'users':
             self.init_users()
 
-    def create_managed_policy(self, aim_ctx, account_ctx, region, group_id, policy_id, policy_ref, policy_config_yaml, parent_config, stack_group, template_params, stack_tags):
+    def create_managed_policy(
+        self,
+        aim_ctx, account_ctx, region,
+        group_id, policy_id,
+        policy_ref,
+        policy_config_yaml,
+        parent_config,
+        stack_group,
+        template_params,
+        stack_tags,
+        change_protected=False):
         if policy_ref not in self.policy_context.keys():
             self.policy_context[policy_ref] = PolicyContext(aim_ctx=self.aim_ctx,
                                                             account_ctx=account_ctx,
@@ -593,7 +615,8 @@ class IAMController(Controller):
                                                             parent_config=parent_config,
                                                             stack_group=stack_group,
                                                             template_params=template_params,
-                                                            stack_tags=stack_tags)
+                                                            stack_tags=stack_tags,
+                                                            change_protected=change_protected)
         else:
             print("Managed Policy already exists: %s" % (policy_ref))
             raise StackException(AimErrorCode.Unknown)

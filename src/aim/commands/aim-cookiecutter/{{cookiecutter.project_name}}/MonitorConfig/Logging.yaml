@@ -1,7 +1,8 @@
 cw_logging:
-  expire_events_after_days: '7'
+  expire_events_after_days: '90'
   log_sets:
-    amazon_linux:
+    rpm_linux:
+      expire_events_after_days: '90'
       log_groups:
         audit:
           sources:
@@ -23,16 +24,44 @@ cw_logging:
             yum:
               path: "/var/log/yum.log"
               log_stream_name: "{instance_id}"
+    dpkg_linux:
+      expire_events_after_days: '90'
+      log_groups:
+        auth:
+          sources:
+            audit:
+              path: "/var/log/auth.log"
+              log_stream_name: "{instance_id}"
+        syslog:
+          sources:
+            secure:
+              path: "/var/log/syslog"
+              log_stream_name: "{instance_id}"
+        daemon:
+          sources:
+            messages:
+              path: "/var/log/daemon.log"
+              log_stream_name: "{instance_id}"
+        dpkg:
+          sources:
+            dpkg:
+              path: "/var/log/dpkg.log"
+              log_stream_name: "{instance_id}"
+        kern:
+          sources:
+            kern:
+              path: "/var/log/kern.log"
+              log_stream_name: "{instance_id}"
     apache:
       log_groups:
         access:
-          expire_events_after_days: '14'
+          expire_events_after_days: '90'
           sources:
             access:
               path: "/var/log/httpd/access.log"
               log_stream_name: "access-{instance_id}"
         error:
-          expire_events_after_days: '14'
+          expire_events_after_days: '90'
           sources:
             error:
               path: "/var/log/httpd/error.log"

@@ -63,6 +63,9 @@ class AccountController(Controller):
 
         self.init_accounts_yaml()
 
+    def init_command(self, controller_args):
+        pass
+
     def init_master_stack_group(self):
         # Master account goes first
         self.master_stack_group = AccountStackGroup(self.aim_ctx,

@@ -44,7 +44,9 @@ class ProjectController(Controller):
             'aws_default_region': None,
             'aws_default_region_allowed_values': vocabulary.aws_regions.keys(),
             'master_account_id': None,
-            'master_admin_iam_username': None
+            'master_root_email': None,
+            'starting_template': None,
+            'starting_template_allowed_values': ["empty", "simple-web-app", "complete-web-app"]
         }
         if self.project_context_path.exists():
             self.load_project_context()
@@ -80,10 +82,10 @@ class ProjectController(Controller):
                         allowed_key_list.append(allowed_key)
                     self.project_context[key] = self.aim_ctx.input("%s" % key, allowed_values=allowed_values)
 
+            self.project_context['master_admin_iam_username'] = 'aim-project-init'
             # Remove the allowed key so we do not save it to the context file
             for key in allowed_key_list:
                 del self.project_context[key]
-
             cookiecutter(
                 os.path.join(os.path.dirname(__file__), '../commands', 'aim-cookiecutter'),
                 no_input=True,
@@ -117,6 +119,8 @@ class ProjectController(Controller):
         self.credentials['aws_access_key_id']         = self.aim_ctx.input("aws_access_key_id")
         self.credentials['aws_secret_access_key']     = self.aim_ctx.input("aws_secret_access_key")
         self.credentials['master_admin_iam_username'] = self.project_context['master_admin_iam_username']
+        self.credentials['mfa_session_expiry_secs'] = 43200
+        self.credentials['assume_role_session_expiry_secs'] = 3600
 
         try:
             os.chmod(self.credentials_path, stat.S_IRWXU)
