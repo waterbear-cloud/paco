@@ -105,7 +105,8 @@ def prefixed_name(resource, name, legacy_flag):
 
     str_list.extend([env_name, app_name, group_name, resource.name, name])
 
-    str_list = '-'.join(str_list)
+    return '-'.join(str_list)
+
 
 def log_action(action, message, return_it=False, enabled=True):
     log_message = action+": "+message
