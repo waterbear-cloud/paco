@@ -76,15 +76,21 @@ def big_join(str_list, separator_ch, camel_case=False, none_value_ok=False):
         first = False
     return new_str
 
-def prefixed_name(resource, name):
+def prefixed_name(resource, name, legacy_flag):
     """Returns a name prefixed to be unique:
-    e.g. env_name-app_name-group_name-resource_name-name"""
+    e.g. netenv_name-env_name-app_name-group_name-resource_name-name"""
+    str_list = []
     # currently ony works for resources in an environment
+    if legacy_flag('netenv_loggroup_name_2019_10_13') == False:
+        netenv_name = get_parent_by_interface(resource, schemas.INetworkEnvironment).name
+        str_list.append(netenv_name)
     env_name = get_parent_by_interface(resource, schemas.IEnvironment).name
     app_name = get_parent_by_interface(resource, schemas.IApplication).name
     group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
 
-    return '-'.join([env_name, app_name, group_name, resource.name, name])
+    str_list.extend([env_name, app_name, group_name, resource.name, name])
+
+    str_list = '-'.join(str_list)
 
 def log_action(action, message, return_it=False, enabled=True):
     log_message = action+": "+message

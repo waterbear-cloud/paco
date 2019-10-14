@@ -6,13 +6,17 @@ from aim.cftemplates import IAMRoles, IAMManagedPolicies,IAMUsers, IAMUserAccoun
 from aim.controllers.controllers import Controller
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
-from aim.core.yaml import YAML
+from aim.core.yaml import YAML, Ref, Sub
 from aim.models.references import Reference
 from aim.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackTags, StackHooks
 from aim.utils import md5sum
 
-yaml=YAML()
-yaml.default_flow_sytle = False
+yaml=YAML(typ='safe')
+#yaml.register_class(Ref)
+#yaml.register_class(Sub)
+#yaml.preserve_quotes = True
+#yaml=YAML(typ="safe", pure=True)
+#yaml.default_flow_sytle = False
 
 class IAMUserStackGroup(StackGroup):
     def __init__(self, aim_ctx, account_ctx, group_name, controller):

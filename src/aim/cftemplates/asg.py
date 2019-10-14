@@ -199,7 +199,7 @@ class ASG(CFTemplate):
                 eip_value = asg_config.eip + '.allocation_id'
             else:
                 eip_value = asg_config.eip
-            efs_id_param = self.create_cfn_parameter(
+            eip_id_param = self.create_cfn_parameter(
                 param_type='String',
                 name='EIPAllocationId',
                 description='The allocation Id of the EIP to attach to the instance.',
@@ -207,17 +207,21 @@ class ASG(CFTemplate):
                 use_troposphere=True,
                 troposphere_template=template)
             asg_dict['Tags'].append(
-                troposphere.autoscaling.Tag('AIM-EIP-Allocation-Id', troposphere.Ref(efs_id_param), True)
+                troposphere.autoscaling.Tag('AIM-EIP-Allocation-Id', troposphere.Ref(eip_id_param), True)
             )
 
         # EFS FileSystemId Tags
         for efs_mount in asg_config.efs_mounts:
             target_hash = utils.md5sum(str_data=efs_mount.target)
+            if references.is_ref(efs_mount.target) == True:
+                efs_value = efs_mount.target + '.id'
+            else:
+                efs_value = efs_mount.target
             efs_id_param = self.create_cfn_parameter(
                 param_type='String',
                 name='EFSId'+target_hash,
                 description='EFS Id',
-                value=efs_mount.target+'.id',
+                value=efs_value,
                 use_troposphere=True,
                 troposphere_template=template)
             asg_tag = troposphere.autoscaling.Tag(

@@ -235,7 +235,8 @@ class Stack():
 
     #--------------------------------------------------------
     def handle_token_expired(self):
-        delattr(self, '_cfn_client')
+        if hasattr(self, '_cfn_client') == True:
+            delattr(self, '_cfn_client')
         self._cfn_client_expired = True
         self.log_action("Token", "Retry", "Expired")
 
@@ -707,7 +708,10 @@ class Stack():
 
     def log_action(self, action, stack_action, account_name=None, stack_name=None, message=None, return_it=False):
         if self.aim_ctx.quiet_changes_only == True:
-            if stack_action in ['Protected', 'Disabled', 'Cache']:
+            if stack_action in ['Protected', 'Disabled', 'Cache', 'Wait', 'Done']:
+                return
+        if self.aim_ctx.verbose == False:
+            if stack_action in ['Wait', 'Done']:
                 return
         if account_name == None:
             msg_account_name = self.account_ctx.get_name()

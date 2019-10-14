@@ -59,7 +59,7 @@ class LogGroups(CFTemplate):
                 param_type = 'String',
                 name = param_name,
                 description = 'LogGroup name',
-                value = prefixed_name(resource, log_group_name),
+                value = prefixed_name(resource, log_group_name, self.aim_ctx.legacy_flag),
                 use_troposphere = True
             )
             template.add_parameter(parameter)

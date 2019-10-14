@@ -35,3 +35,4 @@ from aim.cftemplates.efs import EFS
 from aim.cftemplates.eip import EIP
 from aim.cftemplates.route53healthcheck import Route53HealthCheck
 from aim.cftemplates.route53_hostedzone import Route53HostedZone
+from aim.cftemplates.secrets_manager import SecretsManager

@@ -22,13 +22,15 @@ from aim.stack_group import StackHooks, Stack, StackTags
 from aim import models, utils
 from aim.models import schemas, vocabulary
 from aim.models.locations import get_parent_by_interface
+from aim.models.references import Reference
 from aim.core.yaml import YAML
 from aim.utils import md5sum, prefixed_name
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 
 yaml=YAML()
-yaml.default_flow_sytle = False
+#yaml.default_flow_sytle = False
+yaml.preserve_quotes = True
 
 
 class LaunchBundle():
@@ -161,6 +163,8 @@ class EC2LaunchManager():
         self.launch_bundles = {}
         self.cache_id = {}
         self.stack_tags = stack_tags
+        self.ec2lm_functions_script = {}
+        self.ec2lm_buckets = {}
         self.build_path = os.path.join(
             self.aim_ctx.build_folder,
             'EC2LaunchManager',
@@ -170,11 +174,17 @@ class EC2LaunchManager():
             self.app_id
         )
 
-    def get_cache_id(self, app_id, grp_id, res_id):
-        cache_context = '.'.join([app_id, grp_id, res_id])
+    def get_cache_id(self, resource, app_id, grp_id):
+        cache_context = '.'.join([app_id, grp_id, resource.name])
+        #bucket_name = self.get_s3_bucket_name(app_id, grp_id, self.bucket_id(res_id))
+        bucket_name = self.get_ec2lm_bucket_name(resource)
+        ec2lm_functions_cache_id = ''
+        if bucket_name in self.ec2lm_functions_script.keys():
+            ec2lm_functions_cache_id = utils.md5sum(str_data=self.ec2lm_functions_script[bucket_name])
+
         if cache_context not in self.cache_id:
-            return ''
-        return self.cache_id[cache_context]
+            return ec2lm_functions_cache_id
+        return self.cache_id[cache_context]+ec2lm_functions_cache_id
 
     def bucket_id(self, resource_id):
         return '-'.join([resource_id, self.id])
@@ -213,13 +223,34 @@ class EC2LaunchManager():
         s3_ctl = self.aim_ctx.get_controller('S3')
         s3_ctl.add_stack_hooks(resource_ref=bundle.s3_bucket_ref, stack_hooks=stack_hooks)
 
-    def init_bundle_s3_bucket(self, bundle):
+    def ec2lm_functions_hook_cache_id(self, hook, s3_bucket_ref):
+        s3_ctl = self.aim_ctx.get_controller('S3')
+        bucket_name = s3_ctl.get_bucket_name(s3_bucket_ref)
+        return utils.md5sum(str_data=self.ec2lm_functions_script[bucket_name])
+
+    def ec2lm_functions_hook(self, hook, s3_bucket_ref):
+        s3_ctl = self.aim_ctx.get_controller('S3')
+        bucket_name = s3_ctl.get_bucket_name(s3_bucket_ref)
+        s3_client = self.account_ctx.get_aws_client('s3')
+        s3_client.put_object(
+            Bucket=bucket_name,
+            Body=self.ec2lm_functions_script[bucket_name],
+            Key="ec2lm_functions.bash"
+        )
+
+    def init_ec2lm_s3_bucket(self, resource, instance_iam_role_arn):
+        s3_bucket_ref = '.'.join([
+            resource.aim_ref_parts,
+            self.id, 'bucket'])
+        if s3_bucket_ref in self.ec2lm_buckets.keys():
+            return
+
         bucket_config_dict = {
             'enabled': True,
             'bucket_name': 'lb',
             'deletion_policy': 'delete',
             'policy': [ {
-                'aws': [ "%s" % (bundle.instance_iam_role_arn) ],
+                'aws': [ "%s" % (instance_iam_role_arn) ],
                 'effect': 'Allow',
                 'action': [
                     's3:Get*',
@@ -231,48 +262,55 @@ class EC2LaunchManager():
                 ]
             } ]
         }
-        bucket_config = models.applications.S3Bucket('ec2lm', bundle.resource_config)
+        bucket_config = models.applications.S3Bucket('ec2lm', resource)
         bucket_config.update(bucket_config_dict)
         bucket_config.resolve_ref_obj = self
-        bucket_config.enabled = bundle.resource_config.is_enabled()
+        bucket_config.enabled = resource.is_enabled()
+
+        # EC2LM Common Functions StackHooks
+        stack_hooks = StackHooks(self.aim_ctx)
+        stack_hooks.add(
+            name='EC2LMFunctions',
+            stack_action='create',
+            stack_timing='post',
+            hook_method=self.ec2lm_functions_hook,
+            cache_method=self.ec2lm_functions_hook_cache_id,
+            hook_arg=s3_bucket_ref
+        )
+        stack_hooks.add(
+            'EC2LaunchManager', 'update', 'post',
+            self.ec2lm_functions_hook, self.ec2lm_functions_hook_cache_id, s3_bucket_ref
+        )
 
         s3_ctl = self.aim_ctx.get_controller('S3')
         s3_ctl.init_context(
             self.account_ctx,
             self.aws_region,
-            bundle.s3_bucket_ref,
+            s3_bucket_ref,
             self.stack_group,
             StackTags(self.stack_tags)
         )
         s3_ctl.add_bucket(
             bucket_config,
-            config_ref = bundle.s3_bucket_ref,
-            change_protected = bundle.resource_config.change_protected
+            config_ref = s3_bucket_ref,
+            stack_hooks=stack_hooks,
+            change_protected = resource.change_protected
         )
+        self.ec2lm_buckets[s3_bucket_ref] = bucket_config
 
-    def get_s3_bucket_name(self, app_id, grp_id, bucket_id):
-        "Name of the S3 bucket that the launch bundle is stored in"
-        for bundle_key in self.launch_bundles.keys():
-            bundle = self.launch_bundles[bundle_key][0]
-            if bundle.app_id == app_id and bundle.group_id == grp_id and bundle.bucket_id == bucket_id:
-                s3_ctl = self.aim_ctx.get_controller('S3')
-                return s3_ctl.get_bucket_name(bundle.s3_bucket_ref)
-        return None
+    def get_ec2lm_bucket_name(self, resource):
+        bucket_ref = '.'.join([resource.aim_ref_parts, self.id, 'bucket'])
+        s3_ctl = self.aim_ctx.get_controller('S3')
+        return s3_ctl.get_bucket_name(bucket_ref)
 
-    def user_data_script(self, app_id, grp_id, resource_id, resource, instance_iam_role_ref):
-        """BASH script that will load the launch bundle from user_data"""
-        script_fmt = """#!/bin/bash
-echo "EC2 Launch Manager: {0[description]}"
-echo "CWD: $(pwd)"
-echo "File: $0"
-
-cat << EOF >/tmp/ec2lm_functions.bash
+    def add_ec2lm_function_swap(self, ec2lm_bucket_name):
+        self.ec2lm_functions_script[ec2lm_bucket_name] += """
 # Swap
-function swap_on() {{
-    SWAP_SIZE_GB=\$1
-    if [ "\$(swapon -s|wc -c)" == "0" ]; then
-        echo "Enabling a \${{SWAP_SIZE_GB}}GB Swapfile"
-        dd if=/dev/zero of=/swapfile bs=1024 count=\$((\$SWAP_SIZE_GB*1024))k
+function swap_on() {
+    SWAP_SIZE_GB=$1
+    if [ "$(swapon -s|grep -v Filename|wc -c)" == "0" ]; then
+        echo "Enabling a ${SWAP_SIZE_GB}GB Swapfile"
+        dd if=/dev/zero of=/swapfile bs=1024 count=$(($SWAP_SIZE_GB*1024))k
         chmod 0600 /swapfile
         mkswap /swapfile
         swapon /swapfile
@@ -281,126 +319,229 @@ function swap_on() {{
     fi
     swapon -s
     free
-}}
+}
+"""
 
+    def add_ec2lm_function_wget(self, ec2lm_bucket_name, instance_ami_type):
+        self.ec2lm_functions_script[ec2lm_bucket_name] += """
 # HTTP Client Path
-function install_wget() {{
-    CLIENT_PATH=\$(which wget)
-    if [ \$? -eq 1 ] ; then
-        {0[install_wget]}
+function install_wget() {
+    CLIENT_PATH=$(which wget)
+    if [ $? -eq 1 ] ; then
+        %s
     fi
-}}
-EOF
+}
+""" % vocabulary.user_data_script['install_wget'][instance_ami_type]
 
-. /tmp/ec2lm_functions.bash
+    def add_ec2lm_function_eip(self, ec2lm_bucket_name, resource, grp_id, instance_iam_role_ref):
+        """Adds functions for associating EIPs"""
+        self.ec2lm_functions_script[ec2lm_bucket_name] += self.user_data_eip(resource, grp_id, instance_iam_role_ref)
 
-# Update System
-{0[update_system]}
+    def add_ec2lm_function_secrets(self, ec2lm_bucket_name, resource, grp_id, instance_iam_role_ref):
+        """Adds functions for getting secrets from Secrets Manager"""
+        self.ec2lm_functions_script[ec2lm_bucket_name] += self.user_data_secrets(resource, grp_id, instance_iam_role_ref)
 
-# Essential Packages
-{0[essential_packages]}
+    def init_ec2lm_function(self, ec2lm_bucket_name):
+        script_table = {
+            'ec2lm_bucket_name': ec2lm_bucket_name,
+            'aim_environment': self.app_engine.env_ctx.env_id,
+            'aim_network_environment': self.app_engine.env_ctx.netenv_id
+        }
 
+        script_template = """
 INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
 AVAIL_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
 REGION="$(echo \"$AVAIL_ZONE\" | sed 's/[a-z]$//')"
+export AWS_DEFAULT_REGION=$REGION
+STACK_NAME=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=aws:cloudformation:stack-name" --query 'Tags[0].Value' |tr -d '"')
+EC2_MANAGER_FOLDER='/opt/aim/EC2Manager/'
+AIM_NETWORK_ENVIRONMENT="{0[aim_network_environment]:s}"
+AIM_ENVIRONMENT="{0[aim_environment]:s}"
 
-# AWS CLI
+# Launch Bundles
+function ec2lm_launch_bundles() {{
+    mkdir -p $EC2_MANAGER_FOLDER/LaunchBundles
+    aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ $EC2_MANAGER_FOLDER
+
+    cd $EC2_MANAGER_FOLDER/LaunchBundles/
+
+    echo "Loading Launch Bundles"
+    for BUNDLE_PACKAGE in *.tgz
+    do
+        BUNDLE_FOLDER=${{BUNDLE_PACKAGE//'.tgz'/}}
+        echo "$BUNDLE_FOLDER: Unpacking:"
+        if [ ! -f "$BUNDLE_PACKAGE" ] ; then
+            echo "Unable to find package: $BUNDLE_PACKAGE"
+            continue
+        fi
+        tar xvfz $BUNDLE_PACKAGE
+        chown -R root.root $BUNDLE_FOLDER
+        echo "$BUNDLE_FOLDER: Launching bundle"
+        cd $BUNDLE_FOLDER
+        chmod u+x ./launch.sh
+        ./launch.sh
+        cd ..
+        echo "$BUNDLE_FOLDER: Done"
+    done
+}}
+
+"""
+        self.ec2lm_functions_script[ec2lm_bucket_name] = script_template.format(script_table)
+
+    def user_data_script(self, app_id, grp_id, resource_id, resource, instance_iam_role_ref):
+        """BASH script that will load the launch bundle from user_data"""
+        script_fmt = """#!/bin/bash
+echo "EC2 Launch Manager"
+echo "Script: $0"
+echo "CacheId: {0[cache_id]}"
+
 {0[install_aws_cli]}
 
-# EIP
-{0[eip]}
+EC2LM_FUNCTIONS=ec2lm_functions.bash
+aws s3 cp s3://{0[ec2lm_bucket_name]}/$EC2LM_FUNCTIONS /tmp/$EC2LM_FUNCTIONS
+. /tmp/$EC2LM_FUNCTIONS
+
+{0[launch_bundles]}
 """
+        instance_iam_role_arn_ref = 'aim.ref '+instance_iam_role_ref + '.arn'
+        instance_iam_role_arn = self.aim_ctx.get_ref(instance_iam_role_arn_ref)
+        if instance_iam_role_arn == None:
+            raise StackException(
+                    AimErrorCode.Unknown,
+                    message="ec2_launch_manager: user_data_script: Unable to locate value for ref: " + instance_iam_role_arn_ref
+                )
+        self.init_ec2lm_s3_bucket(resource, instance_iam_role_arn)
+
+        ec2lm_bucket_name = self.get_ec2lm_bucket_name(resource)
+
         script_table = {
-            'description': self.get_cache_id(app_id, grp_id, resource_id),
-            'update_system': '',
-            'essential_packages': '',
-            'eip': '',
-            'install_aws_cli': '',
-            'ec2_manager_s3_bucket': None,
-            'install_wget': vocabulary.user_data_script['install_wget'][resource.instance_ami_type]
+            'cache_id': None,
+            'ec2lm_bucket_name': ec2lm_bucket_name,
+            'install_aws_cli': vocabulary.user_data_script['install_aws_cli'][resource.instance_ami_type],
+            'launch_bundles': 'echo "No launch bundles to load."\n'
         }
-        for command in vocabulary.user_data_script['update_system'][resource.instance_ami_type]:
-            script_table['update_system'] = command + '\n'
+        # Launch Bundles
+        if len(self.launch_bundles.keys()) > 0:
+            script_table['launch_bundles'] = 'ec2lm_launch_bundles\n'
+
+        # EC2LM Functions
+        self.init_ec2lm_function(ec2lm_bucket_name)
+        self.add_ec2lm_function_swap(ec2lm_bucket_name)
+        self.add_ec2lm_function_wget(ec2lm_bucket_name, resource.instance_ami_type)
 
         if resource.eip != None:
-            script_table['eip'] = """
-EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=AIM-EIP-Allocation-Id" --query 'Tags[0].Value' |tr -d '"')
-aws ec2 associate-address --instance-id $INSTANCE_ID --allocation-id $EIP_ALLOC_ID --region $REGION
+            self.add_ec2lm_function_eip(ec2lm_bucket_name, resource, grp_id, instance_iam_role_ref)
+
+        if resource.secrets != None and len(resource.secrets) > 0:
+            self.add_ec2lm_function_secrets(ec2lm_bucket_name, resource, grp_id, instance_iam_role_ref)
+
+        script_table['cache_id'] = self.get_cache_id(resource, app_id, grp_id)
+        return script_fmt.format(script_table)
+
+    def user_data_secrets(self, resource, grp_id, instance_iam_role_ref):
+        secrets_script = """
+function get_secret() {
+    aws secretsmanager get-secret-value --secret-id "$1" --query SecretString --region $REGION --output text
+}
 """
-            policy_config_yaml = """
+        policy_config_yaml = """
+name: 'Secrets'
+enabled: true
+statement:
+  - effect: Allow
+    action:
+      - secretsmanager:GetSecretValue
+    resource:
+{}
+"""
+        template_params = []
+        secret_arn_list_yaml = ""
+        for secret in resource.secrets:
+            secret_ref = Reference(secret)
+            secret_hash = utils.md5sum(str_data='.'.join(secret_ref.parts))
+            param = {
+                'description': 'Secrets Manager Secret ARN',
+                'type': 'String',
+                'key': 'SecretArn' + secret_hash,
+                'value': secret + '.arn'
+            }
+            template_params.append(param)
+            secret_arn_list_yaml += "      - !Ref SecretArn" + secret_hash
+        policy_ref = '{}.{}.secrets.policy'.format(resource.aim_ref_parts, self.id)
+        policy_id = '-'.join([resource.name, 'secrets'])
+        iam_ctl = self.aim_ctx.get_controller('IAM')
+
+        iam_ctl.add_managed_policy(
+            role_ref=instance_iam_role_ref,
+            parent_config=resource,
+            group_id=grp_id,
+            policy_id=policy_id,
+            policy_ref=policy_ref,
+            policy_config_yaml=policy_config_yaml.format(secret_arn_list_yaml),
+            template_params=template_params,
+            change_protected=resource.change_protected
+        )
+
+        return secrets_script
+
+    def user_data_eip(self,resource, grp_id, instance_iam_role_ref):
+        eip_script = """
+EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=AIM-EIP-Allocation-Id" --query 'Tags[0].Value' |tr -d '"')
+EIP_IP=$(aws ec2 describe-addresses --allocation-ids $EIP_ALLOC_ID --query 'Addresses[0].PublicIp' --region $REGION | tr -d '"')
+aws ec2 associate-address --instance-id $INSTANCE_ID --allocation-id $EIP_ALLOC_ID --region $REGION
+# Wait for the EIP to associate
+COUNT=0
+TIMEOUT=10
+echo -n "Waiting for EIP to associate"
+while :
+do
+  PUBLIC_IP=$(curl http://169.254.169.254/latest/meta-data/public-ipv4/)
+  if [ "$PUBLIC_IP" == "$EIP_IP" ] ; then
+    echo
+    echo "EIP Association Successful"
+    break
+  fi
+  echo -n "."
+  sleep 1
+  COUNT=$(($COUNT+1))
+  if [ $COUNT -eq $TIMEOUT ] ; then
+    echo
+    echo "ERROR: Unable to associate EIP: Timedout after $TIMEOUT seconds"
+    break
+  fi
+done
+"""
+        policy_config_yaml = """
 name: 'AssociateEIP'
 enabled: true
 statement:
   - effect: Allow
     action:
-      - "ec2:AssociateAddress"
+      - 'ec2:AssociateAddress'
+      - 'ec2:DescribeAddresses'
     resource:
       - '*'
 """
 
-            policy_ref = '{}.{}.eip.policy'.format(resource.aim_ref_parts, self.id)
-            policy_id = '-'.join([resource.name, 'eip'])
-            iam_ctl = self.aim_ctx.get_controller('IAM')
-            iam_ctl.add_managed_policy(
-                role_ref=instance_iam_role_ref,
-                parent_config=resource,
-                group_id=grp_id,
-                policy_id=policy_id,
-                policy_ref=policy_ref,
-                policy_config_yaml=policy_config_yaml,
-                change_protected=resource.change_protected
-            )
+        policy_ref = '{}.{}.eip.policy'.format(resource.aim_ref_parts, self.id)
+        policy_id = '-'.join([resource.name, 'eip'])
+        iam_ctl = self.aim_ctx.get_controller('IAM')
+        iam_ctl.add_managed_policy(
+            role_ref=instance_iam_role_ref,
+            parent_config=resource,
+            group_id=grp_id,
+            policy_id=policy_id,
+            policy_ref=policy_ref,
+            policy_config_yaml=policy_config_yaml,
+            change_protected=resource.change_protected
+        )
 
-        s3_bucket = self.get_s3_bucket_name(app_id, grp_id, self.bucket_id(resource_id))
-        if s3_bucket != None:
-            script_table['ec2_manager_s3_bucket'] = s3_bucket
-
-            script_table['essential_packages'] = ""
-            for command in vocabulary.user_data_script['essential_packages'][resource.instance_ami_type]:
-                script_table['essential_packages'] += command + '\n'
-
-            script_fmt += """
-# Launch Bundles
-EC2_MANAGER_FOLDER='/opt/aim/EC2Manager/'
-mkdir -p $EC2_MANAGER_FOLDER
-aws s3 sync s3://{0[ec2_manager_s3_bucket]}/ $EC2_MANAGER_FOLDER
-
-cd $EC2_MANAGER_FOLDER/LaunchBundles/
-
-echo "Loading Launch Bundles"
-for BUNDLE_PACKAGE in *.tgz
-do
-    BUNDLE_FOLDER=${{BUNDLE_PACKAGE//'.tgz'/}}
-    echo "$BUNDLE_FOLDER: Unpacking:"
-    if [ ! -f "$BUNDLE_PACKAGE" ] ; then
-       echo "Unable to find package: $BUNNDLE_PACKAGE"
-       continue
-    fi
-    tar xvfz $BUNDLE_PACKAGE
-    chown -R root.root $BUNDLE_FOLDER
-    echo "$BUNDLE_FOLDER: Launching bundle"
-    cd $BUNDLE_FOLDER
-    chmod u+x ./launch.sh
-    ./launch.sh
-    cd ..
-    echo "$BUNDLE_FOLDER: Done"
-done
-"""
-        else:
-            script_fmt += """
-# Launch Bundles
-echo "No Launch bundles to load"
-"""
-
-        if resource.eip != None or s3_bucket != None:
-            script_table['install_aws_cli'] = vocabulary.user_data_script['install_aws_cli'][resource.instance_ami_type]
-
-        return script_fmt.format(script_table)
+        return eip_script
 
     def add_bundle(self, bundle):
         bundle.build()
         if bundle.s3_bucket_ref not in self.launch_bundles:
-            self.init_bundle_s3_bucket(bundle)
+            self.init_ec2lm_s3_bucket(bundle.resource_config, bundle.instance_iam_role_arn)
             self.launch_bundles[bundle.s3_bucket_ref] = []
             # Initializes the CloudFormation for this S3 Context ID
         # Add the bundle to the S3 Context ID bucket
@@ -442,13 +583,12 @@ function process_mount_target()
     chmod 0664 /etc/fstab
 }
 
-yum install -y amazon-efs-utils cachefilesd
-/sbin/service cachefilesd start
-systemctl enable cachefilesd
+%s
+%s
 
 %s
 
-mount -a -t efs defaults
+%s
 """
         process_mount_targets = ""
         for efs_mount in resource.efs_mounts:
@@ -457,7 +597,11 @@ mount -a -t efs defaults
             efs_id_hash = utils.md5sum(str_data=efs_mount.target)
             process_mount_targets += "process_mount_target {} {}\n".format(efs_mount.folder, efs_id_hash)
 
-        launch_script = launch_script_template % process_mount_targets
+        launch_script = launch_script_template % (
+            vocabulary.user_data_script['install_efs_utils'][resource.instance_ami_type],
+            vocabulary.user_data_script['enable_efs_utils'][resource.instance_ami_type],
+            process_mount_targets,
+            vocabulary.user_data_script['mount_efs'][resource.instance_ami_type])
 
         app_name = get_parent_by_interface(resource, schemas.IApplication).name
         group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
@@ -612,7 +756,7 @@ echo "Running: /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl 
             collect_list = agent_config['logs']['logs_collected']['files']['collect_list']
             for log_source in monitoring.log_sets.get_all_log_sources():
                 log_group = get_parent_by_interface(log_source, schemas.ICloudWatchLogGroup)
-                prefixed_log_group_name = prefixed_name(resource, log_group.get_log_group_name())
+                prefixed_log_group_name = prefixed_name(resource, log_group.get_log_group_name(), self.aim_ctx.legacy_flag)
                 source_config = {
                     "file_path": log_source.path,
                     "log_group_name": prefixed_log_group_name,
@@ -648,10 +792,10 @@ statement:
             log_stream_resources = ""
             for log_group in monitoring.log_sets.get_all_log_groups():
                 log_group_resources += "      - arn:aws:logs:{}:{}:log-group:{}:*\n".format(
-                    self.aws_region, self.account_ctx.id, prefixed_name(resource, log_group.get_log_group_name())
+                    self.aws_region, self.account_ctx.id, prefixed_name(resource, log_group.get_log_group_name(), self.aim_ctx.legacy_flag)
                 )
                 log_stream_resources += "      - arn:aws:logs:{}:{}:log-group:{}:log-stream:*\n".format(
-                    self.aws_region, self.account_ctx.id, prefixed_name(resource, log_group.get_log_group_name())
+                    self.aws_region, self.account_ctx.id, prefixed_name(resource, log_group.get_log_group_name(), self.aim_ctx.legacy_flag)
                 )
             policy_config_yaml += """
   - effect: Allow

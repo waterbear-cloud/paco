@@ -53,7 +53,7 @@ class EC2Controller(Controller):
             self.keypair_id = controller_args['arg_2']
             if self.keypair_id == None:
                 print("error: missing keypair id")
-                print("aim provision ec2 keypair <keypair_id>")
+                print("aim provision ec2 keypairs <keypair_id>")
                 sys.exit(1)
             self.keypair_config = self.config.keypairs[self.keypair_id]
             aws_account_ref = self.keypair_config.account

@@ -1,4 +1,5 @@
 import click
+import getpass
 import os
 import pathlib
 from aim import utils
@@ -8,6 +9,7 @@ from aim.core.exception import AimErrorCode
 from aim.core.yaml import YAML
 from aim.stack_grps.grp_application import ApplicationStackGroup
 from aim.stack_grps.grp_network import NetworkStackGroup
+from aim.stack_grps.grp_secretsmanager import SecretsManagerStackGroup
 from aim.stack_group import StackTags, stack_group
 
 yaml=YAML(typ="safe", pure=True)
@@ -54,6 +56,16 @@ class EnvironmentContext():
             return
         self.init_done = True
         self.aim_ctx.log_action_col('Init', 'Environment', self.env_id+' '+self.region)
+
+        self.secrets_stack_grp = SecretsManagerStackGroup(
+            self.aim_ctx,
+            self.account_ctx,
+            self,
+            self.config.secrets_manager,
+            StackTags(self.stack_tags) )
+        self.secrets_stack_grp.init()
+        self.stack_grps.append(self.secrets_stack_grp)
+
         # Network Stack: VPC, Subnets, Etc
         self.network_stack_grp = NetworkStackGroup(self.aim_ctx,
                                                    self.account_ctx,
@@ -275,6 +287,24 @@ class NetEnvController(Controller):
             self.sub_envs[env_id] = {}
         self.sub_envs[env_id][region] = env_ctx
         env_ctx.init()
+
+    def secrets_manager(self, secret_name, account_ctx, region):
+        print("Modifying secret: " + secret_name)
+        secret_string = getpass.getpass("Enter new secret value: ")
+        secrets_client = account_ctx.get_aws_client('secretsmanager')
+        secrets_client.put_secret_value(
+            SecretId=secret_name,
+            SecretString=secret_string
+        )
+
+    def init_command(self, controller_args):
+        if controller_args['arg_1'].find('.secrets_manager.'):
+            parts = controller_args['arg_1'].split('.')
+            environment = parts[1]
+            region = parts[2]
+            account_ctx = self.aim_ctx.get_account_context(account_ref=self.config[environment][region].network.aws_account)
+            secret_name = 'netenv.'+controller_args['arg_1']
+            self.secrets_manager(secret_name, account_ctx, region)
 
     def init(self, controller_args):
         if self.init_done == True or controller_args == None:
