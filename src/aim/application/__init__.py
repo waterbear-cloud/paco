@@ -6,6 +6,7 @@ from aim.application.reseng_deploymentpipeline import DeploymentPipelineResource
 from aim.application.reseng_efs import EFSResourceEngine
 from aim.application.reseng_ec2 import EC2ResourceEngine
 from aim.application.reseng_elasticacheredis import ElastiCacheRedisResourceEngine
+from aim.application.reseng_eventsrule import EventsRuleResourceEngine
 from aim.application.reseng_lambda import LambdaResourceEngine
 from aim.application.reseng_lbapplication import LBApplicationResourceEngine
 from aim.application.reseng_lbclassic import LBClassicResourceEngine

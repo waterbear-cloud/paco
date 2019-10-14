@@ -16,7 +16,22 @@ from aim.models import schemas
 from aim.models.locations import get_parent_by_interface
 from copy import deepcopy
 from functools import partial
+from hashlib import blake2b
 
+
+def hash_smaller(text, max_len=99):
+    "Return a string that is shorter than 100 chars by hashing the start"
+    if len(text) <= max_len:
+        return text
+    digest_size = 8
+    hash_sig = blake2b(
+        bytearray(text, 'utf-8'),
+        digest_size=digest_size
+    ).hexdigest()
+    # hexdigest is twice length of the digest size
+    # leave an extra char for a '-' seperator.
+    hex_len = (max_len - 1) - (digest_size * 2)
+    return hash_sig + '-'  + text[-hex_len:]
 
 def md5sum(filename=None, str_data=None):
     """Computes and returns an MD5 sum in hexdigest format on a file or string"""

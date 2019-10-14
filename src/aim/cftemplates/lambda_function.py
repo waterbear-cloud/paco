@@ -1,12 +1,13 @@
-import os
 from aim.cftemplates.cftemplates import CFTemplate
-
 from aim.models.locations import get_parent_by_interface
 from aim.models.loader import get_all_nodes
 from aim.models.references import resolve_ref, get_model_obj_from_ref, Reference
 from aim.models import schemas
+from aim.utils import hash_smaller
 from io import StringIO
 from enum import Enum
+import os
+
 
 
 class Lambda(CFTemplate):
@@ -429,7 +430,7 @@ Outputs:
             template_table['permissions'] += sns_subscription_fmt.format(sns_subscription_table)
             idx += 1
 
-        # S3 Bucket notification permission
+        # S3 Bucket notification permission(s)
         app = get_parent_by_interface(lambda_config, schemas.IApplication)
         # detect if an S3Bucket resource in the application is configured to notify the Lambda
         for obj in get_all_nodes(app):
@@ -449,6 +450,32 @@ Outputs:
                                     template_table['permissions'] += permission_fmt.format(permission_table)
                                     seen[s3_logical_name] = True
 
+        # Events Rule permission(s)
+        for obj in get_all_nodes(app):
+            if schemas.IEventsRule.providedBy(obj):
+                seen = {}
+                for target in obj.targets:
+                    target_ref = Reference(target)
+                    target_ref.set_account_name(self.account_ctx.get_name())
+                    target_ref.set_region(aws_region)
+                    lambda_ref = Reference(lambda_config.aim_ref)
+
+                    if target_ref.raw == lambda_ref.raw:
+                        # yes, the Events Rule has a Target that is this Lambda
+                        group = get_parent_by_interface(obj, schemas.IResourceGroup)
+                        eventsrule_logical_name = self.gen_cf_logical_name(group.name + obj.name, '_')
+                        if eventsrule_logical_name not in seen:
+                            permission_table['name'] = 'EventsRule' + eventsrule_logical_name
+                            permission_table['principal'] = 'events.amazonaws.com'
+                            rule_name = self.create_cfn_logical_id("EventsRule" + obj.aim_ref)
+                            rule_name = hash_smaller(rule_name, 64)
+                            permission_table['source_arn'] = 'arn:aws:events:{}:{}:rule/{}'.format(
+                                aws_region,
+                                account_ctx.id,
+                                rule_name
+                            )
+                            template_table['permissions'] += permission_fmt.format(permission_table)
+                            seen[eventsrule_logical_name] = True
 
         # VPC Config
         template_table['vpc_config'] = ""
