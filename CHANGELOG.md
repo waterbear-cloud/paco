@@ -12,6 +12,11 @@ Changelog for aim
   suffixed to the health check name. The CloudFormation template and CLoudWatch Alarm are provisioned
   in us-east-1, as that is where the metrics are hard-coded to by AWS.
 
+- Lambda template will grant Lambda permissions to an Events Rule in the same application that
+  references it as a Target.
+
+- New Events Rule template.
+
 ### Changed
 
 - Improvements to the CLI. Verbose flag is now respected.
