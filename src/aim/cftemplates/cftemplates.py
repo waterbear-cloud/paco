@@ -792,6 +792,7 @@ class CFTemplate():
 
     def resource_name_filter(self, name, filter_id, hash_long_names):
         "Checks a name against a filter and raises a StackException if it is not a valid AWS name"
+        # Duplicated in aim.models.base.Resource
         message = None
         max_name_len = None
         if filter_id in [
@@ -842,6 +843,7 @@ class CFTemplate():
 
 
     def resource_char_filter(self, ch, filter_id, remove_invalids=False):
+        # Duplicated in aim.models.base.Resource
         # Universal check
         if ch.isalnum() == True:
             return ch
@@ -879,6 +881,7 @@ class CFTemplate():
         Resource names are only alphanumberic (A-Za-z0-9) and dashes.
         Invalid characters are removed or changed into a dash.
         """
+        # Duplicated in aim.models.base.Resource
         def normalize(name, remove_invalids, filter_id, camel_case):
             uppercase_next_char = False
             new_name = ''
@@ -915,6 +918,7 @@ class CFTemplate():
 
 
     def create_resource_name_join(self, name_list, separator, camel_case=False, filter_id=None, hash_long_names=False):
+        # Duplicated in aim.models.base.Resource
         name = big_join(name_list, separator, camel_case)
         return self.create_resource_name(name, filter_id=filter_id, hash_long_names=hash_long_names, camel_case=camel_case)
 

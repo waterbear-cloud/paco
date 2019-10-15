@@ -76,6 +76,7 @@ def str_spc(str_data, size):
     return new_str
 
 def big_join(str_list, separator_ch, camel_case=False, none_value_ok=False):
+    # Duplicated in aim.models.base.Resource
     # Camel Case
     new_str = ""
     first = True
