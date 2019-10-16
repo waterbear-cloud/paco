@@ -130,7 +130,11 @@ Outputs:
         # Role
         role_path_param_name = self.get_cf_resource_name_prefix(role_id) + "RolePath"
         iam_role_table['role_path_param_name'] = role_path_param_name
-        iam_role_table['role_name'] = self.gen_iam_role_name("Role", role_id)
+        if role_config.global_role_name:
+            iam_role_table['role_name'] = role_config.role_name
+        else:
+            # Hashed name to avoid conflicts between environments, etc.
+            iam_role_table['role_name'] = self.gen_iam_role_name("Role", role_id)
         iam_role_table['cf_resource_name_prefix'] = self.get_cf_resource_name_prefix(role_id)
 
         # Assume Role Principal
@@ -142,7 +146,7 @@ Outputs:
                 for service_item in role_config.assume_role_policy.service:
                     principal_yaml += """
                 - """ + service_item
-            elif role_config.assume_role_policy.aws != '':
+            if role_config.assume_role_policy.aws != '':
                 principal_yaml += """
               AWS:"""
                 for aws_item in role_config.assume_role_policy.aws:

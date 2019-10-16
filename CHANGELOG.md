@@ -6,6 +6,8 @@ Changelog for aim
 
 ### Added
 
+- Respect the `global_role_names` field for the IAM Role RoleName.
+
 - Alarms can be provisioned at the Application level without being specific to a Resoure context.
 
 - Route53HealthChecks can be provisioned. These are global resources with the application region
@@ -18,6 +20,9 @@ Changelog for aim
 - New Events Rule template.
 
 ### Changed
+
+- Fixed bug where if a AssumeRolePolicyDocument has both `service` and `aws` fields for the Principal,
+  the `aws` field was ignored.
 
 - Improvements to the CLI. Verbose flag is now respected.
   Yes/no questions are consistent and can be answered with 'y', 'n', 'yes' or 'no'.
