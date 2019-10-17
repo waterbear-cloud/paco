@@ -16,7 +16,22 @@ from aim.models import schemas
 from aim.models.locations import get_parent_by_interface
 from copy import deepcopy
 from functools import partial
+from hashlib import blake2b
 
+
+def hash_smaller(text, max_len=99):
+    "Return a string that is shorter than 100 chars by hashing the start"
+    if len(text) <= max_len:
+        return text
+    digest_size = 8
+    hash_sig = blake2b(
+        bytearray(text, 'utf-8'),
+        digest_size=digest_size
+    ).hexdigest()
+    # hexdigest is twice length of the digest size
+    # leave an extra char for a '-' seperator.
+    hex_len = (max_len - 1) - (digest_size * 2)
+    return hash_sig + '-'  + text[-hex_len:]
 
 def md5sum(filename=None, str_data=None):
     """Computes and returns an MD5 sum in hexdigest format on a file or string"""
@@ -61,6 +76,7 @@ def str_spc(str_data, size):
     return new_str
 
 def big_join(str_list, separator_ch, camel_case=False, none_value_ok=False):
+    # Duplicated in aim.models.base.Resource
     # Camel Case
     new_str = ""
     first = True
@@ -90,7 +106,8 @@ def prefixed_name(resource, name, legacy_flag):
 
     str_list.extend([env_name, app_name, group_name, resource.name, name])
 
-    str_list = '-'.join(str_list)
+    return '-'.join(str_list)
+
 
 def log_action(action, message, return_it=False, enabled=True):
     log_message = action+": "+message

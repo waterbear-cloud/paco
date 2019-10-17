@@ -221,6 +221,9 @@ class AccountController(Controller):
                 if e.response['Error']['Message'] == 'You have exceeded the allowed number of AWS accounts.':
                     print("Error: The number of AWS Accounts limit has been reached, contact AWS support to increase.")
                     sys.exit(1)
+                else:
+                    print("Problem creating account. Possible timeout on new account and try again?\nError: {}".format(e))
+                    sys.exit(1)
             print("Account status: %s\n" % account_status['CreateAccountStatus']['State'])
             while account_status['CreateAccountStatus']['State'] == 'IN_PROGRESS':
                 print("{}: Waiting for account to be created: Status: {}".format(org_account_id, account_status['CreateAccountStatus']['State']))

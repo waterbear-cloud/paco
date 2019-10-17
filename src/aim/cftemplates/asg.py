@@ -138,11 +138,7 @@ class ASG(CFTemplate):
         min_instances = asg_config.min_instances if asg_config.is_enabled() else 0
         desired_capacity = asg_config.desired_capacity if asg_config.is_enabled() else 0
         asg_dict = {
-            'AutoScalingGroupName': self.create_resource_name_join(
-                name_list=[self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, grp_id, asg_id],
-                separator='-',
-                camel_case=True
-            ),
+            'AutoScalingGroupName': asg_config.get_aws_name(),
             'DesiredCapacity': desired_capacity,
             'HealthCheckGracePeriod': asg_config.health_check_grace_period_secs,
             'LaunchConfigurationName': troposphere.Ref(launch_config_res),

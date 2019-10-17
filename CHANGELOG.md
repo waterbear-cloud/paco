@@ -6,13 +6,23 @@ Changelog for aim
 
 ### Added
 
+- Respect the `global_role_names` field for the IAM Role RoleName.
+
 - Alarms can be provisioned at the Application level without being specific to a Resoure context.
 
 - Route53HealthChecks can be provisioned. These are global resources with the application region
   suffixed to the health check name. The CloudFormation template and CLoudWatch Alarm are provisioned
   in us-east-1, as that is where the metrics are hard-coded to by AWS.
 
+- Lambda template will grant Lambda permissions to an Events Rule in the same application that
+  references it as a Target.
+
+- New Events Rule template.
+
 ### Changed
+
+- Fixed bug where if a AssumeRolePolicyDocument has both `service` and `aws` fields for the Principal,
+  the `aws` field was ignored.
 
 - Improvements to the CLI. Verbose flag is now respected.
   Yes/no questions are consistent and can be answered with 'y', 'n', 'yes' or 'no'.
