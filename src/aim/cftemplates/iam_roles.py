@@ -146,7 +146,7 @@ Outputs:
                 for service_item in role_config.assume_role_policy.service:
                     principal_yaml += """
                 - """ + service_item
-            if role_config.assume_role_policy.aws != '':
+            elif len(role_config.assume_role_policy.aws) > 0:
                 principal_yaml += """
               AWS:"""
                 for aws_item in role_config.assume_role_policy.aws:
