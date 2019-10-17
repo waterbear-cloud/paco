@@ -28,6 +28,7 @@ class CloudFrontResourceEngine(ResourceEngine):
             )
             self.resource.viewer_certificate.resolve_ref_obj = self.app_engine
             factory_config.viewer_certificate.resolve_ref_obj = self.app_engine
+            factory_config.resolve_ref_obj = self.app_engine
             # CloudFront CloudFormation
             aim.cftemplates.CloudFront(
                 self.aim_ctx,
@@ -40,6 +41,5 @@ class CloudFrontResourceEngine(ResourceEngine):
                 self.res_id,
                 factory_name,
                 self.resource,
-                cloudfront_config_ref,
-                [StackOrder.PROVISION, StackOrder.WAITLAST]
+                cloudfront_config_ref
             )

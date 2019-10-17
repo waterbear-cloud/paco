@@ -446,14 +446,18 @@ Outputs:
         record_sets_param_yaml = ""
 
         record_set_table['idx'] = 0
-        for alb_dns in alb_config.dns:
-            if alb_config.is_dns_enabled() == True:
-              record_set_table['hosted_zone_id'] = alb_dns.hosted_zone+'.id'
-              record_set_table['domain_name'] = alb_dns.domain_name
-              self.set_parameter('HostedZoneID%d' % (record_set_table['idx']), alb_dns.hosted_zone+'.id')
-              record_sets_yaml += record_set_fmt.format(record_set_table)
-              record_sets_param_yaml += record_set_param_fmt.format(record_set_table)
-              record_set_table['idx'] += 1
+
+        if self.aim_ctx.legacy_flag('route53_record_set_2019_10_16'):
+            for alb_dns in alb_config.dns:
+                if alb_config.is_dns_enabled() == True:
+                    record_set_table['hosted_zone_id'] = alb_dns.hosted_zone+'.id'
+                    record_set_table['domain_name'] = alb_dns.domain_name
+                    self.set_parameter('HostedZoneID%d' % (record_set_table['idx']), alb_dns.hosted_zone+'.id')
+                    record_sets_yaml += record_set_fmt.format(record_set_table)
+                    record_sets_param_yaml += record_set_param_fmt.format(record_set_table)
+                    record_set_table['idx'] += 1
+
+
 
         template_fmt_table = {
             'Listeners': listener_yaml,
@@ -466,9 +470,26 @@ Outputs:
 
         self.set_template(template_fmt.format(template_fmt_table))
 
+
         if self.enabled == True:
             self.register_stack_output_config(self.alb_config_ref+'.arn', 'LoadBalancerArn')
             self.register_stack_output_config(self.alb_config_ref+'.name', 'LoadBalancerName')
             self.register_stack_output_config(self.alb_config_ref+'.fullname', 'LoadBalancerFullName')
             self.register_stack_output_config(self.alb_config_ref+'.canonicalhostedzoneid', 'LoadBalancerCanonicalHostedZoneID')
             self.register_stack_output_config(self.alb_config_ref+'.dnsname', 'LoadBalancerDNSName')
+
+        if self.aim_ctx.legacy_flag('route53_record_set_2019_10_16') == False:
+            route53_ctl = self.aim_ctx.get_controller('route53')
+            for alb_dns in alb_config.dns:
+                if alb_config.is_dns_enabled() == True:
+                  alias_dns_ref = 'aim.ref '+self.alb_config_ref+'.dnsname'
+                  alias_hosted_zone_ref = 'aim.ref '+self.alb_config_ref+'.canonicalhostedzoneid'
+                  route53_ctl.add_record_set(
+                      self.account_ctx,
+                      self.aws_region,
+                      dns=alb_dns,
+                      record_set_type='Alias',
+                      alias_dns_name = alias_dns_ref,
+                      alias_hosted_zone_id = alias_hosted_zone_ref,
+                      stack_group = self.stack_group,
+                      config_ref = alb_config.aim_ref_parts+'.dns')

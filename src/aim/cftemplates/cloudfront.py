@@ -22,8 +22,7 @@ class CloudFront(CFTemplate):
                  res_id,
                  factory_name,
                  cloudfront_config,
-                 config_ref,
-                 stack_order):
+                 config_ref):
 
         # Super Init:
         super().__init__(aim_ctx,
@@ -33,7 +32,6 @@ class CloudFront(CFTemplate):
                          config_ref=config_ref,
                          stack_group=stack_group,
                          stack_tags=stack_tags,
-                         stack_order=stack_order,
                          change_protected=cloudfront_config.change_protected)
         self.set_aws_name('CloudFront', grp_id, res_id, factory_name)
         origin_access_id_enabled = False
@@ -253,36 +251,38 @@ class CloudFront(CFTemplate):
         distribution_res = troposphere.cloudfront.Distribution.from_dict(
             'Distribution', distribution_dict )
 
-        if cloudfront_config.is_dns_enabled() == True:
-            for alias in cloudfront_config.domain_aliases:
-                alias_hash = utils.md5sum(str_data=alias.domain_name)
-                zone_param_name = 'AliasHostedZoneId' + alias_hash
-                alias_zone_id_param = self.create_cfn_parameter(
-                    param_type='String',
-                    name=zone_param_name,
-                    description='Domain Alias Hosted Zone Id',
-                    value=alias.hosted_zone+'.id',
-                    use_troposphere=True,
-                    troposphere_template=template
+        if self.aim_ctx.legacy_flag('route53_record_set_2019_10_16') == True:
+            if cloudfront_config.is_dns_enabled() == True:
+                for alias in cloudfront_config.domain_aliases:
+                    alias_hash = utils.md5sum(str_data=alias.domain_name)
+                    zone_param_name = 'AliasHostedZoneId' + alias_hash
+                    alias_zone_id_param = self.create_cfn_parameter(
+                        param_type='String',
+                        name=zone_param_name,
+                        description='Domain Alias Hosted Zone Id',
+                        value=alias.hosted_zone+'.id',
+                        use_troposphere=True,
+                        troposphere_template=template
+                        )
+                    record_set_res = troposphere.route53.RecordSetType(
+                        title = self.create_cfn_logical_id_join(['RecordSet', alias_hash]),
+                        template = template,
+                        HostedZoneId = troposphere.Ref(alias_zone_id_param),
+                        Name = troposphere.Ref(aliases_param_map[alias.domain_name]),
+                        Type = 'A',
+                        AliasTarget = troposphere.route53.AliasTarget(
+                            DNSName = troposphere.GetAtt(distribution_res, 'DomainName'),
+                            HostedZoneId = 'Z2FDTNDATAQYW2'
+                        )
                     )
-                record_set_res = troposphere.route53.RecordSetType(
-                    title = self.create_cfn_logical_id_join(['RecordSet', alias_hash]),
-                    template = template,
-                    HostedZoneId = troposphere.Ref(alias_zone_id_param),
-                    Name = troposphere.Ref(aliases_param_map[alias.domain_name]),
-                    Type = 'A',
-                    AliasTarget = troposphere.route53.AliasTarget(
-                        DNSName = troposphere.GetAtt(distribution_res, 'DomainName'),
-                        HostedZoneId = 'Z2FDTNDATAQYW2'
-                    )
-                )
-                record_set_res.DependsOn = distribution_res
+                    record_set_res.DependsOn = distribution_res
 
         troposphere.Output(
-            title = 'CoudFrontURL',
+            title = 'CloudFrontURL',
             template = template,
             Value = troposphere.GetAtt('Distribution', 'DomainName')
         )
+        self.register_stack_output_config(self.config_ref+'.domain_name', 'CloudFrontURL')
         troposphere.Output(
             title = 'CloudFrontId',
             template = template,
@@ -294,3 +294,17 @@ class CloudFront(CFTemplate):
         self.set_template(template.to_yaml())
         if origin_access_id_enabled:
           self.stack.wait_for_delete = True
+
+        if self.aim_ctx.legacy_flag('route53_record_set_2019_10_16') == False:
+            route53_ctl = self.aim_ctx.get_controller('route53')
+            if cloudfront_config.is_dns_enabled() == True:
+                for alias in cloudfront_config.domain_aliases:
+                    route53_ctl.add_record_set(
+                        self.account_ctx,
+                        self.aws_region,
+                        dns=alias,
+                        record_set_type='Alias',
+                        alias_dns_name = 'aim.ref '+self.config_ref+'.domain_name',
+                        alias_hosted_zone_id = 'Z2FDTNDATAQYW2',
+                        stack_group = self.stack_group,
+                        config_ref = self.config_ref+'.record_set')

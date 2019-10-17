@@ -174,28 +174,55 @@ class RDS(CFTemplate):
                 db_instance_dict )
             template.add_resource(db_instance_res)
 
-            if rds_config.primary_domain_name != None and rds_config.is_dns_enabled() == True:
-                primary_hosted_zone_id_param = self.create_cfn_parameter(
-                    param_type='String',
-                    name='PrimaryHostedZoneId',
-                    description='The primary domain name hosted zone id.',
-                    value=rds_config.primary_hosted_zone+'.id',
-                    use_troposphere=True,
-                    troposphere_template=template
-                )
-                record_set_res = troposphere.route53.RecordSetType(
-                    title = 'PrimaryRecordSet',
-                    template = template,
-                    Comment = 'RDS Primary DNS',
-                    HostedZoneId = troposphere.Ref(primary_hosted_zone_id_param),
-                    Name = rds_config.primary_domain_name,
-                    Type = 'CNAME',
-                    TTL = 300,
-                    ResourceRecords = [ troposphere.GetAtt(db_instance_res, 'Endpoint.Address')]
-                )
-                record_set_res.DependsOn = db_instance_res
+            # Outputs
+            endpoint_address_output = troposphere.Output(
+                title='RDSEndpointAddress',
+                Description='RDS Endpoint URL',
+                Value=troposphere.GetAtt(db_instance_res, 'Endpoint.Address')
+            )
+            template.add_output(endpoint_address_output)
+
+            self.register_stack_output_config(config_ref + ".endpoint.address", endpoint_address_output.title)
+
+            if self.aim_ctx.legacy_flag('route53_record_set_2019_10_16') == True:
+                if rds_config.is_dns_enabled() == True:
+                    for dns_config in rds_config.dns_config:
+                        dns_hash = utils.md5sum(str_data=(rds_config.hosted_zone+rds_config.domain_name))
+                        primary_hosted_zone_id_param = self.create_cfn_parameter(
+                            param_type='String',
+                            name='DNSHostedZoneId'+dns_hash,
+                            description='The hosted zone id to create the Route53 record set.',
+                            value=rds_config.primary_hosted_zone+'.id',
+                            use_troposphere=True,
+                            troposphere_template=template
+                        )
+                        record_set_res = troposphere.route53.RecordSetType(
+                            title = 'RecordSet'+dns_hash,
+                            template = template,
+                            Comment = 'RDS Primary DNS',
+                            HostedZoneId = troposphere.Ref(primary_hosted_zone_id_param),
+                            Name = rds_config.primary_domain_name,
+                            Type = 'CNAME',
+                            TTL = dns_config.ttl,
+                            ResourceRecords = [ troposphere.GetAtt(db_instance_res, 'Endpoint.Address')]
+                        )
+                        record_set_res.DependsOn = db_instance_res
 
         self.set_template(template.to_yaml())
+
+        if self.aim_ctx.legacy_flag('route53_record_set_2019_10_16') == False:
+            if rds_config.is_dns_enabled() == True:
+                route53_ctl = self.aim_ctx.get_controller('route53')
+                for dns_config in rds_config.dns:
+                    route53_ctl.add_record_set(
+                        self.account_ctx,
+                        self.aws_region,
+                        dns=dns_config,
+                        record_set_type='CNAME',
+                        resource_records=[ 'aim.ref '+config_ref+'.endpoint.address' ],
+                        stack_group = self.stack_group,
+                        config_ref = rds_config.aim_ref_parts+'.dns')
+
 
         return
         """

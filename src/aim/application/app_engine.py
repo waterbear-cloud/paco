@@ -136,22 +136,14 @@ class ApplicationEngine():
     def gen_iam_role_id(self, res_id, role_id):
         return '-'.join([res_id, role_id])
 
-    def get_stack_from_ref(self, ref):
-        for stack in self.stack_group.stacks:
-            #if ref.ref == 'netenv.aimdemo.dev.us-west-2.applications.app.groups.site.resources.webdemo.name':
-            #    print("grp_application: get stack : " + ref.raw + " contains " + stack.template.config_ref)
-            if stack.template.config_ref and stack.template.config_ref != '' and ref.raw.find(stack.template.config_ref) != -1:
-                return stack
-        return None
-
     def resolve_ref(self, ref):
         if isinstance(ref.resource, models.applications.SNSTopic):
-            return self.get_stack_from_ref(ref)
+            return self.stack_group.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.TargetGroup):
-            return self.get_stack_from_ref(ref)
+            return self.stack_group.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.ASG):
             if ref.resource_ref.startswith('instance_id'):
-                asg_stack = self.get_stack_from_ref(ref)
+                asg_stack = self.stack_group.get_stack_from_ref(ref)
                 asg_outputs_key = asg_stack.template.get_outputs_key_from_ref(ref)
                 if asg_outputs_key == None:
                     raise StackException(
@@ -164,9 +156,9 @@ class ApplicationEngine():
                 ssm_client = self.account_ctx.get_aws_client('ssm')
                 ssm_client.start_session(Target=instance_id)
             else:
-                return self.get_stack_from_ref(ref)
+                return self.stack_group.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.Lambda):
-            lambda_stack = self.get_stack_from_ref(ref)
+            lambda_stack = self.stack_group.get_stack_from_ref(ref)
             return lambda_stack
         elif isinstance(ref.resource, models.applications.CloudFrontViewerCertificate):
             acm_ctl = self.aim_ctx.get_controller('ACM')
@@ -174,12 +166,17 @@ class ApplicationEngine():
             ref.sub_part(ref.region, 'us-east-1')
             ref.region = 'us-east-1'
             return acm_ctl.resolve_ref(ref)
+        elif isinstance(ref.resource, models.applications.CloudFrontFactory):
+            return self.stack_group.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.LBApplication):
-            return self.get_stack_from_ref(ref)
+            return self.stack_group.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.EFS):
-            return self.get_stack_from_ref(ref)
+            return self.stack_group.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.EIP):
-            return self.get_stack_from_ref(ref)
+            return self.stack_group.get_stack_from_ref(ref)
+        elif isinstance(ref.resource, models.applications.RDS):
+            return self.stack_group.get_stack_from_ref(ref)
+
 
 
         return None

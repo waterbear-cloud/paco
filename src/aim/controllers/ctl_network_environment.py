@@ -10,7 +10,7 @@ from aim.core.yaml import YAML
 from aim.stack_grps.grp_application import ApplicationStackGroup
 from aim.stack_grps.grp_network import NetworkStackGroup
 from aim.stack_grps.grp_secretsmanager import SecretsManagerStackGroup
-from aim.stack_group import StackTags, stack_group
+from aim.stack_group import StackTags, stack_group, StackGroup
 
 yaml=YAML(typ="safe", pure=True)
 yaml.default_flow_sytle = False
@@ -189,6 +189,8 @@ class EnvironmentContext():
         merged_config = {}
         for stack_grp in self.stack_grps:
             for stack in stack_grp.stacks:
+                if isinstance(stack, StackGroup):
+                    continue
                 config_dict = stack.get_stack_output_config()
                 if config_dict == None:
                     continue

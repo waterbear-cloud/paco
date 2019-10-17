@@ -234,11 +234,11 @@ class Stack():
 
 
     #--------------------------------------------------------
-    def handle_token_expired(self):
+    def handle_token_expired(self, location=None):
         if hasattr(self, '_cfn_client') == True:
             delattr(self, '_cfn_client')
         self._cfn_client_expired = True
-        self.log_action("Token", "Retry", "Expired")
+        self.log_action("Token", "Retry_"+location, "Expired")
 
     def set_template(self, template):
         self.template = template
@@ -299,7 +299,7 @@ class Stack():
                     time.sleep(1)
                     continue
                 elif e.response['Error']['Code'] == 'ExpiredToken':
-                    self.handle_token_expired()
+                    self.handle_token_expired('1')
                     continue
                 else:
                     message = self.get_stack_error_message(
@@ -360,7 +360,7 @@ class Stack():
                     message += 'Account: ' + self.account_ctx.get_name()
                     raise StackException(AimErrorCode.StackDoesNotExist, message = message)
                 elif e.response['Error']['Code'] == 'ExpiredToken':
-                    self.handle_token_expired()
+                    self.handle_token_expired('2')
                     continue
                 else:
                     raise StackException(AimErrorCode.Unknown, message=e.response['Error']['Message'])
@@ -553,7 +553,7 @@ class Stack():
                         message += "ValidationError: {}\n".format(e.response['Error']['Message'])
                         raise StackException(AimErrorCode.Unknown, message = message)
                 elif e.response['Error']['Code'] == 'ExpiredToken':
-                    self.handle_token_expired()
+                    self.handle_token_expired('3')
                     continue
                 else:
                     #message = "Stack: {}\nError: {}\n".format(self.get_name(), e.response['Error']['Message'])
@@ -616,7 +616,7 @@ class Stack():
                     stack_events = self.cfn_client.describe_stack_events(StackName=self.get_name())
                 except ClientError as exc:
                     if exc.response['Error']['Code'] == 'ExpiredToken':
-                        self.handle_token_expired()
+                        self.handle_token_expired('4')
                         continue
                     else:
                         raise sys.exc_info()
@@ -742,61 +742,62 @@ class Stack():
             return log_message
 
     def wait_for_complete(self, verbose=False):
-        if self.action == None:
-            return
-        self.get_status()
-        waiter = None
-        action_name = "Provision"
-        if self.is_updating():
-            if verbose:
-                self.log_action("Provision", "Update")
-            waiter = self.cfn_client.get_waiter('stack_update_complete')
-        elif self.is_creating():
-            if verbose:
-                self.log_action("Provision", "Create")
-            waiter = self.cfn_client.get_waiter('stack_create_complete')
-        elif self.is_deleting():
-            if verbose:
-                self.log_action("Delete", "Stack")
-            action_name = "Delete"
-            waiter = self.cfn_client.get_waiter('stack_delete_complete')
-        elif self.is_complete():
-            pass
-        elif not self.is_exists():
-            pass
-        else:
-            message = self.get_stack_error_message()
-            raise StackException(
-                AimErrorCode.WaiterError,
-                message=message
-            )
+        # While loop to handle expired token retries
+        while True:
+            if self.action == None:
+                return
+            self.get_status()
+            waiter = None
+            action_name = "Provision"
+            if self.is_updating():
+                if verbose:
+                    self.log_action("Provision", "Update")
+                waiter = self.cfn_client.get_waiter('stack_update_complete')
+            elif self.is_creating():
+                if verbose:
+                    self.log_action("Provision", "Create")
+                waiter = self.cfn_client.get_waiter('stack_create_complete')
+            elif self.is_deleting():
+                if verbose:
+                    self.log_action("Delete", "Stack")
+                action_name = "Delete"
+                waiter = self.cfn_client.get_waiter('stack_delete_complete')
+            elif self.is_complete():
+                pass
+            elif not self.is_exists():
+                pass
+            else:
+                message = self.get_stack_error_message()
+                raise StackException(
+                    AimErrorCode.WaiterError,
+                    message=message
+                )
 
-        if waiter != None:
-            while True:
+            if waiter != None:
                 self.log_action(action_name, "Wait")
                 try:
                     waiter.wait(StackName=self.get_name())
                 except WaiterError as waiter_exception:
                     if str(waiter_exception).find('The security token included in the request is expired') != -1:
-                        self.handle_token_expired()
+                        self.handle_token_expired('5')
                         continue
                     self.log_action(action_name, "Error")
                     message = "Waiter Error:  {}\n".format(waiter_exception)
                     message += self.get_stack_error_message(message)
                     raise StackException(AimErrorCode.WaiterError, message = message)
-                else:
-                    break
-            self.log_action(action_name, "Done")
+                self.log_action(action_name, "Done")
 
-        if self.is_exists():
-            self.stack_success()
+            if self.is_exists():
+                self.stack_success()
 
-        if self.action == "create":
-            self.hooks.run("create", "post", self)
-        elif self.action == "update":
-            self.hooks.run("update", "post", self)
-        elif self.action == "delete":
-            self.hooks.run("delete", "post", self)
+            if self.action == "create":
+                self.hooks.run("create", "post", self)
+            elif self.action == "update":
+                self.hooks.run("update", "post", self)
+            elif self.action == "delete":
+                self.hooks.run("delete", "post", self)
+
+            break
 
 class StackGroup():
     def __init__(self,
@@ -819,6 +820,9 @@ class StackGroup():
         self.filter_config = controller.stack_group_filter
         self.state_filename = '-'.join([self.get_aws_name(), self.name, "StackGroup-State.yaml"])
         self.state_filepath = os.path.join(self.aim_ctx.build_folder, self.state_filename)
+
+    def add_stack_group(self, stack_group):
+        self.add_stack_order(stack_group)
 
     def delete_stack(self, account_name, region, stack_name):
         pass
@@ -906,21 +910,32 @@ class StackGroup():
         # Loop through stacks and validate each
         for order_item in self.stack_orders:
             if order_item.order == StackOrder.PROVISION:
-                self.filtered_stack_action(
-                    order_item.stack,
-                    order_item.stack.validate
-                )
+                if isinstance(order_item.stack, StackGroup):
+                    order_item.stack.validate()
+                else:
+                    self.filtered_stack_action(
+                        order_item.stack,
+                        order_item.stack.validate
+                    )
 
     def provision(self):
         # Loop through stacks and provision each one
         wait_last_list = []
         for order_item in self.stack_orders:
             if order_item.order == StackOrder.PROVISION:
-                self.filtered_stack_action(
-                    order_item.stack,
-                    order_item.stack.provision
-                )
+                if isinstance(order_item.stack, StackGroup):
+                    # Nested StackGroup
+                    order_item.stack.provision()
+                else:
+                    self.filtered_stack_action(
+                        order_item.stack,
+                        order_item.stack.provision
+                    )
+            elif isinstance(order_item.stack, StackGroup):
+                # Nested StackGroup
+                pass
             elif order_item.order == StackOrder.WAIT:
+                # Nested StackGroup
                 if order_item.stack.cached == False:
                     order_item.stack.wait_for_complete(verbose=False)
             elif order_item.order == StackOrder.WAITLAST:
@@ -938,13 +953,19 @@ class StackGroup():
         # Loop through stacks and deletes each one
         for order_item in reversed(self.stack_orders):
             if order_item.order == StackOrder.PROVISION:
-                self.filtered_stack_action(
-                    order_item.stack,
-                    order_item.stack.delete
-                )
+                if isinstance(order_item.stack, StackGroup):
+                    # Nested StackGroup
+                    order_item.stack.delete()
+                else:
+                    self.filtered_stack_action(
+                        order_item.stack,
+                        order_item.stack.delete
+                    )
 
         for order_item in reversed(self.stack_orders):
             if order_item.order == StackOrder.WAIT:
+                if isinstance(order_item.stack, StackGroup) == True:
+                    continue
                 order_item.stack.wait_for_complete(verbose=False)
 
     def get_stack_order(self, stack, order):
@@ -973,3 +994,13 @@ class StackGroup():
         name = '-'.join([self.controller.get_aws_name(),
                          self.aws_name])
         return name
+
+    def get_stack_from_ref(self, ref):
+        for stack_obj in self.stacks:
+            if isinstance(stack_obj, StackGroup) == True:
+                stack = stack_obj.get_stack_from_ref(ref)
+                if stack != None:
+                    return stack
+            elif stack_obj.template.config_ref and stack_obj.template.config_ref != '' and ref.raw.find(stack_obj.template.config_ref) != -1:
+                return stack_obj
+        return None
