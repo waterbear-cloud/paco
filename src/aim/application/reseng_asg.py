@@ -57,6 +57,8 @@ role_name: %s""" % ("ASGInstance")
             self.app_engine.ec2_launch_manager.lb_add_cloudwatch_agent(instance_iam_role_ref, self.resource)
         if len(self.resource.efs_mounts) > 0:
             self.app_engine.ec2_launch_manager.lb_add_efs_mounts(instance_iam_role_ref, self.resource)
+        if len(self.resource.ebs_volume_mounts) > 0:
+            self.app_engine.ec2_launch_manager.lb_add_ebs_volume_mounts(instance_iam_role_ref, self.resource)
         # SSM Agent
         # if when_ssm_is_need():
         #    self.app_engine.ec2_launch_manager.lb_add_ssm_agent(

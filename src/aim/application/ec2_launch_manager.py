@@ -308,8 +308,17 @@ class EC2LaunchManager():
 # Swap
 function swap_on() {
     SWAP_SIZE_GB=$1
+    if [ -e /swapfile ] ; then
+        CUR_SWAP_FILE_SIZE=$(stat -c '%s' /swapfile)
+        if [ $CUR_SWAP_FILE_SIZE -eq $(($SWAP_SIZE_GB*1073741824)) ] ; then
+            swapon /swapfile
+            if [ $? -eq 0 ] ; then
+                echo "Enabling existing ${SWAP_SIZE_GB}GB Swapfile: /swapfile"
+            fi
+        fi
+    fi
     if [ "$(swapon -s|grep -v Filename|wc -c)" == "0" ]; then
-        echo "Enabling a ${SWAP_SIZE_GB}GB Swapfile"
+        echo "Enabling a ${SWAP_SIZE_GB}GB Swapfile: /swapfile"
         dd if=/dev/zero of=/swapfile bs=1024 count=$(($SWAP_SIZE_GB*1024))k
         chmod 0600 /swapfile
         mkswap /swapfile
@@ -385,6 +394,12 @@ function ec2lm_launch_bundles() {{
     done
 }}
 
+# Instance Tags
+function ec2lm_instance_tag_value() {{
+    TAG_NAME="$1"
+    aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=$TAG_NAME" --query 'Tags[0].Value' |tr -d '"'
+}}
+
 """
         self.ec2lm_functions_script[ec2lm_bucket_name] = script_template.format(script_table)
 
@@ -395,6 +410,7 @@ echo "EC2 Launch Manager"
 echo "Script: $0"
 echo "CacheId: {0[cache_id]}"
 
+{0[update_packages]}
 {0[install_aws_cli]}
 
 EC2LM_FUNCTIONS=ec2lm_functions.bash
@@ -418,7 +434,8 @@ aws s3 cp s3://{0[ec2lm_bucket_name]}/$EC2LM_FUNCTIONS /tmp/$EC2LM_FUNCTIONS
             'cache_id': None,
             'ec2lm_bucket_name': ec2lm_bucket_name,
             'install_aws_cli': vocabulary.user_data_script['install_aws_cli'][resource.instance_ami_type],
-            'launch_bundles': 'echo "No launch bundles to load."\n'
+            'launch_bundles': 'echo "No launch bundles to load."\n',
+            'update_packages': ''
         }
         # Launch Bundles
         if len(self.launch_bundles.keys()) > 0:
@@ -434,6 +451,10 @@ aws s3 cp s3://{0[ec2lm_bucket_name]}/$EC2LM_FUNCTIONS /tmp/$EC2LM_FUNCTIONS
 
         if resource.secrets != None and len(resource.secrets) > 0:
             self.add_ec2lm_function_secrets(ec2lm_bucket_name, resource, grp_id, instance_iam_role_ref)
+
+        if resource.launch_options != None:
+            if resource.launch_options.update_packages == True:
+                script_table['update_packages'] = vocabulary.user_data_script['update_packages'][resource.instance_ami_type]
 
         script_table['cache_id'] = self.get_cache_id(resource, app_id, grp_id)
         return script_fmt.format(script_table)
@@ -571,7 +592,7 @@ function process_mount_target()
     EFS_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=efs-id-$EFS_ID_HASH" --query 'Tags[0].Value' |tr -d '"')
 
     # Setup the mount folder
-    if [ -e $MOUNT_FODLER ] ; then
+    if [ -e $MOUNT_FOLDER ] ; then
         mv $MOUNT_FOLDER ${MOUNT_FOLDER%%/}.old
     fi
     mkdir -p $MOUNT_FOLDER
@@ -646,6 +667,152 @@ statement:
         # Save Configuration
         self.add_bundle(efs_lb)
 
+    def lb_add_ebs_volume_mounts(self, instance_iam_role_ref, resource):
+        """Creates a launch bundle to configure EBS Volume mounts:
+
+         - Installs an entry in /etc/fstab
+         - On launch runs mount
+        """
+        # TODO: Add ubuntu and other distro support
+        launch_script_template = """#!/bin/bash
+
+. /tmp/ec2lm_functions.bash
+
+# Attach and Mount an EBS Volume
+function process_volume_mount()
+{
+    MOUNT_FOLDER=$1
+    EBS_VOLUME_ID_HASH=$2
+    FILESYSTEM=$3
+    EBS_DEVICE=$4
+
+    # Get EBS Volume Tags and Device
+    EBS_VOLUME_ID=$(ec2lm_instance_tag_value "ebs-volume-id-$EBS_VOLUME_ID_HASH")
+
+    # Setup the mount folder
+    if [ -e $MOUNT_FOLDER ] ; then
+        mv $MOUNT_FOLDER ${MOUNT_FOLDER%%/}.old
+    fi
+    mkdir -p $MOUNT_FOLDER
+
+    COUNT=0
+    TIMEOUT=300
+    echo "EC2LM: EBS: Attaching $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE: Timeout = $TIMEOUT"
+    while :
+    do
+        aws ec2 attach-volume --region $REGION --volume-id $EBS_VOLUME_ID --instance-id $INSTANCE_ID --device $EBS_DEVICE 2>/tmp/ec2lm_attach.output
+        if [ $? -eq 0 ] ; then
+            echo "Successfully attached  $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE"
+            break
+        fi
+        sleep 1
+        COUNT=$(($COUNT + 1))
+        if [ $COUNT -eq $TIMEOUT ] ; then
+            echo
+            echo "Unable to attach $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE"
+            cat /tmp/ec2lm_attach.output
+            shutdown -H now
+            exit 1
+        fi
+    done
+
+    # Setup fstab
+    echo "Volume UUID: blkid $EBS_DEVICE |grep UUID |cut -d '\\"' -f 2"
+    COUNT=0
+    VOLUME_UUID=""
+    echo "Getting Volume UUID for $EBS_DEVICE"
+    TIMEOUT=30
+    while :
+    do
+        VOLUME_UUID=$(/sbin/blkid $EBS_DEVICE |grep UUID |cut -d'"' -f 2)
+        if [ "${VOLUME_UUID}" != "" ] ; then
+            break
+        fi
+        echo -e '.'
+        sleep 1
+        COUNT=$(($COUNT + 1))
+        if [ $COUNT -eq $TIMEOUT ] ; then
+            echo
+            echo "Unable to get volume UUID for $EBS_DEVICE"
+            /sbin/blkid
+            exit 1
+        fi
+    done
+    echo "$EBS_DEVICE UUID: $VOLUME_UUID"
+    grep -v -E "^UUID=$VOLUME_UUID" /etc/fstab >/tmp/fstab.ebs_new
+    echo "UUID=$VOLUME_UUID $MOUNT_FOLDER $FILESYSTEM defaults,nofail 0 2" >>/tmp/fstab.ebs_new
+    mv /tmp/fstab.ebs_new /etc/fstab
+    chmod 0664 /etc/fstab
+    mount $MOUNT_FOLDER
+}
+
+%s
+
+"""
+        process_mount_volumes = ""
+        is_enabled = False
+        for ebs_volume_mount in resource.ebs_volume_mounts:
+            if ebs_volume_mount.enabled == False:
+                continue
+            ebs_volume_id_hash = utils.md5sum(str_data=ebs_volume_mount.volume)
+            process_mount_volumes += "process_volume_mount {} {} {} {}\n".format(
+                ebs_volume_mount.folder,
+                ebs_volume_id_hash,
+                ebs_volume_mount.filesystem,
+                ebs_volume_mount.device)
+            is_enabled = True
+
+        if is_enabled == False:
+            return
+
+
+        launch_script = launch_script_template % (
+            process_mount_volumes)
+            #vocabulary.user_data_script['mount_efs'][resource.instance_ami_type])
+
+        app_name = get_parent_by_interface(resource, schemas.IApplication).name
+        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
+
+        policy_config_yaml = """
+name: 'AssociateVolume'
+enabled: true
+statement:
+  - effect: Allow
+    action:
+      - "ec2:AttachVolume"
+    resource:
+      - 'arn:aws:ec2:*:*:volume/*'
+      - 'arn:aws:ec2:*:*:instance/*'
+"""
+
+        policy_ref = '{}.{}.ebs.policy'.format(resource.aim_ref_parts, self.id)
+        policy_id = '-'.join([resource.name, 'ebs'])
+        iam_ctl = self.aim_ctx.get_controller('IAM')
+        iam_ctl.add_managed_policy(
+            role_ref=instance_iam_role_ref,
+            parent_config=resource,
+            group_id=group_name,
+            policy_id=policy_id,
+            policy_ref=policy_ref,
+            policy_config_yaml=policy_config_yaml,
+            change_protected=resource.change_protected
+        )
+
+        # Create the Launch Bundle and configure it
+        ebs_lb = LaunchBundle(
+            self.aim_ctx,
+            "EBS",
+            self,
+            app_name,
+            group_name,
+            resource.name,
+            resource,
+            self.bucket_id(resource.name)
+        )
+        ebs_lb.set_launch_script(launch_script)
+
+        # Save Configuration
+        self.add_bundle(ebs_lb)
 
     def lb_add_cloudwatch_agent(
         self,

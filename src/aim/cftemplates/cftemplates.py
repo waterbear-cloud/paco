@@ -209,7 +209,7 @@ class CFTemplate():
         )
         self.template.set_version()
         self.template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
+            troposphere.cloudformation.WaitConditionHandle(title="EmptyTemplatePlaceholder")
         )
 
     def set_template_file_id(self, file_id):

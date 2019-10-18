@@ -227,6 +227,43 @@ class ASG(CFTemplate):
             )
             asg_dict['Tags'].append(asg_tag)
 
+        # EBS Volume Id and Device name Tags
+        for ebs_volume_mount in asg_config.ebs_volume_mounts:
+            if ebs_volume_mount.is_enabled() == True:
+                continue
+            volume_hash = utils.md5sum(str_data=ebs_volume_mount.volume)
+            if references.is_ref(ebs_volume_mount.volume) == True:
+                ebs_volume_id_value = ebs_volume_mount.volume + '.id'
+            else:
+                ebs_volume_id_value = ebs_volume_mount.volume
+            # Volume Id
+            ebs_volume_id_param = self.create_cfn_parameter(
+                param_type='String',
+                name='EBSVolumeId'+volume_hash,
+                description='EBS Volume Id',
+                value=ebs_volume_id_value,
+                use_troposphere=True,
+                troposphere_template=template)
+            ebs_volume_id_tag = troposphere.autoscaling.Tag(
+                'ebs-volume-id-' + volume_hash,
+                troposphere.Ref(ebs_volume_id_param),
+                True
+            )
+            asg_dict['Tags'].append(ebs_volume_id_tag)
+            #ebs_device_param = self.create_cfn_parameter(
+            #    param_type='String',
+            #    name='EBSDevice'+volume_hash,
+            #   description='EBS Device Name',
+            #    value=ebs_volume_mount.device,
+            #    use_troposphere=True,
+            #    troposphere_template=template)
+            #ebs_device_tag = troposphere.autoscaling.Tag(
+            #    'ebs-device-' + volume_hash,
+            #    troposphere.Ref(ebs_device_param),
+            #    True
+            #)
+            #asg_dict['Tags'].append(ebs_device_tag)
+
 
         asg_res = troposphere.autoscaling.AutoScalingGroup.from_dict(
             'ASG', asg_dict )
@@ -256,7 +293,7 @@ class ASG(CFTemplate):
                 title='CPUAverageScalingPolicy',
                 template=template,
                 AutoScalingGroupName=troposphere.Ref(asg_res),
-                PolicyType='TargetTrackingScaling',
+                PolicyType='TrackingScaling',
                 TargetTrackingConfiguration=troposphere.autoscaling.TargetTrackingConfiguration(
                     PredefinedMetricSpecification=troposphere.autoscaling.PredefinedMetricSpecification(
                         PredefinedMetricType='ASGAverageCPUUtilization'
