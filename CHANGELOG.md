@@ -19,6 +19,38 @@ Changelog for aim
 
 - New Events Rule template.
 
+- Added change_protected support to Cloudfront, IAM Managed Policies, and IAM Role templates.
+
+- Added a CodeBuild IAM Permission for IAM Users
+
+- Added the EIP Application Resource and a support 'eip' field to the ASG resource for associating an EIP with a single instance ASG.
+
+- Added `cftemplate_iam_user_delegates_2019_10_02` legacy flag to make user delegate role stack names consistent with others.
+
+- Added support to allow ASG to launch into a single subnet.
+
+- Added ResourceGroupid to the ElastiCache Application Resource
+
+- Added caching to instance AMI ID function.ref lookups.
+
+- Added swap, wget installer, and get tag value helper functions to the EC2 Launch manager and moved all of its scripts to a separate file that is copied from S3 and executed.
+
+- Added VPC Associations to the VPC private hosted zone.
+
+- Added VpcConfig to the Lambda function cftemplate.
+
+- Added `secrets_manager` to Network Environments.
+
+- Added support for !Ref and !Sub to yaml.py
+
+- Added a 'Nested StackGroup' feature to StackGroups. This allows us to nest a StackGroup in the place of a Stack within a StackGroup. This was needed to allow Route53 RecordSets to be created in order, but to allow a different Stack name from the current StackGroup being populated.
+
+- Added the Route53RecordSet CFTemplate and ctl_route53.add_record_set() method.
+
+- Added the EBS Application Resources.
+  Added `ebs_volume_mounts` to IASG to mount volumes to single instance groups.
+  Added the EBS Launch Bundle to implement `ebs_volume_mounts`
+
 ### Changed
 
 - Fixed bug where if a AssumeRolePolicyDocument has both `service` and `aws` fields for the Principal,
@@ -30,6 +62,31 @@ Changelog for aim
   sub-command.
 
 - ALB Alarms now provision with an `LBApplication` suffix and match the Resoruce.type field.
+
+- Made IAM Users default password more complex to satisfy password contraints.
+
+- Updated some of the cookiecutter templates for `aim init project`.
+
+- Ported the Route53 CFTemplate to troposphere and separated zones into their own stacks.
+  Added the legacy flag `route53_hosted_zone_2019_10_12` for this change.
+
+- Cleaned up expired token handling in Stack() by consolidating duplicate code into a single method.
+
+- Refactor of EC2 Launch Manager user data script management. Common functions are now stored in S3 to reduce user data size.
+
+- Modifed LogGroup names to include the Network Environment name.
+
+- Refactored how Route53 RecordSets are being created. The previous design created RecordSets right in the resource's template. The new design uses the Route53 Controller to create RecordSets in their own stack using an account global name . The reason is that CloudFormation does not allow you to modify RecordSets unless you are modifying the stack that created it. This made it impossible to move DNS between resources without first deleting the record and recreating it. With a global controller, we can simple rewrite the RecordSets to new values.
+  Added `route53_record_set_2019_10_16` legacy flag to deal with pre-existing RecordSets
+
+- Moved app_engine.get_stack_from_ref to StackGroup
+
+### Fixed
+
+- Fixed a couple of AWS token expiry retries from failing.
+
+- AWS session caching was not properly caching.
+
 
 3.0.0 (2019-09-27)
 ------------------
