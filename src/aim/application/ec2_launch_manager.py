@@ -409,7 +409,7 @@ function ec2lm_instance_tag_value() {{
 echo "EC2 Launch Manager"
 echo "Script: $0"
 echo "CacheId: {0[cache_id]}"
-
+{0[pre_script]}
 {0[update_packages]}
 {0[install_aws_cli]}
 
@@ -435,7 +435,8 @@ aws s3 cp s3://{0[ec2lm_bucket_name]}/$EC2LM_FUNCTIONS /tmp/$EC2LM_FUNCTIONS
             'ec2lm_bucket_name': ec2lm_bucket_name,
             'install_aws_cli': vocabulary.user_data_script['install_aws_cli'][resource.instance_ami_type],
             'launch_bundles': 'echo "No launch bundles to load."\n',
-            'update_packages': ''
+            'update_packages': '',
+            'pre_script': ''
         }
         # Launch Bundles
         if len(self.launch_bundles.keys()) > 0:
@@ -445,6 +446,9 @@ aws s3 cp s3://{0[ec2lm_bucket_name]}/$EC2LM_FUNCTIONS /tmp/$EC2LM_FUNCTIONS
         self.init_ec2lm_function(ec2lm_bucket_name)
         self.add_ec2lm_function_swap(ec2lm_bucket_name)
         self.add_ec2lm_function_wget(ec2lm_bucket_name, resource.instance_ami_type)
+
+        if resource.user_data_pre_script != None:
+            script_table['pre_script'] = resource.user_data_pre_script
 
         if resource.eip != None:
             self.add_ec2lm_function_eip(ec2lm_bucket_name, resource, grp_id, instance_iam_role_ref)
