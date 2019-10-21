@@ -671,6 +671,9 @@ class IAMController(Controller):
             self.iam_user_stack_groups[account_name].provision()
 
     def delete(self):
+        print("Not doing anything because this deletes all of the users.")
+        print("TODO: Implement a per user delete!")
+        return
         for account_name in self.iam_user_stack_groups.keys():
             if account_name == 'master':
                 continue
