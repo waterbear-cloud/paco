@@ -72,7 +72,9 @@ class IAMUsers(CFTemplate):
         self.template.add_parameter(username_param)
 
         if iam_user_config.console_access_enabled == True:
-            user_password = utils.md5sum(str_data=iam_user_config.username)[:8] + '@Aim19!'
+            user_password = utils.md5sum(str_data=iam_user_config.username)[:8]
+            if self.aim_ctx.legacy_flag('iam_user_default_password_2019_10_12') == False:
+                user_password += '@Aim19!'
             print("{}: default password: {}".format(iam_user_config.username, user_password))
             password_param = self.create_cfn_parameter(
                 name=self.create_cfn_logical_id('Password'+utils.md5sum(str_data=user_password)),
