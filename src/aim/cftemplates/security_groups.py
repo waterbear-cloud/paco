@@ -166,7 +166,7 @@ class SecurityGroups(CFTemplate):
                 else:
                     rule_dict['Description'] = 'unknown'
 
-                # Source
+                # Source and Destination
                 if sg_rule_config.cidr_ip != '':
                     rule_dict['CidrIp'] = sg_rule_config.cidr_ip
                 elif sg_rule_config.source_security_group != '':
@@ -175,6 +175,12 @@ class SecurityGroups(CFTemplate):
                             sg_rule_config.source_security_group, template)
                     else:
                         rule_dict['SourceSecurityGroupId'] = sg_rule_config.source_security_group
+                elif sg_rule_config.destination_security_group != '':
+                    if references.is_ref(sg_rule_config.destination_security_group):
+                        rule_dict['DestinationSecurityGroupId'] = self.create_group_param_ref(
+                            sg_rule_config.destination_security_group, template)
+                    else:
+                        rule_dict['DestinationSecurityGroupId'] = sg_rule_config.destination_security_group
                 else:
                     raise StackException(AimErrorCode.Unknown)
 

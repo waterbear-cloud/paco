@@ -79,6 +79,29 @@ class LogGroups(CFTemplate):
             if retention != 'Never':
                 cfn_export_dict["RetentionInDays"] = retention
 
+            # Metric Filters
+            for metric_filter in log_group.metric_filters.values():
+                mf_dict = {
+                    'LogGroupName': log_group.log_group_name,
+                    'FilterPattern': metric_filter.filter_pattern,
+                }
+                mt_list = []
+                for transf in metric_filter.metric_transformations:
+                    mts_dict = {
+                        'MetricName': transf.metric_name,
+                        'MetricNamespace': transf.metric_namespace,
+                        'MetricValue': transf.metric_value
+                    }
+                    if type(transf.default_value) == type(float):
+                        mts_dict['DefaultValue'] = trans.default_value
+                    mt_list.append(mts_dict)
+                mf_dict['MetricTransformations'] = mt_list
+                metric_filter_resource = troposphere.logs.MetricFilter.from_dict(
+                    self.create_cfn_logical_id('MetricFilter' + metric_filter.name),
+                    mf_dict,
+                )
+                template.add_resource(metric_filter_resource)
+
             log_group_resource = troposphere.logs.LogGroup.from_dict(
                 loggroup_logical_id,
                 cfn_export_dict

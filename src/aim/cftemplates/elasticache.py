@@ -110,6 +110,22 @@ class ElastiCache(CFTemplate):
                 'CacheSubnetGroupName': troposphere.Ref(subnet_group_res)
             }
 
+            # Replication Group Description
+            if elasticache_config.description:
+                elasticache_dict['ReplicationGroupDescription'] = elasticache_config.description
+
+            # Snapshot Retention Limit
+            if elasticache_config.snapshot_retention_limit_days:
+                elasticache_dict['SnapshotRetentionLimit'] = elasticache_config.snapshot_retention_limit_days
+
+            # Snapshot Window
+            if elasticache_dict.snapshot_window:
+                elasticache_dict['SnapshotWindow'] = elasticache_config.snapshot_window
+
+            # Number of Clusers
+            if elasticache_config.cache_clusters:
+                elasticache_dict['NumCacheClusters'] = elasticache_config.cache_clusters
+
             if elasticache_config.parameter_group != None:
                 elasticache_dict['CacheParameterGroupName'] = elasticache_config.parameter_group
 
