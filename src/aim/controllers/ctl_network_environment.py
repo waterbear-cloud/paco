@@ -155,7 +155,22 @@ class EnvironmentContext():
         return self.config['iam'][iam_roles_id].roles
 
     def application_ids(self):
-        return sorted(self.config['applications'].keys())
+        ordered_config_list = []
+        ordered_id_list = []
+        for app_id, app_config in self.config['applications'].items():
+            new_app_config = [app_id, app_config]
+            insert_idx = 0
+            for ordered_config in ordered_config_list:
+                if app_config.order < ordered_config[1].order:
+                    ordered_config_list.insert(insert_idx, new_app_config)
+                    ordered_id_list.insert(insert_idx, app_id)
+                    break
+                insert_idx += 1
+            else:
+                ordered_config_list.append(new_app_config)
+                ordered_id_list.append(app_id)
+
+        return ordered_id_list
 
     def deployment_ids(self, app_id):
         self.config.applications[app_id].resources.deployments()

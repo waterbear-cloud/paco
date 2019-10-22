@@ -350,7 +350,7 @@ function install_wget() {
         """Adds functions for getting secrets from Secrets Manager"""
         self.ec2lm_functions_script[ec2lm_bucket_name] += self.user_data_secrets(resource, grp_id, instance_iam_role_ref)
 
-    def init_ec2lm_function(self, ec2lm_bucket_name):
+    def init_ec2lm_function(self, ec2lm_bucket_name, resource, instance_iam_role_ref):
         script_table = {
             'ec2lm_bucket_name': ec2lm_bucket_name,
             'aim_environment': self.app_engine.env_ctx.env_id,
@@ -403,6 +403,31 @@ function ec2lm_instance_tag_value() {{
 """
         self.ec2lm_functions_script[ec2lm_bucket_name] = script_template.format(script_table)
 
+        policy_config_yaml = """
+name: 'DescribeTags'
+enabled: true
+statement:
+  - effect: Allow
+    action:
+      - "ec2:DescribeTags"
+    resource:
+      - '*'
+"""
+        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
+
+        policy_ref = '{}.{}.ec2lm.policy'.format(resource.aim_ref_parts, self.id)
+        policy_id = '-'.join([resource.name, 'ec2lm'])
+        iam_ctl = self.aim_ctx.get_controller('IAM')
+        iam_ctl.add_managed_policy(
+            role_ref=instance_iam_role_ref,
+            parent_config=resource,
+            group_id=group_name,
+            policy_id=policy_id,
+            policy_ref=policy_ref,
+            policy_config_yaml=policy_config_yaml,
+            change_protected=resource.change_protected
+        )
+
     def user_data_script(self, app_id, grp_id, resource_id, resource, instance_iam_role_ref):
         """BASH script that will load the launch bundle from user_data"""
         script_fmt = """#!/bin/bash
@@ -443,7 +468,7 @@ aws s3 cp s3://{0[ec2lm_bucket_name]}/$EC2LM_FUNCTIONS /tmp/$EC2LM_FUNCTIONS
             script_table['launch_bundles'] = 'ec2lm_launch_bundles\n'
 
         # EC2LM Functions
-        self.init_ec2lm_function(ec2lm_bucket_name)
+        self.init_ec2lm_function(ec2lm_bucket_name, resource, instance_iam_role_ref)
         self.add_ec2lm_function_swap(ec2lm_bucket_name)
         self.add_ec2lm_function_wget(ec2lm_bucket_name, resource.instance_ami_type)
 

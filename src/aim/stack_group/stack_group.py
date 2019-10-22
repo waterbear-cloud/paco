@@ -367,7 +367,11 @@ class Stack():
             break
 
         if 'Outputs' not in stack_metadata['Stacks'][0].keys():
-            raise StackException(AimErrorCode.StackOutputMissing, message='No outputs are registered for this stack. This can happen if there are register_stack_output_config() calls in a cftemplate for Outputs that do not exist.')
+            message = self.get_stack_error_message()
+            message += '\nHints:'
+            message += '1. register_stack_output_config() calls are missing in the cftemplate.'
+            message += '3. The stack has not yet been provisioned.'
+            raise StackException(AimErrorCode.StackOutputMissing, message=message)
 
         for output in stack_metadata['Stacks'][0]['Outputs']:
             if output['OutputKey'] == key:

@@ -145,17 +145,17 @@ class IAMUserAccountDelegates(CFTemplate):
                 )
             # Make the policy
             managed_policy_res = troposphere.iam.ManagedPolicy(
-            title=self.create_cfn_logical_id_join(
-                str_list=["CustomPolicy", policy.name],
-                camel_case=True
-            ),
-            PolicyDocument=PolicyDocument(
-                Version="2012-10-17",
-                Statement=policy_statements
-            ),
-            Roles=[ troposphere.Ref(assume_role_res) ]
-        )
-        self.template.add_resource(managed_policy_res)
+                title=self.create_cfn_logical_id_join(
+                    str_list=["CustomPolicy", policy.name],
+                    camel_case=True
+                ),
+                PolicyDocument=PolicyDocument(
+                    Version="2012-10-17",
+                    Statement=policy_statements
+                ),
+                Roles=[ troposphere.Ref(assume_role_res) ]
+            )
+            self.template.add_resource(managed_policy_res)
 
     def init_codebuild_permission(self, permission_config, assume_role_res):
         """CodeBuild Web Console Permissions"""
