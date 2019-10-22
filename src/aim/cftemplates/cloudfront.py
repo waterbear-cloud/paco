@@ -302,6 +302,7 @@ class CloudFront(CFTemplate):
                     route53_ctl.add_record_set(
                         self.account_ctx,
                         self.aws_region,
+                        enabled=cloudfront_config.is_enabled(),
                         dns=alias,
                         record_set_type='Alias',
                         alias_dns_name = 'aim.ref '+self.config_ref+'.domain_name',

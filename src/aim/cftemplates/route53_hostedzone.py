@@ -30,22 +30,29 @@ class Route53HostedZone(CFTemplate):
 
         self.aim_ctx.log_action_col("Init", "Route53", "Hosted Zone", "{}".format(zone_config.domain_name))
 
-        hosted_zone_res = troposphere.route53.HostedZone(
-            title='HostedZone',
-            template=self.template,
-            Name=zone_config.domain_name
-        )
+        if zone_config.external_resource != None and zone_config.external_resource.is_enabled():
+            hosetd_zone_id_output_value = zone_config.external_resource.hosted_zone_id
+            nameservers_output_value = ','.join(zone_config.external_resource.nameservers)
+        else:
+            hosted_zone_res = troposphere.route53.HostedZone(
+                title='HostedZone',
+                template=self.template,
+                Name=zone_config.domain_name
+            )
+            hosetd_zone_id_output_value = troposphere.Ref(hosted_zone_res)
+            nameservers_output_value = troposphere.Join(',', troposphere.GetAtt(hosted_zone_res, 'NameServers'))
+
 
         self.template.add_output(
             troposphere.Output(
                 title = 'HostedZoneId',
-                Value = troposphere.Ref(hosted_zone_res)
+                Value = hosetd_zone_id_output_value
             )
         )
         self.template.add_output(
             troposphere.Output(
                 title = 'HostedZoneNameServers',
-                Value = troposphere.Join(',', troposphere.GetAtt(hosted_zone_res, 'NameServers'))
+                Value = nameservers_output_value
             )
         )
         self.register_stack_output_config(config_ref+'.id', 'HostedZoneId')

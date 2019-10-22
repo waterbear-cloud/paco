@@ -70,6 +70,7 @@ class Route53Controller(Controller):
         region,
         dns,
         record_set_type,
+        enabled = True,
         resource_records = None,
         alias_dns_name = None,
         alias_hosted_zone_id = None,
@@ -77,7 +78,7 @@ class Route53Controller(Controller):
         config_ref = None):
 
         record_set_config = {
-            'enabled' : True,
+            'enabled' : enabled,
             'change_protected': False,
             'dns': dns,
             'alias_dns_name': alias_dns_name,

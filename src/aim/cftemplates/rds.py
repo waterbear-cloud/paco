@@ -229,6 +229,7 @@ class RDS(CFTemplate):
                     route53_ctl.add_record_set(
                         self.account_ctx,
                         self.aws_region,
+                        enabled=rds_config.is_enabled(),
                         dns=dns_config,
                         record_set_type='CNAME',
                         resource_records=[ 'aim.ref '+config_ref+'.endpoint.address' ],

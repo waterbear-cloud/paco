@@ -251,6 +251,20 @@ class IAMController(Controller):
         self.init_done = False
         #self.aim_ctx.log("IAM Service: Configuration: %s" % (name))
 
+    # Administrator
+    def init_custompolicy_permission(self, permission_config, permissions_by_account):
+        """
+        Adds each permission config to a map of permissions by account. This map
+        is used to determines the policies a user will have created in each
+        account.
+        """
+        accounts = permission_config.accounts
+        if 'all' in accounts:
+            accounts = self.aim_ctx.project['accounts'].keys()
+
+        for account_name in accounts:
+            permissions_by_account[account_name].append(permission_config)
+
     # CodeCommit
     def init_codecommit_permission(self, permission_config, permissions_by_account):
         for repo_config in permission_config.repositories:

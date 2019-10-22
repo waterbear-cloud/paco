@@ -107,6 +107,7 @@ class EIP(CFTemplate):
                     route53_ctl.add_record_set(
                         self.account_ctx,
                         self.aws_region,
+                        enabled=eip_config.is_enabled(),
                         dns=dns_config,
                         record_set_type='A',
                         resource_records=['aim.ref '+config_ref+'.address'],

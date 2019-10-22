@@ -3,10 +3,13 @@ import troposphere
 import troposphere.cloudformation
 import troposphere.iam
 
+
 from aim import utils
 from aim.cftemplates.cftemplates import CFTemplate
+from aim.core.exception import StackException
+from aim.core.exception import AimErrorCode
 from aim.models.references import Reference
-from awacs.aws import Allow, Action, Principal, Statement, Condition, MultiFactorAuthPresent, PolicyDocument
+from awacs.aws import Allow, Action, Principal, Statement, Condition, MultiFactorAuthPresent, PolicyDocument, StringEquals
 from awacs.aws import Bool as AWACSBool
 from awacs.sts import AssumeRole
 from getpass import getpass
@@ -122,6 +125,37 @@ class IAMUserAccountDelegates(CFTemplate):
         else:
             policy_arn = 'arn:aws:iam::aws:policy/AdministratorAccess'
         assume_role_res.properties['ManagedPolicyArns'].append(policy_arn)
+
+    def init_custompolicy_permission(self, permission_config, assume_role_res):
+        for policy in permission_config.policies:
+            policy_statements = []
+            for policy_statement in policy.statement:
+                statement_dict = {
+                    'Effect': policy_statement.effect,
+                    'Action': [
+                        Action(*action.split(':')) for action in policy_statement.action
+                    ],
+                }
+
+                # Resource
+                statement_dict['Resource'] = policy_statement.resource
+
+                policy_statements.append(
+                    Statement(**statement_dict)
+                )
+            # Make the policy
+            managed_policy_res = troposphere.iam.ManagedPolicy(
+            title=self.create_cfn_logical_id_join(
+                str_list=["CustomPolicy", policy.name],
+                camel_case=True
+            ),
+            PolicyDocument=PolicyDocument(
+                Version="2012-10-17",
+                Statement=policy_statements
+            ),
+            Roles=[ troposphere.Ref(assume_role_res) ]
+        )
+        self.template.add_resource(managed_policy_res)
 
     def init_codebuild_permission(self, permission_config, assume_role_res):
         """CodeBuild Web Console Permissions"""
