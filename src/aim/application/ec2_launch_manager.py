@@ -367,6 +367,19 @@ EC2_MANAGER_FOLDER='/opt/aim/EC2Manager/'
 AIM_NETWORK_ENVIRONMENT="{0[aim_network_environment]:s}"
 AIM_ENVIRONMENT="{0[aim_environment]:s}"
 
+# Escape a string for sed replacements
+function sed_escape() {{
+    RES="${{1//$'\n'/\\n}}"
+    RES="${{RES//./\\.}}"
+    RES="${{RES//\//\\/}}"
+    RES="${{RES// /\\ }}"
+    RES="${{RES//!/\\!}}"
+    RES="${{RES//-/\\-}}"
+    RES="${{RES//,/\\,}}"
+    RES="${{RES//&/\\&}}"
+    echo "${{RES}}"
+}}
+
 # Launch Bundles
 function ec2lm_launch_bundles() {{
     mkdir -p $EC2_MANAGER_FOLDER/LaunchBundles
