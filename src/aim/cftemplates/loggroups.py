@@ -51,6 +51,7 @@ class LogGroups(CFTemplate):
         for log_group in self.resource.monitoring.log_sets.get_all_log_groups():
             cfn_export_dict = {}
             log_group_name = log_group.get_log_group_name()
+            prefixed_log_group_name = prefixed_name(resource, log_group_name, self.aim_ctx.legacy_flag)
             loggroup_logical_id = self.create_cfn_logical_id('LogGroup' + log_group_name)
 
             # provide prefixed LogGroup name as a CFN Parameter
@@ -59,7 +60,7 @@ class LogGroups(CFTemplate):
                 param_type = 'String',
                 name = param_name,
                 description = 'LogGroup name',
-                value = prefixed_name(resource, log_group_name, self.aim_ctx.legacy_flag),
+                value = prefixed_log_group_name,
                 use_troposphere = True
             )
             template.add_parameter(parameter)
@@ -82,7 +83,7 @@ class LogGroups(CFTemplate):
             # Metric Filters
             for metric_filter in log_group.metric_filters.values():
                 mf_dict = {
-                    'LogGroupName': log_group.log_group_name,
+                    'LogGroupName': prefixed_log_group_name,
                     'FilterPattern': metric_filter.filter_pattern,
                 }
                 mt_list = []

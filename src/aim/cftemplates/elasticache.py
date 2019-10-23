@@ -10,33 +10,37 @@ from aim.models import vocabulary, schemas
 
 
 class ElastiCache(CFTemplate):
-    def __init__(self,
-                 aim_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-
-                 app_id,
-                 grp_id,
-                 res_id,
-                 elasticache_config,
-                 config_ref=None):
-
-        super().__init__(aim_ctx,
-                         account_ctx,
-                         aws_region,
-                         enabled=elasticache_config.is_enabled(),
-                         config_ref=config_ref,
-                         stack_group=stack_group,
-                         stack_tags=stack_tags,
-                         change_protected=elasticache_config.change_protected)
+    """
+    Creates an Amazon ElastiCache Redis replication group (AWS::ElastiCache::ReplicationGroup).
+    A replication group is a collection of cache clusters, where one of the clusters is a
+    primary read-write cluster and the others are read-only replicas.
+    """
+    def __init__(
+        self,
+        aim_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
+        app_id,
+        grp_id,
+        res_id,
+        elasticache_config,
+        config_ref=None
+    ):
+        super().__init__(
+            aim_ctx,
+            account_ctx,
+            aws_region,
+            enabled=elasticache_config.is_enabled(),
+            config_ref=config_ref,
+            stack_group=stack_group,
+            stack_tags=stack_tags,
+            change_protected=elasticache_config.change_protected
+        )
         self.set_aws_name('ElastiCache', grp_id, res_id, elasticache_config.engine )
 
         if elasticache_config.is_enabled() == True:
-            # ---------------------------------------------------------------------------
-            # Parameters
-
             # Security Groups
             sg_params = []
             vpc_sg_list = []
@@ -62,7 +66,6 @@ class ElastiCache(CFTemplate):
                 use_troposphere=True
             )
 
-            # ---------------------------------------------------------------------------
             # ElastiCache Subnet Group
             subnet_group_dict = {
                 'Description': troposphere.Ref('AWS::StackName'),
@@ -73,92 +76,38 @@ class ElastiCache(CFTemplate):
                 subnet_group_dict
             )
 
-            # ---------------------------------------------------------------------------
-            # ElastiCache Parameter Group Resource
-            #param_group_dict = {
-            #    'CacheParameterGroupFamily': elasticache_config.cache_parameter_group_family,
-            #    'Description': troposphere.Ref('AWS::StackName'),
-            #    'Properties': None
-            #}
-
-            #param_group_res = troposphere.elasticache.ParameterGroup.from_dict(
-            #    'ParameterGroup',
-            #    param_group_dict
-            #)
-
-            # ---------------------------------------------------------------------------
-            # Elasticache Resource
-            elasticache_dict = {
-                'ReplicationGroupId': self.create_resource_name_join(
-                    name_list=[app_id, grp_id, res_id],
-                    separator='-',
-                    filter_id='ElastiCache.ReplicationGroup.ReplicationGroupId',
-                    hash_long_names=True
-                ),
-                'Engine': elasticache_config.engine,
-                'EngineVersion': elasticache_config.engine_version,
-                'Port': elasticache_config.port,
-                'AtRestEncryptionEnabled': elasticache_config.at_rest_encryption,
-                'AutomaticFailoverEnabled': elasticache_config.automatic_failover_enabled,
-                'ReplicasPerNodeGroup': elasticache_config.number_of_read_replicas,
-                'ReplicationGroupDescription': troposphere.Ref('AWS::StackName'),
-                'AutoMinorVersionUpgrade': elasticache_config.auto_minor_version_upgrade,
-                'CacheNodeType': elasticache_config.cache_node_type,
-                'PreferredMaintenanceWindow': elasticache_config.maintenance_preferred_window,
-                'SecurityGroupIds': vpc_sg_list,
-                #'CacheParameterGroupName': troposphere.Ref(param_group_res),
-                'CacheSubnetGroupName': troposphere.Ref(subnet_group_res)
-            }
-
-            # Replication Group Description
+            # ElastiCache Resource
+            elasticache_dict = elasticache_config.cfn_export_dict
+            elasticache_dict['SecurityGroupIds'] = vpc_sg_list
+            elasticache_dict['CacheSubnetGroupName'] = troposphere.Ref(subnet_group_res)
             if elasticache_config.description:
                 elasticache_dict['ReplicationGroupDescription'] = elasticache_config.description
+            else:
+                elasticache_dict['ReplicationGroupDescription'] = troposphere.Ref('AWS::StackName')
 
-            # Snapshot Retention Limit
-            if elasticache_config.snapshot_retention_limit_days:
-                elasticache_dict['SnapshotRetentionLimit'] = elasticache_config.snapshot_retention_limit_days
-
-            # Snapshot Window
-            if elasticache_dict.snapshot_window:
-                elasticache_dict['SnapshotWindow'] = elasticache_config.snapshot_window
-
-            # Number of Clusers
-            if elasticache_config.cache_clusters:
-                elasticache_dict['NumCacheClusters'] = elasticache_config.cache_clusters
-
-            if elasticache_config.parameter_group != None:
-                elasticache_dict['CacheParameterGroupName'] = elasticache_config.parameter_group
-
-            # Redis Cache Cluster
             cfn_cache_cluster_name = 'ReplicationGroup'
-
             cache_cluster_res = troposphere.elasticache.ReplicationGroup.from_dict(
                 cfn_cache_cluster_name,
                 elasticache_dict
             )
 
         # Troposphere Template Generation
-        template = troposphere.Template()
-        template.add_version('2010-09-09')
-        template.add_description('ElastiCache: {} - {}'.format(
+        self.init_template('ElastiCache: {} - {}'.format(
             elasticache_config.engine,
             elasticache_config.engine_version
         ))
         if elasticache_config.is_enabled() == True:
-
             for sg_param in sg_params:
-                template.add_parameter(sg_param)
-            template.add_parameter( subnet_ids_param)
-            #template.add_resource( param_group_res )
-            template.add_resource( subnet_group_res )
-            template.add_resource( cache_cluster_res )
+                self.template.add_parameter(sg_param)
+            self.template.add_parameter(subnet_ids_param)
+            self.template.add_resource(subnet_group_res)
+            self.template.add_resource(cache_cluster_res)
         else:
             # There is no way to stop a cluster, it must be removed.
             # Leave a dummy resource to allow the stack to delete
             # the resources.
-            template.add_resource(
+            self.template.add_resource(
                 troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
             )
 
-        self.set_template(template.to_yaml())
-
+        self.set_template(self.template.to_yaml())
