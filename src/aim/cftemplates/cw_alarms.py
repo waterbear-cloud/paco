@@ -151,11 +151,16 @@ class CWAlarms(CFBaseAlarm):
         ):
         # Add Parameters
         if schemas.IResource.providedBy(resource):
+            value = resource.aim_ref + '.name'
+            if schemas.IElastiCacheRedis.providedBy(resource):
+                # Primary node uses the aws name with '-001' appended to it
+                # ToDo: how to have Alarms for the read replica nodes?
+                value = resource.get_aws_name() + '-001'
             dimension_param = self.create_cfn_parameter(
                 param_type = 'String',
                 name = 'DimensionResource',
                 description = 'The resource id or name for the metric dimension.',
-                value = resource.aim_ref + '.name',
+                value = value,
                 use_troposphere = True
             )
             template.add_parameter(dimension_param)
