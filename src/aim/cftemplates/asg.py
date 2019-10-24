@@ -321,6 +321,24 @@ class ASG(CFTemplate):
                 )
                 for alarm in scaling_policy.alarms:
                     alarm_hash = utils.md5sum(str_data='{}'.format(alarm.__dict__))
+                    dimension_list = []
+                    for dimension in alarm.dimensions:
+                        dimension_value = dimension.value
+                        if dimension.name == 'AutoScalingGroupName' and references.is_ref(dimension.value):
+                            # Reference the local ASG if the ref points here
+                            dimension_ref = Reference(dimension.value)
+                            if dimension_ref.ref == self.config_ref:
+                                dimension_value = troposphere.Ref(asg_res)
+                        dimension_res = troposphere.cloudwatch.MetricDimension(
+                            Name=dimension.name,
+                            Value=dimension_value
+                        )
+                        dimension_list.append(dimension_res)
+
+                    if len(dimension_list) == 0:
+                        dimension_list = troposphere.Ref('AWS::NoValue')
+
+                    # Alarm Resource
                     troposphere.cloudwatch.Alarm(
                         title=self.create_cfn_logical_id_join(
                             ['ScalingPolicyAlarm', scaling_policy_name, alarm_hash],
@@ -336,7 +354,8 @@ class ASG(CFTemplate):
                         Period=alarm.period,
                         Threshold=alarm.threshold,
                         EvaluationPeriods=alarm.evaluation_periods,
-                        Statistic=alarm.statistic
+                        Statistic=alarm.statistic,
+                        Dimensions=dimension_list
                     )
 
         if asg_config.lifecycle_hooks != None:

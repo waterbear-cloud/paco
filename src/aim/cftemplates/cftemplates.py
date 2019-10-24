@@ -437,7 +437,7 @@ class CFTemplate():
             return
 
         print("--------------------------------------------------------")
-        print("Confirm changes to Parameters for CloudFormation Stack:")
+        print("Confirm changes to Parameters for CloudFormation Stack: " + self.stack.get_name())
         print()
         print("{}".format(self.stack.get_name()))
         if self.aim_ctx.verbose:
@@ -523,7 +523,8 @@ class CFTemplate():
             print("Removed Parameter: {} = {}".format(applied_param['ParameterKey'], applied_param['ParameterValue']))
 
         print("--------------------------------------------------------")
-
+        print("Stack: " + self.stack.get_name())
+        print("")
         answer = self.aim_ctx.input_confirm_action("\nAre these changes acceptable?")
         if answer == False:
             print("Aborted run.")
@@ -1120,7 +1121,7 @@ class CFTemplate():
         if len(deep_diff.keys()) == 0:
             return
         print("--------------------------------------------------------")
-        print("Confirm template changes to CloudFormation Stack:")
+        print("Confirm template changes to CloudFormation Stack: " + self.stack.get_name())
         print()
         print("{}".format(self.stack.get_name()))
         if self.aim_ctx.verbose:
@@ -1153,6 +1154,8 @@ class CFTemplate():
             print("+++")
 
         print("\n--------------------------------------------------------")
+        print("Stack: " + self.stack.get_name())
+        print("")
         answer = self.aim_ctx.input_confirm_action("\nAre these changes acceptable?")
         if answer == False:
             print("Aborted run.")
