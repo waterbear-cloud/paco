@@ -93,9 +93,14 @@ class CodePipeline(CFTemplate):
         # CodePipeline
         # Source Actions
         source_stage_actions = []
-        # CodeCommit Source Action
+        # Source Actions
         for action_name in res_config.source.keys():
             action_config = res_config.source[action_name]
+            # Manual Approval Action
+            if action_config.type == 'ManualApproval':
+                manual_approval_action = self.init_manual_approval_action(template, action_config)
+                source_stage_actions.append(manual_approval_action)
+            # CodeCommit Action
             if action_config.type == 'CodeCommit.Source':
                 codecommit_repo_arn_param = self.create_cfn_parameter(
                     param_type='String',
@@ -160,8 +165,12 @@ class CodePipeline(CFTemplate):
         build_stage_actions = []
         for action_name in res_config.build.keys():
             action_config = res_config.build[action_name]
+            # Manual Approval Action
+            if action_config.type == 'ManualApproval':
+                manual_approval_action = self.init_manual_approval_action(template, action_config)
+                build_stage_actions.append(manual_approval_action)
             # CodeBuild Build Action
-            if action_config.type == 'CodeBuild.Build':
+            elif action_config.type == 'CodeBuild.Build':
                 codebuild_project_arn_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeBuildProjectArn',
@@ -347,55 +356,60 @@ class CodePipeline(CFTemplate):
 
         return pipeline_res
 
+    def init_manual_approval_action(self, template, action_config):
+        self.manual_approval_is_enabled = action_config.is_enabled()
+        # Manual Approval Deploy Action
+        manual_approval_notification_email_param = self.create_cfn_parameter(
+            param_type='String',
+            name='ManualApprovalNotificationEmail',
+            description='Email to send notifications to when a deployment requires approval.',
+            value=action_config.manual_approval_notification_email,
+            use_troposphere=True,
+            troposphere_template=template,
+        )
+
+        manual_approval_sns_res = troposphere.sns.Topic(
+            title = 'ManualApprovalSNSTopic',
+            template=template,
+            Condition = 'ManualApprovalIsEnabled',
+            TopicName = troposphere.Sub('${ResourceNamePrefix}-Approval'),
+            Subscription = [
+                troposphere.sns.Subscription(
+                    Endpoint=troposphere.Ref(manual_approval_notification_email_param),
+                    Protocol = 'email'
+                )
+            ]
+        )
+        manual_deploy_action = troposphere.codepipeline.Actions(
+            Name='Approval',
+            ActionTypeId = troposphere.codepipeline.ActionTypeId(
+                Category = 'Approval',
+                Owner = 'AWS',
+                Version = '1',
+                Provider = 'Manual'
+            ),
+            Configuration = {
+                'NotificationArn': troposphere.Ref(manual_approval_sns_res),
+            },
+            RunOrder = action_config.run_order
+        )
+        manual_deploy_action = troposphere.If(
+            'ManualApprovalIsEnabled',
+            manual_deploy_action,
+            troposphere.Ref('AWS::NoValue')
+        )
+
+        return manual_deploy_action
+
     def init_deploy_stage(self, res_config, template):
         if res_config.deploy == None:
             return [None, None, None]
         deploy_stage_actions = []
         for action_name in res_config.deploy.keys():
             action_config = res_config.deploy[action_name]
-            if action_config.type == 'ManualApproval.Deploy':
-                self.manual_approval_is_enabled = action_config.is_enabled()
-                # Manual Approval Deploy Action
-                manual_approval_notification_email_param = self.create_cfn_parameter(
-                    param_type='String',
-                    name='ManualApprovalNotificationEmail',
-                    description='Email to send notifications to when a deployment requires approval.',
-                    value=action_config.manual_approval_notification_email,
-                    use_troposphere=True,
-                    troposphere_template=template,
-                )
-
-                manual_approval_sns_res = troposphere.sns.Topic(
-                    title = 'ManualApprovalSNSTopic',
-                    template=template,
-                    Condition = 'ManualApprovalIsEnabled',
-                    TopicName = troposphere.Sub('${ResourceNamePrefix}-Approval'),
-                    Subscription = [
-                        troposphere.sns.Subscription(
-                            Endpoint=troposphere.Ref(manual_approval_notification_email_param),
-                            Protocol = 'email'
-                        )
-                    ]
-                )
-                manual_deploy_action = troposphere.codepipeline.Actions(
-                    Name='Approval',
-                    ActionTypeId = troposphere.codepipeline.ActionTypeId(
-                        Category = 'Approval',
-                        Owner = 'AWS',
-                        Version = '1',
-                        Provider = 'Manual'
-                    ),
-                    Configuration = {
-                        'NotificationArn': troposphere.Ref(manual_approval_sns_res),
-                    },
-                    RunOrder = action_config.run_order
-                )
-                if_manual_deploy_action = troposphere.If(
-                    'ManualApprovalIsEnabled',
-                    manual_deploy_action,
-                    troposphere.Ref('AWS::NoValue')
-                )
-                deploy_stage_actions.append(if_manual_deploy_action)
+            if action_config.type == 'ManualApproval':
+                manual_approval_action = self.init_manual_approval_action(template, action_config)
+                deploy_stage_actions.append(manual_approval_action)
 
             # S3.Deploy
             s3_deploy_assume_role_statement = None

@@ -333,7 +333,7 @@ policies:
             codebuild_config_ref
         )
 
-    def init_stage_action_manualapproval_deploy(self, action_config):
+    def init_stage_action_manualapproval(self, action_config):
         pass
 
     def resolve_ref(self, ref):
