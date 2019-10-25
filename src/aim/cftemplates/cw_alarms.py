@@ -10,6 +10,8 @@ from aim.models import schemas
 from aim.models import vocabulary
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.models.locations import get_parent_by_interface
+from aim.utils import prefixed_name
+
 
 class CFBaseAlarm(CFTemplate):
     "Methods shared by different CFTemplates that can create a CloudWatch Alarm"
@@ -186,15 +188,32 @@ class CWAlarms(CFBaseAlarm):
             notification_cfn_refs = self.create_notification_params(alarm)
             alarm_export_dict['AlarmDescription'] = alarm.get_alarm_description(notification_cfn_refs)
 
-            # Namespace - if not supplied default to the Namespace for the Resource type
-            if 'Namespace' not in alarm_export_dict:
+            # Namespace
+            if not alarm.namespace:
+                # if not supplied default to the Namespace for the Resource type
                 alarm_export_dict['Namespace'] = vocabulary.cloudwatch[resource.type]['namespace']
+            else:
+                # Namespace look-up if tied to a LogGroup MetricFilter
+                if alarm.namespace.startswith('log_sets.'):
+                    obj = get_parent_by_interface(alarm, schemas.IMonitorConfig)
+                    for part_name in alarm.namespace.split('.'):
+                        new_obj = getattr(obj, part_name, None)
+                        if new_obj == None:
+                            new_obj = obj[part_name]
+                        obj = new_obj
+                    alarm_export_dict['Namespace'] = "Logs/" + prefixed_name(resource, obj.get_log_group_name(), self.aim_ctx.legacy_flag)
+                else:
+                    # Use the Namespace as directly supplied
+                    alarm_export_dict['Namespace'] = alarm.namespace
 
             # Dimensions
             # if there are no dimensions, then fallback to the default of
             # a primary dimension and the resource's resource_name
             # This only happens for Resource-level Alarms
-            if schemas.IResource.providedBy(resource) and len(alarm.dimensions) < 1:
+            # MetricFilter LogGroup Alarms must have no dimensions
+            if alarm_export_dict['Namespace'].startswith('Logs/'):
+                dimensions = []
+            elif schemas.IResource.providedBy(resource) and len(alarm.dimensions) < 1:
                 dimensions = [
                     {'Name': vocabulary.cloudwatch[resource.type]['dimension'],
                      'Value': troposphere.Ref(dimension_param)}

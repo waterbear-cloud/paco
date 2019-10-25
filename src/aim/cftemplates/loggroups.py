@@ -88,9 +88,13 @@ class LogGroups(CFTemplate):
                 }
                 mt_list = []
                 for transf in metric_filter.metric_transformations:
+                    # Provide names to the MetricNamespace which can be dynamically interpolated
+                    namespace = transf.metric_namespace.format(
+                        **{'log_group_name': prefixed_log_group_name}
+                    )
                     mts_dict = {
                         'MetricName': transf.metric_name,
-                        'MetricNamespace': transf.metric_namespace,
+                        'MetricNamespace': namespace,
                         'MetricValue': transf.metric_value
                     }
                     if type(transf.default_value) == type(float):
