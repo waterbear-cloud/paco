@@ -6,6 +6,8 @@ Changelog for aim
 
 ### Added
 
+- DBParameterGroups template.
+
 - LogGroups template adds MetricFilters if present.
 
 - Respect the `global_role_names` field for the IAM Role RoleName.

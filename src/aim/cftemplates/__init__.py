@@ -25,7 +25,7 @@ from aim.cftemplates.snstopics import SNSTopics
 from aim.cftemplates.loggroups import LogGroups
 from aim.cftemplates.cloudtrail import CloudTrail
 from aim.cftemplates.cloudfront import CloudFront
-from aim.cftemplates.rds import RDS
+from aim.cftemplates.rds import RDS, DBParameterGroup
 from aim.cftemplates.elasticache import ElastiCache
 from aim.cftemplates.vpc_peering import VPCPeering
 from aim.cftemplates.apigateway import ApiGatewayRestApi

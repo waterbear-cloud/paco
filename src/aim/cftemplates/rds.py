@@ -9,36 +9,89 @@ from aim.models import vocabulary, schemas
 from enum import Enum
 from io import StringIO
 
+class DBParameterGroup(CFTemplate):
+    def __init__(
+        self,
+        aim_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
+        grp_id,
+        resource,
+        config_ref=None
+    ):
+        super().__init__(
+            aim_ctx,
+            account_ctx,
+            aws_region,
+            enabled=resource.is_enabled(),
+            config_ref=config_ref,
+            stack_group=stack_group,
+            stack_tags=stack_tags
+        )
+        self.set_aws_name('DBParameterGroup', grp_id, resource.name)
+        self.init_template('DB Parameter Group')
+
+        # Resources
+        cfn_export_dict = {
+            'Family': resource.family,
+            'Parameters': {}
+        }
+        if resource.description != None:
+            cfn_export_dict['Description'] = resource.description
+        else:
+            cfn_export_dict['Description'] = troposphere.Ref('AWS::StackName')
+
+        for key, value in resource.parameters.items():
+            cfn_export_dict['Parameters'][key] = value
+
+        dbparametergroup_resource = troposphere.rds.DBParameterGroup.from_dict(
+            'DBParameterGroup',
+            cfn_export_dict
+        )
+        self.template.add_resource(dbparametergroup_resource)
+
+        # Outputs
+        dbparametergroup_name_output = troposphere.Output(
+            title='DBParameterGroupName',
+            Description='DB Parameter Group Name',
+            Value=troposphere.Ref(dbparametergroup_resource)
+        )
+        self.template.add_output(dbparametergroup_name_output)
+        self.register_stack_output_config(config_ref, 'DBParameterGroupName')
+        self.register_stack_output_config(config_ref + '.name', 'DBParameterGroupName')
+
+        # All done, let's go home!
+        self.set_template(self.template.to_yaml())
+
 
 class RDS(CFTemplate):
-    def __init__(self,
-                 aim_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 app_id,
-                 grp_id,
-                 res_id,
-                 rds_config,
-                 config_ref=None):
-
-        super().__init__(aim_ctx,
-                         account_ctx,
-                         aws_region,
-                         enabled=rds_config.is_enabled(),
-                         config_ref=config_ref,
-                         stack_group=stack_group,
-                         stack_tags=stack_tags)
+    def __init__(
+        self,
+        aim_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
+        app_id,
+        grp_id,
+        res_id,
+        rds_config,
+        config_ref=None
+    ):
+        super().__init__(
+            aim_ctx,
+            account_ctx,
+            aws_region,
+            enabled=rds_config.is_enabled(),
+            config_ref=config_ref,
+            stack_group=stack_group,
+            stack_tags=stack_tags
+        )
         self.set_aws_name('RDS', grp_id, res_id)
-
-        template = troposphere.Template(
-            Description = 'RDS',
-        )
-        template.set_version()
-        template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="EmptyTemplatePlaceholder")
-        )
+        self.init_template('RDS')
+        template = self.template
 
         # DB Subnet Group
         db_subnet_id_list_param = self.create_cfn_parameter(
@@ -58,14 +111,26 @@ class RDS(CFTemplate):
         )
 
         # DB Parameter Group
-        engine_major_version = '.'.join(rds_config.engine_version.split('.')[0:2])
-        param_group_family = vocabulary.rds_engine_versions[rds_config.engine][engine_major_version]['param_group_family']
-        db_param_group_res = troposphere.rds.DBParameterGroup(
-            "DBParameterGroup",
-            template = template,
-            Family=param_group_family,
-            Description=troposphere.Ref('AWS::StackName')
-        )
+        if rds_config.parameter_group == None:
+            # No Parameter Group supplied, create one
+            engine_major_version = '.'.join(rds_config.engine_version.split('.')[0:2])
+            param_group_family = vocabulary.rds_engine_versions[rds_config.engine][engine_major_version]['param_group_family']
+            dbparametergroup_ref = troposphere.rds.DBParameterGroup(
+                "DBParameterGroup",
+                template = template,
+                Family=param_group_family,
+                Description=troposphere.Ref('AWS::StackName')
+            )
+        else:
+            # Use an existing Parameter Group
+            dbparametergroup_ref = self.create_cfn_parameter(
+                name='DBParameterGroupName',
+                param_type='String',
+                description='DB Parameter Group Name',
+                value=rds_config.parameter_group + '.name',
+                use_troposphere=True
+            )
+            self.template.add_parameter(dbparametergroup_ref)
 
         # Option Group
         option_group_res = None
@@ -119,7 +184,7 @@ class RDS(CFTemplate):
                 'DBInstanceIdentifier': troposphere.Ref('AWS::StackName'),
                 'DBInstanceClass': rds_config.db_instance_type,
                 'DBSubnetGroupName': troposphere.Ref(db_subnet_group_res),
-                'DBParameterGroupName': troposphere.Ref(db_param_group_res),
+                'DBParameterGroupName': troposphere.Ref(dbparametergroup_ref),
                 'CopyTagsToSnapshot': True,
                 'AllowMajorVersionUpgrade': rds_config.allow_major_version_upgrade,
                 'AutoMinorVersionUpgrade': rds_config.auto_minor_version_upgrade,

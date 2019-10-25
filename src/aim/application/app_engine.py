@@ -7,6 +7,7 @@ import aim.cftemplates
 import os
 from aim import models
 from aim.application.ec2_launch_manager import EC2LaunchManager
+from aim.models import schemas
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
 from aim.core.yaml import YAML
@@ -178,7 +179,9 @@ class ApplicationEngine():
             return self.stack_group.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.EBS):
             return self.stack_group.get_stack_from_ref(ref)
-
-
+        elif schemas.IDBParameterGroup.providedBy(ref.resource):
+            #stack = self.stack_group.get_stack_from_ref(ref)
+            #breakpoint()
+            return self.stack_group.get_stack_from_ref(ref)
 
         return None
