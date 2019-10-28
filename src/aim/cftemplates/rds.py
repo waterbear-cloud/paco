@@ -252,13 +252,20 @@ class RDS(CFTemplate):
             template.add_resource(db_instance_res)
 
             # Outputs
+            dbname_output = troposphere.Output(
+                title='DBInstanceName',
+                Description='DB Instance Name',
+                Value=troposphere.Ref(db_instance_res)
+            )
+            template.add_output(dbname_output)
+            self.register_stack_output_config(config_ref + ".name", dbname_output.title)
+
             endpoint_address_output = troposphere.Output(
                 title='RDSEndpointAddress',
                 Description='RDS Endpoint URL',
                 Value=troposphere.GetAtt(db_instance_res, 'Endpoint.Address')
             )
             template.add_output(endpoint_address_output)
-
             self.register_stack_output_config(config_ref + ".endpoint.address", endpoint_address_output.title)
 
             if self.aim_ctx.legacy_flag('route53_record_set_2019_10_16') == True:
