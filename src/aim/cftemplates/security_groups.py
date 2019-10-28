@@ -169,13 +169,13 @@ class SecurityGroups(CFTemplate):
                 # Source and Destination
                 if sg_rule_config.cidr_ip != '':
                     rule_dict['CidrIp'] = sg_rule_config.cidr_ip
-                elif sg_rule_config.source_security_group != '':
+                elif getattr(sg_rule_config, 'source_security_group', '') != '':
                     if references.is_ref(sg_rule_config.source_security_group):
                         rule_dict['SourceSecurityGroupId'] = self.create_group_param_ref(
                             sg_rule_config.source_security_group, template)
                     else:
                         rule_dict['SourceSecurityGroupId'] = sg_rule_config.source_security_group
-                elif sg_rule_config.destination_security_group != '':
+                elif getattr(sg_rule_config, 'destination_security_group', '') != '':
                     if references.is_ref(sg_rule_config.destination_security_group):
                         rule_dict['DestinationSecurityGroupId'] = self.create_group_param_ref(
                             sg_rule_config.destination_security_group, template)
