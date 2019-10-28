@@ -258,7 +258,7 @@ class AimContext(object):
         return region
 
     def load_project(self, project_init=False):
-        "Load an AIM Project from YAML,c initialize settings and controllers, and load Service plug-ins."
+        "Load an AIM Project from YAML, initialize settings and controllers, and load Service plug-ins."
         print("Loading AIM Project at %s" % (self.home))
         self.project_folder = self.home
         if project_init == True:

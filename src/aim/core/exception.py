@@ -41,3 +41,9 @@ class StackException(AimException):
 
 class AimBucketExists(Exception):
     "S3 Bucket already exists"
+
+class UnsupportedCloudFormationParameterType(Exception):
+    "Unsupported Parameter Type"
+
+class CloudFormationParameterAimRefMissingDotExtension(Exception):
+    "Parameters with aim.ref values need to match <Name>.<OutputName> format."

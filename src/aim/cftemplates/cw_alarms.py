@@ -190,21 +190,19 @@ class CWAlarms(CFBaseAlarm):
 
             # Namespace
             if not alarm.namespace:
-                # if not supplied default to the Namespace for the Resource type
-                alarm_export_dict['Namespace'] = vocabulary.cloudwatch[resource.type]['namespace']
-            else:
-                # Namespace look-up if tied to a LogGroup MetricFilter
-                if alarm.namespace.startswith('log_sets.'):
+                if schemas.ICloudWatchLogAlarm.providedBy(alarm):
+                    # Namespace look-up for LogAlarms
                     obj = get_parent_by_interface(alarm, schemas.IMonitorConfig)
-                    for part_name in alarm.namespace.split('.'):
-                        new_obj = getattr(obj, part_name, None)
-                        if new_obj == None:
-                            new_obj = obj[part_name]
-                        obj = new_obj
-                    alarm_export_dict['Namespace'] = "Logs/" + prefixed_name(resource, obj.get_log_group_name(), self.aim_ctx.legacy_flag)
+                    log_group = obj.log_sets[alarm.log_set_name].log_groups[alarm.log_group_name]
+                    alarm_export_dict['Namespace'] = "AIM/" + prefixed_name(
+                        resource, log_group.get_log_group_name(), self.aim_ctx.legacy_flag
+                    )
                 else:
-                    # Use the Namespace as directly supplied
-                    alarm_export_dict['Namespace'] = alarm.namespace
+                    # if not supplied default to the Namespace for the Resource type
+                    alarm_export_dict['Namespace'] = vocabulary.cloudwatch[resource.type]['namespace']
+            else:
+                # Use the Namespace as directly supplied
+                alarm_export_dict['Namespace'] = alarm.namespace
 
             # Dimensions
             # if there are no dimensions, then fallback to the default of

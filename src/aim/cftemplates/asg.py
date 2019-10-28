@@ -6,6 +6,7 @@ import troposphere.policies
 from aim import utils
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.cftemplates.cftemplates import StackOutputParam
+from aim.core.exception import UnsupportedCloudFormationParameterType, CloudFormationParameterAimRefMissingDotExtension
 from aim.models import references
 from aim.models.references import Reference
 from io import StringIO
@@ -51,14 +52,8 @@ class ASG(CFTemplate):
 
 
         # Troposphere
-        template = troposphere.Template(
-            Description = 'AutoScalingGroup: ' + self.ec2_manager_cache_id,
-        )
-        template.set_version()
-        template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="EmptyTemplatePlaceholder")
-        )
-
+        self.init_template('AutoScalingGroup: ' + self.ec2_manager_cache_id)
+        template = self.template
         security_group_list_param = self.create_cfn_ref_list_param(
             param_type='List<AWS::EC2::SecurityGroup::Id>',
             name='SecurityGroupList',
@@ -68,24 +63,22 @@ class ASG(CFTemplate):
             use_troposphere=True,
             troposphere_template=template
         )
-
-
         instance_key_pair_param = self.create_cfn_parameter(
-                param_type='String',
-                name='InstanceKeyPair',
-                description='The EC2 SSH KeyPair to assign each ASG instance.',
-                value=asg_config.instance_key_pair,
-                use_troposphere=True,
-                troposphere_template=template)
-
+            param_type='String',
+            name='InstanceKeyPair',
+            description='The EC2 SSH KeyPair to assign each ASG instance.',
+            value=asg_config.instance_key_pair,
+            use_troposphere=True,
+            troposphere_template=template
+        )
         instance_ami_param = self.create_cfn_parameter(
-                param_type='String',
-                name='InstanceAMI',
-                description='The Amazon Machine Image Id to launch instances with.',
-                value=asg_config.instance_ami,
-                use_troposphere=True,
-                troposphere_template=template)
-
+            param_type='String',
+            name='InstanceAMI',
+            description='The Amazon Machine Image Id to launch instances with.',
+            value=asg_config.instance_ami,
+            use_troposphere=True,
+            troposphere_template=template
+        )
         launch_config_dict = {
             'AssociatePublicIpAddress': asg_config.associate_public_ip_address,
             'EbsOptimized': asg_config.ebs_optimized,
@@ -115,9 +108,46 @@ class ASG(CFTemplate):
         if role_profile_arn != None:
             launch_config_dict['IamInstanceProfile'] = role_profile_arn
 
+        # CloudFormation Init
+        if asg_config.cfn_init:
+            launch_config_dict['Metadata'] = troposphere.autoscaling.Metadata(
+                asg_config.cfn_init.export_as_troposphere()
+            )
+            for key, value in asg_config.cfn_init.parameters.items():
+                if type(value) == type(str()):
+                    param_type = 'String'
+                elif type(value) == type(int()) or type(value) == type(float()):
+                    param_type = 'Number'
+                else:
+                    raise UnsupportedCloudFormationParameterType(
+                        "Can not cast {} of type {} to a CloudFormation Parameter type.".format(
+                            value, type(value)
+                        )
+                    )
+                if references.is_ref(value):
+                    if key.find('.') == -1:
+                        raise CloudFormationParameterAimRefMissingDotExtension(
+                            "Parameter {} for ASG {} with an aim.ref value needs to match <Name>.<OutputName> format.".format(
+                                key, asg_config.name
+                            )
+                        )
+                    name, extension = key.split('.', 1)
+                    value = value + '.' + extension
+                    key = key.replace('.', '')
+                cfn_init_param = self.create_cfn_parameter(
+                    param_type=param_type,
+                    name=key,
+                    description='CloudFormation Init Parameter {} for ASG {}'.format(key, asg_config.name),
+                    value=value,
+                    use_troposphere=True
+                )
+                template.add_parameter(cfn_init_param)
+
+        # Launch Configuration resource
         launch_config_res = troposphere.autoscaling.LaunchConfiguration.from_dict(
             'LaunchConfiguration',
-            launch_config_dict )
+            launch_config_dict
+        )
         template.add_resource(launch_config_res)
 
         subnet_list_ref = 'aim.ref {}'.format(segment_stack.template.config_ref)
@@ -264,18 +294,18 @@ class ASG(CFTemplate):
             #)
             #asg_dict['Tags'].append(ebs_device_tag)
 
-
         asg_res = troposphere.autoscaling.AutoScalingGroup.from_dict(
-            'ASG', asg_dict )
+            'ASG',
+            asg_dict
+        )
         template.add_resource(asg_res)
         asg_res.DependsOn = launch_config_res
-
         asg_res.UpdatePolicy = troposphere.policies.UpdatePolicy(
-                AutoScalingRollingUpdate=troposphere.policies.AutoScalingRollingUpdate(
-                    MaxBatchSize=asg_config.update_policy_max_batch_size,
-                    MinInstancesInService=asg_config.update_policy_min_instances_in_service
-                )
+            AutoScalingRollingUpdate=troposphere.policies.AutoScalingRollingUpdate(
+                MaxBatchSize=asg_config.update_policy_max_batch_size,
+                MinInstancesInService=asg_config.update_policy_min_instances_in_service
             )
+        )
 
         troposphere.Output(
             title='ASGName',
@@ -377,6 +407,3 @@ class ASG(CFTemplate):
                 )
 
         self.set_template(template.to_yaml())
-
-
-

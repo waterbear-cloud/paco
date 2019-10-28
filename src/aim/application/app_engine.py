@@ -10,11 +10,8 @@ from aim.application.ec2_launch_manager import EC2LaunchManager
 from aim.models import schemas
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
-from aim.core.yaml import YAML
 from aim.stack_group import StackTags
 
-yaml=YAML()
-yaml.default_flow_sytle = False
 
 class ApplicationEngine():
     """An ApplicationEngine initializes and configures applications.

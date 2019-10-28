@@ -23,14 +23,9 @@ from aim import models, utils
 from aim.models import schemas, vocabulary
 from aim.models.locations import get_parent_by_interface
 from aim.models.references import Reference
-from aim.core.yaml import YAML
 from aim.utils import md5sum, prefixed_name
 from aim.core.exception import StackException
 from aim.core.exception import AimErrorCode
-
-yaml=YAML()
-#yaml.default_flow_sytle = False
-yaml.preserve_quotes = True
 
 
 class LaunchBundle():

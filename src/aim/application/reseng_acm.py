@@ -1,9 +1,5 @@
 import aim.cftemplates
 from aim.application.res_engine import ResourceEngine
-from aim.core.yaml import YAML
-
-yaml=YAML()
-yaml.default_flow_sytle = False
 
 class ACMResourceEngine(ResourceEngine):
 

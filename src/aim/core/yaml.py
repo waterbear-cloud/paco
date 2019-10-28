@@ -42,8 +42,8 @@ class YAML(ruamel.yaml.YAML):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        ruamel.yaml.add_constructor(u'!Ref', self.tag_constructor, constructor=ruamel.yaml.SafeConstructor)
-        ruamel.yaml.add_constructor(u'!Sub', self.tag_constructor, constructor=ruamel.yaml.SafeConstructor)
+#        ruamel.yaml.add_constructor(u'!Ref', self.tag_constructor, constructor=ruamel.yaml.SafeConstructor)
+#        ruamel.yaml.add_constructor(u'!Sub', self.tag_constructor, constructor=ruamel.yaml.SafeConstructor)
 
     def tag_constructor(self, node, arg2):
         return arg2.tag+ ' '+arg2.value
