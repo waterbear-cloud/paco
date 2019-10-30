@@ -349,7 +349,8 @@ function install_wget() {
         script_table = {
             'ec2lm_bucket_name': ec2lm_bucket_name,
             'aim_environment': self.app_engine.env_ctx.env_id,
-            'aim_network_environment': self.app_engine.env_ctx.netenv_id
+            'aim_network_environment': self.app_engine.env_ctx.netenv_id,
+            'aim_environment_ref': self.app_engine.env_ctx.config.aim_ref_parts
         }
 
         script_template = """
@@ -357,10 +358,11 @@ INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
 AVAIL_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
 REGION="$(echo \"$AVAIL_ZONE\" | sed 's/[a-z]$//')"
 export AWS_DEFAULT_REGION=$REGION
-STACK_NAME=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=aws:cloudformation:stack-name" --query 'Tags[0].Value' |tr -d '"')
-EC2_MANAGER_FOLDER='/opt/aim/EC2Manager/'
-AIM_NETWORK_ENVIRONMENT="{0[aim_network_environment]:s}"
-AIM_ENVIRONMENT="{0[aim_environment]:s}"
+EC2LM_STACK_NAME=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=aws:cloudformation:stack-name" --query 'Tags[0].Value' |tr -d '"')
+EC2LM_FOLDER='/opt/aim/EC2Manager/'
+EC2LM_AIM_NETWORK_ENVIRONMENT="{0[aim_network_environment]:s}"
+EC2LM_AIM_ENVIRONMENT="{0[aim_environment]:s}"
+EC2LM_AIM_ENVIRONMENT_REF={0[aim_environment_ref]:s}
 
 # Escape a string for sed replacements
 function sed_escape() {{
@@ -377,10 +379,10 @@ function sed_escape() {{
 
 # Launch Bundles
 function ec2lm_launch_bundles() {{
-    mkdir -p $EC2_MANAGER_FOLDER/LaunchBundles
-    aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ $EC2_MANAGER_FOLDER
+    mkdir -p $EC2LM_FOLDER/LaunchBundles
+    aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ $EC2LM_FOLDER
 
-    cd $EC2_MANAGER_FOLDER/LaunchBundles/
+    cd $EC2LM_FOLDER/LaunchBundles/
 
     echo "Loading Launch Bundles"
     for BUNDLE_PACKAGE in *.tgz
@@ -498,8 +500,18 @@ aws s3 cp s3://{0[ec2lm_bucket_name]}/$EC2LM_FUNCTIONS /tmp/$EC2LM_FUNCTIONS
 
     def user_data_secrets(self, resource, grp_id, instance_iam_role_ref):
         secrets_script = """
-function get_secret() {
+function ec2lm_get_secret() {
     aws secretsmanager get-secret-value --secret-id "$1" --query SecretString --region $REGION --output text
+}
+
+# ec2lm_replace_secret_in_file <secret id> <file> <replace pattern>
+function ec2lm_replace_secret_in_file() {
+    SECRET_ID=$1
+    SED_PATTERN=$2
+    REPLACE_FILE=$3
+    SECRET=$(ec2lm_get_secret $SECRET_ID)
+
+    sed -i -e "s/$SED_PATTERN/$SECRET/" $REPLACE_FILE
 }
 """
         policy_config_yaml = """
@@ -524,7 +536,7 @@ statement:
                 'value': secret + '.arn'
             }
             template_params.append(param)
-            secret_arn_list_yaml += "      - !Ref SecretArn" + secret_hash
+            secret_arn_list_yaml += "      - !Ref SecretArn" + secret_hash + "\n"
         policy_ref = '{}.{}.secrets.policy'.format(resource.aim_ref_parts, self.id)
         policy_id = '-'.join([resource.name, 'secrets'])
         iam_ctl = self.aim_ctx.get_controller('IAM')

@@ -417,11 +417,15 @@ Outputs:
         for target_group_id in sorted(alb_config.target_groups.keys()):
             target_config = alb_config.target_groups[target_group_id]
             target_group_table['id'] = self.create_cfn_logical_id(target_group_id)
-            target_group_table['name'] = self.create_resource_name_join(
-                name_list=[load_balancer_name, target_group_id], separator='',
-                camel_case=True, hash_long_names=True,
-                filter_id='EC2.ElasticLoadBalancingV2.TargetGroup.Name',
-            )
+
+            if self.aim_ctx.legacy_flag('target_group_name_2019_10_29') == True:
+                target_group_table['name'] = self.create_resource_name_join(
+                    name_list=[load_balancer_name, target_group_id], separator='',
+                    camel_case=True, hash_long_names=True,
+                    filter_id='EC2.ElasticLoadBalancingV2.TargetGroup.Name',
+                )
+            else:
+                target_group_table['name'] = "!Ref 'AWS::NoValue'"
             target_group_table['port'] = target_config.port
             target_group_table['protocol'] = target_config.protocol
             target_group_table['health_check_path'] = target_config.health_check_path

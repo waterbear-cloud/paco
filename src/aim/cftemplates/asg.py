@@ -12,7 +12,6 @@ from aim.models.references import Reference
 from io import StringIO
 from enum import Enum
 
-
 class ASG(CFTemplate):
     def __init__(
         self,
@@ -349,8 +348,8 @@ class ASG(CFTemplate):
                     ScalingAdjustment=scaling_policy.scaling_adjustment,
                     Cooldown=scaling_policy.cooldown
                 )
+                alarm_idx = 0
                 for alarm in scaling_policy.alarms:
-                    alarm_hash = utils.md5sum(str_data='{}'.format(alarm.__dict__))
                     dimension_list = []
                     for dimension in alarm.dimensions:
                         dimension_value = dimension.value
@@ -371,7 +370,7 @@ class ASG(CFTemplate):
                     # Alarm Resource
                     troposphere.cloudwatch.Alarm(
                         title=self.create_cfn_logical_id_join(
-                            ['ScalingPolicyAlarm', scaling_policy_name, alarm_hash],
+                            ['ScalingPolicyAlarm', scaling_policy_name, str(alarm_idx)],
                             camel_case=True
                         ),
                         template=template,
@@ -387,6 +386,7 @@ class ASG(CFTemplate):
                         Statistic=alarm.statistic,
                         Dimensions=dimension_list
                     )
+                    alarm_idx += 1
 
         if asg_config.lifecycle_hooks != None:
             for lifecycle_hook_name in asg_config.lifecycle_hooks:
