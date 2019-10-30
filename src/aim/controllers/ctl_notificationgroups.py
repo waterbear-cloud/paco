@@ -108,19 +108,19 @@ class NotificationGroupsController(Controller):
         for stackgroup in self.ng_stackgroups.values():
             stackgroup.provision()
 
-        # Save to Outputs/MonitorConfig/NotificationGroups.yaml file
-        regional_output = { 'notificationgroups': {} }
-        for stackgroup in self.ng_stackgroups.values():
-            regional_output['notificationgroups'][stackgroup.region] = stackgroup.stacks[0].output_config_dict['notificationgroups']
-        resources_config_path = os.path.join(
-            self.aim_ctx.project_folder,
-            'Outputs',
-            'Resources'
-        )
-        pathlib.Path(resources_config_path).mkdir(parents=True, exist_ok=True)
-        resources_config_yaml_path = os.path.join(resources_config_path, 'NotificationGroups.yaml')
-        with open(resources_config_yaml_path, "w") as output_fd:
-            yaml.dump(data=regional_output, stream=output_fd)
+        # # Save to Outputs/MonitorConfig/NotificationGroups.yaml file
+        # regional_output = { 'notificationgroups': {} }
+        # for stackgroup in self.ng_stackgroups.values():
+        #     regional_output['notificationgroups'][stackgroup.region] = stackgroup.stacks[0].output_config_dict['notificationgroups']
+        # resources_config_path = os.path.join(
+        #     self.aim_ctx.project_folder,
+        #     'Outputs',
+        #     'Resources'
+        # )
+        # pathlib.Path(resources_config_path).mkdir(parents=True, exist_ok=True)
+        # resources_config_yaml_path = os.path.join(resources_config_path, 'NotificationGroups.yaml')
+        # with open(resources_config_yaml_path, "w") as output_fd:
+        #     yaml.dump(data=regional_output, stream=output_fd)
 
     def delete(self):
         "Delete"
