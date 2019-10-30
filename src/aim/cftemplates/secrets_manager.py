@@ -30,14 +30,14 @@ class SecretsManager(CFTemplate):
 
         self.aim_ctx.log_action_col("Init", "Secrets", "Manager")
 
-        is_enabled = True
+        is_enabled = False
         for secret_app in secrets_config.values():
             for secret_group in secret_app.values():
                 for secret_name in secret_group.keys():
                     secret_config = secret_group[secret_name]
                     if secret_config.is_enabled() == False:
-                        is_enabled = False
                         continue
+                    is_enabled = True
                     secret_hash = utils.md5sum(str_data=secret_config.aim_ref_parts)
                     secret_res = troposphere.secretsmanager.Secret(
                         title=self.create_cfn_logical_id('Secret'+secret_hash),
