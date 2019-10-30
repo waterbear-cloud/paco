@@ -727,7 +727,10 @@ class CFTemplate():
     ):
         "Register stack output config"
         if config_ref.startswith('aim.ref'):
-            raise AimException(AimErrorCode.Unknown, message='Registered stack output config reference must not start with aim.ref: '+config_ref)
+            raise AimException(
+                AimErrorCode.Unknown,
+                message='Registered stack output config reference must not start with aim.ref: ' + config_ref
+            )
         stack_output_config = StackOutputConfig(config_ref, stack_output_key)
         self.stack_output_config_list.append(stack_output_config)
 
@@ -925,6 +928,7 @@ class CFTemplate():
 
     def create_cfn_logical_id(self, name, camel_case=False):
         "The logical ID must be alphanumeric (A-Za-z0-9) and unique within the template."
+        # Duplicated in aim.models.base.Resource
         return self.create_resource_name(name, remove_invalids=True, camel_case=camel_case).replace('-', '')
 
     def create_cfn_logical_id_join(self, str_list, camel_case=False):
@@ -932,9 +936,18 @@ class CFTemplate():
         return self.create_cfn_logical_id(logical_id, camel_case=camel_case)
 
     def create_cfn_parameter(
-        self, param_type, name, description, value,
-        default=None, noecho=False, use_troposphere=False,
-        troposphere_template=None):
+        self,
+        param_type,
+        name,
+        description,
+        value,
+        default=None,
+        noecho=False,
+        use_troposphere=False,
+        troposphere_template=None,
+        min_length=None,
+        max_length=None
+    ):
         """Return a CloudFormation Parameter
         """
         if default == '':
@@ -974,7 +987,10 @@ class CFTemplate():
                 param_dict['Default'] = default
             if noecho == True:
                 param_dict['NoEcho'] = True
-
+            if min_length != None:
+                param_dict['MinLength'] = min_length
+            if max_length != None:
+                param_dict['MaxLength'] = max_length
             param = troposphere.Parameter.from_dict(
                 name,
                 param_dict

@@ -12,7 +12,7 @@ from aim.models import vocabulary
 from aim.models.references import Reference
 from aim.models import references
 from aim.models import load_project_from_yaml
-from aim.models.loader import read_yaml_file
+from aim.core.yaml import read_yaml_file
 from shutil import copyfile
 
 # deepdiff turns on Deprecation warnings, we need to turn them back off

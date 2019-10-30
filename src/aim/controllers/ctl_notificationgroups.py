@@ -65,33 +65,38 @@ class NotificationGroupsController(Controller):
             self.init_done = True
             return
         self.init_done = False
-        self.active_regions = self.aim_ctx.project.active_regions
-        self.groups.resolve_ref_obj = self # inject the controller into the model
 
     def init(self, init_config):
+        "Initialize controller"
         if self.init_done:
             return
-        self.init_done = True
+        # inject the controller into the model
+        self.groups.resolve_ref_obj = self
         stack_tags = StackTags()
-        self.config = self.aim_ctx.project['resource']['notificationgroups']
-        self.account_ctx = self.aim_ctx.get_account_context(account_ref=self.config.account)
-        self.config_ref = 'notificationgroups'
+        self.account_ctx = self.aim_ctx.get_account_context(account_ref=self.groups.account)
+
+        if self.groups.regions == ['ALL']:
+            self.active_regions = self.aim_ctx.project.active_regions
+        else:
+            self.active_regions = self.groups.regions
 
         # create a NotificationGroup stack group for each active region
         self.ng_stackgroups = {}
         for region in self.active_regions:
+            config_ref = self.groups[region].aim_ref_parts
             stackgroup = NotificationGroupsStackGroup(
                 self.aim_ctx,
                 self.account_ctx,
                 region,
                 'SNS',
                 self,
-                self.config_ref,
-                self.config[region],
+                config_ref,
+                self.groups[region],
                 StackTags(stack_tags)
             )
             self.ng_stackgroups[region] = stackgroup
             stackgroup.init()
+        self.init_done = True
 
     def validate(self):
         "Validate"
@@ -124,14 +129,9 @@ class NotificationGroupsController(Controller):
 
     def resolve_ref(self, ref):
         # ToDo: only resolves .arn refs
-        stackgroup = self.ng_stackgroups[ref.parts[2]]
-        stack = stackgroup.stacks[0]
-        output_id = stack.template.create_cfn_logical_id('SNSTopicArn' + ref.parts[3])
-        try:
-            return stack.get_outputs_value(output_id)
-        except StackException:
-             # ToDo: this get tripped during initialization for applications that
-             # depend upon notification, e.g. `aim provision notificationgroups` then
-             # an application has alarms that need notification outputs is initialized:
-             # `aim provsion service notification`
-             return ''
+        if ref.last_part == 'arn':
+            stackgroup = self.ng_stackgroups[ref.parts[2]]
+            stack = stackgroup.get_stack_from_ref(ref)
+            return stack
+        else:
+            return None

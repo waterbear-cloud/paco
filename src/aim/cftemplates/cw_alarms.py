@@ -38,11 +38,12 @@ class CFBaseAlarm(CFTemplate):
                 notification_param = self.notification_param_map[param_name]
             else:
                 notification_param = self.create_cfn_parameter(
-                    param_type = 'String',
-                    name = param_name,
-                    description = 'SNS Topic to notify',
-                    value = notification_aim_ref,
-                    use_troposphere = True
+                    param_type='String',
+                    name=param_name,
+                    description='SNS Topic to notify',
+                    value=notification_aim_ref,
+                    min_length=1, # prevent borked empty values from breaking notification
+                    use_troposphere=True
                 )
                 self.template.add_parameter(notification_param)
                 self.notification_param_map[param_name] = notification_param
@@ -59,11 +60,11 @@ class CFBaseAlarm(CFTemplate):
                 alarm_action_param = self.alarm_action_param_map[param_name]
             else:
                 alarm_action_param = self.create_cfn_parameter(
-                    param_type = 'String',
-                    name = param_name,
-                    description = 'SNSTopic for Alarm to notify.',
-                    value = alarm_action,
-                    use_troposphere = True
+                    param_type='String',
+                    name=param_name,
+                    description='SNSTopic for Alarm to notify.',
+                    value=alarm_action,
+                    use_troposphere=True
                 )
                 self.template.add_parameter(alarm_action_param)
                 self.alarm_action_param_map[param_name] = alarm_action_param

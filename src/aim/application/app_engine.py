@@ -177,8 +177,6 @@ class ApplicationEngine():
         elif isinstance(ref.resource, models.applications.EBS):
             return self.stack_group.get_stack_from_ref(ref)
         elif schemas.IDBParameterGroup.providedBy(ref.resource):
-            #stack = self.stack_group.get_stack_from_ref(ref)
-            #breakpoint()
             return self.stack_group.get_stack_from_ref(ref)
 
         return None

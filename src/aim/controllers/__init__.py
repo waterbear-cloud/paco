@@ -8,7 +8,6 @@ from aim.controllers.ctl_account import AccountController
 from aim.controllers.ctl_project import ProjectController
 from aim.controllers.ctl_ec2 import EC2Controller
 from aim.controllers.ctl_cloudwatch import CloudWatchController
-from aim.controllers.ctl_lambda import LambdaController
 from aim.controllers.ctl_notificationgroups import NotificationGroupsController
 from aim.controllers.ctl_cloudtrail import CloudTrailController
 
@@ -23,7 +22,6 @@ klass = {
     'project': ProjectController,
     'ec2': EC2Controller,
     'cloudwatch': CloudWatchController,
-    'lambda': LambdaController,
     'notificationgroups': NotificationGroupsController,
     'cloudtrail': CloudTrailController,
 }

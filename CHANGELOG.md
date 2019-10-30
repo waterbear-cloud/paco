@@ -91,6 +91,7 @@ Changelog for aim
 
 - AWS session caching was not properly caching.
 
+- NotificationGroups controller was not setting up refs correctly, nor resolving them correctly.
 
 3.0.0 (2019-09-27)
 ------------------
