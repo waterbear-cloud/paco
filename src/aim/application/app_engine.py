@@ -178,5 +178,7 @@ class ApplicationEngine():
             return self.stack_group.get_stack_from_ref(ref)
         elif schemas.IDBParameterGroup.providedBy(ref.resource):
             return self.stack_group.get_stack_from_ref(ref)
+        elif schemas.IElastiCache.providedBy(ref.resource):
+            return self.stack_group.get_stack_from_ref(ref)
 
         return None

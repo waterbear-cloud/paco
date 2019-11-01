@@ -40,6 +40,12 @@ class ElastiCache(CFTemplate):
         )
         self.set_aws_name('ElastiCache', grp_id, res_id, elasticache_config.engine )
 
+        # Troposphere Template Generation
+        self.init_template('ElastiCache: {} - {}'.format(
+            elasticache_config.engine,
+            elasticache_config.engine_version
+        ))
+
         if elasticache_config.is_enabled() == True:
             # Security Groups
             sg_params = []
@@ -56,6 +62,8 @@ class ElastiCache(CFTemplate):
                 )
                 sg_params.append(sg_param)
                 vpc_sg_list.append(troposphere.Ref(sg_param))
+            for sg_param in sg_params:
+                self.template.add_parameter(sg_param)
 
             # Subnet Ids
             subnet_ids_param = self.create_cfn_parameter(
@@ -65,6 +73,7 @@ class ElastiCache(CFTemplate):
                 value=elasticache_config.segment+'.subnet_id_list',
                 use_troposphere=True
             )
+            self.template.add_parameter(subnet_ids_param)
 
             # ElastiCache Subnet Group
             subnet_group_dict = {
@@ -75,6 +84,7 @@ class ElastiCache(CFTemplate):
                 'SubnetGroup',
                 subnet_group_dict
             )
+            self.template.add_resource(subnet_group_res)
 
             # ElastiCache Resource
             elasticache_dict = elasticache_config.cfn_export_dict
@@ -90,18 +100,41 @@ class ElastiCache(CFTemplate):
                 cfn_cache_cluster_name,
                 elasticache_dict
             )
-
-        # Troposphere Template Generation
-        self.init_template('ElastiCache: {} - {}'.format(
-            elasticache_config.engine,
-            elasticache_config.engine_version
-        ))
-        if elasticache_config.is_enabled() == True:
-            for sg_param in sg_params:
-                self.template.add_parameter(sg_param)
-            self.template.add_parameter(subnet_ids_param)
-            self.template.add_resource(subnet_group_res)
             self.template.add_resource(cache_cluster_res)
+
+            # Outputs
+            primaryendpoint_address_output = troposphere.Output(
+                title='PrimaryEndPointAddress',
+                Description='ElastiCache PrimaryEndpoint Address',
+                Value=troposphere.GetAtt(cache_cluster_res, 'PrimaryEndPoint.Address')
+            )
+            self.template.add_output(primaryendpoint_address_output)
+            self.register_stack_output_config(config_ref + ".primaryendpoint.address", primaryendpoint_address_output.title)
+
+            primaryendpoint_port_output = troposphere.Output(
+                title='PrimaryEndPointPort',
+                Description='ElastiCache PrimaryEndpoint Port',
+                Value=troposphere.GetAtt(cache_cluster_res, 'PrimaryEndPoint.Port')
+            )
+            self.template.add_output(primaryendpoint_port_output)
+            self.register_stack_output_config(config_ref + ".primaryendpoint.port", primaryendpoint_port_output.title)
+
+            readendpoint_addresses_output = troposphere.Output(
+                title='ReadEndPointAddresses',
+                Description='ElastiCache ReadEndpoint Addresses',
+                Value=troposphere.GetAtt(cache_cluster_res, 'ReadEndPoint.Addresses')
+            )
+            self.template.add_output(readendpoint_addresses_output)
+            self.register_stack_output_config(config_ref + ".readendpoint.addresses", readendpoint_addresses_output.title)
+
+            readendpoint_ports_output = troposphere.Output(
+                title='ReadEndPointPorts',
+                Description='ElastiCache ReadEndpoint Ports',
+                Value=troposphere.GetAtt(cache_cluster_res, 'ReadEndPoint.Ports')
+            )
+            self.template.add_output(readendpoint_ports_output)
+            self.register_stack_output_config(config_ref + ".readendpoint.ports", readendpoint_ports_output.title)
+
         else:
             # There is no way to stop a cluster, it must be removed.
             # Leave a dummy resource to allow the stack to delete
