@@ -20,6 +20,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             'arn': None,
             'name': None,
         }
+        self.codecommit_role_name = 'codecommit_role'
         self.source_stage = None
 
     def init_stage(self, stage_config):
@@ -184,14 +185,14 @@ policies:
             'artifact_bucket_arn': self.artifacts_bucket_meta['arn']
         }
         role_config_dict = yaml.load(role_yaml.format(role_table))
-        codecommit_iam_role_config = models.iam.Role()
+        codecommit_iam_role_config = models.iam.Role(self.codecommit_role_name, action_config)
         codecommit_iam_role_config.apply_config(role_config_dict)
         codecommit_iam_role_config.enabled = action_config.is_enabled()
 
         iam_ctl = self.aim_ctx.get_controller('IAM')
         # The ID to give this role is: group.resource.instance_iam_role
-        codecommit_iam_role_id = self.gen_iam_role_id(self.res_id, 'codecommit_role')
-        self.artifacts_bucket_policy_resource_arns.append("aim.sub '${%s}'" % (action_config.aim_ref + '.codecommit_role.arn'))
+        codecommit_iam_role_id = self.gen_iam_role_id(self.res_id, self.codecommit_role_name)
+        self.artifacts_bucket_policy_resource_arns.append("aim.sub '${%s.%s.arn}'" % (action_config.aim_ref, self.codecommit_role_name))
         # IAM Roles Parameters
         iam_role_params = [
             {
@@ -203,7 +204,7 @@ policies:
         ]
         codecommit_account_ref = self.aim_ctx.get_ref(action_config.codecommit_repository+'.account')
         codecommit_account_ctx = self.aim_ctx.get_account_context(codecommit_account_ref)
-        codecommit_iam_role_ref = '{}.codecommit_role'.format(action_config.aim_ref_parts)
+        codecommit_iam_role_ref = '{}.{}'.format(action_config.aim_ref_parts, self.codecommit_role_name)
         iam_ctl.add_role(
             aim_ctx=self.aim_ctx,
             account_ctx=codecommit_account_ctx,
@@ -258,7 +259,7 @@ policies:
         }
 
         role_config_dict = yaml.load(role_yaml.format(role_table))
-        role_config = models.iam.Role()
+        role_config = models.iam.Role('delegate', action_config)
         role_config.apply_config(role_config_dict)
         role_config.enabled = action_config.is_enabled()
 
@@ -359,7 +360,7 @@ policies:
                 return ref.resource._template.get_codepipeline_role_arn()
         elif schemas.IDeploymentPipelineSourceCodeCommit.providedBy(ref.resource):
             # CodeCommit
-            if ref.resource_ref == 'codecommit_role.arn':
+            if ref.resource_ref == self.codecommit_role_name+'.arn':
                 iam_ctl = self.aim_ctx.get_controller("IAM")
                 return iam_ctl.role_arn(ref.raw[:-4])
             elif ref.resource_ref == 'codecommit.arn':

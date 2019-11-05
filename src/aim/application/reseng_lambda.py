@@ -10,13 +10,14 @@ class LambdaResourceEngine(ResourceEngine):
 
     def init_resource(self):
         # Create function execution role
+        role_name = 'iam_role'
         if self.resource.iam_role.enabled == False:
             role_config_yaml = """
 instance_profile: false
 path: /
 role_name: %s""" % ("LambdaFunction")
             role_config_dict = yaml.load(role_config_yaml)
-            role_config = models.iam.Role()
+            role_config = models.iam.Role(role_name, self.resource)
             role_config.apply_config(role_config_dict)
         else:
             role_config = self.resource.iam_role
@@ -50,8 +51,8 @@ statement:
             role_config.add_policy(yaml.load(vpc_config_policy))
 
         # The ID to give this role is: group.resource.iam_role
-        iam_role_ref = self.resource.aim_ref_parts + '.iam_role'
-        iam_role_id = self.gen_iam_role_id(self.res_id, 'iam_role')
+        iam_role_ref = self.resource.aim_ref_parts + '.' + role_name
+        iam_role_id = self.gen_iam_role_id(self.res_id, role_name)
         # If no assume policy has been added, force one here since we know its
         # a Lambda function using it.
         # Set defaults if assume role policy was not explicitly configured

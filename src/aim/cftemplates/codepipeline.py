@@ -367,7 +367,7 @@ class CodePipeline(CFTemplate):
                 param_type='String',
                 name='ManualApprovalNotificationEmail'+email_hash,
                 description='Email to send notifications to when a deployment requires approval.',
-                value=action_config.manual_approval_notification_email,
+                value=approval_email,
                 use_troposphere=True,
                 troposphere_template=template,
             )

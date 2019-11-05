@@ -42,7 +42,7 @@ class SecretsManager(CFTemplate):
                     cfn_export_dict = {
                         'Name': secret_config.aim_ref_parts
                     }
-                    if secret_config.generate_secret_string:
+                    if secret_config.generate_secret_string.enabled:
                         cfn_export_dict['GenerateSecretString'] = secret_config.generate_secret_string.cfn_export_dict
                     else:
                         # Secret will be changed later
