@@ -13,8 +13,8 @@ class SecretsManager(CFTemplate):
         stack_group,
         stack_tags,
         secrets_config,
-        config_ref):
-        #aim_ctx.log("Route53 CF Template init")
+        config_ref
+    ):
         super().__init__(
             aim_ctx,
             account_ctx,
@@ -25,9 +25,7 @@ class SecretsManager(CFTemplate):
             stack_tags=stack_tags
         )
         self.set_aws_name('SecretsManager')
-
         self.init_template('Secrets Manager')
-
         self.aim_ctx.log_action_col("Init", "Secrets", "Manager")
 
         is_enabled = False
@@ -39,20 +37,34 @@ class SecretsManager(CFTemplate):
                         continue
                     is_enabled = True
                     secret_hash = utils.md5sum(str_data=secret_config.aim_ref_parts)
-                    secret_res = troposphere.secretsmanager.Secret(
-                        title=self.create_cfn_logical_id('Secret'+secret_hash),
-                        template=self.template,
-                        Name=secret_config.aim_ref_parts,
-                        SecretString='placeholder' # Will be changed later
+
+                    # Secret resource
+                    cfn_export_dict = {
+                        'Name': secret_config.aim_ref_parts
+                    }
+                    if secret_config.generate_secret_string:
+                        cfn_export_dict['GenerateSecretString'] = secret_config.generate_secret_string.cfn_export_dict
+                    else:
+                        # Secret will be changed later
+                        cfn_export_dict['SecretString'] = 'placeholder'
+                    secret_resource = troposphere.secretsmanager.Secret.from_dict(
+                        self.create_cfn_logical_id('Secret' + secret_hash),
+                        cfn_export_dict
                     )
-                    secret_arn_output_logical_id = self.create_cfn_logical_id('Secret'+secret_hash+'Arn')
+                    self.template.add_resource(secret_resource)
+
+                    # Secret resource Output
+                    secret_arn_output_logical_id = self.create_cfn_logical_id('Secret' + secret_hash + 'Arn')
                     self.template.add_output(
                         troposphere.Output(
                             title=secret_arn_output_logical_id,
-                            Value=troposphere.Ref(secret_res)
+                            Value=troposphere.Ref(secret_resource)
                         )
                     )
-                    self.register_stack_output_config(secret_config.aim_ref_parts+'.arn', secret_arn_output_logical_id)
+                    self.register_stack_output_config(
+                        secret_config.aim_ref_parts + '.arn',
+                        secret_arn_output_logical_id
+                    )
 
         self.enabled = is_enabled
         self.set_template(self.template.to_yaml())

@@ -2,7 +2,7 @@ import base64
 import os
 import troposphere
 import troposphere.rds
-
+import troposphere.secretsmanager
 from aim import utils
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.models import vocabulary, schemas
@@ -92,6 +92,8 @@ class RDS(CFTemplate):
         self.set_aws_name('RDS', grp_id, res_id)
         self.init_template('RDS')
         template = self.template
+
+        rds_logical_id = 'PrimaryDBInstance'
 
         # DB Subnet Group
         db_subnet_id_list_param = self.create_cfn_parameter(
@@ -234,21 +236,46 @@ class RDS(CFTemplate):
 
             # Username and Passsword
             if db_snapshot_id_enabled == False:
-                master_password_param = self.create_cfn_parameter(
-                    param_type='String',
-                    name='MasterUserPassword',
-                    description='The master user password.',
-                    value=rds_config.master_user_password,
-                    noecho=True,
-                    use_troposphere=True,
-                    troposphere_template=template
-                )
                 db_instance_dict['MasterUsername'] = rds_config.master_username
-                db_instance_dict['MasterUserPassword'] = troposphere.Ref(master_password_param)
+                if rds_config.secrets_password:
+                    # Password from Secrets Manager
+                    sta_logical_id = 'SecretTargetAttachmentRDS'
+                    secret_arn_param = self.create_cfn_parameter(
+                        param_type='String',
+                        name='RDSSecretARN',
+                        description='The ARN for the secret for the RDS master password.',
+                        value=rds_config.secrets_password + '.arn',
+                        use_troposphere=True
+                    )
+                    template.add_parameter(secret_arn_param)
+                    secret_target_attachment_resource = troposphere.secretsmanager.SecretTargetAttachment(
+                        title=sta_logical_id,
+                        SecretId=troposphere.Ref(secret_arn_param),
+                        TargetId=troposphere.Ref(rds_logical_id),
+                        TargetType='AWS::RDS::DBInstance'
+                    )
+                    template.add_resource(secret_target_attachment_resource)
+
+                    db_instance_dict['MasterUserPassword'] = troposphere.Join(
+                        '',
+                        ['{{resolve:secretsmanager:', troposphere.Ref(secret_arn_param), ':SecretString:password}}' ]
+                    )
+                else:
+                    master_password_param = self.create_cfn_parameter(
+                        param_type='String',
+                        name='MasterUserPassword',
+                        description='The master user password.',
+                        value=rds_config.master_user_password,
+                        noecho=True,
+                        use_troposphere=True,
+                        troposphere_template=template
+                    )
+                    db_instance_dict['MasterUserPassword'] = troposphere.Ref(master_password_param)
 
             db_instance_res = troposphere.rds.DBInstance.from_dict(
-                'PrimaryDBInstance',
-                db_instance_dict )
+                rds_logical_id,
+                db_instance_dict
+            )
             template.add_resource(db_instance_res)
 
             # Outputs
