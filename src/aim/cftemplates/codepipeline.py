@@ -1,5 +1,6 @@
 import os
 from aim.cftemplates.cftemplates import CFTemplate
+from aim import utils
 import troposphere
 import troposphere.codepipeline
 import troposphere.codebuild
@@ -359,26 +360,30 @@ class CodePipeline(CFTemplate):
     def init_manual_approval_action(self, template, action_config):
         self.manual_approval_is_enabled = action_config.is_enabled()
         # Manual Approval Deploy Action
-        manual_approval_notification_email_param = self.create_cfn_parameter(
-            param_type='String',
-            name='ManualApprovalNotificationEmail',
-            description='Email to send notifications to when a deployment requires approval.',
-            value=action_config.manual_approval_notification_email,
-            use_troposphere=True,
-            troposphere_template=template,
-        )
+        subscription_list = []
+        for approval_email in action_config.manual_approval_notification_email:
+            email_hash = utils.md5sum(str_data=approval_email)
+            manual_approval_notification_email_param = self.create_cfn_parameter(
+                param_type='String',
+                name='ManualApprovalNotificationEmail'+email_hash,
+                description='Email to send notifications to when a deployment requires approval.',
+                value=action_config.manual_approval_notification_email,
+                use_troposphere=True,
+                troposphere_template=template,
+            )
+            subscription_list.append(
+                troposphere.sns.Subscription(
+                    Endpoint=troposphere.Ref(manual_approval_notification_email_param),
+                    Protocol = 'email'
+                )
+            )
 
         manual_approval_sns_res = troposphere.sns.Topic(
             title = 'ManualApprovalSNSTopic',
             template=template,
             Condition = 'ManualApprovalIsEnabled',
             TopicName = troposphere.Sub('${ResourceNamePrefix}-Approval'),
-            Subscription = [
-                troposphere.sns.Subscription(
-                    Endpoint=troposphere.Ref(manual_approval_notification_email_param),
-                    Protocol = 'email'
-                )
-            ]
+            Subscription = subscription_list
         )
         manual_deploy_action = troposphere.codepipeline.Actions(
             Name='Approval',

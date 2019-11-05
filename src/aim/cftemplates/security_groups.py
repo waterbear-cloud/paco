@@ -150,7 +150,8 @@ class SecurityGroups(CFTemplate):
                     'Description': None
                 }
                 # Rule Name
-                sg_rule_hash = utils.md5sum(str_data='{}'.format(sg_rule_config.__dict__))[:8].upper()
+                sg_rule_hash = sg_rule_config.obj_hash()[:8].upper()
+                #sg_rule_hash = utils.md5sum(str_data='{}'.format(sg_rule_config.__dict__))[:8].upper()
                 rule_name = self.create_cfn_logical_id(sg_name + sg_rule_hash + sg_rule_type + sg_rule_config.name)
                 # FromPort and ToPort
                 if sg_rule_config.port != -1:
