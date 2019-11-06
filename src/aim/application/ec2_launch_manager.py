@@ -449,7 +449,7 @@ echo "CacheId: {0[cache_id]}"
 {0[install_aws_cli]}
 
 EC2LM_FUNCTIONS=ec2lm_functions.bash
-aws s3 cp s3://{0[ec2lm_bucket_name]}/$EC2LM_FUNCTIONS /tmp/$EC2LM_FUNCTIONS
+aws s3 cp s3://{0[ec2lm_bucket_name]}/$EC2LM_FUNCTIONS --region={0[region]} /tmp/$EC2LM_FUNCTIONS
 . /tmp/$EC2LM_FUNCTIONS
 
 {0[launch_bundles]}
@@ -471,7 +471,8 @@ aws s3 cp s3://{0[ec2lm_bucket_name]}/$EC2LM_FUNCTIONS /tmp/$EC2LM_FUNCTIONS
             'install_aws_cli': vocabulary.user_data_script['install_aws_cli'][resource.instance_ami_type],
             'launch_bundles': 'echo "No launch bundles to load."\n',
             'update_packages': '',
-            'pre_script': ''
+            'pre_script': '',
+            'region': resource.region_name
         }
         # Launch Bundles
         if len(self.launch_bundles.keys()) > 0:
@@ -620,10 +621,16 @@ statement:
 
     def lb_add_cfn_init(self, resource):
         """Creates a launch bundle to download and run cfn-init"""
-        if resource.launch_options.cfn_init_config_sets == None or \
-            resource.launch_options == None or \
+        # Check if this bundle is enabled with config such as:
+        #  asg:
+        #    launch_options:
+        #      cfn_init_config_sets:
+        #        - SomeSet
+        if resource.launch_options == None or \
+            resource.launch_options.cfn_init_config_sets == None or \
             len(resource.launch_options.cfn_init_config_sets) == 0:
             return
+
         # TODO: Add ubuntu and other distro support
         launch_script = """#!/bin/bash
 . /opt/aim/EC2Manager/ec2lm_functions.bash
