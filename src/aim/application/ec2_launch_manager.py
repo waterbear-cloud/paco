@@ -350,7 +350,8 @@ function install_wget() {
             'ec2lm_bucket_name': ec2lm_bucket_name,
             'aim_environment': self.app_engine.env_ctx.env_id,
             'aim_network_environment': self.app_engine.env_ctx.netenv_id,
-            'aim_environment_ref': self.app_engine.env_ctx.config.aim_ref_parts
+            'aim_environment_ref': self.app_engine.env_ctx.config.aim_ref_parts,
+            'aws_account_id': self.account_ctx.id
         }
 
         script_template = """
@@ -358,6 +359,7 @@ INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
 AVAIL_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
 REGION="$(echo \"$AVAIL_ZONE\" | sed 's/[a-z]$//')"
 export AWS_DEFAULT_REGION=$REGION
+EC2LM_AWS_ACCOUNT_ID="{0[aws_account_id]:s}"
 EC2LM_STACK_NAME=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=aws:cloudformation:stack-name" --query 'Tags[0].Value' |tr -d '"')
 EC2LM_FOLDER='/opt/aim/EC2Manager/'
 EC2LM_AIM_NETWORK_ENVIRONMENT="{0[aim_network_environment]:s}"
