@@ -618,6 +618,40 @@ statement:
         self.add_bundle_to_s3_bucket(bundle)
         self.launch_bundles[bundle.s3_bucket_ref].append(bundle)
 
+    def lb_add_cfn_init(self, resource):
+        """Creates a launch bundle to download and run cfn-init"""
+        if resource.launch_options.cfn_init_config_sets == None or \
+            resource.launch_options == None or \
+            len(resource.launch_options.cfn_init_config_sets) == 0:
+            return
+        # TODO: Add ubuntu and other distro support
+        launch_script = """#!/bin/bash
+. /opt/aim/EC2Manager/ec2lm_functions.bash
+%s
+/opt/aim/bin/cfn-init --stack=$EC2LM_STACK_NAME --resource=LaunchConfiguration --region=$REGION --configsets=%s
+""" % (
+    vocabulary.user_data_script['install_cfn_init'][resource.instance_ami_type],
+    ','.join(resource.launch_options.cfn_init_config_sets)
+)
+
+        # Create the Launch Bundle and configure it
+        app_name = get_parent_by_interface(resource, schemas.IApplication).name
+        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
+        cfn_init_lb = LaunchBundle(
+            self.aim_ctx,
+            "cfn-init",
+            self,
+            app_name,
+            group_name,
+            resource.name,
+            resource,
+            self.bucket_id(resource.name)
+        )
+        cfn_init_lb.set_launch_script(launch_script)
+
+        # Save Configuration
+        self.add_bundle(cfn_init_lb)
+
     def lb_add_efs_mounts(self, instance_iam_role_ref, resource):
         """Creates a launch bundle to configure EFS mounts:
 

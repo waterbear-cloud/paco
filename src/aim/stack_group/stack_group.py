@@ -518,10 +518,10 @@ class Stack():
             self.log_action("Provision", "Protected")
             return
         self.action = "update"
-        self.log_action("Provision", "Update")
         stack_parameters = self.template.generate_stack_parameters()
         self.template.confirm_stack_parameter_changes(stack_parameters)
         self.template.validate_template_changes()
+        self.log_action("Provision", "Update")
 
         if True == False and self.aim_ctx.yes == False:
             print("A Stack is about to be modified: {}".format(self.get_name()))

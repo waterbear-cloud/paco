@@ -118,7 +118,8 @@ class ProjectController(Controller):
         print("aws_default_region: " + self.credentials['aws_default_region'])
         self.credentials['aws_access_key_id']         = self.aim_ctx.input("aws_access_key_id")
         self.credentials['aws_secret_access_key']     = self.aim_ctx.input("aws_secret_access_key")
-        self.credentials['master_admin_iam_username'] = self.project_context['master_admin_iam_username']
+        self.credentials['master_admin_iam_username'] = self.aim_ctx.input("master_admin_iam_username")
+        self.credentials['admin_iam_role_name'] = self.aim_ctx.input("admin_iam_role_name")
         self.credentials['mfa_session_expiry_secs'] = 43200
         self.credentials['assume_role_session_expiry_secs'] = 3600
 
