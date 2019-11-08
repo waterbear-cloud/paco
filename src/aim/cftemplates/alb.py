@@ -1,46 +1,74 @@
 import os
+import troposphere
+import troposphere.elasticloadbalancingv2
 from aim.cftemplates.cftemplates import CFTemplate
-
 from aim.cftemplates.cftemplates import StackOutputParam
-from aim.models.references import Reference
+from aim.models.references import Reference, get_model_obj_from_ref
 from io import StringIO
 from enum import Enum
 from pprint import pprint
 
 
 class ALB(CFTemplate):
-    def __init__(self, aim_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 env_ctx,
-                 app_id,
-                 grp_id,
-                 alb_id,
-                 alb_config,
-                 alb_config_ref):
-        #aim_ctx.log("ALB CF Template init")
+    def __init__(
+        self,
+        aim_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
+        env_ctx,
+        app_id,
+        grp_id,
+        alb_id,
+        alb_config,
+        alb_config_ref
+    ):
         self.env_ctx = env_ctx
         self.alb_config_ref = alb_config_ref
         segment_stack = self.env_ctx.get_segment_stack(alb_config.segment)
-
-        super().__init__(aim_ctx=aim_ctx,
-                         account_ctx=account_ctx,
-                         aws_region=aws_region,
-                         enabled=alb_config.is_enabled(),
-                         config_ref=alb_config_ref,
-                         stack_group=stack_group,
-                         stack_tags=stack_tags,
-                         environment_name=self.env_ctx.env_id)
+        super().__init__(
+            aim_ctx=aim_ctx,
+            account_ctx=account_ctx,
+            aws_region=aws_region,
+            enabled=alb_config.is_enabled(),
+            config_ref=alb_config_ref,
+            stack_group=stack_group,
+            stack_tags=stack_tags,
+            environment_name=self.env_ctx.env_id
+        )
         self.set_aws_name('ALB', grp_id, alb_id)
 
-        # Initialize Parameters
-        self.set_parameter('ALBEnabled', alb_config.is_enabled())
+        # Init Troposphere template
+        self.init_template('Load Balancer')
+
+        # Parameters
+        alb_is_enabled_param = self.create_cfn_parameter(
+            param_type='String',
+            name='ALBEnabled',
+            description='Enable the ALB in this template',
+            value=alb_config.is_enabled(),
+            use_troposphere=True,
+            troposphere_template=self.template
+        )
         vpc_stack = self.env_ctx.get_vpc_stack()
-        self.set_parameter(StackOutputParam('VPC', vpc_stack, 'VPC', self))
+        vpc_param = self.create_cfn_parameter(
+            param_type='String',
+            name='VPC',
+            description='',
+            value=StackOutputParam('VPC', vpc_stack, 'VPC', self),
+            use_troposphere=True,
+            troposphere_template=self.template
+        )
         alb_region = env_ctx.region
-        self.set_parameter('ALBHostedZoneId', self.lb_hosted_zone_id('alb', alb_region))
+        alb_hosted_zone_id_param = self.create_cfn_parameter(
+            param_type='String',
+            name='ALBHostedZoneId',
+            description='The Regonal AWS Route53 Hosted Zone ID',
+            value=self.lb_hosted_zone_id('alb', alb_region),
+            use_troposphere=True,
+            troposphere_template=self.template
+        )
 
         # 32 Characters max
         # <proj>-<env>-<app>-<alb_id>
@@ -54,447 +82,298 @@ class ALB(CFTemplate):
             camel_case=True,
             filter_id='EC2.ElasticLoadBalancingV2.LoadBalancer.Name'
         )
-        self.set_parameter('LoadBalancerName', load_balancer_name)
-
-        self.set_parameter('Scheme', alb_config.scheme)
+        load_balancer_name_param = self.create_cfn_parameter(
+            param_type='String',
+            name='LoadBalancerName',
+            description='The name of the load balancer',
+            value=load_balancer_name,
+            use_troposphere=True,
+            troposphere_template=self.template
+        )
+        scheme_param = self.create_cfn_parameter(
+            param_type='String',
+            min_length=1,
+            max_length=128,
+            name='Scheme',
+            description='Specify internal to create an internal load balancer with a DNS name that resolves to private IP addresses or internet-facing to create a load balancer with a publicly resolvable DNS name, which resolves to public IP addresses.',
+            value=alb_config.scheme,
+            use_troposphere=True,
+            troposphere_template=self.template
+        )
 
         # Segment SubnetList is a Segment stack Output based on availability zones
         subnet_list_key = 'SubnetList' + str(self.env_ctx.availability_zones())
-        self.set_parameter(StackOutputParam('SubnetList', segment_stack, subnet_list_key, self))
-        self.set_list_parameter('SecurityGroupList', alb_config.security_groups, 'id')
-        self.set_parameter('IdleTimeoutSecs', alb_config.idle_timeout_secs)
+        subnet_list_param = self.create_cfn_parameter(
+            param_type='List<AWS::EC2::Subnet::Id>',
+            name='SubnetList',
+            description='A list of subnets where the ALBs instances will be provisioned',
+            value=StackOutputParam('SubnetList', segment_stack, subnet_list_key, self),
+            use_troposphere=True,
+            troposphere_template=self.template
+        )
+        security_group_list_param = self.create_cfn_ref_list_param(
+            param_type='List<AWS::EC2::SecurityGroup::Id>',
+            name='SecurityGroupList',
+            description='A List of security groups to attach to the ALB',
+            value=alb_config.security_groups,
+            ref_attribute='id',
+            use_troposphere=True,
+            troposphere_template=self.template
+        )
+        idle_timeout_param = self.create_cfn_parameter(
+            param_type='String',
+            name='IdleTimeoutSecs',
+            description='The idle timeout value, in seconds.',
+            value=alb_config.idle_timeout_secs,
+            use_troposphere=True,
+            troposphere_template=self.template
+        )
 
-        # Define the Template
-        template_fmt = """
-AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Application Load Balancer'
+        # Resources
 
-Parameters:
+        # LoadBalancer
+        load_balancer_logical_id = 'LoadBalancer'
+        cfn_export_dict = {}
+        cfn_export_dict['Name'] = troposphere.Ref(load_balancer_name_param)
+        cfn_export_dict['Type'] = 'application'
+        cfn_export_dict['Scheme'] = troposphere.Ref(scheme_param)
+        cfn_export_dict['SecurityGroups'] = troposphere.Ref(security_group_list_param)
+        cfn_export_dict['Subnets'] = troposphere.Ref(subnet_list_param)
 
-  ALBEnabled:
-    Type: String
-    Default: False
-    AllowedValues:
-      - true
-      - false
+        lb_attributes = [
+            {'Key': 'idle_timeout.timeout_seconds', 'Value': troposphere.Ref(idle_timeout_param)}
+        ]
+        if alb_config.enable_access_logs:
+            # ToDo: automatically create a bucket when access_logs_bucket is not set
+            s3bucket = get_model_obj_from_ref(alb_config.access_logs_bucket, self.aim_ctx.project)
+            lb_attributes.append(
+                {'Key': 'access_logs.s3.enabled', 'Value': 'true'}
+            )
+            lb_attributes.append(
+                {'Key': 'access_logs.s3.bucket', 'Value': s3bucket.get_bucket_name() }
+            )
+            if alb_config.access_logs_prefix:
+                lb_attributes.append(
+                    {'Key': 'access_logs.s3.prefix', 'Value': alb_config.access_logs_prefix}
+                )
+        cfn_export_dict['LoadBalancerAttributes'] = lb_attributes
 
-  VPC:
-    Description: VPC ID
-    Type: String
+        alb_resource = troposphere.elasticloadbalancingv2.LoadBalancer.from_dict(
+            load_balancer_logical_id,
+            cfn_export_dict
+        )
+        alb_resource.Condition = troposphere.Ref(alb_is_enabled_param)
+        self.template.add_resource(alb_resource)
 
-  LoadBalancerName:
-    Description: The name of the load balancer
-    Type: String
-
-  Scheme:
-    Description: 'Specify internal to create an internal load balancer with a DNS name that resolves to private IP addresses or internet-facing to create a load balancer with a publicly resolvable DNS name, which resolves to public IP addresses.'
-    Type: String
-    MinLength: '1'
-    MaxLength: '128'
-
-  SubnetList:
-    Description: A list of subnets where the ALBs instances will be provisioned
-    Type: List<AWS::EC2::Subnet::Id>
-
-  SecurityGroupList:
-    Description: A List of security groups to attach to the ALB
-    Type: List<AWS::EC2::SecurityGroup::Id>
-
-  ALBHostedZoneId:
-    Description: The Regonal AWS Route53 Hosted Zone ID
-    Type: String
-
-  IdleTimeoutSecs:
-    Description: The idle timeout value, in seconds.
-    Type: String
-
-{0[RecordSetsParameters]:s}
-
-{0[SSLCertificateParameters]:s}
-
-Conditions:
-  ALBIsEnabled: !Equals [!Ref ALBEnabled, "true"]
-
-Resources:
-
-# Elastic Load Balancer
-
-  LoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Condition: ALBIsEnabled
-    Properties:
-      Name: !Ref LoadBalancerName
-      Subnets: !Ref SubnetList
-      Scheme: !Ref Scheme
-      SecurityGroups: !Ref SecurityGroupList
-      Type: application
-      LoadBalancerAttributes:
-        - Key: idle_timeout.timeout_seconds
-          Value: !Ref IdleTimeoutSecs
-
-{0[RecordSets]:s}
-
-{0[Listeners]:s}
-
-{0[TargetGroups]:s}
-
-Outputs:
-  LoadBalancerName:
-    Condition: ALBIsEnabled
-    Value: !GetAtt LoadBalancer.LoadBalancerName
-
-  LoadBalancerFullName:
-    Condition: ALBIsEnabled
-    Value: !GetAtt LoadBalancer.LoadBalancerFullName
-
-  LoadBalancerArn:
-    Condition: ALBIsEnabled
-    Value: !Ref LoadBalancer
-
-  LoadBalancerCanonicalHostedZoneID:
-    Condition: ALBIsEnabled
-    Value: !GetAtt LoadBalancer.CanonicalHostedZoneID
-
-  LoadBalancerDNSName:
-    Condition: ALBIsEnabled
-    Value: !GetAtt LoadBalancer.DNSName
-
-{0[TargetGroupOutputs]:s}
-"""
-
-        record_set_fmt = """
-  RecordSet{0[idx]:d}:
-    Type: AWS::Route53::RecordSet
-    Condition: ALBIsEnabled
-    Properties:
-      HostedZoneId: !Ref HostedZoneID{0[idx]:d}
-      Name: {0[domain_name]:s}
-      Type: A
-      AliasTarget:
-        DNSName: !GetAtt LoadBalancer.DNSName
-        HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID"""
-
-        record_set_table = {
-          'idx': 0,
-          'hosted_zone_id': None,
-          'domain_name': None
-        }
-
-        record_set_param_fmt = """
-  HostedZoneID{0[idx]:d}:
-     Description: Hozed Zone ID for RecordSet{0[idx]:d}
-     Type: String
-"""
-
-        ssl_cert_param_fmt = """
-  SSLCertificateIdL{0[listener_name]:s}C{0[cert_idx]:d}:
-    Description: The Arn of the SSL Certificate to associate with this Load Balancer
-    Type: String
-"""
-
-        ssl_certificate_list_fmt = """
-        - CertificateArn: !Ref SSLCertificateIdL{0[listener_name]:s}C{0[cert_idx]:d}"""
-
-        ssl_certificate_table = {
-            'listener_name': 0,
-            'cert_idx': 0
-        }
-
-
-        forward_action_fmt = """
-        - Type: forward
-          TargetGroupArn: !Ref TargetGroup{0[target_group_id]:s}"""
-
-        redirect_action_fmt = """
-        - Type: redirect
-          RedirectConfig:
-            Port: {0[port]:d}
-            Protocol: {0[protocol]:s}
-            StatusCode: HTTP_301"""
-
-        default_action_table = {
-            'target_group_id': None,
-            'port': None,
-            'protocol': None
-        }
-
-        listener_fmt = """
-  Listener{0[name]:s}:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Condition: ALBIsEnabled
-    Properties:
-      DefaultActions: {0[default_actions]:s}
-      LoadBalancerArn: !Ref LoadBalancer
-      Port: {0[port]:d}
-      Protocol: {0[protocol]:s}
-{0[ssl_certificates]:s}
-
-{0[listener_certificate]:s}
-"""
-
-        listener_certificate_fmt = """
-  Listener{0[name]:s}Certificate:
-    Type: AWS::ElasticLoadBalancingV2::ListenerCertificate
-    Condition: ALBIsEnabled
-    Properties:
-      Certificates: {0[ssl_listener_cert_list]:s}
-      ListenerArn : !Ref Listener{0[name]:s}
-"""
-
-        listener_table = {
-            'name': None,
-            'port': None,
-            'protocol': None,
-            'ssl_certificates': None,
-            'default_actions': None,
-            'listener_certificate': None,
-            'ssl_listener_cert_list': None
-        }
-
-        listener_forward_rule_fmt = """
-  Listener{0[listener_name]:s}Rule{0[rule_name]:s}:
-    Type: AWS::ElasticLoadBalancingV2::ListenerRule
-    Condition: ALBIsEnabled
-    Properties:
-      Actions:
-        - Type: forward
-          TargetGroupArn: !Ref TargetGroup{0[target_group_id]:s}
-      Conditions:
-        - Field: host-header
-          Values:
-            - '{0[host]:s}'
-      ListenerArn: !Ref Listener{0[listener_name]:s}
-      Priority: {0[priority]:d}
-"""
-        listener_forward_rule_table = {
-            'listener_name': 0,
-            'rule_name': None,
-            'target_group_id': None,
-            'host': None,
-            'priority': 0
-        }
-
-
-        listener_redirect_rule_fmt = """
-  Listener{0[listener_name]:s}Rule{0[rule_name]:s}:
-    Type: AWS::ElasticLoadBalancingV2::ListenerRule
-    Condition: ALBIsEnabled
-    Properties:
-      Actions:
-        - Type: redirect
-          RedirectConfig:
-            Host: {0[redirect_host]:s}
-            StatusCode: HTTP_301
-      Conditions:
-        - Field: host-header
-          Values:
-            - '{0[host]:s}'
-      ListenerArn: !Ref Listener{0[listener_name]:s}
-      Priority: {0[priority]:d}
-"""
-        listener_redirect_rule_table = {
-            'listener_name': 0,
-            'rule_name': None,
-            'redirect_host': None,
-            'host': None,
-            'priority': 0
-        }
-        target_group_fmt = """
-  TargetGroup{0[id]:s}:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      Name: {0[name]:s}
-      HealthCheckIntervalSeconds: {0[health_check_interval]:d}
-      HealthCheckTimeoutSeconds: {0[health_check_timeout]:d}
-      HealthyThresholdCount: {0[healthy_threshold]:d}
-      HealthCheckPath: {0[health_check_path]:s}
-      Port: {0[port]:d}
-      Protocol: {0[protocol]:s}
-      UnhealthyThresholdCount: {0[unhealthy_threshold]:d}
-      TargetGroupAttributes:
-        - Key: 'deregistration_delay.timeout_seconds'
-          Value: {0[connection_drain_timeout]:d}
-      Matcher:
-        HttpCode: {0[health_check_http_code]:s}
-      VpcId: !Ref VPC
-"""
-
-        target_group_table = {
-            'id': None,
-            'name': None,
-            'port': None,
-            'protocol': None,
-            'health_check_path': None,
-            'health_check_interval': None,
-            'health_check_timeout': None,
-            'healthy_threshold': None,
-            'unhealthy_threshold': None,
-            'connection_drain_timeout': None,
-            'health_check_http_code': None
-        }
-
-
-        ssl_certificate_fmt = """
-      Certificates:"""
-
-        target_group_outputs_fmt = """
-  TargetGroupArn{0[id]:s}:
-    Value: !Ref TargetGroup{0[id]:s}
-
-  TargetGroupName{0[id]:s}:
-    Value: !GetAtt TargetGroup{0[id]:s}.TargetGroupName
-
-  TargetGroupFullName{0[id]:s}:
-    Value: !GetAtt TargetGroup{0[id]:s}.TargetGroupFullName
-"""
-
-        #print("------------------")
-        listener_yaml = ""
-        ssl_cert_param_yaml = ""
-        for listener_id in alb_config.listeners.keys():
-            listener = alb_config.listeners[listener_id]
-            listener_name = self.create_cfn_logical_id(listener_id)
-            listener_table['name'] = listener_name
-            listener_table['port'] = listener.port
-            listener_table['protocol'] = listener.protocol
-            if listener.redirect != None:
-                default_action_table['port'] = listener.redirect.port
-                default_action_table['protocol'] = listener.redirect.protocol
-                listener_table['default_actions'] = redirect_action_fmt.format(default_action_table)
-            else:
-                default_action_table['target_group_id'] = listener.target_group
-                listener_table['default_actions'] = forward_action_fmt.format(default_action_table)
-
-
-
-            # Listener SSL Certificates
-            listener_table['ssl_certificates'] = ""
-            listener_table['listener_certificate'] = ""
-            listener_table['ssl_listener_cert_list'] = ""
-            if len(listener.ssl_certificates) > 0 and alb_config.is_enabled():
-                listener_table['ssl_certificates'] = ssl_certificate_fmt
-                ssl_certificate_table['cert_idx'] = 0
-                ssl_certificate_table['listener_name'] = listener_name
-                listener_table['ssl_certificates'] += ssl_certificate_list_fmt.format(ssl_certificate_table)
-                for ssl_cert_idx in range(0, len(listener.ssl_certificates)):
-                    ssl_certificate_table['cert_idx'] = ssl_cert_idx
-                    listener_table['ssl_listener_cert_list'] += ssl_certificate_list_fmt.format(ssl_certificate_table)
-                    #print(listener_yaml)
-                    ssl_cert_param_yaml += ssl_cert_param_fmt.format(ssl_certificate_table)
-                    self.set_parameter('SSLCertificateIdL%sC%d' % (listener_name, ssl_cert_idx),listener.ssl_certificates[ssl_cert_idx]+".arn")
-                listener_table['listener_certificate'] = listener_certificate_fmt.format(listener_table)
-            # Listener
-            listener_yaml += listener_fmt.format(listener_table)
-
-            # Listener Rules
-            if listener.rules != None:
-                for rule_id in listener.rules.keys():
-                    rule = listener.rules[rule_id]
-                    if rule.enabled == False:
-                      continue
-                    rule_name = self.create_cfn_logical_id(rule_id)
-                    if rule.rule_type == "forward":
-                        listener_forward_rule_table['listener_name'] = listener_name
-                        listener_forward_rule_table['target_group_id'] = rule.target_group
-                        listener_forward_rule_table['host'] = rule.host
-                        listener_forward_rule_table['priority'] = rule.priority
-                        listener_forward_rule_table['rule_name'] = rule_name
-                        listener_yaml += listener_forward_rule_fmt.format(listener_forward_rule_table)
-                    elif rule.rule_type == "redirect":
-                        listener_redirect_rule_table['listener_name'] = listener_name
-                        listener_redirect_rule_table['host'] = rule.host
-                        listener_redirect_rule_table['redirect_host'] = rule.redirect_host
-                        listener_redirect_rule_table['priority'] = rule.priority
-                        listener_redirect_rule_table['rule_name'] = rule_name
-                        listener_yaml += listener_redirect_rule_fmt.format(listener_redirect_rule_table)
-
-        #print("------------------")
-        #print(listener_yaml)
-        #print("------------------")
-
-        target_group_yaml = ""
-        target_group_outputs_yaml = ""
-        for target_group_id in sorted(alb_config.target_groups.keys()):
-            target_config = alb_config.target_groups[target_group_id]
-            target_group_table['id'] = self.create_cfn_logical_id(target_group_id)
-
+        # Target Groups
+        for target_group_name, target_group in sorted(alb_config.target_groups.items()):
+            target_group_id = self.create_cfn_logical_id(target_group_name)
+            target_group_logical_id = 'TargetGroup' + target_group_id
+            cfn_export_dict = {}
             if self.aim_ctx.legacy_flag('target_group_name_2019_10_29') == True:
-                target_group_table['name'] = self.create_resource_name_join(
+                name = self.create_resource_name_join(
                     name_list=[load_balancer_name, target_group_id], separator='',
                     camel_case=True, hash_long_names=True,
                     filter_id='EC2.ElasticLoadBalancingV2.TargetGroup.Name',
                 )
             else:
-                target_group_table['name'] = "!Ref 'AWS::NoValue'"
-            target_group_table['port'] = target_config.port
-            target_group_table['protocol'] = target_config.protocol
-            target_group_table['health_check_path'] = target_config.health_check_path
-            target_group_table['health_check_interval'] = target_config.health_check_interval
-            target_group_table['health_check_timeout'] = target_config.health_check_timeout
-            target_group_table['healthy_threshold'] = target_config.healthy_threshold
-            target_group_table['unhealthy_threshold'] = target_config.unhealthy_threshold
-            target_group_table['health_check_http_code'] = target_config.health_check_http_code
-            target_group_table['connection_drain_timeout'] = target_config.connection_drain_timeout
-            # print(target_group_table)
-            target_group_yaml += target_group_fmt.format(target_group_table)
-            target_group_ref = '.'.join([alb_config_ref, 'target_groups', target_group_id])
+                name = troposphere.Ref('AWS::NoValue')
+            cfn_export_dict['Name'] = name
+            cfn_export_dict['HealthCheckIntervalSeconds'] = target_group.health_check_interval
+            cfn_export_dict['HealthCheckTimeoutSeconds'] = target_group.health_check_timeout
+            cfn_export_dict['HealthyThresholdCount'] = target_group.healthy_threshold
+            cfn_export_dict['HealthCheckPath'] = target_group.health_check_path
+            cfn_export_dict['Port'] = target_group.port
+            cfn_export_dict['Protocol'] = target_group.protocol
+            cfn_export_dict['UnhealthyThresholdCount'] = target_group.unhealthy_threshold
+            cfn_export_dict['TargetGroupAttributes'] = [
+                {'Key': 'deregistration_delay.timeout_seconds', 'Value': str(target_group.connection_drain_timeout) }
+            ]
+            cfn_export_dict['Matcher'] = {'HttpCode': target_group.health_check_http_code }
+            cfn_export_dict['VpcId'] = troposphere.Ref(vpc_param)
+            target_group_resource = troposphere.elasticloadbalancingv2.TargetGroup.from_dict(
+                target_group_logical_id,
+                cfn_export_dict
+            )
+            self.template.add_resource(target_group_resource)
+
+            # Target Group Outputs
+            target_group_arn_output = troposphere.Output(
+                title='TargetGroupArn' + target_group_id,
+                Value=troposphere.Ref(target_group_resource)
+            )
+            self.template.add_output(target_group_arn_output)
+            target_group_ref = '.'.join([alb_config_ref, 'target_groups', target_group_name])
             target_group_arn_ref = '.'.join([target_group_ref, 'arn'])
-            self.register_stack_output_config(target_group_arn_ref, 'TargetGroupArn'+target_group_table['id'])
+            self.register_stack_output_config(target_group_arn_ref, 'TargetGroupArn' + target_group_id)
+
+            target_group_name_output = troposphere.Output(
+                title='TargetGroupName' + target_group_id,
+                Value=troposphere.GetAtt(target_group_resource, 'TargetGroupName')
+            )
+            self.template.add_output(target_group_name_output)
             target_group_name_ref = '.'.join([target_group_ref, 'name'])
-            self.register_stack_output_config(target_group_name_ref, 'TargetGroupName'+target_group_table['id'])
-            self.register_stack_output_config(target_group_ref + '.fullname', 'TargetGroupFullName'+target_group_table['id'])
-            target_group_outputs_yaml += target_group_outputs_fmt.format(target_group_table)
+            self.register_stack_output_config(target_group_name_ref, 'TargetGroupName' + target_group_id)
+
+            target_group_fullname_output = troposphere.Output(
+                title='TargetGroupFullName' + target_group_id,
+                Value=troposphere.GetAtt(target_group_resource, 'TargetGroupFullName')
+            )
+            self.template.add_output(target_group_fullname_output)
+            self.register_stack_output_config(target_group_ref + '.fullname', 'TargetGroupFullName' + target_group_id)
+
+        # Listeners
+        for listener_name, listener in alb_config.listeners.items():
+            logical_listener_name = self.create_cfn_logical_id('Listener' + listener_name)
+            cfn_export_dict = listener.cfn_export_dict
+
+            # Listener - Default Actions
+            if listener.redirect != None:
+                action = {
+                    'Type': 'redirect',
+                    'RedirectConfig': {
+                        'Port': str(listener.redirect.port),
+                        'Protocol': listener.redirect.protocol,
+                        'StatusCode': 'HTTP_301'
+                    }
+                }
+            else:
+                action = {
+                    'Type': 'forward',
+                    'TargetGroupArn': troposphere.Ref('TargetGroup' + listener.target_group)
+                }
+            cfn_export_dict['DefaultActions'] = [action]
+
+            # Listener - SSL Certificates
+            if len(listener.ssl_certificates) > 0 and alb_config.is_enabled():
+                cfn_export_dict['Certificates'] = []
+                for ssl_cert_idx in range(0, len(listener.ssl_certificates)):
+                    ssl_cert_param = self.create_cfn_parameter(
+                        param_type='String',
+                        name='SSLCertificateIdL%sC%d' % (listener_name, ssl_cert_idx),
+                        description='The Arn of the SSL Certificate to associate with this Load Balancer',
+                        value=listener.ssl_certificates[ssl_cert_idx] + ".arn",
+                        use_troposphere=True,
+                        troposphere_template=self.template
+                    )
+                    cfn_export_dict['Certificates'].append(
+                        {"CertificateArn" : troposphere.Ref(ssl_cert_param) }
+                    )
+
+            listener_resource = troposphere.elasticloadbalancingv2.Listener.from_dict(
+                logical_listener_name,
+                cfn_export_dict
+            )
+
+            # Listener - Rules
+            if listener.rules != None:
+                for rule_name, rule in listener.rules.items():
+                    if rule.enabled == False:
+                      continue
+                    logical_rule_name = self.create_cfn_logical_id(rule_name)
+                    cfn_export_dict = {}
+                    if rule.rule_type == "forward":
+                        cfn_export_dict['Actions'] = [
+                            {'Type': 'forward', 'TargetGroupArn': troposphere.Ref('TargetGroup' + rule.target_group) }
+                        ]
+                    elif rule.rule_type == "redirect":
+                        cfn_export_dict['Actions'] = [
+                            {'Type': 'redirect', 'RedirectConfig': {'Host': rule.redirect_host, 'StatusCode': 'HTTP_301'} }
+                        ]
+                    cfn_export_dict['ListenerArn'] = troposphere.Ref(logical_listener_name)
+                    cfn_export_dict['Conditions'] = [
+                        {'Field': 'host-header', 'Values': [rule.host] }
+                    ]
+                    cfn_export_dict['Priority'] = rule.priority
+                    logical_listener_rule_name = logical_listener_name + logical_rule_name
+                    listener_rule_resource = troposphere.elasticloadbalancingv2.ListenerRule.from_dict(
+                        logical_listener_rule_name,
+                        cfn_export_dict
+                    )
+                    listener_rule_resource.Condition = troposphere.Ref(alb_is_enabled_param)
+                    self.template.add_resource(listener_rule_resource)
 
         # Record Sets
-        record_sets_yaml = ""
-        record_sets_param_yaml = ""
-
-        record_set_table['idx'] = 0
-
         if self.aim_ctx.legacy_flag('route53_record_set_2019_10_16'):
+            record_set_index = 0
             for alb_dns in alb_config.dns:
                 if alb_config.is_dns_enabled() == True:
-                    record_set_table['hosted_zone_id'] = alb_dns.hosted_zone+'.id'
-                    record_set_table['domain_name'] = alb_dns.domain_name
-                    self.set_parameter('HostedZoneID%d' % (record_set_table['idx']), alb_dns.hosted_zone+'.id')
-                    record_sets_yaml += record_set_fmt.format(record_set_table)
-                    record_sets_param_yaml += record_set_param_fmt.format(record_set_table)
-                    record_set_table['idx'] += 1
+                    hosted_zone_param = self.create_cfn_parameter(
+                        param_type='String',
+                        name='HostedZoneID%d' % (record_set_index),
+                        value=alb_dns.hosted_zone+'.id',
+                        use_troposphere=True,
+                        troposphere_template=self.template
+                    )
+                    cfn_export_dict = {}
+                    cfn_export_dict['HostedZoneId'] = troposphere.Ref(hosted_zone_param)
+                    cfn_export_dict['Name'] = alb_dns.domain_name
+                    cfn_export_dict['Type'] = 'A'
+                    cfn_export_dict['AliasTarget'] = {
+                        'DNSName': troposphere.GetAtt(alb_resource, 'DNSName'),
+                        'HostedZoneId': troposphere.GetAtt(alb_resource, 'CanonicalHostedZoneID')
+                    }
+                    record_set_resource = troposphere.route53.RecordSet.from_dict(
+                        'RecordSet' + record_set_index,
+                        cfn_export_dict
+                    )
+                    record_set_resource.Condition = troposphere.Ref(alb_is_enabled_param)
+                    self.template.add_resource(record_set_resource)
+                    record_set_index += 1
 
-
-
-        template_fmt_table = {
-            'Listeners': listener_yaml,
-            'TargetGroups': target_group_yaml,
-            'SSLCertificateParameters': ssl_cert_param_yaml,
-            'TargetGroupOutputs': target_group_outputs_yaml,
-            'RecordSets': record_sets_yaml,
-            'RecordSetsParameters': record_sets_param_yaml
-        }
-
-        self.set_template(template_fmt.format(template_fmt_table))
-
+        self.set_template(self.template.to_yaml())
 
         if self.enabled == True:
-            self.register_stack_output_config(self.alb_config_ref+'.arn', 'LoadBalancerArn')
-            self.register_stack_output_config(self.alb_config_ref+'.name', 'LoadBalancerName')
-            self.register_stack_output_config(self.alb_config_ref+'.fullname', 'LoadBalancerFullName')
-            self.register_stack_output_config(self.alb_config_ref+'.canonicalhostedzoneid', 'LoadBalancerCanonicalHostedZoneID')
-            self.register_stack_output_config(self.alb_config_ref+'.dnsname', 'LoadBalancerDNSName')
+            self.template.add_output(
+                troposphere.Output(
+                    title='LoadBalancerArn',
+                    Value=troposphere.Ref(alb_resource)
+                )
+            )
+            self.register_stack_output_config(self.alb_config_ref + '.arn', 'LoadBalancerArn')
+            self.template.add_output(
+                troposphere.Output(
+                    title='LoadBalancerName',
+                    Value=troposphere.GetAtt(alb_resource, 'LoadBalancerName')
+                )
+            )
+            self.register_stack_output_config(self.alb_config_ref + '.name', 'LoadBalancerName')
+            self.template.add_output(
+                troposphere.Output(
+                    title='LoadBalancerFullName',
+                    Value=troposphere.GetAtt(alb_resource, 'LoadBalancerFullName')
+                )
+            )
+            self.register_stack_output_config(self.alb_config_ref + '.fullname', 'LoadBalancerFullName')
+            self.template.add_output(
+                troposphere.Output(
+                    title='LoadBalancerCanonicalHostedZoneID',
+                    Value=troposphere.GetAtt(alb_resource, 'CanonicalHostedZoneID')
+                )
+            )
+            self.register_stack_output_config(self.alb_config_ref + '.canonicalhostedzoneid', 'LoadBalancerCanonicalHostedZoneID')
+            self.template.add_output(
+                troposphere.Output(
+                    title='LoadBalancerDNSName',
+                    Value=troposphere.GetAtt(alb_resource, 'DNSName')
+                )
+            )
+            self.register_stack_output_config(self.alb_config_ref + '.dnsname', 'LoadBalancerDNSName')
 
             if self.aim_ctx.legacy_flag('route53_record_set_2019_10_16') == False:
                 route53_ctl = self.aim_ctx.get_controller('route53')
                 for alb_dns in alb_config.dns:
                     if alb_config.is_dns_enabled() == True:
-                      alias_dns_ref = 'aim.ref '+self.alb_config_ref+'.dnsname'
-                      alias_hosted_zone_ref = 'aim.ref '+self.alb_config_ref+'.canonicalhostedzoneid'
+                      alias_dns_ref = 'aim.ref ' + self.alb_config_ref + '.dnsname'
+                      alias_hosted_zone_ref = 'aim.ref ' + self.alb_config_ref + '.canonicalhostedzoneid'
                       route53_ctl.add_record_set(
                           self.account_ctx,
                           self.aws_region,
                           enabled=alb_config.is_enabled(),
                           dns=alb_dns,
                           record_set_type='Alias',
-                          alias_dns_name = alias_dns_ref,
-                          alias_hosted_zone_id = alias_hosted_zone_ref,
-                          stack_group = self.stack_group,
-                          config_ref = alb_config.aim_ref_parts+'.dns')
+                          alias_dns_name=alias_dns_ref,
+                          alias_hosted_zone_id=alias_hosted_zone_ref,
+                          stack_group=self.stack_group,
+                          config_ref=alb_config.aim_ref_parts + '.dns'
+                      )
