@@ -88,6 +88,15 @@ class ASG(CFTemplate):
             'SecurityGroups': troposphere.Ref(security_group_list_param),
         }
 
+        # BlockDeviceMappings
+        if len(asg_config.block_device_mappings) > 0:
+            mappings = []
+            for bdm in asg_config.block_device_mappings:
+                mappings.append(
+                    bdm.cfn_export_dict
+                )
+            launch_config_dict["BlockDeviceMappings"] = mappings
+
         user_data_script = ''
         if ec2_manager_user_data_script != None:
             user_data_script += ec2_manager_user_data_script
