@@ -40,14 +40,18 @@ class ALB(CFTemplate):
         self.set_aws_name('ALB', grp_id, alb_id)
 
         # Init Troposphere template
-        self.init_template('Load Balancer')
+        self.init_template('Application Load Balancer')
 
         # Parameters
+        if alb_config.is_enabled():
+            alb_enable = 'true'
+        else:
+            alb_enable = 'false'
         alb_is_enabled_param = self.create_cfn_parameter(
             param_type='String',
             name='ALBEnabled',
             description='Enable the ALB in this template',
-            value=alb_config.is_enabled(),
+            value=alb_enable,
             use_troposphere=True,
             troposphere_template=self.template
         )
@@ -55,7 +59,7 @@ class ALB(CFTemplate):
         vpc_param = self.create_cfn_parameter(
             param_type='String',
             name='VPC',
-            description='',
+            description='VPC ID',
             value=StackOutputParam('VPC', vpc_stack, 'VPC', self),
             use_troposphere=True,
             troposphere_template=self.template
@@ -129,6 +133,12 @@ class ALB(CFTemplate):
             troposphere_template=self.template
         )
 
+        # Conditions
+        self.template.add_condition(
+            "ALBIsEnabled",
+            troposphere.Equals(troposphere.Ref(alb_is_enabled_param), "true")
+        )
+
         # Resources
 
         # LoadBalancer
@@ -162,7 +172,7 @@ class ALB(CFTemplate):
             load_balancer_logical_id,
             cfn_export_dict
         )
-        alb_resource.Condition = troposphere.Ref(alb_is_enabled_param)
+        alb_resource.Condition = "ALBIsEnabled"
         self.template.add_resource(alb_resource)
 
         # Target Groups
@@ -243,6 +253,7 @@ class ALB(CFTemplate):
                     'TargetGroupArn': troposphere.Ref('TargetGroup' + listener.target_group)
                 }
             cfn_export_dict['DefaultActions'] = [action]
+            cfn_export_dict['LoadBalancerArn'] = troposphere.Ref(alb_resource)
 
             # Listener - SSL Certificates
             if len(listener.ssl_certificates) > 0 and alb_config.is_enabled():
@@ -264,6 +275,7 @@ class ALB(CFTemplate):
                 logical_listener_name,
                 cfn_export_dict
             )
+            self.template.add_resource(listener_resource)
 
             # Listener - Rules
             if listener.rules != None:
@@ -290,7 +302,7 @@ class ALB(CFTemplate):
                         logical_listener_rule_name,
                         cfn_export_dict
                     )
-                    listener_rule_resource.Condition = troposphere.Ref(alb_is_enabled_param)
+                    listener_rule_resource.Condition = "ALBIsEnabled"
                     self.template.add_resource(listener_rule_resource)
 
         # Record Sets
@@ -317,11 +329,9 @@ class ALB(CFTemplate):
                         'RecordSet' + record_set_index,
                         cfn_export_dict
                     )
-                    record_set_resource.Condition = troposphere.Ref(alb_is_enabled_param)
+                    record_set_resource.Condition = "ALBIsEnabled"
                     self.template.add_resource(record_set_resource)
                     record_set_index += 1
-
-        self.set_template(self.template.to_yaml())
 
         if self.enabled == True:
             self.template.add_output(
@@ -377,3 +387,5 @@ class ALB(CFTemplate):
                           stack_group=self.stack_group,
                           config_ref=alb_config.aim_ref_parts + '.dns'
                       )
+
+        self.set_template(self.template.to_yaml())
