@@ -12,10 +12,14 @@ from zope.interface.common.mapping import IMapping
 aim_config_template = """
 .. _aim-config:
 
+********************
+Configuration Basics
+********************
+
 AIM Configuration Overview
 ==========================
 
-AIM configuration is intended to be a complete declarative description of an Infrastructure-as-Code
+AIM configuration is a complete declarative description of an Infrastructure-as-Code
 cloud project. These files semantically describe cloud resources and logical groupings of those
 resources. The contents of these files describe accounts, networks, environments, applications,
 resources, services, and monitoring configuration.
@@ -375,6 +379,10 @@ aim.sub
 Can be used to look-up a value and substitute the results into a templated string.
 
 
+***********************
+YAML Schemas and Fields
+***********************
+
 Accounts
 ========
 
@@ -504,6 +512,10 @@ Networks have the following hierarchy:
 
 {vpc}
 
+{vpcpeering}
+
+{vpcpeeringroute}
+
 {natgateway}
 
 {vpngateway}
@@ -572,6 +584,8 @@ In turn, each ResourceGroup contains ``resources:`` with names such as ``cpbd``,
                             type: ASG
                             # configuration goes here ...
 
+{applicationengines}
+
 {application}
 
 {resourcegroups}
@@ -582,6 +596,39 @@ In turn, each ResourceGroup contains ``resources:`` with names such as ``cpbd``,
 
 {resource}
 
+Application Resources
+=====================
+
+At it's heart, an Application is a collection of Resources. These are the Resources available for
+applications.
+
+{apigatewayrestapi}
+
+{apigatewaymethods}
+
+{apigatewaymodels}
+
+{apigatewayresources}
+
+{apigatewaystages}
+
+{lbapplication}
+
+{dns}
+
+{listener}
+
+{listenerrule}
+
+{portprotocol}
+
+{targetgroup}
+
+
+Secrets
+=======
+
+{secretsmanager}
 
 Environments
 ============
@@ -686,11 +733,22 @@ an Alarm.
 
 {alarm}
 
+{alarmset}
+
+{alarmsets}
+
+{dimension}
+
 {logsource}
+
+{alarmnotifications}
+
+{alarmnotification}
 
 """
 
-def convert_schema_to_list_table(schema):
+def convert_schema_to_list_table(schema, level='-'):
+    # Header
     output = [
 """
 {name}
@@ -698,10 +756,15 @@ def convert_schema_to_list_table(schema):
 
 """.format(**{
         'name': schema.__name__[1:],
-        'divider': len(schema.__name__) * '-'
+        'divider': len(schema.__name__) * level
         })
     ]
 
+    # Documentation
+    output.append(schema.__doc__)
+    output.append('\n')
+
+    # Indicate if object is a container
     if schema.extends(IMapping):
        output.append(
 """
@@ -752,12 +815,12 @@ def convert_schema_to_list_table(schema):
             else:
                 data_type = '{}_ AIM schema'.format(field.schema.__name__[1:])
         elif data_type == 'Dict':
-            if field.value_type:
+            if field.value_type and hasattr(field.value_type, 'schema'):
                 data_type = 'Container of {}_ AIM schemas'.format(field.value_type.schema.__name__[1:])
             else:
                 data_type = 'Dict'
         elif data_type == 'List':
-            if field.value_type and not zope.schema.interfaces.ITextLine.providedBy(field.value_type):
+            if field.value_type and not zope.schema.interfaces.IText.providedBy(field.value_type):
                 data_type = 'List of {}_ AIM schemas'.format(field.value_type.schema.__name__[1:])
             else:
                 data_type = 'List of Strings'
@@ -789,29 +852,51 @@ def aim_schema_generate():
     with open(aim_config_doc, 'w') as f:
         f.write(
             aim_config_template.format(
-                **{'account': convert_schema_to_list_table(schemas.IAccount),
-                   'network': convert_schema_to_list_table(schemas.INetwork),
-                   'vpc': convert_schema_to_list_table(schemas.IVPC),
-                   'natgateway': convert_schema_to_list_table(schemas.INATGateway),
-                   'vpngateway': convert_schema_to_list_table(schemas.IVPNGateway),
-                   'privatehostedzone': convert_schema_to_list_table(schemas.IPrivateHostedZone),
-                   'applications': convert_schema_to_list_table(schemas.IApplicationEngines),
-                   'application': convert_schema_to_list_table(schemas.IApplication),
-                   'environment': convert_schema_to_list_table(schemas.IEnvironment),
-                   'environmentdefault': convert_schema_to_list_table(schemas.IEnvironmentDefault),
-                   'environmentregion': convert_schema_to_list_table(schemas.IEnvironmentRegion),
-                   'resourcegroups': convert_schema_to_list_table(schemas.IResourceGroups),
-                   'resourcegroup': convert_schema_to_list_table(schemas.IResourceGroup),
-                   'resources': convert_schema_to_list_table(schemas.IResources),
-                   'resource': convert_schema_to_list_table(schemas.IResource),
-                   'alarmset': convert_schema_to_list_table(schemas.IAlarmSet),
-                   'alarm': convert_schema_to_list_table(schemas.ICloudWatchAlarm),
-                   'logsource': convert_schema_to_list_table(schemas.ICWAgentLogSource),
-                   'adminiamuser': convert_schema_to_list_table(schemas.IAdminIAMUser),
-                   'segment': convert_schema_to_list_table(schemas.ISegment),
-                   'securitygroup': convert_schema_to_list_table(schemas.ISecurityGroup),
-                   'egressrule': convert_schema_to_list_table(schemas.IEgressRule),
-                   'ingressrule': convert_schema_to_list_table(schemas.IIngressRule),
+                **{ 'account': convert_schema_to_list_table(schemas.IAccount),
+                    'network': convert_schema_to_list_table(schemas.INetwork),
+                    'vpc': convert_schema_to_list_table(schemas.IVPC),
+                    'vpcpeering': convert_schema_to_list_table(schemas.IVPCPeering),
+                    'vpcpeeringroute': convert_schema_to_list_table(schemas.IVPCPeeringRoute),
+                    'natgateway': convert_schema_to_list_table(schemas.INATGateway),
+                    'vpngateway': convert_schema_to_list_table(schemas.IVPNGateway),
+                    'privatehostedzone': convert_schema_to_list_table(schemas.IPrivateHostedZone),
+                    'applicationengines': convert_schema_to_list_table(schemas.IApplicationEngines),
+                    'applications': convert_schema_to_list_table(schemas.IApplicationEngines),
+                    'application': convert_schema_to_list_table(schemas.IApplication),
+                    'environment': convert_schema_to_list_table(schemas.IEnvironment),
+                    'environmentdefault': convert_schema_to_list_table(schemas.IEnvironmentDefault),
+                    'environmentregion': convert_schema_to_list_table(schemas.IEnvironmentRegion),
+                    'resourcegroups': convert_schema_to_list_table(schemas.IResourceGroups),
+                    'resourcegroup': convert_schema_to_list_table(schemas.IResourceGroup),
+                    'resources': convert_schema_to_list_table(schemas.IResources),
+                    'resource': convert_schema_to_list_table(schemas.IResource),
+                    'alarmnotifications': convert_schema_to_list_table(schemas.IAlarmNotifications),
+                    'alarmnotification': convert_schema_to_list_table(schemas.IAlarmNotification),
+                    'alarmsets': convert_schema_to_list_table(schemas.IAlarmSets),
+                    'alarmset': convert_schema_to_list_table(schemas.IAlarmSet),
+                    'alarm': convert_schema_to_list_table(schemas.ICloudWatchAlarm),
+                    'dimension': convert_schema_to_list_table(schemas.IDimension),
+                    'logsource': convert_schema_to_list_table(schemas.ICloudWatchLogSource),
+                    'adminiamuser': convert_schema_to_list_table(schemas.IAdminIAMUser),
+                    'segment': convert_schema_to_list_table(schemas.ISegment),
+                    'securitygroup': convert_schema_to_list_table(schemas.ISecurityGroup),
+                    'egressrule': convert_schema_to_list_table(schemas.IEgressRule),
+                    'ingressrule': convert_schema_to_list_table(schemas.IIngressRule),
+                    'secretsmanager': convert_schema_to_list_table(schemas.ISecretsManager),
+
+                    # Application Resources
+                    'apigatewayrestapi': convert_schema_to_list_table(schemas.IApiGatewayRestApi),
+                    'apigatewaymethods': convert_schema_to_list_table(schemas.IApiGatewayMethods, level='^'),
+                    'apigatewaymodels': convert_schema_to_list_table(schemas.IApiGatewayModels, level='^'),
+                    'apigatewayresources': convert_schema_to_list_table(schemas.IApiGatewayResources, level='^'),
+                    'apigatewaystages': convert_schema_to_list_table(schemas.IApiGatewayStages, level='^'),
+                    'lbapplication': convert_schema_to_list_table(schemas.ILBApplication),
+                    'dns': convert_schema_to_list_table(schemas.IDNS, level='^'),
+                    'listener': convert_schema_to_list_table(schemas.IListener, level='^'),
+                    'targetgroup': convert_schema_to_list_table(schemas.ITargetGroup, level='^'),
+                    'portprotocol': convert_schema_to_list_table(schemas.IPortProtocol, level='^'),
+                    'listenerrule': convert_schema_to_list_table(schemas.IListenerRule, level='^'),
+
                 }
             )
         )

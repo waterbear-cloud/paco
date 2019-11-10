@@ -31,3 +31,11 @@
     color: red;
     font-size: 1.5em;
 }
+
+.wy-table-responsive {
+    clear: both;
+}
+
+.rst-content .sidebar {
+    width: 60%;
+}
