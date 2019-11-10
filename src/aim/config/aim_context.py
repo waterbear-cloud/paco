@@ -214,7 +214,7 @@ class AimContext(object):
         self.verbose = False
         self.nocache = False
         self.yes = False
-
+        self.quiet_changes_only = False
         self.aim_path = os.getcwd()
         self.build_folder = None
         self.aws_name = "AIM"
