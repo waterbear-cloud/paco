@@ -24,33 +24,34 @@ import warnings
 warnings.simplefilter("ignore")
 
 
-# StackOutputParam
-#    Holds a list of dicts describing a stack and the outputs that are required
-#    to populate another stacks input parameter.
-#    A list of outputs can be provided which will allow the generation of a list
-#    for to pass into a stack parameter.
-#    (ie, Security Group lists)
 class StackOutputParam():
-    def __init__(self, param_key, stack=None, stack_output_key=None, param_template=None):
+    """
+    Holds a list of dicts describing a stack and the outputs that are required
+    to populate another stacks input parameter.
+    A list of outputs can be provided which will allow the generation of a list
+    to pass into a stack parameter (e.g. Security Group lists).
+    """
+
+    def __init__(
+        self,
+        param_key,
+        stack=None,
+        stack_output_key=None,
+        param_template=None
+    ):
         self.key = param_key
-        # entry:
-        #   'stack': stack,
-        #   'output_keys': []
         self.entry_list = []
         self.use_previous_value = False
         self.resolved_value = ""
         self.stack = stack
         self.param_template = param_template
-        #print(param_key)
         if stack !=None and stack_output_key !=None:
-            #print("Adding stackoutput key: " + stack_output_key)
             self.add_stack_output( stack, stack_output_key)
 
     def add_stack_output(self, stack, stack_output_key):
         if stack_output_key == None:
             raise AimException(AimErrorCode.Unknown, message="Stack Output key is unset")
         self.stack = stack
-        #print(stack.template.aws_name + ": add_stack_output: output_key: " + stack_output_key)
         for entry in self.entry_list:
             if entry['stack'] == stack:
                 entry['output_keys'].append(stack_output_key)
@@ -59,7 +60,6 @@ class StackOutputParam():
             entry = {'stack': stack,
                      'output_keys': [stack_output_key]}
             self.entry_list.append(entry)
-
 
     def gen_parameter_value(self):
         param_value = ""
@@ -74,13 +74,16 @@ class StackOutputParam():
 
         return param_value
 
-    # Generates a parameter entry
-    #  - All stacks are queried, their output values gathered and are placed
-    #    in a single comma delimited list to be passed to the next stacks
-    #    parameter as a single value
     def gen_parameter(self):
+        """
+        Generate a parameter entry
+        All stacks are queried, their output values gathered and are placed
+        in a single comma delimited list to be passed to the next stacks
+        parameter as a single value
+        """
         param_value = self.gen_parameter_value()
         return Parameter(self.param_template, self.key, param_value, self.use_previous_value, self.resolved_value)
+
 
 class StackOutputConfig():
     def __init__(self, config_ref, key):
@@ -98,7 +101,6 @@ class StackOutputConfig():
         last_dict[ref_part]['__name__'] = stack.get_outputs_value(self.key)
 
         return conf_dict
-
 
 
 def marshal_value_to_cfn_yaml(value):
@@ -119,13 +121,14 @@ def marshal_value_to_cfn_yaml(value):
         )
 
 class Parameter():
-    def __init__(self,
-                 template,
-                 key,
-                 value,
-                 use_previous_value=False,
-                 resolved_value=""):
-#        self.template = template
+    def __init__(
+        self,
+        template,
+        key,
+        value,
+        use_previous_value=False,
+        resolved_value=""
+    ):
         self.key = key
         self.value = marshal_value_to_cfn_yaml(value)
         self.use_previous_value = use_previous_value
@@ -137,23 +140,25 @@ class Parameter():
     def gen_parameter(self):
         return self
 
+
 class CFTemplate():
     """A CloudFormation template"""
-    def __init__(self,
-                 aim_ctx,
-                 account_ctx,
-                 aws_region,
-                 config_ref,
-                 aws_name=None,
-                 enabled=True,
-                 environment_name = None,
-                 stack_group=None,
-                 stack_tags=None,
-                 stack_hooks=None,
-                 stack_order=None,
-                 change_protected=False,
-                 iam_capabilities=[]
-                ):
+    def __init__(
+        self,
+        aim_ctx,
+        account_ctx,
+        aws_region,
+        config_ref,
+        aws_name=None,
+        enabled=True,
+        environment_name = None,
+        stack_group=None,
+        stack_tags=None,
+        stack_hooks=None,
+        stack_order=None,
+        change_protected=False,
+        iam_capabilities=[]
+    ):
         self.update_only = False
         self.enabled = enabled
         self.aim_ctx = aim_ctx
@@ -1000,13 +1005,22 @@ class CFTemplate():
             return param
 
     def create_cfn_ref_list_param(
-        self, param_type, name, description, value,
-        ref_attribute=None, default=None, noecho=False,
-        use_troposphere=False, troposphere_template=None):
+        self,
+        param_type,
+        name,
+        description,
+        value,
+        ref_attribute=None,
+        default=None,
+        noecho=False,
+        use_troposphere=False,
+        troposphere_template=None
+    ):
+        "Create a CloudFormation Parameter from a list of refs"
         stack_output_param = StackOutputParam(name, param_template=self)
         for item_ref in value:
             if ref_attribute != None:
-                item_ref += '.'+ref_attribute
+                item_ref += '.' + ref_attribute
             stack = self.aim_ctx.get_ref(item_ref)
             if isinstance(stack, Stack) == False:
                 raise AimException(AimErrorCode.Unknown, message="Reference must resolve to a stack")
@@ -1014,9 +1028,15 @@ class CFTemplate():
             stack_output_param.add_stack_output(stack, stack_output_key)
 
         return self.create_cfn_parameter(
-            param_type, name, description,
-            stack_output_param, default, noecho,
-            use_troposphere, troposphere_template)
+            param_type,
+            name,
+            description,
+            stack_output_param,
+            default,
+            noecho,
+            use_troposphere,
+            troposphere_template
+        )
 
     def gen_output(self, name, value):
         "Return name and value as a CFN YAML formatted string"

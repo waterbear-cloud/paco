@@ -18,8 +18,8 @@ Project Status
 AIM is capable of reliably deploying robust AWS environments. However, there is a lot more we want to add to AIM!
 
 As AIM is a young project, it's API and design may be subject to frequent changes.
-It is used for real-world projects by the authors though, so backward breaking changes will attempt
-to be minimized with reasonable migration paths.
+It is used for real-world production environmentes though, so backward breaking changes will
+be minimized with reasonable migration paths.
 
 Source Code, Issues and Support
 -------------------------------
@@ -43,6 +43,7 @@ Quickstart Labs
 ---------------
 
 .. toctree::
+   :caption: Quick Start
    :maxdepth: 3
 
    install
@@ -53,6 +54,7 @@ AIM Engine CLI
 --------------
 
 .. toctree::
+   :caption: Command Line Interface
    :maxdepth: 3
 
    cli
@@ -61,6 +63,7 @@ AIM Project Configuration
 -------------------------
 
 .. toctree::
+   :caption: YAML Configuration
    :maxdepth: 3
 
    aim-config

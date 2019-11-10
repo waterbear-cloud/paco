@@ -20,7 +20,5 @@ class LBApplicationResourceEngine(ResourceEngine):
             self.env_ctx,
             self.app_id,
             self.grp_id,
-            self.res_id,
-            self.resource,
-            self.resource.aim_ref_parts
+            self.resource
         )

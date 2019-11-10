@@ -5,7 +5,6 @@ import troposphere.autoscaling
 import troposphere.policies
 from aim import utils
 from aim.cftemplates.cftemplates import CFTemplate
-from aim.cftemplates.cftemplates import StackOutputParam
 from aim.core.exception import UnsupportedCloudFormationParameterType, CloudFormationParameterAimRefMissingDotExtension
 from aim.models import references
 from aim.models.references import Reference
