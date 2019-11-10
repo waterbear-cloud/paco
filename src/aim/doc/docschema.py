@@ -390,9 +390,9 @@ AWS account information is kept in the ``Accounts/`` directory.
 Each file in this directory will define one AWS account, the filename
 will be the ``name`` of the account, with a .yml or .yaml extension.
 
-{account}
+{IAccount}
 
-{adminiamuser}
+{IAdminIAMUser}
 
 NetworkEnvironments
 ===================
@@ -508,27 +508,84 @@ Networks have the following hierarchy:
                                   source_security_group: aim.ref netenv.my-aim-example.network.vpc.security_groups.app.lb
                                   to_port: 80
 
-{network}
+{INetwork}
 
-{vpc}
+{IVPC}
 
-{vpcpeering}
+{IVPCPeering}
 
-{vpcpeeringroute}
+{IVPCPeeringRoute}
 
-{natgateway}
+{INATGateway}
 
-{vpngateway}
+{IVPNGateway}
 
-{privatehostedzone}
+{IPrivateHostedZone}
 
-{segment}
+{ISegment}
 
-{securitygroup}
+{ISecurityGroup}
 
-{egressrule}
+{IEgressRule}
 
-{ingressrule}
+{IIngressRule}
+
+Environments
+============
+
+Environments define how actual AWS resources should be provisioned.
+As Environments copy all of the defaults from ``network`` and ``applications`` config,
+they can define complex cloud deployments very succinctly.
+
+The top level environments are simply a name and a title. They are logical
+groups of actual environments.
+
+.. code-block:: yaml
+
+    environments:
+
+        dev:
+            title: Development
+
+        staging:
+            title: Staging and QA
+
+        prod:
+            title: Production
+
+
+Environments contain EnvironmentRegions. The name of an EnvironmentRegion must match
+a valid AWS region name. The special ``default`` name is also available, which can be used to
+override config for a whole environment, regardless of region.
+
+The following example enables the applications named ``marketing-app`` and
+``sales-app`` into all dev environments by default. In ``us-west-2`` this is
+overridden and only the ``sales-app`` would be deployed there.
+
+.. code-block:: yaml
+
+    environments:
+
+        dev:
+            title: Development
+            default:
+                applications:
+                    marketing-app:
+                        enabled: true
+                    sales-app:
+                        enabled: true
+            us-west-2:
+                applications:
+                    marketing-app:
+                        enabled: false
+            ca-central-1:
+                enabled: true
+
+{IEnvironment}
+
+{IEnvironmentDefault}
+
+{IEnvironmentRegion}
 
 Applications
 ============
@@ -584,17 +641,17 @@ In turn, each ResourceGroup contains ``resources:`` with names such as ``cpbd``,
                             type: ASG
                             # configuration goes here ...
 
-{applicationengines}
+{IApplicationEngines}
 
-{application}
+{IApplication}
 
-{resourcegroups}
+{IResourceGroups}
 
-{resourcegroup}
+{IResourceGroup}
 
-{resources}
+{IResources}
 
-{resource}
+{IResource}
 
 Application Resources
 =====================
@@ -602,100 +659,179 @@ Application Resources
 At it's heart, an Application is a collection of Resources. These are the Resources available for
 applications.
 
-{apigatewayrestapi}
+{IApiGatewayRestApi}
 
-{apigatewaymethods}
+{IApiGatewayMethods}
 
-{apigatewaymodels}
+{IApiGatewayModels}
 
-{apigatewayresources}
+{IApiGatewayResources}
 
-{apigatewaystages}
+{IApiGatewayStages}
 
-{lbapplication}
+{ILBApplication}
 
-{dns}
+{IDNS}
 
-{listener}
+{IListener}
 
-{listenerrule}
+{IListenerRule}
 
-{portprotocol}
+{IPortProtocol}
 
-{targetgroup}
+{ITargetGroup}
+
+{IASG}
+
+{IASGLifecycleHooks}
+
+{IASGScalingPolicies}
+
+{IBlockDeviceMapping}
+
+{IBlockDevice}
+
+{IEBSVolumeMount}
+
+{IEFSMount}
+
+{IEC2LaunchOptions}
+
+{ICloudFormationInit}
+
+{ICloudFormationConfigSets}
+
+{ICloudFormationConfigurations}
+
+{ICodePipeBuildDeploy}
+
+{IAWSCertificateManager}
+
+{IRDS}
+
+{IRDSOptionConfiguration}
+
+{INameValuePair}
+
+{IDBParameterGroup}
+
+{IDBParameters}
+
+{IEC2}
+
+{ILambda}
+
+{ILambdaFunctionCode}
+
+{ILambdaEnvironment}
+
+{ILambdaVpcConfig}
+
+{ILambdaVariable}
+
+{IManagedPolicy}
+
+{IS3Bucket}
+
+{IS3BucketPolicy}
+
+{IS3LambdaConfiguration}
+
+{IS3NotificationConfiguration}
+
+{ISNSTopic}
+
+{ISNSTopicSubscription}
+
+{ICloudFront}
+
+{ICloudFrontDefaultCacheBehavior}
+
+{ICloudFrontCacheBehavior}
+
+{ICloudFrontFactory}
+
+{ICloudFrontOrigin}
+
+{ICloudFrontCustomOriginConfig}
+
+{ICloudFrontCustomErrorResponse}
+
+{ICloudFrontViewerCertificate}
+
+{ICloudFrontForwardedValues}
+
+{ICloudFrontCookies}
+
+{IRDSMysql}
+
+{IElastiCacheRedis}
+
+{IDeploymentPipeline}
+
+{IDeploymentPipelineSourceStage}
+
+{IDeploymentPipelineDeployStage}
+
+{IDeploymentPipelineBuildStage}
+
+{IDeploymentPipelineDeployCodeDeploy}
+
+{ICodeDeployMinimumHealthyHosts}
+
+{IDeploymentPipelineManualApproval}
+
+{IDeploymentPipelineDeployS3}
+
+{IDeploymentPipelineBuildCodeBuild}
+
+{IDeploymentPipelineSourceCodeCommit}
+
+{IDeploymentPipelineStageAction}
+
+{IDeploymentPipelineConfiguration}
+
+{IEFS}
+
+{IEIP}
+
+{IRoute53HealthCheck}
+
+{IEventsRule}
+
+{IEBS}
 
 
 Secrets
 =======
 
-{secretsmanager}
+{ISecretsManager}
 
-Environments
-============
+Global Resources
+================
 
-Environments define how actual AWS resources should be provisioned.
-As Environments copy all of the defaults from ``network`` and ``applications`` config,
-they can define complex cloud deployments very succinctly.
+IAM
+---
 
-The top level environments are simply a name and a title. They are logical
-groups of actual environments.
+The ``Resources/IAM.yaml`` file contains IAM Users. Each user account can be given
+different levels of access a set of AWS accounts.
 
-.. code-block:: yaml
+{IIAMResource}
 
-    environments:
+{IIAMUser}
 
-        dev:
-            title: Development
+{IIAMUserProgrammaticAccess}
 
-        staging:
-            title: Staging and QA
+{IIAMUserPermissions}
 
-        prod:
-            title: Production
+{IRole}
 
+{IAssumeRolePolicy}
 
-Environments contain EnvironmentRegions. The name of an EnvironmentRegion must match
-a valid AWS region name. The special ``default`` name is also available, which can be used to
-override config for a whole environment, regardless of region.
+{IPolicy}
 
-The following example enables the applications named ``marketing-app`` and
-``sales-app`` into all dev environments by default. In ``us-west-2`` this is
-overridden and only the ``sales-app`` would be deployed there.
+{IStatement}
 
-.. code-block:: yaml
-
-    environments:
-
-        dev:
-            title: Development
-            default:
-                applications:
-                    marketing-app:
-                        enabled: true
-                    sales-app:
-                        enabled: true
-            us-west-2:
-                applications:
-                    marketing-app:
-                        enabled: false
-            ca-central-1:
-                enabled: true
-
-{environment}
-
-{environmentdefault}
-
-{environmentregion}
-
-Resources
-=========
-
-Resources need to be documented.
-
-Services
-========
-
-Services need to be documented.
 
 MonitorConfig
 =============
@@ -731,23 +867,24 @@ an Alarm.
             HTTPCode_Target_4XX_Count-Low:
                 # alarm config here ...
 
-{alarm}
+{IAlarm}
 
-{alarmset}
+{IAlarmSet}
 
-{alarmsets}
+{IAlarmSets}
 
-{dimension}
+{IDimension}
 
-{logsource}
+{ICloudWatchLogSource}
 
-{alarmnotifications}
+{IAlarmNotifications}
 
-{alarmnotification}
+{IAlarmNotification}
 
 """
 
 def convert_schema_to_list_table(schema, level='-'):
+
     # Header
     output = [
 """
@@ -764,17 +901,21 @@ def convert_schema_to_list_table(schema, level='-'):
     output.append(schema.__doc__)
     output.append('\n')
 
-    # Indicate if object is a container
-    if schema.extends(IMapping):
-       output.append(
-"""
+    # No table for schemas with no fields, e.g. IDBParameters
+    #if schema.__name__ == 'IDBParameters': breakpoint()
+    if len(zope.schema.getFields(schema).keys()) > 0:
 
-|bars| Container where the keys are the ``name`` field.
+        # Indicate if object is a container
+        if schema.extends(IMapping):
+            output.append(
+        """
 
-"""
-        )
+        |bars| Container where the keys are the ``name`` field.
 
-    output.append(
+        """
+                )
+
+        output.append(
 """
 .. _{}:
 
@@ -789,13 +930,14 @@ def convert_schema_to_list_table(schema, level='-'):
       - Constraints
       - Purpose
 """.format(schema.__name__[1:])
-    )
-    table_row_template = '    * - {name}\n' + \
-    '      - {type}\n' + \
-    '      - {required}\n' + \
-    '      - {default}\n' + \
-    '      - {constraints}\n'  + \
-    '      - {purpose}\n'
+        )
+        table_row_template = \
+            '    * - {name}\n' + \
+            '      - {type}\n' + \
+            '      - {required}\n' + \
+            '      - {default}\n' + \
+            '      - {constraints}\n'  + \
+            '      - {purpose}\n'
 
     for fieldname in sorted(zope.schema.getFields(schema).keys()):
         field = schema[fieldname]
@@ -840,64 +982,91 @@ def convert_schema_to_list_table(schema, level='-'):
                     }
                 )
             )
+
     return ''.join(output)
 
+
+MINOR_SCHEMAS = {
+    'IApiGatewayMethods': None,
+    'IApiGatewayMethods': None,
+    'IApiGatewayModels': None,
+    'IApiGatewayResources': None,
+    'IApiGatewayStages': None,
+    'IDNS': None,
+    'IListener': None,
+    'ITargetGroup': None,
+    'IPortProtocol': None,
+    'IListenerRule': None,
+    'IBlockDeviceMapping': None,
+    'IEBSVolumeMount': None,
+    'IEFSMount': None,
+    'IEC2LaunchOptions': None,
+    'IASGLifecycleHooks': None,
+    'IASGScalingPolicies': None,
+    'ICloudFormationInit': None,
+    'ICloudFormationConfigSets': None,
+    'ICloudFormationConfigurations': None,
+    'IBlockDevice': None,
+    'IAssumeRolePolicy': None,
+    'IPolicy': None,
+    'IStatement': None,
+    'IIAMUser': None,
+    'IIAMUserProgrammaticAccess': None,
+    'IIAMUserPermissions': None,
+    'IRDSOptionConfiguration': None,
+    'INameValuePair': None,
+    'IDBParameters': None,
+    'ILambdaFunctionCode': None,
+    'ILambdaEnvironment': None,
+    'ILambdaVpcConfig': None,
+    'ILambdaVariable': None,
+    'IS3BucketPolicy': None,
+    'IS3LambdaConfiguration': None,
+    'IS3NotificationConfiguration': None,
+    'ISNSTopicSubscription': None,
+    'ICloudFrontCacheBehavior': None,
+    'ICloudFrontFactory': None,
+    'ICloudFrontOrigin': None,
+    'ICloudFrontCustomOriginConfig': None,
+    'ICloudFrontCustomErrorResponse': None,
+    'ICloudFrontViewerCertificate': None,
+    'ICloudFrontCacheBehavior': None,
+    'ICloudFrontDefaultCacheBehavior': None,
+    'ICloudFrontForwardedValues': None,
+    'ICloudFrontCookies': None,
+    'ICloudFrontDefaultCacheBehavior': None,
+    'IDeploymentPipelineSourceStage': None,
+    'IDeploymentPipelineDeployStage': None,
+    'IDeploymentPipelineBuildStage': None,
+    'IDeploymentPipelineDeployCodeDeploy': None,
+    'ICodeDeployMinimumHealthyHosts': None,
+    'IDeploymentPipelineManualApproval': None,
+    'IDeploymentPipelineDeployS3': None,
+    'IDeploymentPipelineBuildCodeBuild': None,
+    'IDeploymentPipelineSourceCodeCommit': None,
+    'IDeploymentPipelineStageAction': None,
+    'IDeploymentPipelineConfiguration': None,
+}
+
+def create_tables_from_schema():
+    result = {}
+    import zope.interface.interface
+    for name, obj in schemas.__dict__.items():
+        if isinstance(obj, zope.interface.interface.InterfaceClass):
+            level = '-'
+            if obj.__name__ in MINOR_SCHEMAS:
+                level = '^'
+            result[obj.__name__] = convert_schema_to_list_table(obj, level=level)
+    return result
 
 def aim_schema_generate():
     aim_doc = os.path.abspath(os.path.dirname(__file__)).split(os.sep)[:-3]
     aim_doc.append('docs')
     aim_doc.append('aim-config.rst')
     aim_config_doc = os.sep.join(aim_doc)
+    tables_dict = create_tables_from_schema()
 
     with open(aim_config_doc, 'w') as f:
-        f.write(
-            aim_config_template.format(
-                **{ 'account': convert_schema_to_list_table(schemas.IAccount),
-                    'network': convert_schema_to_list_table(schemas.INetwork),
-                    'vpc': convert_schema_to_list_table(schemas.IVPC),
-                    'vpcpeering': convert_schema_to_list_table(schemas.IVPCPeering),
-                    'vpcpeeringroute': convert_schema_to_list_table(schemas.IVPCPeeringRoute),
-                    'natgateway': convert_schema_to_list_table(schemas.INATGateway),
-                    'vpngateway': convert_schema_to_list_table(schemas.IVPNGateway),
-                    'privatehostedzone': convert_schema_to_list_table(schemas.IPrivateHostedZone),
-                    'applicationengines': convert_schema_to_list_table(schemas.IApplicationEngines),
-                    'applications': convert_schema_to_list_table(schemas.IApplicationEngines),
-                    'application': convert_schema_to_list_table(schemas.IApplication),
-                    'environment': convert_schema_to_list_table(schemas.IEnvironment),
-                    'environmentdefault': convert_schema_to_list_table(schemas.IEnvironmentDefault),
-                    'environmentregion': convert_schema_to_list_table(schemas.IEnvironmentRegion),
-                    'resourcegroups': convert_schema_to_list_table(schemas.IResourceGroups),
-                    'resourcegroup': convert_schema_to_list_table(schemas.IResourceGroup),
-                    'resources': convert_schema_to_list_table(schemas.IResources),
-                    'resource': convert_schema_to_list_table(schemas.IResource),
-                    'alarmnotifications': convert_schema_to_list_table(schemas.IAlarmNotifications),
-                    'alarmnotification': convert_schema_to_list_table(schemas.IAlarmNotification),
-                    'alarmsets': convert_schema_to_list_table(schemas.IAlarmSets),
-                    'alarmset': convert_schema_to_list_table(schemas.IAlarmSet),
-                    'alarm': convert_schema_to_list_table(schemas.ICloudWatchAlarm),
-                    'dimension': convert_schema_to_list_table(schemas.IDimension),
-                    'logsource': convert_schema_to_list_table(schemas.ICloudWatchLogSource),
-                    'adminiamuser': convert_schema_to_list_table(schemas.IAdminIAMUser),
-                    'segment': convert_schema_to_list_table(schemas.ISegment),
-                    'securitygroup': convert_schema_to_list_table(schemas.ISecurityGroup),
-                    'egressrule': convert_schema_to_list_table(schemas.IEgressRule),
-                    'ingressrule': convert_schema_to_list_table(schemas.IIngressRule),
-                    'secretsmanager': convert_schema_to_list_table(schemas.ISecretsManager),
+        f.write(aim_config_template.format(**tables_dict))
 
-                    # Application Resources
-                    'apigatewayrestapi': convert_schema_to_list_table(schemas.IApiGatewayRestApi),
-                    'apigatewaymethods': convert_schema_to_list_table(schemas.IApiGatewayMethods, level='^'),
-                    'apigatewaymodels': convert_schema_to_list_table(schemas.IApiGatewayModels, level='^'),
-                    'apigatewayresources': convert_schema_to_list_table(schemas.IApiGatewayResources, level='^'),
-                    'apigatewaystages': convert_schema_to_list_table(schemas.IApiGatewayStages, level='^'),
-                    'lbapplication': convert_schema_to_list_table(schemas.ILBApplication),
-                    'dns': convert_schema_to_list_table(schemas.IDNS, level='^'),
-                    'listener': convert_schema_to_list_table(schemas.IListener, level='^'),
-                    'targetgroup': convert_schema_to_list_table(schemas.ITargetGroup, level='^'),
-                    'portprotocol': convert_schema_to_list_table(schemas.IPortProtocol, level='^'),
-                    'listenerrule': convert_schema_to_list_table(schemas.IListenerRule, level='^'),
-
-                }
-            )
-        )
     print('Wrote to {}'.format(aim_config_doc))

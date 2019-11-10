@@ -36,6 +36,10 @@
     clear: both;
 }
 
+.literal-block-wrapper {
+    clear: both;
+}
+
 .rst-content .sidebar {
     width: 60%;
 }
