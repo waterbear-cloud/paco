@@ -1,39 +1,39 @@
 .wy-nav-content {
-    background: #ffffff !important;
+  background: #ffffff !important;
 }
 
 .wy-nav-content {
-    max-width: 1000px !important;
+  max-width: 1050px !important;
 }
 
 .wy-nav-content p {
-    font-size: 15px !important;
+  font-size: 15px;
 }
 
 .wy-table-responsive table td,
 .wy-table-responsive table th {
-    white-space: normal !important;
+  white-space: normal !important;
 }
 
 .wy-table td,
 .rst-content table.docutils td,
 .rst-content table.field-list td {
-    vertical-align: top !important;
+  vertical-align: top !important;
 }
 
  /* Icons */
  .fa-check {
-     color: green;
-     font-size: 1.5em;
+  color: green;
+  font-size: 1.2em;
  }
 
  .fa-times {
-    color: red;
-    font-size: 1.5em;
+  color: red;
+  font-size: 1.2em;
 }
 
 .wy-table-responsive {
-    clear: both;
+  clear: both;
 }
 
 .highlight-yaml {
@@ -41,9 +41,65 @@
 }
 
 .literal-block-wrapper {
-    clear: both;
+  clear: both;
 }
 
 .rst-content .sidebar {
-    width: 50%;
+  float: none;
+  width: 100%;
 }
+
+.wy-nav-content h4 {
+  font-size: 130%;
+}
+
+.wy-nav-content caption,
+.wy-nav-content .code-block-caption
+{
+  text-align: left !important;
+  padding: 1em 0 5px 0 !important;
+}
+
+.wy-nav-content span.caption-text
+ {
+    border: 1px solid black;
+    border-bottom: none;
+    background: #e8e8e8;
+    font-size: 120%;
+    border-radius: 4px 4px 0px 0px;
+    padding: 4px 20px 4px 6px;
+}
+
+.wy-nav-content .rst-content .code-block-caption {
+  font-style: normal !important;
+}
+
+.wy-nav-content .rst-content span.guilabel {
+  border: none;
+  background: #e8e8e8;
+  font-style: normal !important;
+}
+
+.wy-table-responsive th.head {
+  padding: 0.5em;
+  border: 1px solid black;
+}
+
+.wy-table-responsive th.head p {
+  margin-bottom: 0px;
+}
+
+.wy-table-responsive table.docutils td p {
+  margin-bottom: 0px;
+}
+
+.rst-content .wy-table-responsive table.docutils td {
+  padding: 7px 12px;
+  font-size: 70%;
+}
+
+.rst-content .wy-table-responsive table.docutils:not(.field-list) tr:nth-child(2n-1) td {
+  background-color: #f3f3f3;
+  font-size: 13px !important;
+}
+

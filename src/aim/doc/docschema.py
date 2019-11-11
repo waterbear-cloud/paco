@@ -707,11 +707,95 @@ applications.
 
 {IAWSCertificateManager}
 
-{IRDS}
+RDS
+---
+
+Relational Database Service (RDS) is a collection of relational databases.
+
+There is no plain vanilla RDS type, but rather choose the type that specifies which kind of relational database
+engine to use. For example, ``RDSMysql`` for MySQL on RDS or ``RDSAurora`` for an Amazon Aurora database.
+
+If you want to use DB Parameter Groups with your RDS, then use the ``parameter_group`` field to
+reference a DBParameterGroup_ resource. Keeping DB Parameter Group as a separate resource allows you
+to have multiple Paramater Groups provisioned at the same time. For example, you might have both
+resources for ``dbparams_performance`` and ``dbparams_debug``, allowing you to use the AWS
+Console to switch between performance and debug configuration quickl in an emergency.
+
+.. sidebar:: Prescribed Automation
+
+  **Using Secrets Manager with RDS**
+
+  You can set the initial password with ``master_user_password``, however this requires storing a password
+  in plain-text on disk. This is fine if you have a process for changing the password after creating a database,
+  however, the AIM Secrets Manager support allows you to use a ``secrets_password`` instead of the
+  ``master_user_password`` field:
+
+  .. code-block:: yaml
+
+      type: RDSMysql
+      secrets_password: aim.ref netenv.mynet.secrets_manager.app.grp.mysql
+
+  Then in your NetworkEnvironments ``secrets_manager`` configuration you would write:
+
+  .. code-block:: yaml
+
+      secrets_manager:
+        app: # application name
+          grp: # group name
+              mysql: # secret name
+                enabled: true
+                generate_secret_string:
+                  enabled: true
+                  # secret_string_template and generate_string_key must
+                  # have the following values for RDS secrets
+                  secret_string_template: '{{"username": "admin"}}'
+                  generate_string_key: "password"
+
+  This would generate a new, random password in the AWS Secrets Manager service when the database is provisioned
+  and connect that password with RDS.
+
+.. code-block:: yaml
+  :caption: RDSMysql resource example
+
+  type: RDSMysql
+  order: 1
+  title: "Joe's MySQL Database server"
+  enabled: true
+  engine_version: 5.7.26
+  db_instance_type: db.t3.micro
+  port: 3306
+  storage_type: gp2
+  storage_size_gb: 20
+  storage_encrypted: true
+  multi_az: true
+  allow_major_version_upgrade: false
+  auto_minor_version_upgrade: true
+  publically_accessible: false
+  master_username: root
+  master_user_password: "change-me"
+  backup_preferred_window: 08:00-08:30
+  backup_retention_period: 7
+  maintenance_preferred_window: 'sat:10:00-sat:10:30'
+  license_model: "general-public-license"
+  cloudwatch_logs_exports:
+    - error
+    - slowquery
+  security_groups:
+    - aim.ref netenv.mynet.network.vpc.security_groups.app.database
+  segment: aim.ref netenv.mynet.network.vpc.segments.private
+  primary_domain_name: database.example.internal
+  primary_hosted_zone: aim.ref netenv.mynet.network.vpc.private_hosted_zone
+  parameter_group: aim.ref netenv.mynet.applications.app.groups.web.resources.dbparams_performance
+
+
 
 {IRDSOptionConfiguration}
 
 {INameValuePair}
+
+{IRDSMysql}
+
+{IRDSAurora}
 
 {IDBParameterGroup}
 
@@ -762,8 +846,6 @@ applications.
 {ICloudFrontForwardedValues}
 
 {ICloudFrontCookies}
-
-{IRDSMysql}
 
 {IElastiCacheRedis}
 
@@ -883,12 +965,16 @@ an Alarm.
 
 """
 
-def convert_schema_to_list_table(schema, level='-'):
+def convert_schema_to_list_table(schema, level='-', header=True):
     """
     Introspects a Schema-based Interface and returns
     a ReStructured Text representation of it.
     """
     schema_name = schema.__name__[1:]
+    output = []
+
+    #if not header:
+    #    level = '='
 
     # Header
     output = [
@@ -921,7 +1007,7 @@ def convert_schema_to_list_table(schema, level='-'):
 .. _{}:
 
 .. list-table:: {}
-    :widths: 15 8 4 12 15 30
+    :widths: 15 8 4 12 15 30 10
     :header-rows: 1
 
     * - Field name
@@ -930,6 +1016,7 @@ def convert_schema_to_list_table(schema, level='-'):
       - Default
       - Constraints
       - Purpose
+      - Base Schema
 """.format(schema_name, caption)
         )
         table_row_template = \
@@ -938,61 +1025,86 @@ def convert_schema_to_list_table(schema, level='-'):
             '      - {required}\n' + \
             '      - {default}\n' + \
             '      - {constraints}\n'  + \
-            '      - {purpose}\n'
+            '      - {purpose}\n' + \
+            '      - {baseschema}\n'
 
-    for fieldname in sorted(zope.schema.getFields(schema).keys()):
-        field = schema[fieldname]
-        if field.required:
-            req_icon = '.. fa:: check'
+    base_fields = []
+    specific_fields = []
+    for fieldname, field in sorted(zope.schema.getFields(schema).items()):
+        if field.interface.__name__ != schema.__name__:
+            base_fields.append(field)
         else:
-            req_icon = '.. fa:: times'
+            specific_fields.append(field)
 
-        data_type = field.__class__.__name__
-        if data_type in ('TextLine', 'Text'):
-            data_type = 'String'
-        elif data_type == 'Bool':
-            data_type = 'Boolean'
-        elif data_type == 'Object':
-            if field.schema.extends(IMapping):
-                data_type = 'Container of {}_ AIM schemas'.format(field.schema.__name__[1:])
-            else:
-                data_type = '{}_ AIM schema'.format(field.schema.__name__[1:])
-        elif data_type == 'Dict':
-            if field.value_type and hasattr(field.value_type, 'schema'):
-                data_type = 'Container of {}_ AIM schemas'.format(field.value_type.schema.__name__[1:])
-            else:
-                data_type = 'Dict'
-        elif data_type == 'List':
-            if field.value_type and not zope.schema.interfaces.IText.providedBy(field.value_type):
-                data_type = 'List of {}_ AIM schemas'.format(field.value_type.schema.__name__[1:])
-            else:
-                data_type = 'List of Strings'
-
-        # don't display the name field, it is derived from the key
-        name = field.getName()
-
-        # Change None to '' for default
-        if field.default == None:
-            default = ''
-        else:
-            default = field.default
-
-        if name != 'name' or not schema.extends(schemas.INamed):
-            output.append(
-                table_row_template.format(
-                    **{
-                        'name': name,
-                        'type': data_type,
-                        'required': req_icon,
-                        'default': default,
-                        'purpose': field.title,
-                        'constraints': field.description,
-                    }
-                )
-            )
+    for field in base_fields:
+        output.append(convert_field_to_table_row(schema, field, table_row_template))
+    for field in specific_fields:
+        output.append(convert_field_to_table_row(schema, field, table_row_template))
 
     return ''.join(output)
 
+def convert_field_to_table_row(schema, field, table_row_template):
+    baseschema = schema.__name__
+    if field.interface.__name__ != schema.__name__:
+        baseschema = field.interface.__name__
+
+    if field.required:
+        req_icon = '.. fa:: check'
+    else:
+        req_icon = '.. fa:: times'
+
+    data_type = field.__class__.__name__
+    if data_type in ('TextLine', 'Text'):
+        data_type = 'String'
+    elif data_type == 'Bool':
+        data_type = 'Boolean'
+    elif data_type == 'Object':
+        if field.schema.extends(IMapping):
+            data_type = 'Container of {}_ AIM schemas'.format(field.schema.__name__[1:])
+        else:
+            data_type = '{}_ AIM schema'.format(field.schema.__name__[1:])
+    elif data_type == 'Dict':
+        if field.value_type and hasattr(field.value_type, 'schema'):
+            data_type = 'Container of {}_ AIM schemas'.format(field.value_type.schema.__name__[1:])
+        else:
+            data_type = 'Dict'
+    elif data_type == 'List':
+        if field.value_type and not zope.schema.interfaces.IText.providedBy(field.value_type):
+            data_type = 'List of {}_ AIM schemas'.format(field.value_type.schema.__name__[1:])
+        else:
+            data_type = 'List of Strings'
+
+    # don't display the name field, it is derived from the key
+    name = field.getName()
+
+    # Change None to '' for default
+    if field.default == None:
+        default = ''
+    else:
+        default = field.default
+
+    if name != 'name' or not schema.extends(schemas.INamed):
+        return table_row_template.format(
+            **{
+                'name': name,
+                'type': data_type,
+                'required': req_icon,
+                'default': default,
+                'purpose': field.title,
+                'constraints': field.description,
+                'baseschema': baseschema
+            }
+        )
+    else:
+        return ''
+
+
+DOCLESS_SCHEMAS = {
+  'INameValuePair': None,
+  'IS3BucketPolicy': None,
+  'IS3LambdaConfiguration': None,
+  'IS3NotificationConfiguration': None,
+}
 
 MINOR_SCHEMAS = {
     'IApiGatewayMethods': None,
@@ -1054,6 +1166,8 @@ MINOR_SCHEMAS = {
     'IDeploymentPipelineSourceCodeCommit': None,
     'IDeploymentPipelineStageAction': None,
     'IDeploymentPipelineConfiguration': None,
+    'IRDSMysql': None,
+    'IRDSAurora': None,
 }
 
 def create_tables_from_schema():
@@ -1062,9 +1176,12 @@ def create_tables_from_schema():
     for name, obj in schemas.__dict__.items():
         if isinstance(obj, zope.interface.interface.InterfaceClass):
             level = '-'
+            header = True
             if obj.__name__ in MINOR_SCHEMAS:
                 level = '^'
-            result[obj.__name__] = convert_schema_to_list_table(obj, level=level)
+            if obj.__name__ in DOCLESS_SCHEMAS:
+                header=False
+            result[obj.__name__] = convert_schema_to_list_table(obj, level=level, header=header)
     return result
 
 def aim_schema_generate():
