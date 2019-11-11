@@ -36,10 +36,14 @@
     clear: both;
 }
 
+.highlight-yaml {
+    clear: both;
+}
+
 .literal-block-wrapper {
     clear: both;
 }
 
 .rst-content .sidebar {
-    width: 60%;
+    width: 50%;
 }

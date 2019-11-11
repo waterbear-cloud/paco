@@ -884,6 +884,11 @@ an Alarm.
 """
 
 def convert_schema_to_list_table(schema, level='-'):
+    """
+    Introspects a Schema-based Interface and returns
+    a ReStructured Text representation of it.
+    """
+    schema_name = schema.__name__[1:]
 
     # Header
     output = [
@@ -892,8 +897,8 @@ def convert_schema_to_list_table(schema, level='-'):
 {divider}
 
 """.format(**{
-        'name': schema.__name__[1:],
-        'divider': len(schema.__name__) * level
+        'name': schema_name,
+        'divider': (len(schema_name) + 1) * level
         })
     ]
 
@@ -907,19 +912,15 @@ def convert_schema_to_list_table(schema, level='-'):
 
         # Indicate if object is a container
         if schema.extends(IMapping):
-            output.append(
-        """
-
-        |bars| Container where the keys are the ``name`` field.
-
-        """
-                )
+            caption = """:guilabel:`{}` |bars| Container where the keys are the ``name`` field.""".format(schema_name)
+        else:
+            caption = ':guilabel:`{}`'.format(schema_name)
 
         output.append(
 """
 .. _{}:
 
-.. list-table::
+.. list-table:: {}
     :widths: 15 8 4 12 15 30
     :header-rows: 1
 
@@ -929,7 +930,7 @@ def convert_schema_to_list_table(schema, level='-'):
       - Default
       - Constraints
       - Purpose
-""".format(schema.__name__[1:])
+""".format(schema_name, caption)
         )
         table_row_template = \
             '    * - {name}\n' + \
@@ -969,6 +970,13 @@ def convert_schema_to_list_table(schema, level='-'):
 
         # don't display the name field, it is derived from the key
         name = field.getName()
+
+        # Change None to '' for default
+        if field.default == None:
+            default = ''
+        else:
+            default = field.default
+
         if name != 'name' or not schema.extends(schemas.INamed):
             output.append(
                 table_row_template.format(
@@ -976,7 +984,7 @@ def convert_schema_to_list_table(schema, level='-'):
                         'name': name,
                         'type': data_type,
                         'required': req_icon,
-                        'default': field.default,
+                        'default': default,
                         'purpose': field.title,
                         'constraints': field.description,
                     }
