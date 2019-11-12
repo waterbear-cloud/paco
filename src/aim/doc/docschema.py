@@ -1036,6 +1036,9 @@ def convert_schema_to_list_table(schema, level='-', header=True):
         else:
             specific_fields.append(field)
 
+    base_fields = sorted(base_fields, key=lambda field: field.getName())
+    base_fields = sorted(base_fields, key=lambda field: field.interface.__name__)
+
     for field in base_fields:
         output.append(convert_field_to_table_row(schema, field, table_row_template))
     for field in specific_fields:
@@ -1044,9 +1047,9 @@ def convert_schema_to_list_table(schema, level='-', header=True):
     return ''.join(output)
 
 def convert_field_to_table_row(schema, field, table_row_template):
-    baseschema = schema.__name__
+    baseschema = schema.__name__[1:]
     if field.interface.__name__ != schema.__name__:
-        baseschema = field.interface.__name__
+        baseschema = field.interface.__name__[1:]
 
     if field.required:
         req_icon = '.. fa:: check'

@@ -404,70 +404,70 @@ Cloud account information
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - account_id
       - String
       - .. fa:: times
       - 
       - Can only contain digits.
       - Account ID
-      - IAccount
+      - Account
     * - account_type
       - String
       - .. fa:: times
       - AWS
       - Supported types: 'AWS'
       - Account Type
-      - IAccount
+      - Account
     * - admin_delegate_role_name
       - String
       - .. fa:: times
       - 
       - 
       - Administrator delegate IAM Role name for the account
-      - IAccount
+      - Account
     * - admin_iam_users
       - Container of AdminIAMUser_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Admin IAM Users
-      - IAccount
+      - Account
     * - is_master
       - Boolean
       - .. fa:: times
       - False
       - 
       - Boolean indicating if this a Master account
-      - IAccount
+      - Account
     * - organization_account_ids
       - List of Strings
       - .. fa:: times
       - 
       - Each string in the list must contain only digits.
       - A list of account ids to add to the Master account's AWS Organization
-      - IAccount
+      - Account
     * - region
       - String
       - .. fa:: check
       - no-region-set
       - Must be a valid AWS Region name
       - Region to install AWS Account specific resources
-      - IAccount
+      - Account
     * - root_email
       - String
       - .. fa:: check
       - 
       - Must be a valid email address.
       - The email address for the root user of this account
-      - IAccount
+      - Account
 
 
 
@@ -495,14 +495,14 @@ An AWS Account Administerator IAM User
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - username
       - String
       - .. fa:: times
       - 
       - 
       - IAM Username
-      - IAdminIAMUser
+      - AdminIAMUser
 
 
 NetworkEnvironments
@@ -638,41 +638,41 @@ Network
       - Constraints
       - Purpose
       - Base Schema
-    * - availability_zones
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - Availability Zones
-      - INetworkEnvironment
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - availability_zones
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - Availability Zones
+      - NetworkEnvironment
     * - vpc
       - VPC_ AIM schema
       - .. fa:: times
       - 
       - 
       - VPC
-      - INetworkEnvironment
+      - NetworkEnvironment
     * - aws_account
       - TextReference
       - .. fa:: times
       - 
       - 
       - AWS Account Reference
-      - INetwork
+      - Network
 
 
 
@@ -702,84 +702,84 @@ VPC
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - cidr
       - String
       - .. fa:: times
       - 
       - 
       - CIDR
-      - IVPC
+      - VPC
     * - enable_dns_hostnames
       - Boolean
       - .. fa:: times
       - False
       - 
       - Enable DNS Hostnames
-      - IVPC
+      - VPC
     * - enable_dns_support
       - Boolean
       - .. fa:: times
       - False
       - 
       - Enable DNS Support
-      - IVPC
+      - VPC
     * - enable_internet_gateway
       - Boolean
       - .. fa:: times
       - False
       - 
       - Internet Gateway
-      - IVPC
+      - VPC
     * - nat_gateway
       - Container of NATGateway_ AIM schemas
       - .. fa:: check
       - {}
       - 
       - NAT Gateway
-      - IVPC
+      - VPC
     * - peering
       - Container of VPCPeering_ AIM schemas
       - .. fa:: times
       - 
       - 
       - VPC Peering
-      - IVPC
+      - VPC
     * - private_hosted_zone
       - PrivateHostedZone_ AIM schema
       - .. fa:: times
       - 
       - 
       - Private hosted zone
-      - IVPC
+      - VPC
     * - security_groups
       - Dict
       - .. fa:: times
       - {}
       - Two level deep dictionary: first key is Application name, second key is Resource name.
       - Security groups
-      - IVPC
+      - VPC
     * - segments
       - Container of Segment_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Segments
-      - IVPC
+      - VPC
     * - vpn_gateway
       - Container of VPNGateway_ AIM schemas
       - .. fa:: check
       - {}
       - 
       - VPN Gateway
-      - IVPC
+      - VPC
 
 
 
@@ -809,56 +809,56 @@ VPCPeering
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - network_environment
       - TextReference
       - .. fa:: times
       - 
       - 
       - Network Environment Reference
-      - IVPCPeering
+      - VPCPeering
     * - peer_account_id
       - String
       - .. fa:: times
       - 
       - 
       - Remote peer AWS account Id
-      - IVPCPeering
+      - VPCPeering
     * - peer_region
       - String
       - .. fa:: times
       - 
       - 
       - Remote peer AWS region
-      - IVPCPeering
+      - VPCPeering
     * - peer_role_name
       - String
       - .. fa:: times
       - 
       - 
       - Remote peer role name
-      - IVPCPeering
+      - VPCPeering
     * - peer_vpcid
       - String
       - .. fa:: times
       - 
       - 
       - Remote peer VPC Id
-      - IVPCPeering
+      - VPCPeering
     * - routing
       - List of VPCPeeringRoute_ AIM schemas
       - .. fa:: check
       - 
       - 
       - Peering routes
-      - IVPCPeering
+      - VPCPeering
 
 
 
@@ -888,14 +888,14 @@ VPCPeeringRoute
       - 
       - A valid CIDR v4 block or an empty string
       - CIDR IP
-      - IVPCPeeringRoute
+      - VPCPeeringRoute
     * - segment
       - TextReference
       - .. fa:: times
       - 
       - 
       - Segment reference
-      - IVPCPeeringRoute
+      - VPCPeeringRoute
 
 
 
@@ -925,35 +925,35 @@ NATGateway
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - availability_zone
       - String
       - .. fa:: times
       - all
       - 
       - Availability Zones to launch instances in.
-      - INATGateway
+      - NATGateway
     * - default_route_segments
       - List of Strings
       - .. fa:: times
       - 
       - 
       - Default Route Segments
-      - INATGateway
+      - NATGateway
     * - segment
       - TextReference
       - .. fa:: times
       - 
       - 
       - Segment
-      - INATGateway
+      - NATGateway
 
 
 
@@ -983,7 +983,7 @@ VPNGateway
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
 
 
 
@@ -1013,21 +1013,21 @@ PrivateHostedZone
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - name
       - String
       - .. fa:: times
       - 
       - 
       - Hosted zone name
-      - IPrivateHostedZone
+      - PrivateHostedZone
     * - vpc_associations
       - List of Strings
       - .. fa:: times
       - 
       - 
       - List of VPC Ids
-      - IPrivateHostedZone
+      - PrivateHostedZone
 
 
 
@@ -1057,63 +1057,63 @@ Segment
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - az1_cidr
       - String
       - .. fa:: times
       - 
       - 
       - Availability Zone 1 CIDR
-      - ISegment
+      - Segment
     * - az2_cidr
       - String
       - .. fa:: times
       - 
       - 
       - Availability Zone 2 CIDR
-      - ISegment
+      - Segment
     * - az3_cidr
       - String
       - .. fa:: times
       - 
       - 
       - Availability Zone 3 CIDR
-      - ISegment
+      - Segment
     * - az4_cidr
       - String
       - .. fa:: times
       - 
       - 
       - Availability Zone 4 CIDR
-      - ISegment
+      - Segment
     * - az5_cidr
       - String
       - .. fa:: times
       - 
       - 
       - Availability Zone 5 CIDR
-      - ISegment
+      - Segment
     * - az6_cidr
       - String
       - .. fa:: times
       - 
       - 
       - Availability Zone 6 CIDR
-      - ISegment
+      - Segment
     * - internet_access
       - Boolean
       - .. fa:: times
       - False
       - 
       - Internet Access
-      - ISegment
+      - Segment
 
 
 
@@ -1143,42 +1143,42 @@ SecurityGroup
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - egress
       - List of EgressRule_ AIM schemas
       - .. fa:: times
       - 
       - Every list item must be an EgressRule
       - Egress
-      - ISecurityGroup
+      - SecurityGroup
     * - group_description
       - String
       - .. fa:: times
       - 
       - Up to 255 characters in length
       - Group description
-      - ISecurityGroup
+      - SecurityGroup
     * - group_name
       - String
       - .. fa:: times
       - 
       - Up to 255 characters in length. Cannot start with sg-.
       - Group name
-      - ISecurityGroup
+      - SecurityGroup
     * - ingress
       - List of IngressRule_ AIM schemas
       - .. fa:: times
       - 
       - Every list item must be an IngressRule
       - Ingress
-      - ISecurityGroup
+      - SecurityGroup
 
 
 
@@ -1200,69 +1200,69 @@ Security group egress
       - Constraints
       - Purpose
       - Base Schema
-    * - cidr_ip
-      - String
-      - .. fa:: times
-      - 
-      - A valid CIDR v4 block or an empty string
-      - CIDR IP
-      - ISecurityGroupRule
-    * - cidr_ip_v6
-      - String
-      - .. fa:: times
-      - 
-      - A valid CIDR v6 block or an empty string
-      - CIDR IP v6
-      - ISecurityGroupRule
-    * - description
-      - String
-      - .. fa:: times
-      - 
-      - Max 255 characters. Allowed characters are a-z, A-Z, 0-9, spaces, and ._-:/()#,@[]+=;{}!$*.
-      - Description
-      - ISecurityGroupRule
-    * - from_port
-      - Int
-      - .. fa:: times
-      - -1
-      - A value of -1 indicates all ICMP/ICMPv6 types. If you specify all ICMP/ICMPv6 types, you must specify all codes.
-      - From port
-      - ISecurityGroupRule
     * - name
       - String
       - .. fa:: times
       - 
       - 
       - Name
-      - IName
+      - Name
+    * - cidr_ip
+      - String
+      - .. fa:: times
+      - 
+      - A valid CIDR v4 block or an empty string
+      - CIDR IP
+      - SecurityGroupRule
+    * - cidr_ip_v6
+      - String
+      - .. fa:: times
+      - 
+      - A valid CIDR v6 block or an empty string
+      - CIDR IP v6
+      - SecurityGroupRule
+    * - description
+      - String
+      - .. fa:: times
+      - 
+      - Max 255 characters. Allowed characters are a-z, A-Z, 0-9, spaces, and ._-:/()#,@[]+=;{}!$*.
+      - Description
+      - SecurityGroupRule
+    * - from_port
+      - Int
+      - .. fa:: times
+      - -1
+      - A value of -1 indicates all ICMP/ICMPv6 types. If you specify all ICMP/ICMPv6 types, you must specify all codes.
+      - From port
+      - SecurityGroupRule
     * - port
       - Int
       - .. fa:: times
       - -1
       - A value of -1 indicates all ICMP/ICMPv6 types. If you specify all ICMP/ICMPv6 types, you must specify all codes.
       - Port
-      - ISecurityGroupRule
+      - SecurityGroupRule
     * - protocol
       - String
       - .. fa:: times
       - 
       - The IP protocol name (tcp, udp, icmp, icmpv6) or number.
       - IP Protocol
-      - ISecurityGroupRule
+      - SecurityGroupRule
     * - to_port
       - Int
       - .. fa:: times
       - -1
       - A value of -1 indicates all ICMP/ICMPv6 types. If you specify all ICMP/ICMPv6 types, you must specify all codes.
       - To port
-      - ISecurityGroupRule
+      - SecurityGroupRule
     * - destination_security_group
       - TextReference
       - .. fa:: times
       - 
       - An AIM Reference to a SecurityGroup
       - Destination Security Group Reference
-      - IEgressRule
+      - EgressRule
 
 
 
@@ -1284,69 +1284,69 @@ Security group ingress
       - Constraints
       - Purpose
       - Base Schema
-    * - cidr_ip
-      - String
-      - .. fa:: times
-      - 
-      - A valid CIDR v4 block or an empty string
-      - CIDR IP
-      - ISecurityGroupRule
-    * - cidr_ip_v6
-      - String
-      - .. fa:: times
-      - 
-      - A valid CIDR v6 block or an empty string
-      - CIDR IP v6
-      - ISecurityGroupRule
-    * - description
-      - String
-      - .. fa:: times
-      - 
-      - Max 255 characters. Allowed characters are a-z, A-Z, 0-9, spaces, and ._-:/()#,@[]+=;{}!$*.
-      - Description
-      - ISecurityGroupRule
-    * - from_port
-      - Int
-      - .. fa:: times
-      - -1
-      - A value of -1 indicates all ICMP/ICMPv6 types. If you specify all ICMP/ICMPv6 types, you must specify all codes.
-      - From port
-      - ISecurityGroupRule
     * - name
       - String
       - .. fa:: times
       - 
       - 
       - Name
-      - IName
+      - Name
+    * - cidr_ip
+      - String
+      - .. fa:: times
+      - 
+      - A valid CIDR v4 block or an empty string
+      - CIDR IP
+      - SecurityGroupRule
+    * - cidr_ip_v6
+      - String
+      - .. fa:: times
+      - 
+      - A valid CIDR v6 block or an empty string
+      - CIDR IP v6
+      - SecurityGroupRule
+    * - description
+      - String
+      - .. fa:: times
+      - 
+      - Max 255 characters. Allowed characters are a-z, A-Z, 0-9, spaces, and ._-:/()#,@[]+=;{}!$*.
+      - Description
+      - SecurityGroupRule
+    * - from_port
+      - Int
+      - .. fa:: times
+      - -1
+      - A value of -1 indicates all ICMP/ICMPv6 types. If you specify all ICMP/ICMPv6 types, you must specify all codes.
+      - From port
+      - SecurityGroupRule
     * - port
       - Int
       - .. fa:: times
       - -1
       - A value of -1 indicates all ICMP/ICMPv6 types. If you specify all ICMP/ICMPv6 types, you must specify all codes.
       - Port
-      - ISecurityGroupRule
+      - SecurityGroupRule
     * - protocol
       - String
       - .. fa:: times
       - 
       - The IP protocol name (tcp, udp, icmp, icmpv6) or number.
       - IP Protocol
-      - ISecurityGroupRule
+      - SecurityGroupRule
     * - to_port
       - Int
       - .. fa:: times
       - -1
       - A value of -1 indicates all ICMP/ICMPv6 types. If you specify all ICMP/ICMPv6 types, you must specify all codes.
       - To port
-      - ISecurityGroupRule
+      - SecurityGroupRule
     * - source_security_group
       - TextReference
       - .. fa:: times
       - 
       - An AIM Reference to a SecurityGroup
       - Source Security Group Reference
-      - IIngressRule
+      - IngressRule
 
 
 Environments
@@ -1427,7 +1427,7 @@ Environment
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 
@@ -1451,41 +1451,41 @@ EnvironmentDefault
       - Constraints
       - Purpose
       - Base Schema
-    * - alarm_sets
-      - Container of AlarmSets_ AIM schemas
-      - .. fa:: times
-      - 
-      - 
-      - Alarm Sets
-      - IRegionContainer
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - alarm_sets
+      - Container of AlarmSets_ AIM schemas
+      - .. fa:: times
+      - 
+      - 
+      - Alarm Sets
+      - RegionContainer
     * - applications
       - Container of ApplicationEngines_ AIM schemas
       - .. fa:: check
       - 
       - 
       - Application container
-      - IEnvironmentDefault
+      - EnvironmentDefault
     * - network
       - Container of Network_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Network
-      - IEnvironmentDefault
+      - EnvironmentDefault
     * - secrets_manager
       - Container of SecretsManager_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Secrets Manager
-      - IEnvironmentDefault
+      - EnvironmentDefault
 
 
 
@@ -1510,48 +1510,48 @@ EnvironmentRegion
       - Constraints
       - Purpose
       - Base Schema
-    * - alarm_sets
-      - Container of AlarmSets_ AIM schemas
-      - .. fa:: times
-      - 
-      - 
-      - Alarm Sets
-      - IRegionContainer
-    * - applications
-      - Container of ApplicationEngines_ AIM schemas
-      - .. fa:: check
-      - 
-      - 
-      - Application container
-      - IEnvironmentDefault
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
+    * - applications
+      - Container of ApplicationEngines_ AIM schemas
+      - .. fa:: check
+      - 
+      - 
+      - Application container
+      - EnvironmentDefault
     * - network
       - Container of Network_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Network
-      - IEnvironmentDefault
+      - EnvironmentDefault
     * - secrets_manager
       - Container of SecretsManager_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Secrets Manager
-      - IEnvironmentDefault
+      - EnvironmentDefault
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - alarm_sets
+      - Container of AlarmSets_ AIM schemas
+      - .. fa:: times
+      - 
+      - 
+      - Alarm Sets
+      - RegionContainer
 
 
 Applications
@@ -1633,7 +1633,7 @@ A collection of Application Engines
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 
@@ -1657,55 +1657,55 @@ Application
       - Constraints
       - Purpose
       - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - IDeployable
     * - groups
       - Container of ResourceGroups_ AIM schemas
       - .. fa:: check
       - 
       - 
       - 
-      - IApplicationEngine
-    * - monitoring
-      - MonitorConfig_ AIM schema
-      - .. fa:: times
-      - 
-      - 
-      - 
-      - IMonitorable
-    * - notifications
-      - Container of AlarmNotifications_ AIM schemas
-      - .. fa:: times
-      - 
-      - 
-      - Alarm Notifications
-      - INotifiable
+      - ApplicationEngine
     * - order
       - Int
       - .. fa:: times
       - 0
       - 
       - The order in which the application will be processed
-      - IApplicationEngine
+      - ApplicationEngine
+    * - dns_enabled
+      - Boolean
+      - .. fa:: times
+      - True
+      - 
+      - Boolean indicating whether DNS record sets will be created.
+      - DNSEnablable
+    * - enabled
+      - Boolean
+      - .. fa:: times
+      - False
+      - Could be deployed to AWS
+      - Enabled
+      - Deployable
+    * - monitoring
+      - MonitorConfig_ AIM schema
+      - .. fa:: times
+      - 
+      - 
+      - 
+      - Monitorable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - notifications
+      - Container of AlarmNotifications_ AIM schemas
+      - .. fa:: times
+      - 
+      - 
+      - Alarm Notifications
+      - Notifiable
 
 
 
@@ -1733,7 +1733,7 @@ A collection of Application Resource Groups
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 
@@ -1761,42 +1761,42 @@ A collection of Application Resources
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - 
       - 
       - 
-      - IResourceGroup
+      - ResourceGroup
     * - order
       - Int
       - .. fa:: check
       - 
       - 
       - The order in which the group will be deployed
-      - IResourceGroup
+      - ResourceGroup
     * - resources
       - Container of Resources_ AIM schemas
       - .. fa:: check
       - 
       - 
       - 
-      - IResourceGroup
+      - ResourceGroup
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - IResourceGroup
+      - ResourceGroup
     * - type
       - String
       - .. fa:: check
       - 
       - 
       - Type
-      - IResourceGroup
+      - ResourceGroup
 
 
 
@@ -1824,7 +1824,7 @@ A collection of Application Resources
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 
@@ -1854,42 +1854,42 @@ Resource
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - change_protected
       - Boolean
       - .. fa:: times
       - False
       - 
       - Boolean indicating whether this resource can be modified or not.
-      - IResource
+      - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
       - 
       - The order in which the resource will be deployed
-      - IResource
+      - Resource
 
 
 Application Resources
@@ -1917,160 +1917,160 @@ An Api Gateway Rest API resource
       - Constraints
       - Purpose
       - Base Schema
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - api_key_source_type
       - String
       - .. fa:: times
       - 
       - Must be one of 'HEADER' to read the API key from the X-API-Key header of a request or 'AUTHORIZER' to read the API key from the UsageIdentifierKey from a Lambda authorizer.
       - API Key Source Type
-      - IApiGatewayRestApi
+      - ApiGatewayRestApi
     * - binary_media_types
       - List of Strings
       - .. fa:: times
       - 
       - Duplicates are not allowed. Slashes must be escaped with ~1. For example, image/png would be image~1png in the BinaryMediaTypes list.
       - Binary Media Types. The list of binary media types that are supported by the RestApi resource, such as image/png or application/octet-stream. By default, RestApi supports only UTF-8-encoded text payloads.
-      - IApiGatewayRestApi
+      - ApiGatewayRestApi
     * - body
       - String
       - .. fa:: times
       - 
       - Must be valid JSON.
       - Body. An OpenAPI specification that defines a set of RESTful APIs in JSON or YAML format. For YAML templates, you can also provide the specification in YAML format.
-      - IApiGatewayRestApi
+      - ApiGatewayRestApi
     * - body_file_location
       - StringFileReference
       - .. fa:: times
       - 
       - Must be valid path to a valid JSON document.
       - Path to a file containing the Body.
-      - IApiGatewayRestApi
+      - ApiGatewayRestApi
     * - body_s3_location
       - String
       - .. fa:: times
       - 
       - Valid S3Location string to a valid JSON or YAML document.
       - The Amazon Simple Storage Service (Amazon S3) location that points to an OpenAPI file, which defines a set of RESTful APIs in JSON or YAML format.
-      - IApiGatewayRestApi
+      - ApiGatewayRestApi
     * - clone_from
       - String
       - .. fa:: times
       - 
       - 
       - CloneFrom. The ID of the RestApi resource that you want to clone.
-      - IApiGatewayRestApi
+      - ApiGatewayRestApi
     * - description
       - String
       - .. fa:: times
       - 
       - 
       - Description of the RestApi resource.
-      - IApiGatewayRestApi
+      - ApiGatewayRestApi
     * - endpoint_configuration
       - List of Strings
       - .. fa:: times
       - 
       - List of strings, each must be one of 'EDGE', 'REGIONAL', 'PRIVATE'
       - Endpoint configuration. A list of the endpoint types of the API. Use this field when creating an API. When importing an existing API, specify the endpoint configuration types using the `parameters` field.
-      - IApiGatewayRestApi
+      - ApiGatewayRestApi
     * - fail_on_warnings
       - Boolean
       - .. fa:: times
       - False
       - 
       - Indicates whether to roll back the resource if a warning occurs while API Gateway is creating the RestApi resource.
-      - IApiGatewayRestApi
+      - ApiGatewayRestApi
     * - methods
       - Container of ApiGatewayMethods_ AIM schemas
       - .. fa:: times
       - 
       - 
       - 
-      - IApiGatewayRestApi
+      - ApiGatewayRestApi
     * - minimum_compression_size
       - Int
       - .. fa:: times
       - 
       - A non-negative integer between 0 and 10485760 (10M) bytes, inclusive.
       - An integer that is used to enable compression on an API. When compression is enabled, compression or decompression is not applied on the payload if the payload size is smaller than this value. Setting it to zero allows compression for any payload size.
-      - IApiGatewayRestApi
+      - ApiGatewayRestApi
     * - models
       - Container of ApiGatewayModels_ AIM schemas
       - .. fa:: times
       - 
       - 
       - 
-      - IApiGatewayRestApi
+      - ApiGatewayRestApi
     * - parameters
       - Dict
       - .. fa:: times
       - {}
       - Dictionary of key/value pairs that are strings.
       - Parameters. Custom header parameters for the request.
-      - IApiGatewayRestApi
+      - ApiGatewayRestApi
     * - policy
       - String
       - .. fa:: times
       - 
       - Valid JSON document
       - A policy document that contains the permissions for the RestApi resource, in JSON format. To set the ARN for the policy, use the !Join intrinsic function with "" as delimiter and values of "execute-api:/" and "*".
-      - IApiGatewayRestApi
+      - ApiGatewayRestApi
     * - resources
       - Container of ApiGatewayResources_ AIM schemas
       - .. fa:: times
       - 
       - 
       - 
-      - IApiGatewayRestApi
+      - ApiGatewayRestApi
     * - stages
       - Container of ApiGatewayStages_ AIM schemas
       - .. fa:: times
       - 
       - 
       - 
-      - IApiGatewayRestApi
+      - ApiGatewayRestApi
 
 
 
@@ -2098,7 +2098,7 @@ Container for API Gateway Method objects
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 
@@ -2126,7 +2126,7 @@ Container for API Gateway Model objects
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 
@@ -2154,7 +2154,7 @@ Container for API Gateway Resource objects
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 
@@ -2182,7 +2182,7 @@ Container for API Gateway Stage objects
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 
@@ -2264,125 +2264,125 @@ to a target group, use the ``target_groups`` field on an ASG resource.
       - Constraints
       - Purpose
       - Base Schema
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - monitoring
       - MonitorConfig_ AIM schema
       - .. fa:: times
       - 
       - 
       - 
-      - IMonitorable
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
+      - Monitorable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - access_logs_bucket
       - TextReference
       - .. fa:: times
       - 
       - 
       - Bucket to store access logs in
-      - ILBApplication
+      - LBApplication
     * - access_logs_prefix
       - String
       - .. fa:: times
       - 
       - 
       - Access Logs S3 Bucket prefix
-      - ILBApplication
+      - LBApplication
     * - dns
       - List of DNS_ AIM schemas
       - .. fa:: times
       - 
       - 
       - List of DNS for the ALB
-      - ILBApplication
+      - LBApplication
     * - enable_access_logs
       - Boolean
       - .. fa:: times
       - 
       - 
       - Write access logs to an S3 Bucket
-      - ILBApplication
+      - LBApplication
     * - idle_timeout_secs
       - Int
       - .. fa:: times
       - 60
       - The idle timeout value, in seconds.
       - Idle timeout in seconds
-      - ILBApplication
+      - LBApplication
     * - listeners
       - Container of Listener_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Listeners
-      - ILBApplication
+      - LBApplication
     * - scheme
       - Choice
       - .. fa:: times
       - 
       - 
       - Scheme
-      - ILBApplication
+      - LBApplication
     * - security_groups
       - List of Strings
       - .. fa:: times
       - 
       - 
       - Security Groups
-      - ILBApplication
+      - LBApplication
     * - segment
       - String
       - .. fa:: times
       - 
       - 
       - Id of the segment stack
-      - ILBApplication
+      - LBApplication
     * - target_groups
       - Container of TargetGroup_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Target Groups
-      - ILBApplication
+      - LBApplication
 
 
 
@@ -2410,28 +2410,28 @@ DNS
       - 
       - 
       - Domain name
-      - IDNS
+      - DNS
     * - hosted_zone
       - TextReference
       - .. fa:: times
       - 
       - 
       - Hosted Zone Id
-      - IDNS
+      - DNS
     * - ssl_certificate
       - TextReference
       - .. fa:: times
       - 
       - 
       - SSL certificate Reference
-      - IDNS
+      - DNS
     * - ttl
       - Int
       - .. fa:: times
       - 300
       - 
       - TTL
-      - IDNS
+      - DNS
 
 
 
@@ -2459,42 +2459,42 @@ Listener
       - 
       - 
       - Port
-      - IPortProtocol
+      - PortProtocol
     * - protocol
       - Choice
       - .. fa:: times
       - 
       - 
       - Protocol
-      - IPortProtocol
+      - PortProtocol
     * - redirect
       - PortProtocol_ AIM schema
       - .. fa:: times
       - 
       - 
       - Redirect
-      - IListener
+      - Listener
     * - rules
       - Container of ListenerRule_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Container of listener rules
-      - IListener
+      - Listener
     * - ssl_certificates
       - List of Strings
       - .. fa:: times
       - 
       - 
       - List of SSL certificate References
-      - IListener
+      - Listener
     * - target_group
       - String
       - .. fa:: times
       - 
       - 
       - Target group
-      - IListener
+      - Listener
 
 
 
@@ -2522,42 +2522,42 @@ ListenerRule
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - host
       - String
       - .. fa:: times
       - 
       - 
       - Host header value
-      - IListenerRule
+      - ListenerRule
     * - priority
       - Int
       - .. fa:: times
       - 1
       - 
       - Forward condition priority
-      - IListenerRule
+      - ListenerRule
     * - redirect_host
       - String
       - .. fa:: times
       - 
       - 
       - The host to redirect to
-      - IListenerRule
+      - ListenerRule
     * - rule_type
       - String
       - .. fa:: times
       - 
       - 
       - Type of Rule
-      - IListenerRule
+      - ListenerRule
     * - target_group
       - String
       - .. fa:: times
       - 
       - 
       - Target group name
-      - IListenerRule
+      - ListenerRule
 
 
 
@@ -2585,14 +2585,14 @@ Port and Protocol
       - 
       - 
       - Port
-      - IPortProtocol
+      - PortProtocol
     * - protocol
       - Choice
       - .. fa:: times
       - 
       - 
       - Protocol
-      - IPortProtocol
+      - PortProtocol
 
 
 
@@ -2614,111 +2614,111 @@ Target Group
       - Constraints
       - Purpose
       - Base Schema
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
-    * - port
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - Port
-      - IPortProtocol
-    * - protocol
-      - Choice
-      - .. fa:: times
-      - 
-      - 
-      - Protocol
-      - IPortProtocol
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - port
+      - Int
+      - .. fa:: times
+      - 
+      - 
+      - Port
+      - PortProtocol
+    * - protocol
+      - Choice
+      - .. fa:: times
+      - 
+      - 
+      - Protocol
+      - PortProtocol
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - connection_drain_timeout
       - Int
       - .. fa:: times
       - 
       - 
       - Connection drain timeout
-      - ITargetGroup
+      - TargetGroup
     * - health_check_http_code
       - String
       - .. fa:: times
       - 
       - 
       - Health check HTTP codes
-      - ITargetGroup
+      - TargetGroup
     * - health_check_interval
       - Int
       - .. fa:: times
       - 
       - 
       - Health check interval
-      - ITargetGroup
+      - TargetGroup
     * - health_check_path
       - String
       - .. fa:: times
       - /
       - 
       - Health check path
-      - ITargetGroup
+      - TargetGroup
     * - health_check_timeout
       - Int
       - .. fa:: times
       - 
       - 
       - Health check timeout
-      - ITargetGroup
+      - TargetGroup
     * - healthy_threshold
       - Int
       - .. fa:: times
       - 
       - 
       - Healthy threshold
-      - ITargetGroup
+      - TargetGroup
     * - unhealthy_threshold
       - Int
       - .. fa:: times
       - 
       - 
       - Unhealthy threshold
-      - ITargetGroup
+      - TargetGroup
 
 
 
@@ -2742,293 +2742,293 @@ ASG
       - Constraints
       - Purpose
       - Base Schema
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - monitoring
       - MonitorConfig_ AIM schema
       - .. fa:: times
       - 
       - 
       - 
-      - IMonitorable
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
+      - Monitorable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - associate_public_ip_address
       - Boolean
       - .. fa:: times
       - False
       - 
       - Associate Public IP Address
-      - IASG
+      - ASG
     * - availability_zone
       - String
       - .. fa:: times
       - all
       - 
       - Availability Zones to launch instances in.
-      - IASG
+      - ASG
     * - block_device_mappings
       - List of BlockDeviceMapping_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Block Device Mappings
-      - IASG
+      - ASG
     * - cfn_init
       - CloudFormationInit_ AIM schema
       - .. fa:: times
       - 
       - 
       - CloudFormation Init
-      - IASG
+      - ASG
     * - cooldown_secs
       - Int
       - .. fa:: times
       - 300
       - 
       - Cooldown seconds
-      - IASG
+      - ASG
     * - desired_capacity
       - Int
       - .. fa:: times
       - 1
       - 
       - Desired capacity
-      - IASG
+      - ASG
     * - ebs_optimized
       - Boolean
       - .. fa:: times
       - False
       - 
       - EBS Optimized
-      - IASG
+      - ASG
     * - ebs_volume_mounts
       - List of EBSVolumeMount_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Elastic Block Store Volume Mounts
-      - IASG
+      - ASG
     * - efs_mounts
       - List of EFSMount_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Elastic Filesystem Configuration
-      - IASG
+      - ASG
     * - eip
       - TextReference
       - .. fa:: times
       - 
       - 
       - Elastic IP Reference or AllocationId
-      - IASG
+      - ASG
     * - health_check_grace_period_secs
       - Int
       - .. fa:: times
       - 300
       - 
       - Health check grace period in seconds
-      - IASG
+      - ASG
     * - health_check_type
       - String
       - .. fa:: times
       - EC2
       - Must be one of: 'EC2', 'ELB'
       - Health check type
-      - IASG
+      - ASG
     * - instance_ami
       - TextReference
       - .. fa:: times
       - 
       - 
       - Instance AMI
-      - IASG
+      - ASG
     * - instance_ami_type
       - String
       - .. fa:: times
       - amazon
       - Must be one of amazon, centos, suse, debian, ubuntu, microsoft or redhat.
       - The AMI Operating System family
-      - IASG
+      - ASG
     * - instance_iam_role
       - Role_ AIM schema
       - .. fa:: check
       - 
       - 
       - 
-      - IASG
+      - ASG
     * - instance_key_pair
       - TextReference
       - .. fa:: times
       - 
       - 
       - Instance key pair reference
-      - IASG
+      - ASG
     * - instance_monitoring
       - Boolean
       - .. fa:: times
       - False
       - 
       - Instance monitoring
-      - IASG
+      - ASG
     * - instance_type
       - String
       - .. fa:: times
       - 
       - 
       - Instance type
-      - IASG
+      - ASG
     * - launch_options
       - EC2LaunchOptions_ AIM schema
       - .. fa:: times
       - 
       - 
       - EC2 Launch Options
-      - IASG
+      - ASG
     * - lifecycle_hooks
       - Container of ASGLifecycleHooks_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Lifecycle Hooks
-      - IASG
+      - ASG
     * - load_balancers
       - List of Strings
       - .. fa:: times
       - 
       - 
       - Target groups
-      - IASG
+      - ASG
     * - max_instances
       - Int
       - .. fa:: times
       - 2
       - 
       - Maximum instances
-      - IASG
+      - ASG
     * - min_instances
       - Int
       - .. fa:: times
       - 1
       - 
       - Minimum instances
-      - IASG
+      - ASG
     * - scaling_policies
       - Container of ASGScalingPolicies_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Scaling Policies
-      - IASG
+      - ASG
     * - scaling_policy_cpu_average
       - Int
       - .. fa:: times
       - 0
       - 
       - Average CPU Scaling Polciy
-      - IASG
+      - ASG
     * - secrets
       - List of Strings
       - .. fa:: times
       - 
       - 
       - List of Secrets Manager References
-      - IASG
+      - ASG
     * - security_groups
       - List of Strings
       - .. fa:: times
       - 
       - 
       - Security groups
-      - IASG
+      - ASG
     * - segment
       - String
       - .. fa:: times
       - 
       - 
       - Segment
-      - IASG
+      - ASG
     * - target_groups
       - List of Strings
       - .. fa:: times
       - 
       - 
       - Target groups
-      - IASG
+      - ASG
     * - termination_policies
       - List of Strings
       - .. fa:: times
       - 
       - 
       - Terminiation policies
-      - IASG
+      - ASG
     * - update_policy_max_batch_size
       - Int
       - .. fa:: times
       - 1
       - 
       - Update policy maximum batch size
-      - IASG
+      - ASG
     * - update_policy_min_instances_in_service
       - Int
       - .. fa:: times
       - 1
       - 
       - Update policy minimum instances in service
-      - IASG
+      - ASG
     * - user_data_pre_script
       - String
       - .. fa:: times
       - 
       - 
       - User data pre-script
-      - IASG
+      - ASG
     * - user_data_script
       - String
       - .. fa:: times
       - 
       - 
       - User data script
-      - IASG
+      - ASG
 
 
 
@@ -3058,7 +3058,7 @@ ASGLifecycleHooks
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 
@@ -3088,7 +3088,7 @@ ASGScalingPolicies
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 
@@ -3116,21 +3116,21 @@ BlockDeviceMapping
       - 
       - 
       - The device name exposed to the EC2 instance
-      - IBlockDeviceMapping
+      - BlockDeviceMapping
     * - ebs
       - BlockDevice_ AIM schema
       - .. fa:: times
       - 
       - 
       - Amazon Ebs volume
-      - IBlockDeviceMapping
+      - BlockDeviceMapping
     * - virtual_name
       - String
       - .. fa:: times
       - 
       - The name must be in the form ephemeralX where X is a number starting from zero (0), for example, ephemeral0.
       - The name of the virtual device.
-      - IBlockDeviceMapping
+      - BlockDeviceMapping
 
 
 
@@ -3158,42 +3158,42 @@ BlockDevice
       - True
       - 
       - Indicates whether to delete the volume when the instance is terminated.
-      - IBlockDevice
+      - BlockDevice
     * - encrypted
       - Boolean
       - .. fa:: times
       - 
       - 
       - Specifies whether the EBS volume is encrypted.
-      - IBlockDevice
+      - BlockDevice
     * - iops
       - Int
       - .. fa:: times
       - 
       - The maximum ratio of IOPS to volume size (in GiB) is 50:1, so for 5,000 provisioned IOPS, you need at least 100 GiB storage on the volume.
       - The number of I/O operations per second (IOPS) to provision for the volume.
-      - IBlockDevice
+      - BlockDevice
     * - size_gib
       - Int
       - .. fa:: times
       - 
       - This can be a number from 1-1,024 for standard, 4-16,384 for io1, 1-16,384 for gp2, and 500-16,384 for st1 and sc1.
       - The volume size, in Gibibytes (GiB).
-      - IBlockDevice
+      - BlockDevice
     * - snapshot_id
       - String
       - .. fa:: times
       - 
       - 
       - The snapshot ID of the volume to use.
-      - IBlockDevice
+      - BlockDevice
     * - volume_type
       - String
       - .. fa:: check
       - 
       - Must be one of standard, io1, gp2, st1 or sc1.
       - The volume type, which can be standard for Magnetic, io1 for Provisioned IOPS SSD, gp2 for General Purpose SSD, st1 for Throughput Optimized HDD, or sc1 for Cold HDD.
-      - IBlockDevice
+      - BlockDevice
 
 
 
@@ -3223,35 +3223,35 @@ EBSVolumeMount
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - device
       - String
       - .. fa:: check
       - 
       - 
       - Device to mount the EBS Volume with.
-      - IEBSVolumeMount
+      - EBSVolumeMount
     * - filesystem
       - String
       - .. fa:: check
       - 
       - 
       - Filesystem to mount the EBS Volume with.
-      - IEBSVolumeMount
+      - EBSVolumeMount
     * - folder
       - String
       - .. fa:: check
       - 
       - 
       - Folder to mount the EBS Volume
-      - IEBSVolumeMount
+      - EBSVolumeMount
     * - volume
       - TextReference
       - .. fa:: check
       - 
       - 
       - EBS Volume Resource Reference
-      - IEBSVolumeMount
+      - EBSVolumeMount
 
 
 
@@ -3281,21 +3281,21 @@ EFSMount
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - folder
       - String
       - .. fa:: check
       - 
       - 
       - Folder to mount the EFS target
-      - IEFSMount
+      - EFSMount
     * - target
       - TextReference
       - .. fa:: check
       - 
       - 
       - EFS Target Resource Reference
-      - IEFSMount
+      - EFSMount
 
 
 
@@ -3325,21 +3325,21 @@ EC2LaunchOptions
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - cfn_init_config_sets
       - List of Strings
       - .. fa:: times
       - []
       - 
       - List of cfn-init config sets
-      - IEC2LaunchOptions
+      - EC2LaunchOptions
     * - update_packages
       - Boolean
       - .. fa:: times
       - False
       - 
       - Update Distribution Packages
-      - IEC2LaunchOptions
+      - EC2LaunchOptions
 
 
 
@@ -3367,28 +3367,28 @@ CloudFormationInit
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - config_sets
       - Container of CloudFormationConfigSets_ AIM schemas
       - .. fa:: check
       - 
       - 
       - CloudFormation Init configSets
-      - ICloudFormationInit
+      - CloudFormationInit
     * - configurations
       - Container of CloudFormationConfigurations_ AIM schemas
       - .. fa:: check
       - 
       - 
       - CloudFormation Init configurations
-      - ICloudFormationInit
+      - CloudFormationInit
     * - parameters
       - Dict
       - .. fa:: times
       - {}
       - 
       - Parameters
-      - ICloudFormationInit
+      - CloudFormationInit
 
 
 
@@ -3416,7 +3416,7 @@ CloudFormationConfigSets
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 
@@ -3444,7 +3444,7 @@ CloudFormationConfigurations
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 
@@ -3468,188 +3468,188 @@ CodePipeBuildDeploy
       - Constraints
       - Purpose
       - Base Schema
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - alb_target_group
       - TextReference
       - .. fa:: times
       - 
       - 
       - ALB Target Group Reference
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - artifacts_bucket
       - TextReference
       - .. fa:: times
       - 
       - 
       - Artifacts S3 Bucket Reference
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - asg
       - TextReference
       - .. fa:: times
       - 
       - 
       - ASG Reference
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - auto_rollback_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Automatic rollback enabled
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - codebuild_compute_type
       - String
       - .. fa:: times
       - 
       - 
       - CodeBuild Compute Type
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - codebuild_image
       - String
       - .. fa:: times
       - 
       - 
       - CodeBuild Docker Image
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - codecommit_repository
       - TextReference
       - .. fa:: times
       - 
       - 
       - CodeCommit Respository
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - cross_account_support
       - Boolean
       - .. fa:: times
       - False
       - 
       - Cross Account Support
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - data_account
       - TextReference
       - .. fa:: times
       - 
       - 
       - Data Account Reference
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - deploy_config_type
       - String
       - .. fa:: times
       - HOST_COUNT
       - 
       - Deploy Config Type
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - deploy_config_value
       - Int
       - .. fa:: times
       - 0
       - 
       - Deploy Config Value
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - deploy_instance_role
       - TextReference
       - .. fa:: times
       - 
       - 
       - Deploy Instance Role Reference
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - deploy_style_option
       - String
       - .. fa:: times
       - WITH_TRAFFIC_CONTROL
       - 
       - Deploy Style Option
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - deployment_branch_name
       - String
       - .. fa:: times
       - 
       - 
       - Deployment Branch Name
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - deployment_environment
       - String
       - .. fa:: times
       - 
       - 
       - Deployment Environment
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - elb_name
       - String
       - .. fa:: times
       - 
       - 
       - ELB Name
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - manual_approval_enabled
       - Boolean
       - .. fa:: times
       - False
       - 
       - Manual approval enabled
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - manual_approval_notification_email
       - String
       - .. fa:: times
       - 
       - 
       - Manual approval notification email
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - timeout_mins
       - Int
       - .. fa:: times
       - 60
       - 
       - Timeout in Minutes
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
     * - tools_account
       - TextReference
       - .. fa:: times
       - 
       - 
       - Tools Account Reference
-      - ICodePipeBuildDeploy
+      - CodePipeBuildDeploy
 
 
 
@@ -3671,69 +3671,69 @@ AWSCertificateManager
       - Constraints
       - Purpose
       - Base Schema
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - domain_name
       - String
       - .. fa:: times
       - 
       - 
       - Domain Name
-      - IAWSCertificateManager
+      - AWSCertificateManager
     * - external_resource
       - Boolean
       - .. fa:: times
       - False
       - 
       - Marks this resource as external to avoid creating and validating it.
-      - IAWSCertificateManager
+      - AWSCertificateManager
     * - subject_alternative_names
       - List of Strings
       - .. fa:: times
       - 
       - 
       - Subject alternative names
-      - IAWSCertificateManager
+      - AWSCertificateManager
 
 
 RDS
@@ -3845,28 +3845,28 @@ Option groups enable and configure features that are specific to a particular DB
       - 
       - 
       - Option Name
-      - IRDSOptionConfiguration
+      - RDSOptionConfiguration
     * - option_settings
       - List of NameValuePair_ AIM schemas
       - .. fa:: times
       - 
       - 
       - List of option name value pairs.
-      - IRDSOptionConfiguration
+      - RDSOptionConfiguration
     * - option_version
       - String
       - .. fa:: times
       - 
       - 
       - Option Version
-      - IRDSOptionConfiguration
+      - RDSOptionConfiguration
     * - port
       - String
       - .. fa:: times
       - 
       - 
       - Port
-      - IRDSOptionConfiguration
+      - RDSOptionConfiguration
 
 
 
@@ -3894,14 +3894,14 @@ A Name/Value pair to use for RDS Option Group configuration
       - 
       - 
       - Name
-      - INameValuePair
+      - NameValuePair
     * - value
       - String
       - .. fa:: times
       - 
       - 
       - Value
-      - INameValuePair
+      - NameValuePair
 
 
 
@@ -3927,258 +3927,258 @@ in a different Availability Zone (AZ).
       - Constraints
       - Purpose
       - Base Schema
-    * - allow_major_version_upgrade
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Allow major version upgrades
-      - IRDS
-    * - auto_minor_version_upgrade
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Automatic minor version upgrades
-      - IRDS
-    * - backup_preferred_window
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Backup Preferred Window
-      - IRDS
-    * - backup_retention_period
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - Backup Retention Period in days
-      - IRDS
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
-    * - cloudwatch_logs_exports
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
-      - List of CloudWatch Logs Exports
-      - IRDS
-    * - db_instance_type
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - RDS Instance Type
-      - IRDS
-    * - db_snapshot_identifier
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - DB Snapshot Identifier to restore from
-      - IRDS
-    * - deletion_protection
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Deletion Protection
-      - IRDS
-    * - dns
-      - List of DNS_ AIM schemas
-      - .. fa:: times
-      - 
-      - 
-      - List of DNS for the RDS
-      - IRDS
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
-    * - engine
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - RDS Engine
-      - IRDS
-    * - engine_version
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - RDS Engine Version
-      - IRDS
-    * - kms_key_id
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Enable Storage Encryption
-      - IRDS
-    * - license_model
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - License Model
-      - IRDS
-    * - maintenance_preferred_window
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Maintenance Preferred Window
-      - IRDS
-    * - master_user_password
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Master User Password
-      - IRDS
-    * - master_username
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Master Username
-      - IRDS
+      - Deployable
     * - monitoring
       - MonitorConfig_ AIM schema
       - .. fa:: times
       - 
       - 
       - 
-      - IMonitorable
-    * - option_configurations
-      - List of RDSOptionConfiguration_ AIM schemas
-      - .. fa:: times
-      - 
-      - 
-      - Option Configurations
-      - IRDS
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
-    * - parameter_group
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - RDS Parameter Group
-      - IRDS
-    * - port
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - DB Port
-      - IRDS
-    * - primary_domain_name
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Primary Domain Name
-      - IRDS
-    * - primary_hosted_zone
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Primary Hosted Zone
-      - IRDS
-    * - publically_accessible
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Assign a Public IP address
-      - IRDS
-    * - secrets_password
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Secrets Manager password
-      - IRDS
-    * - security_groups
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
-      - List of VPC Security Group Ids
-      - IRDS
-    * - segment
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Segment
-      - IRDS
-    * - storage_encrypted
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Enable Storage Encryption
-      - IRDS
-    * - storage_size_gb
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - DB Storage Size in Gigabytes
-      - IRDS
-    * - storage_type
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - DB Storage Type
-      - IRDS
+      - Monitorable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - allow_major_version_upgrade
+      - Boolean
+      - .. fa:: times
+      - 
+      - 
+      - Allow major version upgrades
+      - RDS
+    * - auto_minor_version_upgrade
+      - Boolean
+      - .. fa:: times
+      - 
+      - 
+      - Automatic minor version upgrades
+      - RDS
+    * - backup_preferred_window
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Backup Preferred Window
+      - RDS
+    * - backup_retention_period
+      - Int
+      - .. fa:: times
+      - 
+      - 
+      - Backup Retention Period in days
+      - RDS
+    * - cloudwatch_logs_exports
+      - List of Strings
+      - .. fa:: times
+      - 
+      - 
+      - List of CloudWatch Logs Exports
+      - RDS
+    * - db_instance_type
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - RDS Instance Type
+      - RDS
+    * - db_snapshot_identifier
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - DB Snapshot Identifier to restore from
+      - RDS
+    * - deletion_protection
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Deletion Protection
+      - RDS
+    * - dns
+      - List of DNS_ AIM schemas
+      - .. fa:: times
+      - 
+      - 
+      - List of DNS for the RDS
+      - RDS
+    * - engine
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - RDS Engine
+      - RDS
+    * - engine_version
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - RDS Engine Version
+      - RDS
+    * - kms_key_id
+      - TextReference
+      - .. fa:: times
+      - 
+      - 
+      - Enable Storage Encryption
+      - RDS
+    * - license_model
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - License Model
+      - RDS
+    * - maintenance_preferred_window
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Maintenance Preferred Window
+      - RDS
+    * - master_user_password
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Master User Password
+      - RDS
+    * - master_username
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Master Username
+      - RDS
+    * - option_configurations
+      - List of RDSOptionConfiguration_ AIM schemas
+      - .. fa:: times
+      - 
+      - 
+      - Option Configurations
+      - RDS
+    * - parameter_group
+      - TextReference
+      - .. fa:: times
+      - 
+      - 
+      - RDS Parameter Group
+      - RDS
+    * - port
+      - Int
+      - .. fa:: times
+      - 
+      - 
+      - DB Port
+      - RDS
+    * - primary_domain_name
+      - TextReference
+      - .. fa:: times
+      - 
+      - 
+      - Primary Domain Name
+      - RDS
+    * - primary_hosted_zone
+      - TextReference
+      - .. fa:: times
+      - 
+      - 
+      - Primary Hosted Zone
+      - RDS
+    * - publically_accessible
+      - Boolean
+      - .. fa:: times
+      - 
+      - 
+      - Assign a Public IP address
+      - RDS
+    * - secrets_password
+      - TextReference
+      - .. fa:: times
+      - 
+      - 
+      - Secrets Manager password
+      - RDS
+    * - security_groups
+      - List of Strings
+      - .. fa:: times
+      - 
+      - 
+      - List of VPC Security Group Ids
+      - RDS
+    * - segment
+      - TextReference
+      - .. fa:: times
+      - 
+      - 
+      - Segment
+      - RDS
+    * - storage_encrypted
+      - Boolean
+      - .. fa:: times
+      - 
+      - 
+      - Enable Storage Encryption
+      - RDS
+    * - storage_size_gb
+      - Int
+      - .. fa:: times
+      - 
+      - 
+      - DB Storage Size in Gigabytes
+      - RDS
+    * - storage_type
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - DB Storage Type
+      - RDS
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - multi_az
       - Boolean
       - .. fa:: times
       - False
       - 
       - Multiple Availability Zone deployment
-      - IRDSMysql
+      - RDSMysql
 
 
 
@@ -4202,265 +4202,265 @@ RDSAurora
       - Constraints
       - Purpose
       - Base Schema
-    * - allow_major_version_upgrade
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Allow major version upgrades
-      - IRDS
-    * - auto_minor_version_upgrade
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Automatic minor version upgrades
-      - IRDS
-    * - backup_preferred_window
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Backup Preferred Window
-      - IRDS
-    * - backup_retention_period
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - Backup Retention Period in days
-      - IRDS
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
-    * - cloudwatch_logs_exports
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
-      - List of CloudWatch Logs Exports
-      - IRDS
-    * - db_instance_type
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - RDS Instance Type
-      - IRDS
-    * - db_snapshot_identifier
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - DB Snapshot Identifier to restore from
-      - IRDS
-    * - deletion_protection
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Deletion Protection
-      - IRDS
-    * - dns
-      - List of DNS_ AIM schemas
-      - .. fa:: times
-      - 
-      - 
-      - List of DNS for the RDS
-      - IRDS
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
-    * - engine
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - RDS Engine
-      - IRDS
-    * - engine_version
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - RDS Engine Version
-      - IRDS
-    * - kms_key_id
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Enable Storage Encryption
-      - IRDS
-    * - license_model
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - License Model
-      - IRDS
-    * - maintenance_preferred_window
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Maintenance Preferred Window
-      - IRDS
-    * - master_user_password
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Master User Password
-      - IRDS
-    * - master_username
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Master Username
-      - IRDS
+      - Deployable
     * - monitoring
       - MonitorConfig_ AIM schema
       - .. fa:: times
       - 
       - 
       - 
-      - IMonitorable
-    * - option_configurations
-      - List of RDSOptionConfiguration_ AIM schemas
-      - .. fa:: times
-      - 
-      - 
-      - Option Configurations
-      - IRDS
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
-    * - parameter_group
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - RDS Parameter Group
-      - IRDS
-    * - port
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - DB Port
-      - IRDS
-    * - primary_domain_name
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Primary Domain Name
-      - IRDS
-    * - primary_hosted_zone
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Primary Hosted Zone
-      - IRDS
-    * - publically_accessible
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Assign a Public IP address
-      - IRDS
-    * - secrets_password
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Secrets Manager password
-      - IRDS
-    * - security_groups
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
-      - List of VPC Security Group Ids
-      - IRDS
-    * - segment
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Segment
-      - IRDS
-    * - storage_encrypted
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Enable Storage Encryption
-      - IRDS
-    * - storage_size_gb
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - DB Storage Size in Gigabytes
-      - IRDS
-    * - storage_type
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - DB Storage Type
-      - IRDS
+      - Monitorable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - allow_major_version_upgrade
+      - Boolean
+      - .. fa:: times
+      - 
+      - 
+      - Allow major version upgrades
+      - RDS
+    * - auto_minor_version_upgrade
+      - Boolean
+      - .. fa:: times
+      - 
+      - 
+      - Automatic minor version upgrades
+      - RDS
+    * - backup_preferred_window
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Backup Preferred Window
+      - RDS
+    * - backup_retention_period
+      - Int
+      - .. fa:: times
+      - 
+      - 
+      - Backup Retention Period in days
+      - RDS
+    * - cloudwatch_logs_exports
+      - List of Strings
+      - .. fa:: times
+      - 
+      - 
+      - List of CloudWatch Logs Exports
+      - RDS
+    * - db_instance_type
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - RDS Instance Type
+      - RDS
+    * - db_snapshot_identifier
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - DB Snapshot Identifier to restore from
+      - RDS
+    * - deletion_protection
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Deletion Protection
+      - RDS
+    * - dns
+      - List of DNS_ AIM schemas
+      - .. fa:: times
+      - 
+      - 
+      - List of DNS for the RDS
+      - RDS
+    * - engine
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - RDS Engine
+      - RDS
+    * - engine_version
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - RDS Engine Version
+      - RDS
+    * - kms_key_id
+      - TextReference
+      - .. fa:: times
+      - 
+      - 
+      - Enable Storage Encryption
+      - RDS
+    * - license_model
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - License Model
+      - RDS
+    * - maintenance_preferred_window
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Maintenance Preferred Window
+      - RDS
+    * - master_user_password
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Master User Password
+      - RDS
+    * - master_username
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Master Username
+      - RDS
+    * - option_configurations
+      - List of RDSOptionConfiguration_ AIM schemas
+      - .. fa:: times
+      - 
+      - 
+      - Option Configurations
+      - RDS
+    * - parameter_group
+      - TextReference
+      - .. fa:: times
+      - 
+      - 
+      - RDS Parameter Group
+      - RDS
+    * - port
+      - Int
+      - .. fa:: times
+      - 
+      - 
+      - DB Port
+      - RDS
+    * - primary_domain_name
+      - TextReference
+      - .. fa:: times
+      - 
+      - 
+      - Primary Domain Name
+      - RDS
+    * - primary_hosted_zone
+      - TextReference
+      - .. fa:: times
+      - 
+      - 
+      - Primary Hosted Zone
+      - RDS
+    * - publically_accessible
+      - Boolean
+      - .. fa:: times
+      - 
+      - 
+      - Assign a Public IP address
+      - RDS
+    * - secrets_password
+      - TextReference
+      - .. fa:: times
+      - 
+      - 
+      - Secrets Manager password
+      - RDS
+    * - security_groups
+      - List of Strings
+      - .. fa:: times
+      - 
+      - 
+      - List of VPC Security Group Ids
+      - RDS
+    * - segment
+      - TextReference
+      - .. fa:: times
+      - 
+      - 
+      - Segment
+      - RDS
+    * - storage_encrypted
+      - Boolean
+      - .. fa:: times
+      - 
+      - 
+      - Enable Storage Encryption
+      - RDS
+    * - storage_size_gb
+      - Int
+      - .. fa:: times
+      - 
+      - 
+      - DB Storage Size in Gigabytes
+      - RDS
+    * - storage_type
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - DB Storage Type
+      - RDS
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - secondary_domain_name
       - TextReference
       - .. fa:: times
       - 
       - 
       - Secondary Domain Name
-      - IRDSAurora
+      - RDSAurora
     * - secondary_hosted_zone
       - TextReference
       - .. fa:: times
       - 
       - 
       - Secondary Hosted Zone
-      - IRDSAurora
+      - RDSAurora
 
 
 
@@ -4484,69 +4484,69 @@ DBParameterGroup
       - Constraints
       - Purpose
       - Base Schema
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - description
       - String
       - .. fa:: times
       - 
       - 
       - Description
-      - IDBParameterGroup
+      - DBParameterGroup
     * - family
       - String
       - .. fa:: check
       - 
       - 
       - Database Family
-      - IDBParameterGroup
+      - DBParameterGroup
     * - parameters
       - Container of DBParameters_ AIM schemas
       - .. fa:: check
       - 
       - 
       - Database Parameter set
-      - IDBParameterGroup
+      - DBParameterGroup
 
 
 
@@ -4577,118 +4577,118 @@ EC2
       - Constraints
       - Purpose
       - Base Schema
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - associate_public_ip_address
       - Boolean
       - .. fa:: times
       - False
       - 
       - Associate Public IP Address
-      - IEC2
+      - EC2
     * - disable_api_termination
       - Boolean
       - .. fa:: times
       - False
       - 
       - Disable API Termination
-      - IEC2
+      - EC2
     * - instance_ami
       - String
       - .. fa:: times
       - 
       - 
       - Instance AMI
-      - IEC2
+      - EC2
     * - instance_key_pair
       - TextReference
       - .. fa:: times
       - 
       - 
       - Instance key pair reference
-      - IEC2
+      - EC2
     * - instance_type
       - String
       - .. fa:: times
       - 
       - 
       - Instance type
-      - IEC2
+      - EC2
     * - private_ip_address
       - String
       - .. fa:: times
       - 
       - 
       - Private IP Address
-      - IEC2
+      - EC2
     * - root_volume_size_gb
       - Int
       - .. fa:: times
       - 8
       - 
       - Root volume size GB
-      - IEC2
+      - EC2
     * - security_groups
       - List of Strings
       - .. fa:: times
       - 
       - 
       - Security groups
-      - IEC2
+      - EC2
     * - segment
       - String
       - .. fa:: times
       - 
       - 
       - Segment
-      - IEC2
+      - EC2
     * - user_data_script
       - String
       - .. fa:: times
       - 
       - 
       - User data script
-      - IEC2
+      - EC2
 
 
 
@@ -4771,146 +4771,146 @@ For the code that the Lambda function will run, use the ``code:`` block and spec
       - Constraints
       - Purpose
       - Base Schema
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - monitoring
       - MonitorConfig_ AIM schema
       - .. fa:: times
       - 
       - 
       - 
-      - IMonitorable
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
+      - Monitorable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - code
       - LambdaFunctionCode_ AIM schema
       - .. fa:: check
       - 
       - 
       - The function deployment package.
-      - ILambda
+      - Lambda
     * - description
       - String
       - .. fa:: check
       - 
       - 
       - A description of the function.
-      - ILambda
+      - Lambda
     * - environment
       - Container of LambdaEnvironment_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Lambda Function Environment
-      - ILambda
+      - Lambda
     * - handler
       - String
       - .. fa:: check
       - 
       - 
       - Function Handler
-      - ILambda
+      - Lambda
     * - iam_role
       - Role_ AIM schema
       - .. fa:: check
       - 
       - 
       - The IAM Role this Lambda will execute as.
-      - ILambda
+      - Lambda
     * - layers
       - List of Strings
       - .. fa:: check
       - 
       - Up to 5 Layer ARNs
       - Layers
-      - ILambda
+      - Lambda
     * - memory_size
       - Int
       - .. fa:: times
       - 128
       - 
       - Function memory size (MB)
-      - ILambda
+      - Lambda
     * - reserved_concurrent_executions
       - Int
       - .. fa:: times
       - 0
       - 
       - Reserved Concurrent Executions
-      - ILambda
+      - Lambda
     * - runtime
       - String
       - .. fa:: check
       - python3.7
       - 
       - Runtime environment
-      - ILambda
+      - Lambda
     * - sdb_cache
       - Boolean
       - .. fa:: times
       - False
       - 
       - SDB Cache Domain
-      - ILambda
+      - Lambda
     * - sns_topics
       - List of Strings
       - .. fa:: times
       - 
       - 
       - List of SNS Topic AIM References
-      - ILambda
+      - Lambda
     * - timeout
       - Int
       - .. fa:: times
       - 
       - Must be between 0 and 900 seconds.
       - Max function execution time in seconds.
-      - ILambda
+      - Lambda
     * - vpc_config
       - LambdaVpcConfig_ AIM schema
       - .. fa:: times
       - 
       - 
       - Vpc Configuration
-      - ILambda
+      - Lambda
 
 
 
@@ -4938,21 +4938,21 @@ The deployment package for a Lambda function.
       - 
       - 
       - An Amazon S3 bucket in the same AWS Region as your function
-      - ILambdaFunctionCode
+      - LambdaFunctionCode
     * - s3_key
       - String
       - .. fa:: times
       - 
       - 
       - The Amazon S3 key of the deployment package.
-      - ILambdaFunctionCode
+      - LambdaFunctionCode
     * - zipfile
       - StringFileReference
       - .. fa:: times
       - 
       - Maximum of 4096 characters.
       - The function as an external file.
-      - ILambdaFunctionCode
+      - LambdaFunctionCode
 
 
 
@@ -4982,7 +4982,7 @@ LambdaEnvironment
       - 
       - 
       - Lambda Function Variables
-      - ILambdaEnvironment
+      - LambdaEnvironment
 
 
 
@@ -5012,21 +5012,21 @@ LambdaVpcConfig
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - security_groups
       - List of Strings
       - .. fa:: times
       - 
       - 
       - List of VPC Security Group Ids
-      - ILambdaVpcConfig
+      - LambdaVpcConfig
     * - segments
       - List of Strings
       - .. fa:: times
       - 
       - 
       - VPC Segments to attach the function
-      - ILambdaVpcConfig
+      - LambdaVpcConfig
 
 
 
@@ -5056,14 +5056,14 @@ LambdaVariable
       - 
       - 
       - Variable Name
-      - ILambdaVariable
+      - LambdaVariable
     * - value
       - TextReference
       - .. fa:: check
       - 
       - 
       - Variable Value
-      - ILambdaVariable
+      - LambdaVariable
 
 
 
@@ -5093,42 +5093,42 @@ ManagedPolicy
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - path
       - String
       - .. fa:: times
       - /
       - 
       - Path
-      - IManagedPolicy
+      - ManagedPolicy
     * - roles
       - List of Strings
       - .. fa:: times
       - 
       - 
       - List of Role Names
-      - IManagedPolicy
+      - ManagedPolicy
     * - statement
       - List of Statement_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Statements
-      - IManagedPolicy
+      - ManagedPolicy
     * - users
       - List of Strings
       - .. fa:: times
       - 
       - 
       - List of IAM Users
-      - IManagedPolicy
+      - ManagedPolicy
 
 
 
@@ -5152,111 +5152,111 @@ S3Bucket
       - Constraints
       - Purpose
       - Base Schema
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - account
       - TextReference
       - .. fa:: times
       - 
       - 
       - Account Reference
-      - IS3Bucket
+      - S3Bucket
     * - bucket_name
       - String
       - .. fa:: check
       - bucket
       - A short unique name to assign the bucket.
       - Bucket Name
-      - IS3Bucket
+      - S3Bucket
     * - cloudfront_origin
       - Boolean
       - .. fa:: times
       - False
       - 
       - Creates and listens for a CloudFront Access Origin Identity
-      - IS3Bucket
+      - S3Bucket
     * - deletion_policy
       - String
       - .. fa:: times
       - delete
       - 
       - Bucket Deletion Policy
-      - IS3Bucket
+      - S3Bucket
     * - external_resource
       - Boolean
       - .. fa:: times
       - False
       - 
       - Boolean indicating whether the S3 Bucket already exists or not
-      - IS3Bucket
+      - S3Bucket
     * - notifications
       - S3NotificationConfiguration_ AIM schema
       - .. fa:: times
       - 
       - 
       - Notification configuration
-      - IS3Bucket
+      - S3Bucket
     * - policy
       - List of S3BucketPolicy_ AIM schemas
       - .. fa:: times
       - 
       - 
       - List of S3 Bucket Policies
-      - IS3Bucket
+      - S3Bucket
     * - region
       - String
       - .. fa:: times
       - 
       - 
       - Bucket region
-      - IS3Bucket
+      - S3Bucket
     * - versioning
       - Boolean
       - .. fa:: times
       - False
       - 
       - Enable Versioning on the bucket.
-      - IS3Bucket
+      - S3Bucket
 
 
 
@@ -5286,42 +5286,42 @@ S3BucketPolicy
       - 
       - 
       - List of Actions
-      - IS3BucketPolicy
+      - S3BucketPolicy
     * - aws
       - List of Strings
       - .. fa:: times
       - 
       - Either this field or the principal field must be set.
       - List of AWS Principles.
-      - IS3BucketPolicy
+      - S3BucketPolicy
     * - condition
       - Dict
       - .. fa:: times
       - {}
       - Each Key is the Condition name and the Value must be a dictionary of request filters. e.g. { "StringEquals" : { "aws:username" : "johndoe" }}
       - Condition
-      - IS3BucketPolicy
+      - S3BucketPolicy
     * - effect
       - String
       - .. fa:: check
       - Deny
       - Must be one of: 'Allow', 'Deny'
       - Effect
-      - IS3BucketPolicy
+      - S3BucketPolicy
     * - principal
       - Dict
       - .. fa:: times
       - {}
       - Either this field or the aws field must be set. Key should be one of: AWS, Federated, Service or CanonicalUser. Value can be either a String or a List.
       - Prinicpals
-      - IS3BucketPolicy
+      - S3BucketPolicy
     * - resource_suffix
       - List of Strings
       - .. fa:: check
       - 
       - 
       - List of AWS Resources Suffixes
-      - IS3BucketPolicy
+      - S3BucketPolicy
 
 
 
@@ -5349,14 +5349,14 @@ S3LambdaConfiguration
       - 
       - Must be a supported event type: https://docs.aws.amazon.com/AmazonS3/latest/dev/NotificationHowTo.html
       - S3 bucket event for which to invoke the AWS Lambda function
-      - IS3LambdaConfiguration
+      - S3LambdaConfiguration
     * - function
       - TextReference
       - .. fa:: times
       - 
       - 
       - Reference to a Lambda
-      - IS3LambdaConfiguration
+      - S3LambdaConfiguration
 
 
 
@@ -5384,7 +5384,7 @@ S3NotificationConfiguration
       - 
       - 
       - Lambda configurations
-      - IS3NotificationConfiguration
+      - S3NotificationConfiguration
 
 
 
@@ -5440,69 +5440,69 @@ Simple Notification Service (SNS) Topic resource.
       - Constraints
       - Purpose
       - Base Schema
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - cross_account_access
       - Boolean
       - .. fa:: times
       - False
       - 
       - Cross-account access from all other accounts in this project.
-      - ISNSTopic
+      - SNSTopic
     * - display_name
       - String
       - .. fa:: times
       - 
       - 
       - Display name for SMS Messages
-      - ISNSTopic
+      - SNSTopic
     * - subscriptions
       - List of SNSTopicSubscription_ AIM schemas
       - .. fa:: times
       - 
       - 
       - List of SNS Topic Subscriptions
-      - ISNSTopic
+      - SNSTopic
 
 
 
@@ -5530,14 +5530,14 @@ SNSTopicSubscription
       - 
       - 
       - SNS Topic Endpoint
-      - ISNSTopicSubscription
+      - SNSTopicSubscription
     * - protocol
       - String
       - .. fa:: times
       - email
       - Must be a valid SNS Topic subscription protocol: 'http', 'https', 'email', 'email-json', 'sms', 'sqs', 'application', 'lambda'.
       - Notification protocol
-      - ISNSTopicSubscription
+      - SNSTopicSubscription
 
 
 
@@ -5561,125 +5561,125 @@ CloudFront
       - Constraints
       - Purpose
       - Base Schema
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - monitoring
       - MonitorConfig_ AIM schema
       - .. fa:: times
       - 
       - 
       - 
-      - IMonitorable
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
+      - Monitorable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - cache_behaviors
       - List of CloudFrontCacheBehavior_ AIM schemas
       - .. fa:: times
       - 
       - 
       - List of Cache Behaviors
-      - ICloudFront
+      - CloudFront
     * - custom_error_responses
       - List of CloudFrontCustomErrorResponse_ AIM schemas
       - .. fa:: times
       - 
       - 
       - List of Custom Error Responses
-      - ICloudFront
+      - CloudFront
     * - default_cache_behavior
       - CloudFrontDefaultCacheBehavior_ AIM schema
       - .. fa:: times
       - 
       - 
       - Default Cache Behavior
-      - ICloudFront
+      - CloudFront
     * - default_root_object
       - String
       - .. fa:: times
       - index.html
       - 
       - The default path to load from the origin.
-      - ICloudFront
+      - CloudFront
     * - domain_aliases
       - List of DNS_ AIM schemas
       - .. fa:: times
       - 
       - 
       - List of DNS for the Distribution
-      - ICloudFront
+      - CloudFront
     * - factory
       - Container of CloudFrontFactory_ AIM schemas
       - .. fa:: times
       - 
       - 
       - CloudFront Factory
-      - ICloudFront
+      - CloudFront
     * - origins
       - Container of CloudFrontOrigin_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Map of Origins
-      - ICloudFront
+      - CloudFront
     * - price_class
       - String
       - .. fa:: times
       - All
       - 
       - Price Class
-      - ICloudFront
+      - CloudFront
     * - viewer_certificate
       - CloudFrontViewerCertificate_ AIM schema
       - .. fa:: times
       - 
       - 
       - Viewer Certificate
-      - ICloudFront
+      - CloudFront
     * - webacl_id
       - String
       - .. fa:: times
       - 
       - 
       - WAF WebACLId
-      - ICloudFront
+      - CloudFront
 
 
 
@@ -5707,56 +5707,56 @@ CloudFrontDefaultCacheBehavior
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - allowed_methods
       - List of Strings
       - .. fa:: times
       - ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT']
       - 
       - List of Allowed HTTP Methods
-      - ICloudFrontDefaultCacheBehavior
+      - CloudFrontDefaultCacheBehavior
     * - cached_methods
       - List of Strings
       - .. fa:: times
       - ['GET', 'HEAD', 'OPTIONS']
       - 
       - List of HTTP Methods to cache
-      - ICloudFrontDefaultCacheBehavior
+      - CloudFrontDefaultCacheBehavior
     * - compress
       - Boolean
       - .. fa:: times
       - False
       - 
       - Compress certain files automatically
-      - ICloudFrontDefaultCacheBehavior
+      - CloudFrontDefaultCacheBehavior
     * - default_ttl
       - Int
       - .. fa:: check
       - 0
       - 
       - Default TTTL
-      - ICloudFrontDefaultCacheBehavior
+      - CloudFrontDefaultCacheBehavior
     * - forwarded_values
       - CloudFrontForwardedValues_ AIM schema
       - .. fa:: times
       - 
       - 
       - Forwarded Values
-      - ICloudFrontDefaultCacheBehavior
+      - CloudFrontDefaultCacheBehavior
     * - target_origin
       - TextReference
       - .. fa:: check
       - 
       - 
       - Target Origin
-      - ICloudFrontDefaultCacheBehavior
+      - CloudFrontDefaultCacheBehavior
     * - viewer_protocol_policy
       - String
       - .. fa:: check
       - redirect-to-https
       - 
       - Viewer Protocol Policy
-      - ICloudFrontDefaultCacheBehavior
+      - CloudFrontDefaultCacheBehavior
 
 
 
@@ -5784,63 +5784,63 @@ CloudFrontCacheBehavior
       - ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT']
       - 
       - List of Allowed HTTP Methods
-      - ICloudFrontDefaultCacheBehavior
+      - CloudFrontDefaultCacheBehavior
     * - cached_methods
       - List of Strings
       - .. fa:: times
       - ['GET', 'HEAD', 'OPTIONS']
       - 
       - List of HTTP Methods to cache
-      - ICloudFrontDefaultCacheBehavior
+      - CloudFrontDefaultCacheBehavior
     * - compress
       - Boolean
       - .. fa:: times
       - False
       - 
       - Compress certain files automatically
-      - ICloudFrontDefaultCacheBehavior
+      - CloudFrontDefaultCacheBehavior
     * - default_ttl
       - Int
       - .. fa:: check
       - 0
       - 
       - Default TTTL
-      - ICloudFrontDefaultCacheBehavior
+      - CloudFrontDefaultCacheBehavior
     * - forwarded_values
       - CloudFrontForwardedValues_ AIM schema
       - .. fa:: times
       - 
       - 
       - Forwarded Values
-      - ICloudFrontDefaultCacheBehavior
+      - CloudFrontDefaultCacheBehavior
     * - target_origin
       - TextReference
       - .. fa:: check
       - 
       - 
       - Target Origin
-      - ICloudFrontDefaultCacheBehavior
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - INamed
+      - CloudFrontDefaultCacheBehavior
     * - viewer_protocol_policy
       - String
       - .. fa:: check
       - redirect-to-https
       - 
       - Viewer Protocol Policy
-      - ICloudFrontDefaultCacheBehavior
+      - CloudFrontDefaultCacheBehavior
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Named
     * - path_pattern
       - String
       - .. fa:: check
       - 
       - 
       - Path Pattern
-      - ICloudFrontCacheBehavior
+      - CloudFrontCacheBehavior
 
 
 
@@ -5870,21 +5870,21 @@ CloudFrontFactory
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - domain_aliases
       - List of DNS_ AIM schemas
       - .. fa:: times
       - 
       - 
       - List of DNS for the Distribution
-      - ICloudFrontFactory
+      - CloudFrontFactory
     * - viewer_certificate
       - CloudFrontViewerCertificate_ AIM schema
       - .. fa:: times
       - 
       - 
       - Viewer Certificate
-      - ICloudFrontFactory
+      - CloudFrontFactory
 
 
 
@@ -5914,28 +5914,28 @@ CloudFrontOrigin
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - custom_origin_config
       - CloudFrontCustomOriginConfig_ AIM schema
       - .. fa:: times
       - 
       - 
       - Custom Origin Configuration
-      - ICloudFrontOrigin
+      - CloudFrontOrigin
     * - domain_name
       - TextReference
       - .. fa:: times
       - 
       - 
       - Origin Resource Reference
-      - ICloudFrontOrigin
+      - CloudFrontOrigin
     * - s3_bucket
       - TextReference
       - .. fa:: times
       - 
       - 
       - Origin S3 Bucket Reference
-      - ICloudFrontOrigin
+      - CloudFrontOrigin
 
 
 
@@ -5963,49 +5963,49 @@ CloudFrontCustomOriginConfig
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - http_port
       - Int
       - .. fa:: times
       - 
       - 
       - HTTP Port
-      - ICloudFrontCustomOriginConfig
+      - CloudFrontCustomOriginConfig
     * - https_port
       - Int
       - .. fa:: times
       - 
       - 
       - HTTPS Port
-      - ICloudFrontCustomOriginConfig
+      - CloudFrontCustomOriginConfig
     * - keepalive_timeout
       - Int
       - .. fa:: times
       - 5
       - 
       - HTTP Keepalive Timeout
-      - ICloudFrontCustomOriginConfig
+      - CloudFrontCustomOriginConfig
     * - protocol_policy
       - String
       - .. fa:: times
       - 
       - 
       - Protocol Policy
-      - ICloudFrontCustomOriginConfig
+      - CloudFrontCustomOriginConfig
     * - read_timeout
       - Int
       - .. fa:: times
       - 30
       - 
       - Read timeout
-      - ICloudFrontCustomOriginConfig
+      - CloudFrontCustomOriginConfig
     * - ssl_protocols
       - List of Strings
       - .. fa:: times
       - 
       - 
       - List of SSL Protocols
-      - ICloudFrontCustomOriginConfig
+      - CloudFrontCustomOriginConfig
 
 
 
@@ -6033,28 +6033,28 @@ CloudFrontCustomErrorResponse
       - 
       - 
       - Error Caching Min TTL
-      - ICloudFrontCustomErrorResponse
+      - CloudFrontCustomErrorResponse
     * - error_code
       - Int
       - .. fa:: times
       - 
       - 
       - HTTP Error Code
-      - ICloudFrontCustomErrorResponse
+      - CloudFrontCustomErrorResponse
     * - response_code
       - Int
       - .. fa:: times
       - 
       - 
       - HTTP Response Code
-      - ICloudFrontCustomErrorResponse
+      - CloudFrontCustomErrorResponse
     * - response_page_path
       - String
       - .. fa:: times
       - 
       - 
       - Response Page Path
-      - ICloudFrontCustomErrorResponse
+      - CloudFrontCustomErrorResponse
 
 
 
@@ -6082,28 +6082,28 @@ CloudFrontViewerCertificate
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - certificate
       - TextReference
       - .. fa:: times
       - 
       - 
       - Certificate Reference
-      - ICloudFrontViewerCertificate
+      - CloudFrontViewerCertificate
     * - minimum_protocol_version
       - String
       - .. fa:: times
       - TLSv1.1_2016
       - 
       - Minimum SSL Protocol Version
-      - ICloudFrontViewerCertificate
+      - CloudFrontViewerCertificate
     * - ssl_supported_method
       - String
       - .. fa:: times
       - sni-only
       - 
       - SSL Supported Method
-      - ICloudFrontViewerCertificate
+      - CloudFrontViewerCertificate
 
 
 
@@ -6131,28 +6131,28 @@ CloudFrontForwardedValues
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - cookies
       - CloudFrontCookies_ AIM schema
       - .. fa:: times
       - 
       - 
       - Forward Cookies
-      - ICloudFrontForwardedValues
+      - CloudFrontForwardedValues
     * - headers
       - List of Strings
       - .. fa:: times
       - ['*']
       - 
       - Forward Headers
-      - ICloudFrontForwardedValues
+      - CloudFrontForwardedValues
     * - query_string
       - Boolean
       - .. fa:: times
       - True
       - 
       - Forward Query Strings
-      - ICloudFrontForwardedValues
+      - CloudFrontForwardedValues
 
 
 
@@ -6180,21 +6180,21 @@ CloudFrontCookies
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - forward
       - String
       - .. fa:: times
       - all
       - 
       - Cookies Forward Action
-      - ICloudFrontCookies
+      - CloudFrontCookies
     * - whitelisted_names
       - List of Strings
       - .. fa:: times
       - 
       - 
       - White Listed Names
-      - ICloudFrontCookies
+      - CloudFrontCookies
 
 
 
@@ -6218,181 +6218,181 @@ ElastiCacheRedis
       - Constraints
       - Purpose
       - Base Schema
-    * - at_rest_encryption
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Enable encryption at rest
-      - IElastiCache
-    * - auto_minor_version_upgrade
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Enable automatic minor version upgrades
-      - IElastiCache
-    * - automatic_failover_enabled
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Specifies whether a read-only replica is automatically promoted to read/write primary if the existing primary fails
-      - IElastiCache
-    * - az_mode
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - AZ mode
-      - IElastiCache
-    * - cache_clusters
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - Number of Cache Clusters
-      - IElastiCache
-    * - cache_node_type
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Cache Node Instance type
-      - IElastiCache
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
-    * - description
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Replication Description
-      - IElastiCache
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
+    * - at_rest_encryption
+      - Boolean
+      - .. fa:: times
+      - 
+      - 
+      - Enable encryption at rest
+      - ElastiCache
+    * - auto_minor_version_upgrade
+      - Boolean
+      - .. fa:: times
+      - 
+      - 
+      - Enable automatic minor version upgrades
+      - ElastiCache
+    * - automatic_failover_enabled
+      - Boolean
+      - .. fa:: times
+      - 
+      - 
+      - Specifies whether a read-only replica is automatically promoted to read/write primary if the existing primary fails
+      - ElastiCache
+    * - az_mode
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - AZ mode
+      - ElastiCache
+    * - cache_clusters
+      - Int
+      - .. fa:: times
+      - 
+      - 
+      - Number of Cache Clusters
+      - ElastiCache
+    * - cache_node_type
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Cache Node Instance type
+      - ElastiCache
+    * - description
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Replication Description
+      - ElastiCache
     * - engine
       - String
       - .. fa:: times
       - 
       - 
       - ElastiCache Engine
-      - IElastiCache
+      - ElastiCache
     * - engine_version
       - String
       - .. fa:: times
       - 
       - 
       - ElastiCache Engine Version
-      - IElastiCache
+      - ElastiCache
     * - maintenance_preferred_window
       - String
       - .. fa:: times
       - 
       - 
       - Preferred maintenance window
-      - IElastiCache
-    * - monitoring
-      - MonitorConfig_ AIM schema
-      - .. fa:: times
-      - 
-      - 
-      - 
-      - IMonitorable
+      - ElastiCache
     * - number_of_read_replicas
       - Int
       - .. fa:: times
       - 
       - 
       - Number of read replicas
-      - IElastiCache
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
+      - ElastiCache
     * - parameter_group
       - TextReference
       - .. fa:: times
       - 
       - 
       - Parameter Group name or reference
-      - IElastiCache
+      - ElastiCache
     * - port
       - Int
       - .. fa:: times
       - 
       - 
       - Port
-      - IElastiCache
+      - ElastiCache
     * - security_groups
       - List of Strings
       - .. fa:: times
       - 
       - 
       - List of Security Groups
-      - IElastiCache
+      - ElastiCache
     * - segment
       - TextReference
       - .. fa:: times
       - 
       - 
       - Segment
-      - IElastiCache
+      - ElastiCache
+    * - monitoring
+      - MonitorConfig_ AIM schema
+      - .. fa:: times
+      - 
+      - 
+      - 
+      - Monitorable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - cache_parameter_group_family
       - String
       - .. fa:: times
       - 
       - 
       - Cache Parameter Group Family
-      - IElastiCacheRedis
+      - ElastiCacheRedis
     * - snapshot_retention_limit_days
       - Int
       - .. fa:: times
       - 
       - 
       - Snapshot Retention Limit in Days
-      - IElastiCacheRedis
+      - ElastiCacheRedis
     * - snapshot_window
       - String
       - .. fa:: times
       - 
       - 
       - The daily time range (in UTC) during which ElastiCache begins taking a daily snapshot of your node group (shard).
-      - IElastiCacheRedis
+      - ElastiCacheRedis
 
 
 
@@ -6416,76 +6416,76 @@ DeploymentPipeline
       - Constraints
       - Purpose
       - Base Schema
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - build
       - Container of DeploymentPipelineBuildStage_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Deployment Pipeline Build Stage
-      - IDeploymentPipeline
+      - DeploymentPipeline
     * - configuration
       - DeploymentPipelineConfiguration_ AIM schema
       - .. fa:: times
       - 
       - 
       - Deployment Pipeline General Configuration
-      - IDeploymentPipeline
+      - DeploymentPipeline
     * - deploy
       - Container of DeploymentPipelineDeployStage_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Deployment Pipeline Deploy Stage
-      - IDeploymentPipeline
+      - DeploymentPipeline
     * - source
       - Container of DeploymentPipelineSourceStage_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Deployment Pipeline Source Stage
-      - IDeploymentPipeline
+      - DeploymentPipeline
 
 
 
@@ -6515,7 +6515,7 @@ DeploymentPipelineSourceStage
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 
@@ -6545,7 +6545,7 @@ DeploymentPipelineDeployStage
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 
@@ -6575,7 +6575,7 @@ DeploymentPipelineBuildStage
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 
@@ -6605,77 +6605,77 @@ DeploymentPipelineDeployCodeDeploy
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - run_order
       - Int
       - .. fa:: times
       - 1
       - 
       - The order in which to run this stage
-      - IDeploymentPipelineStageAction
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - INamed
+      - DeploymentPipelineStageAction
     * - type
       - String
       - .. fa:: times
       - 
       - 
       - The type of DeploymentPipeline Source Stage
-      - IDeploymentPipelineStageAction
+      - DeploymentPipelineStageAction
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Named
     * - alb_target_group
       - TextReference
       - .. fa:: times
       - 
       - 
       - ALB Target Group Reference
-      - IDeploymentPipelineDeployCodeDeploy
+      - DeploymentPipelineDeployCodeDeploy
     * - auto_rollback_enabled
       - Boolean
       - .. fa:: check
       - True
       - 
       - Automatic rollback enabled
-      - IDeploymentPipelineDeployCodeDeploy
+      - DeploymentPipelineDeployCodeDeploy
     * - auto_scaling_group
       - TextReference
       - .. fa:: times
       - 
       - 
       - ASG Reference
-      - IDeploymentPipelineDeployCodeDeploy
+      - DeploymentPipelineDeployCodeDeploy
     * - deploy_instance_role
       - TextReference
       - .. fa:: times
       - 
       - 
       - Deploy Instance Role Reference
-      - IDeploymentPipelineDeployCodeDeploy
+      - DeploymentPipelineDeployCodeDeploy
     * - deploy_style_option
       - String
       - .. fa:: times
       - WITH_TRAFFIC_CONTROL
       - 
       - Deploy Style Option
-      - IDeploymentPipelineDeployCodeDeploy
+      - DeploymentPipelineDeployCodeDeploy
     * - elb_name
       - String
       - .. fa:: times
       - 
       - 
       - ELB Name
-      - IDeploymentPipelineDeployCodeDeploy
+      - DeploymentPipelineDeployCodeDeploy
     * - minimum_healthy_hosts
       - CodeDeployMinimumHealthyHosts_ AIM schema
       - .. fa:: times
       - 
       - 
       - The minimum number of healthy instances that should be available at any time during the deployment.
-      - IDeploymentPipelineDeployCodeDeploy
+      - DeploymentPipelineDeployCodeDeploy
 
 
 
@@ -6705,21 +6705,21 @@ CodeDeployMinimumHealthyHosts
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - type
       - String
       - .. fa:: times
       - HOST_COUNT
       - 
       - Deploy Config Type
-      - ICodeDeployMinimumHealthyHosts
+      - CodeDeployMinimumHealthyHosts
     * - value
       - Int
       - .. fa:: times
       - 0
       - 
       - Deploy Config Value
-      - ICodeDeployMinimumHealthyHosts
+      - CodeDeployMinimumHealthyHosts
 
 
 
@@ -6749,35 +6749,35 @@ DeploymentPipelineManualApproval
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - run_order
       - Int
       - .. fa:: times
       - 1
       - 
       - The order in which to run this stage
-      - IDeploymentPipelineStageAction
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - INamed
+      - DeploymentPipelineStageAction
     * - type
       - String
       - .. fa:: times
       - 
       - 
       - The type of DeploymentPipeline Source Stage
-      - IDeploymentPipelineStageAction
+      - DeploymentPipelineStageAction
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Named
     * - manual_approval_notification_email
       - List of Strings
       - .. fa:: times
       - 
       - 
       - Manual Approval Notification Email List
-      - IDeploymentPipelineManualApproval
+      - DeploymentPipelineManualApproval
 
 
 
@@ -6807,49 +6807,49 @@ DeploymentPipelineDeployS3
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - run_order
       - Int
       - .. fa:: times
       - 1
       - 
       - The order in which to run this stage
-      - IDeploymentPipelineStageAction
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - INamed
+      - DeploymentPipelineStageAction
     * - type
       - String
       - .. fa:: times
       - 
       - 
       - The type of DeploymentPipeline Source Stage
-      - IDeploymentPipelineStageAction
+      - DeploymentPipelineStageAction
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Named
     * - bucket
       - TextReference
       - .. fa:: times
       - 
       - 
       - S3 Bucket Reference
-      - IDeploymentPipelineDeployS3
+      - DeploymentPipelineDeployS3
     * - extract
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether the deployment artifact will be unarchived.
-      - IDeploymentPipelineDeployS3
+      - DeploymentPipelineDeployS3
     * - object_key
       - String
       - .. fa:: times
       - 
       - 
       - S3 object key to store the deployment artifact as.
-      - IDeploymentPipelineDeployS3
+      - DeploymentPipelineDeployS3
 
 
 
@@ -6879,63 +6879,63 @@ DeploymentPipelineBuildCodeBuild
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - run_order
       - Int
       - .. fa:: times
       - 1
       - 
       - The order in which to run this stage
-      - IDeploymentPipelineStageAction
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - INamed
+      - DeploymentPipelineStageAction
     * - type
       - String
       - .. fa:: times
       - 
       - 
       - The type of DeploymentPipeline Source Stage
-      - IDeploymentPipelineStageAction
+      - DeploymentPipelineStageAction
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Named
     * - codebuild_compute_type
       - String
       - .. fa:: times
       - 
       - 
       - CodeBuild Compute Type
-      - IDeploymentPipelineBuildCodeBuild
+      - DeploymentPipelineBuildCodeBuild
     * - codebuild_image
       - String
       - .. fa:: times
       - 
       - 
       - CodeBuild Docker Image
-      - IDeploymentPipelineBuildCodeBuild
+      - DeploymentPipelineBuildCodeBuild
     * - deployment_environment
       - String
       - .. fa:: times
       - 
       - 
       - Deployment Environment
-      - IDeploymentPipelineBuildCodeBuild
+      - DeploymentPipelineBuildCodeBuild
     * - role_policies
       - List of Policy_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Project IAM Role Policies
-      - IDeploymentPipelineBuildCodeBuild
+      - DeploymentPipelineBuildCodeBuild
     * - timeout_mins
       - Int
       - .. fa:: times
       - 60
       - 
       - Timeout in Minutes
-      - IDeploymentPipelineBuildCodeBuild
+      - DeploymentPipelineBuildCodeBuild
 
 
 
@@ -6965,42 +6965,42 @@ DeploymentPipelineSourceCodeCommit
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - run_order
       - Int
       - .. fa:: times
       - 1
       - 
       - The order in which to run this stage
-      - IDeploymentPipelineStageAction
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - INamed
+      - DeploymentPipelineStageAction
     * - type
       - String
       - .. fa:: times
       - 
       - 
       - The type of DeploymentPipeline Source Stage
-      - IDeploymentPipelineStageAction
+      - DeploymentPipelineStageAction
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Named
     * - codecommit_repository
       - TextReference
       - .. fa:: times
       - 
       - 
       - CodeCommit Respository
-      - IDeploymentPipelineSourceCodeCommit
+      - DeploymentPipelineSourceCodeCommit
     * - deployment_branch_name
       - String
       - .. fa:: times
       - 
       - 
       - Deployment Branch Name
-      - IDeploymentPipelineSourceCodeCommit
+      - DeploymentPipelineSourceCodeCommit
 
 
 
@@ -7030,28 +7030,28 @@ DeploymentPipelineStageAction
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - run_order
       - Int
       - .. fa:: times
       - 1
       - 
       - The order in which to run this stage
-      - IDeploymentPipelineStageAction
+      - DeploymentPipelineStageAction
     * - type
       - String
       - .. fa:: times
       - 
       - 
       - The type of DeploymentPipeline Source Stage
-      - IDeploymentPipelineStageAction
+      - DeploymentPipelineStageAction
 
 
 
@@ -7081,21 +7081,21 @@ DeploymentPipelineConfiguration
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - account
       - TextReference
       - .. fa:: times
       - 
       - 
       - The account where Pipeline tools will be provisioned.
-      - IDeploymentPipelineConfiguration
+      - DeploymentPipelineConfiguration
     * - artifacts_bucket
       - TextReference
       - .. fa:: times
       - 
       - 
       - Artifacts S3 Bucket Reference
-      - IDeploymentPipelineConfiguration
+      - DeploymentPipelineConfiguration
 
 
 
@@ -7119,69 +7119,69 @@ EFS
       - Constraints
       - Purpose
       - Base Schema
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - encrypted
       - Boolean
       - .. fa:: check
       - False
       - 
       - Encryption at Rest
-      - IEFS
+      - EFS
     * - security_groups
       - List of Strings
       - .. fa:: check
       - 
       - 
       - Security groups
-      - IEFS
+      - EFS
     * - segment
       - String
       - .. fa:: times
       - 
       - 
       - Segment
-      - IEFS
+      - EFS
 
 
 
@@ -7205,55 +7205,55 @@ EIP
       - Constraints
       - Purpose
       - Base Schema
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - dns
       - List of DNS_ AIM schemas
       - .. fa:: times
       - 
       - 
       - List of DNS for the EIP
-      - IEIP
+      - EIP
 
 
 
@@ -7275,111 +7275,111 @@ Route53 Health Check
       - Constraints
       - Purpose
       - Base Schema
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - failure_threshold
       - Int
       - .. fa:: times
       - 3
       - 
       - Number of consecutive health checks that an endpoint must pass or fail for Amazon Route 53 to change the current status of the endpoint from unhealthy to healthy or vice versa.
-      - IRoute53HealthCheck
+      - Route53HealthCheck
     * - health_check_type
       - String
       - .. fa:: check
       - 
       - Must be one of HTTP, HTTPS or TCP
       - Health Check Type
-      - IRoute53HealthCheck
+      - Route53HealthCheck
     * - health_checker_regions
       - List of Strings
       - .. fa:: times
       - 
       - List of AWS Region names (e.g. us-west-2) from which to make health checks.
       - Health checker regions
-      - IRoute53HealthCheck
+      - Route53HealthCheck
     * - latency_graphs
       - Boolean
       - .. fa:: times
       - False
       - 
       - Measure latency and display CloudWatch graph in the AWS Console
-      - IRoute53HealthCheck
+      - Route53HealthCheck
     * - load_balancer
       - TextReference
       - .. fa:: times
       - 
       - 
       - Load Balancer Endpoint
-      - IRoute53HealthCheck
+      - Route53HealthCheck
     * - match_string
       - String
       - .. fa:: times
       - 
       - 
       - String to match in the first 5120 bytes of the response
-      - IRoute53HealthCheck
+      - Route53HealthCheck
     * - port
       - Int
       - .. fa:: times
       - 80
       - 
       - Port
-      - IRoute53HealthCheck
+      - Route53HealthCheck
     * - request_interval_fast
       - Boolean
       - .. fa:: times
       - False
       - 
       - Fast request interval will only wait 10 seconds between each health check response instead of the standard 30
-      - IRoute53HealthCheck
+      - Route53HealthCheck
     * - resource_path
       - String
       - .. fa:: times
       - /
       - String such as '/health.html'. Path should return a 2xx or 3xx. Query string parameters are allowed: '/search?query=health'
       - Resource Path
-      - IRoute53HealthCheck
+      - Route53HealthCheck
 
 
 
@@ -7403,69 +7403,69 @@ EventsRule
       - Constraints
       - Purpose
       - Base Schema
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - description
       - String
       - .. fa:: times
       - 
       - 
       - Description
-      - IEventsRule
+      - EventsRule
     * - schedule_expression
       - String
       - .. fa:: check
       - 
       - 
       - Schedule Expression
-      - IEventsRule
+      - EventsRule
     * - targets
       - List of Strings
       - .. fa:: check
       - 
       - 
       - The AWS Resources that are invoked when the Rule is triggered.
-      - IEventsRule
+      - EventsRule
 
 
 
@@ -7489,69 +7489,69 @@ EBS
       - Constraints
       - Purpose
       - Base Schema
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - IResource
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
       - 
       - Boolean indicating whether DNS record sets will be created.
-      - IDNSEnablable
+      - DNSEnablable
     * - enabled
       - Boolean
       - .. fa:: times
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - IResource
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
     * - type
       - String
       - .. fa:: times
       - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
-      - IType
+      - Type
     * - availability_zone
       - Int
       - .. fa:: check
       - 
       - 
       - Availability Zone to create Volume in.
-      - IEBS
+      - EBS
     * - size_gib
       - Int
       - .. fa:: check
       - 10
       - 
       - Volume Size in GiB
-      - IEBS
+      - EBS
     * - volume_type
       - String
       - .. fa:: times
       - gp2
       - Must be one of: gp2 | io1 | sc1 | st1 | standard
       - Volume Type
-      - IEBS
+      - EBS
 
 
 
@@ -7583,7 +7583,7 @@ Secrets Manager
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 Global Resources
@@ -7622,14 +7622,14 @@ IAM Resource contains IAM Users who can login and have different levels of acces
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - users
       - Container of IAMUser_ AIM schemas
       - .. fa:: times
       - 
       - 
       - IAM Users
-      - IIAMResource
+      - IAMResource
 
 
 
@@ -7659,63 +7659,63 @@ IAMUser
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - account
       - TextReference
       - .. fa:: check
       - 
       - 
       - AIM account reference to install this user
-      - IIAMUser
+      - IAMUser
     * - account_whitelist
       - CommaList
       - .. fa:: times
       - 
       - 
       - Comma separated list of AIM AWS account names this user has access to
-      - IIAMUser
+      - IAMUser
     * - console_access_enabled
       - Boolean
       - .. fa:: check
       - 
       - 
       - Console Access Boolean
-      - IIAMUser
+      - IAMUser
     * - description
       - String
       - .. fa:: times
       - 
       - 
       - IAM User Description
-      - IIAMUser
+      - IAMUser
     * - permissions
       - Container of IAMUserPermissions_ AIM schemas
       - .. fa:: times
       - 
       - 
       - AIM IAM User Permissions
-      - IIAMUser
+      - IAMUser
     * - programmatic_access
       - IAMUserProgrammaticAccess_ AIM schema
       - .. fa:: times
       - 
       - 
       - Programmatic Access
-      - IIAMUser
+      - IAMUser
     * - username
       - String
       - .. fa:: times
       - 
       - 
       - IAM Username
-      - IIAMUser
+      - IAMUser
 
 
 
@@ -7745,21 +7745,21 @@ IAMUserProgrammaticAccess
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - access_key_1_version
       - Int
       - .. fa:: times
       - 0
       - 
       - Access key version id
-      - IIAMUserProgrammaticAccess
+      - IAMUserProgrammaticAccess
     * - access_key_2_version
       - Int
       - .. fa:: times
       - 0
       - 
       - Access key version id
-      - IIAMUserProgrammaticAccess
+      - IAMUserProgrammaticAccess
 
 
 
@@ -7789,7 +7789,7 @@ IAMUserPermissions
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 
@@ -7817,77 +7817,77 @@ Role
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - assume_role_policy
       - AssumeRolePolicy_ AIM schema
       - .. fa:: times
       - 
       - 
       - Assume role policy
-      - IRole
+      - Role
     * - global_role_name
       - Boolean
       - .. fa:: times
       - False
       - 
       - Role name is globally unique and will not be hashed
-      - IRole
+      - Role
     * - instance_profile
       - Boolean
       - .. fa:: times
       - False
       - 
       - Instance profile
-      - IRole
+      - Role
     * - managed_policy_arns
       - List of Strings
       - .. fa:: times
       - 
       - 
       - Managed policy ARNs
-      - IRole
+      - Role
     * - max_session_duration
       - Int
       - .. fa:: times
       - 3600
       - The maximum session duration (in seconds)
       - Maximum session duration
-      - IRole
+      - Role
     * - path
       - String
       - .. fa:: times
       - /
       - 
       - Path
-      - IRole
+      - Role
     * - permissions_boundary
       - String
       - .. fa:: times
       - 
       - Must be valid ARN
       - Permissions boundary ARN
-      - IRole
+      - Role
     * - policies
       - List of Policy_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Policies
-      - IRole
+      - Role
     * - role_name
       - String
       - .. fa:: times
       - 
       - 
       - Role name
-      - IRole
+      - Role
 
 
 
@@ -7915,21 +7915,21 @@ AssumeRolePolicy
       - 
       - 
       - List of AWS Principles
-      - IAssumeRolePolicy
+      - AssumeRolePolicy
     * - effect
       - String
       - .. fa:: times
       - 
       - 
       - Effect
-      - IAssumeRolePolicy
+      - AssumeRolePolicy
     * - service
       - List of Strings
       - .. fa:: times
       - 
       - 
       - Service
-      - IAssumeRolePolicy
+      - AssumeRolePolicy
 
 
 
@@ -7957,14 +7957,14 @@ Policy
       - 
       - 
       - Policy name
-      - IPolicy
+      - Policy
     * - statement
       - List of Statement_ AIM schemas
       - .. fa:: times
       - 
       - 
       - Statements
-      - IPolicy
+      - Policy
 
 
 
@@ -7992,28 +7992,28 @@ Statement
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - action
       - List of Strings
       - .. fa:: times
       - 
       - 
       - Action(s)
-      - IStatement
+      - Statement
     * - effect
       - String
       - .. fa:: times
       - 
       - Must be one of: 'Allow', 'Deny'
       - Effect
-      - IStatement
+      - Statement
     * - resource
       - List of Strings
       - .. fa:: times
       - 
       - 
       - Resrource(s)
-      - IStatement
+      - Statement
 
 
 
@@ -8078,56 +8078,56 @@ Alarm
       - False
       - Could be deployed to AWS
       - Enabled
-      - IDeployable
-    * - notifications
-      - Container of AlarmNotifications_ AIM schemas
-      - .. fa:: times
-      - 
-      - 
-      - Alarm Notifications
-      - INotifiable
+      - Deployable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - notifications
+      - Container of AlarmNotifications_ AIM schemas
+      - .. fa:: times
+      - 
+      - 
+      - Alarm Notifications
+      - Notifiable
     * - classification
       - String
       - .. fa:: check
       - unset
       - Must be one of: 'performance', 'security' or 'health'
       - Classification
-      - IAlarm
+      - Alarm
     * - description
       - String
       - .. fa:: times
       - 
       - 
       - Description
-      - IAlarm
+      - Alarm
     * - notification_groups
       - List of Strings
       - .. fa:: times
       - 
       - 
       - List of notificationn groups the alarm is subscribed to.
-      - IAlarm
+      - Alarm
     * - runbook_url
       - String
       - .. fa:: times
       - 
       - 
       - Runbook URL
-      - IAlarm
+      - Alarm
     * - severity
       - String
       - .. fa:: times
       - low
       - Must be one of: 'low', 'critical'
       - Severity
-      - IAlarm
+      - Alarm
 
 
 
@@ -8151,27 +8151,27 @@ AlarmSet
       - Constraints
       - Purpose
       - Base Schema
-    * - notifications
-      - Container of AlarmNotifications_ AIM schemas
-      - .. fa:: times
-      - 
-      - 
-      - Alarm Notifications
-      - INotifiable
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
+    * - notifications
+      - Container of AlarmNotifications_ AIM schemas
+      - .. fa:: times
+      - 
+      - 
+      - Alarm Notifications
+      - Notifiable
     * - resource_type
       - String
       - .. fa:: times
       - 
       - Must be a valid AWS resource type
       - Resource type
-      - IAlarmSet
+      - AlarmSet
 
 
 
@@ -8201,7 +8201,7 @@ AlarmSets
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 
@@ -8231,14 +8231,14 @@ Dimension
       - 
       - 
       - Dimension name
-      - IDimension
+      - Dimension
     * - value
       - TextReference
       - .. fa:: times
       - 
       - 
       - Value to look-up dimension
-      - IDimension
+      - Dimension
 
 
 
@@ -8268,56 +8268,56 @@ CloudWatchLogSource
       - 
       - 
       - Expire Events After. Retention period of logs in this group
-      - ICloudWatchLogRetention
+      - CloudWatchLogRetention
     * - title
       - String
       - .. fa:: times
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - encoding
       - String
       - .. fa:: times
       - utf-8
       - 
       - Encoding
-      - ICloudWatchLogSource
+      - CloudWatchLogSource
     * - log_stream_name
       - String
       - .. fa:: times
       - 
       - CloudWatch Log Stream name
       - Log stream name
-      - ICloudWatchLogSource
+      - CloudWatchLogSource
     * - multi_line_start_pattern
       - String
       - .. fa:: times
       - 
       - 
       - Multi-line start pattern
-      - ICloudWatchLogSource
+      - CloudWatchLogSource
     * - path
       - String
       - .. fa:: check
       - 
       - Must be a valid filesystem path expression. Wildcard * is allowed.
       - Path
-      - ICloudWatchLogSource
+      - CloudWatchLogSource
     * - timestamp_format
       - String
       - .. fa:: times
       - 
       - 
       - Timestamp format
-      - ICloudWatchLogSource
+      - CloudWatchLogSource
     * - timezone
       - String
       - .. fa:: times
       - Local
       - Must be one of: 'Local', 'UTC'
       - Timezone
-      - ICloudWatchLogSource
+      - CloudWatchLogSource
 
 
 
@@ -8347,7 +8347,7 @@ AlarmNotifications
       - 
       - 
       - Title
-      - INamed
+      - Named
 
 
 
@@ -8377,27 +8377,27 @@ AlarmNotification
       - 
       - 
       - Title
-      - INamed
+      - Named
     * - classification
       - String
       - .. fa:: times
       - 
       - Must be one of: 'performance', 'security', 'health' or ''.
       - Classification filter
-      - IAlarmNotification
+      - AlarmNotification
     * - groups
       - List of Strings
       - .. fa:: check
       - 
       - 
       - List of groups
-      - IAlarmNotification
+      - AlarmNotification
     * - severity
       - String
       - .. fa:: times
       - 
       - Must be one of: 'low', 'critical'
       - Severity filter
-      - IAlarmNotification
+      - AlarmNotification
 
 
