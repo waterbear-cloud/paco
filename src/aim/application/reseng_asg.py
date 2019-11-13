@@ -53,15 +53,9 @@ role_name: %s""" % ("ASGInstance")
         )
         role_profile_arn = iam_ctl.role_profile_arn(instance_iam_role_ref)
 
-        # Monitoring
-        if self.resource.monitoring != None and self.resource.monitoring.enabled != False:
-            self.app_engine.ec2_launch_manager.lb_add_cloudwatch_agent(instance_iam_role_ref, self.resource)
-        if len(self.resource.efs_mounts) > 0:
-            self.app_engine.ec2_launch_manager.lb_add_efs_mounts(instance_iam_role_ref, self.resource)
-        if len(self.resource.ebs_volume_mounts) > 0:
-            self.app_engine.ec2_launch_manager.lb_add_ebs_volume_mounts(instance_iam_role_ref, self.resource)
-        if self.resource.cfn_init != None:
-            self.app_engine.ec2_launch_manager.lb_add_cfn_init(self.resource)
+        # EC2 Launch Manger Bundles
+        self.app_engine.ec2_launch_manager.process_bundles(self.resource, instance_iam_role_ref)
+
         # SSM Agent
         # if when_ssm_is_need():
         #    self.app_engine.ec2_launch_manager.lb_add_ssm_agent(

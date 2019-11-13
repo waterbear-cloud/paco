@@ -267,7 +267,7 @@ class ASG(CFTemplate):
 
         # EBS Volume Id and Device name Tags
         for ebs_volume_mount in asg_config.ebs_volume_mounts:
-            if ebs_volume_mount.is_enabled() == True:
+            if ebs_volume_mount.is_enabled() == False:
                 continue
             volume_hash = utils.md5sum(str_data=ebs_volume_mount.volume)
             if references.is_ref(ebs_volume_mount.volume) == True:
@@ -331,7 +331,7 @@ class ASG(CFTemplate):
                 title='CPUAverageScalingPolicy',
                 template=template,
                 AutoScalingGroupName=troposphere.Ref(asg_res),
-                PolicyType='TrackingScaling',
+                PolicyType='TargetTrackingScaling',
                 TargetTrackingConfiguration=troposphere.autoscaling.TargetTrackingConfiguration(
                     PredefinedMetricSpecification=troposphere.autoscaling.PredefinedMetricSpecification(
                         PredefinedMetricType='ASGAverageCPUUtilization'
