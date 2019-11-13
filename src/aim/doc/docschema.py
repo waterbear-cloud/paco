@@ -12,10 +12,14 @@ from zope.interface.common.mapping import IMapping
 aim_config_template = """
 .. _aim-config:
 
+********************
+Configuration Basics
+********************
+
 AIM Configuration Overview
 ==========================
 
-AIM configuration is intended to be a complete declarative description of an Infrastructure-as-Code
+AIM configuration is a complete declarative description of an Infrastructure-as-Code
 cloud project. These files semantically describe cloud resources and logical groupings of those
 resources. The contents of these files describe accounts, networks, environments, applications,
 resources, services, and monitoring configuration.
@@ -375,6 +379,10 @@ aim.sub
 Can be used to look-up a value and substitute the results into a templated string.
 
 
+***********************
+YAML Schemas and Fields
+***********************
+
 Accounts
 ========
 
@@ -382,9 +390,9 @@ AWS account information is kept in the ``Accounts/`` directory.
 Each file in this directory will define one AWS account, the filename
 will be the ``name`` of the account, with a .yml or .yaml extension.
 
-{account}
+{IAccount}
 
-{adminiamuser}
+{IAdminIAMUser}
 
 NetworkEnvironments
 ===================
@@ -500,23 +508,84 @@ Networks have the following hierarchy:
                                   source_security_group: aim.ref netenv.my-aim-example.network.vpc.security_groups.app.lb
                                   to_port: 80
 
-{network}
+{INetwork}
 
-{vpc}
+{IVPC}
 
-{natgateway}
+{IVPCPeering}
 
-{vpngateway}
+{IVPCPeeringRoute}
 
-{privatehostedzone}
+{INATGateway}
 
-{segment}
+{IVPNGateway}
 
-{securitygroup}
+{IPrivateHostedZone}
 
-{egressrule}
+{ISegment}
 
-{ingressrule}
+{ISecurityGroup}
+
+{IEgressRule}
+
+{IIngressRule}
+
+Environments
+============
+
+Environments define how actual AWS resources should be provisioned.
+As Environments copy all of the defaults from ``network`` and ``applications`` config,
+they can define complex cloud deployments very succinctly.
+
+The top level environments are simply a name and a title. They are logical
+groups of actual environments.
+
+.. code-block:: yaml
+
+    environments:
+
+        dev:
+            title: Development
+
+        staging:
+            title: Staging and QA
+
+        prod:
+            title: Production
+
+
+Environments contain EnvironmentRegions. The name of an EnvironmentRegion must match
+a valid AWS region name. The special ``default`` name is also available, which can be used to
+override config for a whole environment, regardless of region.
+
+The following example enables the applications named ``marketing-app`` and
+``sales-app`` into all dev environments by default. In ``us-west-2`` this is
+overridden and only the ``sales-app`` would be deployed there.
+
+.. code-block:: yaml
+
+    environments:
+
+        dev:
+            title: Development
+            default:
+                applications:
+                    marketing-app:
+                        enabled: true
+                    sales-app:
+                        enabled: true
+            us-west-2:
+                applications:
+                    marketing-app:
+                        enabled: false
+            ca-central-1:
+                enabled: true
+
+{IEnvironment}
+
+{IEnvironmentDefault}
+
+{IEnvironmentRegion}
 
 Applications
 ============
@@ -572,83 +641,279 @@ In turn, each ResourceGroup contains ``resources:`` with names such as ``cpbd``,
                             type: ASG
                             # configuration goes here ...
 
-{application}
+{IApplicationEngines}
 
-{resourcegroups}
+{IApplication}
 
-{resourcegroup}
+{IResourceGroups}
 
-{resources}
+{IResourceGroup}
 
-{resource}
+{IResources}
 
+{IResource}
 
-Environments
-============
+Application Resources
+=====================
 
-Environments define how actual AWS resources should be provisioned.
-As Environments copy all of the defaults from ``network`` and ``applications`` config,
-they can define complex cloud deployments very succinctly.
+At it's heart, an Application is a collection of Resources. These are the Resources available for
+applications.
 
-The top level environments are simply a name and a title. They are logical
-groups of actual environments.
+{IApiGatewayRestApi}
 
-.. code-block:: yaml
+{IApiGatewayMethods}
 
-    environments:
+{IApiGatewayModels}
 
-        dev:
-            title: Development
+{IApiGatewayResources}
 
-        staging:
-            title: Staging and QA
+{IApiGatewayStages}
 
-        prod:
-            title: Production
+{ILBApplication}
 
+{IDNS}
 
-Environments contain EnvironmentRegions. The name of an EnvironmentRegion must match
-a valid AWS region name. The special ``default`` name is also available, which can be used to
-override config for a whole environment, regardless of region.
+{IListener}
 
-The following example enables the applications named ``marketing-app`` and
-``sales-app`` into all dev environments by default. In ``us-west-2`` this is
-overridden and only the ``sales-app`` would be deployed there.
+{IListenerRule}
 
-.. code-block:: yaml
+{IPortProtocol}
 
-    environments:
+{ITargetGroup}
 
-        dev:
-            title: Development
-            default:
-                applications:
-                    marketing-app:
-                        enabled: true
-                    sales-app:
-                        enabled: true
-            us-west-2:
-                applications:
-                    marketing-app:
-                        enabled: false
-            ca-central-1:
+{IASG}
+
+{IASGLifecycleHooks}
+
+{IASGScalingPolicies}
+
+{IBlockDeviceMapping}
+
+{IBlockDevice}
+
+{IEBSVolumeMount}
+
+{IEFSMount}
+
+{IEC2LaunchOptions}
+
+{ICloudFormationInit}
+
+{ICloudFormationConfigSets}
+
+{ICloudFormationConfigurations}
+
+{ICodePipeBuildDeploy}
+
+{IAWSCertificateManager}
+
+RDS
+---
+
+Relational Database Service (RDS) is a collection of relational databases.
+
+There is no plain vanilla RDS type, but rather choose the type that specifies which kind of relational database
+engine to use. For example, ``RDSMysql`` for MySQL on RDS or ``RDSAurora`` for an Amazon Aurora database.
+
+If you want to use DB Parameter Groups with your RDS, then use the ``parameter_group`` field to
+reference a DBParameterGroup_ resource. Keeping DB Parameter Group as a separate resource allows you
+to have multiple Paramater Groups provisioned at the same time. For example, you might have both
+resources for ``dbparams_performance`` and ``dbparams_debug``, allowing you to use the AWS
+Console to switch between performance and debug configuration quickl in an emergency.
+
+.. sidebar:: Prescribed Automation
+
+  **Using Secrets Manager with RDS**
+
+  You can set the initial password with ``master_user_password``, however this requires storing a password
+  in plain-text on disk. This is fine if you have a process for changing the password after creating a database,
+  however, the AIM Secrets Manager support allows you to use a ``secrets_password`` instead of the
+  ``master_user_password`` field:
+
+  .. code-block:: yaml
+
+      type: RDSMysql
+      secrets_password: aim.ref netenv.mynet.secrets_manager.app.grp.mysql
+
+  Then in your NetworkEnvironments ``secrets_manager`` configuration you would write:
+
+  .. code-block:: yaml
+
+      secrets_manager:
+        app: # application name
+          grp: # group name
+              mysql: # secret name
                 enabled: true
+                generate_secret_string:
+                  enabled: true
+                  # secret_string_template and generate_string_key must
+                  # have the following values for RDS secrets
+                  secret_string_template: '{{"username": "admin"}}'
+                  generate_string_key: "password"
 
-{environment}
+  This would generate a new, random password in the AWS Secrets Manager service when the database is provisioned
+  and connect that password with RDS.
 
-{environmentdefault}
+.. code-block:: yaml
+  :caption: RDSMysql resource example
 
-{environmentregion}
+  type: RDSMysql
+  order: 1
+  title: "Joe's MySQL Database server"
+  enabled: true
+  engine_version: 5.7.26
+  db_instance_type: db.t3.micro
+  port: 3306
+  storage_type: gp2
+  storage_size_gb: 20
+  storage_encrypted: true
+  multi_az: true
+  allow_major_version_upgrade: false
+  auto_minor_version_upgrade: true
+  publically_accessible: false
+  master_username: root
+  master_user_password: "change-me"
+  backup_preferred_window: 08:00-08:30
+  backup_retention_period: 7
+  maintenance_preferred_window: 'sat:10:00-sat:10:30'
+  license_model: "general-public-license"
+  cloudwatch_logs_exports:
+    - error
+    - slowquery
+  security_groups:
+    - aim.ref netenv.mynet.network.vpc.security_groups.app.database
+  segment: aim.ref netenv.mynet.network.vpc.segments.private
+  primary_domain_name: database.example.internal
+  primary_hosted_zone: aim.ref netenv.mynet.network.vpc.private_hosted_zone
+  parameter_group: aim.ref netenv.mynet.applications.app.groups.web.resources.dbparams_performance
 
-Resources
-=========
 
-Resources need to be documented.
 
-Services
-========
+{IRDSOptionConfiguration}
 
-Services need to be documented.
+{INameValuePair}
+
+{IRDSMysql}
+
+{IRDSAurora}
+
+{IDBParameterGroup}
+
+{IDBParameters}
+
+{IEC2}
+
+{ILambda}
+
+{ILambdaFunctionCode}
+
+{ILambdaEnvironment}
+
+{ILambdaVpcConfig}
+
+{ILambdaVariable}
+
+{IManagedPolicy}
+
+{IS3Bucket}
+
+{IS3BucketPolicy}
+
+{IS3LambdaConfiguration}
+
+{IS3NotificationConfiguration}
+
+{ISNSTopic}
+
+{ISNSTopicSubscription}
+
+{ICloudFront}
+
+{ICloudFrontDefaultCacheBehavior}
+
+{ICloudFrontCacheBehavior}
+
+{ICloudFrontFactory}
+
+{ICloudFrontOrigin}
+
+{ICloudFrontCustomOriginConfig}
+
+{ICloudFrontCustomErrorResponse}
+
+{ICloudFrontViewerCertificate}
+
+{ICloudFrontForwardedValues}
+
+{ICloudFrontCookies}
+
+{IElastiCacheRedis}
+
+{IDeploymentPipeline}
+
+{IDeploymentPipelineSourceStage}
+
+{IDeploymentPipelineDeployStage}
+
+{IDeploymentPipelineBuildStage}
+
+{IDeploymentPipelineDeployCodeDeploy}
+
+{ICodeDeployMinimumHealthyHosts}
+
+{IDeploymentPipelineManualApproval}
+
+{IDeploymentPipelineDeployS3}
+
+{IDeploymentPipelineBuildCodeBuild}
+
+{IDeploymentPipelineSourceCodeCommit}
+
+{IDeploymentPipelineStageAction}
+
+{IDeploymentPipelineConfiguration}
+
+{IEFS}
+
+{IEIP}
+
+{IRoute53HealthCheck}
+
+{IEventsRule}
+
+{IEBS}
+
+
+Secrets
+=======
+
+{ISecretsManager}
+
+Global Resources
+================
+
+IAM
+---
+
+The ``Resources/IAM.yaml`` file contains IAM Users. Each user account can be given
+different levels of access a set of AWS accounts.
+
+{IIAMResource}
+
+{IIAMUser}
+
+{IIAMUserProgrammaticAccess}
+
+{IIAMUserPermissions}
+
+{IRole}
+
+{IAssumeRolePolicy}
+
+{IPolicy}
+
+{IStatement}
+
 
 MonitorConfig
 =============
@@ -684,39 +949,65 @@ an Alarm.
             HTTPCode_Target_4XX_Count-Low:
                 # alarm config here ...
 
-{alarm}
+{IAlarm}
 
-{logsource}
+{IAlarmSet}
+
+{IAlarmSets}
+
+{IDimension}
+
+{ICloudWatchLogSource}
+
+{IAlarmNotifications}
+
+{IAlarmNotification}
 
 """
 
-def convert_schema_to_list_table(schema):
+def convert_schema_to_list_table(schema, level='-', header=True):
+    """
+    Introspects a Schema-based Interface and returns
+    a ReStructured Text representation of it.
+    """
+    schema_name = schema.__name__[1:]
+    output = []
+
+    #if not header:
+    #    level = '='
+
+    # Header
     output = [
 """
 {name}
 {divider}
 
 """.format(**{
-        'name': schema.__name__[1:],
-        'divider': len(schema.__name__) * '-'
+        'name': schema_name,
+        'divider': (len(schema_name) + 1) * level
         })
     ]
 
-    if schema.extends(IMapping):
-       output.append(
-"""
+    # Documentation
+    output.append(schema.__doc__)
+    output.append('\n')
 
-|bars| Container where the keys are the ``name`` field.
+    # No table for schemas with no fields, e.g. IDBParameters
+    #if schema.__name__ == 'IDBParameters': breakpoint()
+    if len(zope.schema.getFields(schema).keys()) > 0:
 
-"""
-        )
+        # Indicate if object is a container
+        if schema.extends(IMapping):
+            caption = """:guilabel:`{}` |bars| Container where the keys are the ``name`` field.""".format(schema_name)
+        else:
+            caption = ':guilabel:`{}`'.format(schema_name)
 
-    output.append(
+        output.append(
 """
 .. _{}:
 
-.. list-table::
-    :widths: 15 8 4 12 15 30
+.. list-table:: {}
+    :widths: 15 8 4 12 15 30 10
     :header-rows: 1
 
     * - Field name
@@ -725,94 +1016,185 @@ def convert_schema_to_list_table(schema):
       - Default
       - Constraints
       - Purpose
-""".format(schema.__name__[1:])
-    )
-    table_row_template = '    * - {name}\n' + \
-    '      - {type}\n' + \
-    '      - {required}\n' + \
-    '      - {default}\n' + \
-    '      - {constraints}\n'  + \
-    '      - {purpose}\n'
+      - Base Schema
+""".format(schema_name, caption)
+        )
+        table_row_template = \
+            '    * - {name}\n' + \
+            '      - {type}\n' + \
+            '      - {required}\n' + \
+            '      - {default}\n' + \
+            '      - {constraints}\n'  + \
+            '      - {purpose}\n' + \
+            '      - {baseschema}\n'
 
-    for fieldname in sorted(zope.schema.getFields(schema).keys()):
-        field = schema[fieldname]
-        if field.required:
-            req_icon = '.. fa:: check'
+    base_fields = []
+    specific_fields = []
+    for fieldname, field in sorted(zope.schema.getFields(schema).items()):
+        if field.interface.__name__ != schema.__name__:
+            base_fields.append(field)
         else:
-            req_icon = '.. fa:: times'
+            specific_fields.append(field)
 
-        data_type = field.__class__.__name__
-        if data_type in ('TextLine', 'Text'):
-            data_type = 'String'
-        elif data_type == 'Bool':
-            data_type = 'Boolean'
-        elif data_type == 'Object':
-            if field.schema.extends(IMapping):
-                data_type = 'Container of {}_ AIM schemas'.format(field.schema.__name__[1:])
-            else:
-                data_type = '{}_ AIM schema'.format(field.schema.__name__[1:])
-        elif data_type == 'Dict':
-            if field.value_type:
-                data_type = 'Container of {}_ AIM schemas'.format(field.value_type.schema.__name__[1:])
-            else:
-                data_type = 'Dict'
-        elif data_type == 'List':
-            if field.value_type and not zope.schema.interfaces.ITextLine.providedBy(field.value_type):
-                data_type = 'List of {}_ AIM schemas'.format(field.value_type.schema.__name__[1:])
-            else:
-                data_type = 'List of Strings'
+    base_fields = sorted(base_fields, key=lambda field: field.getName())
+    base_fields = sorted(base_fields, key=lambda field: field.interface.__name__)
 
-        # don't display the name field, it is derived from the key
-        name = field.getName()
-        if name != 'name' or not schema.extends(schemas.INamed):
-            output.append(
-                table_row_template.format(
-                    **{
-                        'name': name,
-                        'type': data_type,
-                        'required': req_icon,
-                        'default': field.default,
-                        'purpose': field.title,
-                        'constraints': field.description,
-                    }
-                )
-            )
+    for field in base_fields:
+        output.append(convert_field_to_table_row(schema, field, table_row_template))
+    for field in specific_fields:
+        output.append(convert_field_to_table_row(schema, field, table_row_template))
+
     return ''.join(output)
 
+def convert_field_to_table_row(schema, field, table_row_template):
+    baseschema = schema.__name__[1:]
+    if field.interface.__name__ != schema.__name__:
+        baseschema = field.interface.__name__[1:]
+
+    if field.required:
+        req_icon = '.. fa:: check'
+    else:
+        req_icon = '.. fa:: times'
+
+    data_type = field.__class__.__name__
+    if data_type in ('TextLine', 'Text'):
+        data_type = 'String'
+    elif data_type == 'Bool':
+        data_type = 'Boolean'
+    elif data_type == 'Object':
+        if field.schema.extends(IMapping):
+            data_type = 'Container of {}_ AIM schemas'.format(field.schema.__name__[1:])
+        else:
+            data_type = '{}_ AIM schema'.format(field.schema.__name__[1:])
+    elif data_type == 'Dict':
+        if field.value_type and hasattr(field.value_type, 'schema'):
+            data_type = 'Container of {}_ AIM schemas'.format(field.value_type.schema.__name__[1:])
+        else:
+            data_type = 'Dict'
+    elif data_type == 'List':
+        if field.value_type and not zope.schema.interfaces.IText.providedBy(field.value_type):
+            data_type = 'List of {}_ AIM schemas'.format(field.value_type.schema.__name__[1:])
+        else:
+            data_type = 'List of Strings'
+
+    # don't display the name field, it is derived from the key
+    name = field.getName()
+
+    # Change None to '' for default
+    if field.default == None:
+        default = ''
+    else:
+        default = field.default
+
+    if name != 'name' or not schema.extends(schemas.INamed):
+        return table_row_template.format(
+            **{
+                'name': name,
+                'type': data_type,
+                'required': req_icon,
+                'default': default,
+                'purpose': field.title,
+                'constraints': field.description,
+                'baseschema': baseschema
+            }
+        )
+    else:
+        return ''
+
+
+DOCLESS_SCHEMAS = {
+  'INameValuePair': None,
+  'IS3BucketPolicy': None,
+  'IS3LambdaConfiguration': None,
+  'IS3NotificationConfiguration': None,
+}
+
+MINOR_SCHEMAS = {
+    'IApiGatewayMethods': None,
+    'IApiGatewayMethods': None,
+    'IApiGatewayModels': None,
+    'IApiGatewayResources': None,
+    'IApiGatewayStages': None,
+    'IDNS': None,
+    'IListener': None,
+    'ITargetGroup': None,
+    'IPortProtocol': None,
+    'IListenerRule': None,
+    'IBlockDeviceMapping': None,
+    'IEBSVolumeMount': None,
+    'IEFSMount': None,
+    'IEC2LaunchOptions': None,
+    'IASGLifecycleHooks': None,
+    'IASGScalingPolicies': None,
+    'ICloudFormationInit': None,
+    'ICloudFormationConfigSets': None,
+    'ICloudFormationConfigurations': None,
+    'IBlockDevice': None,
+    'IAssumeRolePolicy': None,
+    'IPolicy': None,
+    'IStatement': None,
+    'IIAMUser': None,
+    'IIAMUserProgrammaticAccess': None,
+    'IIAMUserPermissions': None,
+    'IRDSOptionConfiguration': None,
+    'INameValuePair': None,
+    'IDBParameters': None,
+    'ILambdaFunctionCode': None,
+    'ILambdaEnvironment': None,
+    'ILambdaVpcConfig': None,
+    'ILambdaVariable': None,
+    'IS3BucketPolicy': None,
+    'IS3LambdaConfiguration': None,
+    'IS3NotificationConfiguration': None,
+    'ISNSTopicSubscription': None,
+    'ICloudFrontCacheBehavior': None,
+    'ICloudFrontFactory': None,
+    'ICloudFrontOrigin': None,
+    'ICloudFrontCustomOriginConfig': None,
+    'ICloudFrontCustomErrorResponse': None,
+    'ICloudFrontViewerCertificate': None,
+    'ICloudFrontCacheBehavior': None,
+    'ICloudFrontDefaultCacheBehavior': None,
+    'ICloudFrontForwardedValues': None,
+    'ICloudFrontCookies': None,
+    'ICloudFrontDefaultCacheBehavior': None,
+    'IDeploymentPipelineSourceStage': None,
+    'IDeploymentPipelineDeployStage': None,
+    'IDeploymentPipelineBuildStage': None,
+    'IDeploymentPipelineDeployCodeDeploy': None,
+    'ICodeDeployMinimumHealthyHosts': None,
+    'IDeploymentPipelineManualApproval': None,
+    'IDeploymentPipelineDeployS3': None,
+    'IDeploymentPipelineBuildCodeBuild': None,
+    'IDeploymentPipelineSourceCodeCommit': None,
+    'IDeploymentPipelineStageAction': None,
+    'IDeploymentPipelineConfiguration': None,
+    'IRDSMysql': None,
+    'IRDSAurora': None,
+}
+
+def create_tables_from_schema():
+    result = {}
+    import zope.interface.interface
+    for name, obj in schemas.__dict__.items():
+        if isinstance(obj, zope.interface.interface.InterfaceClass):
+            level = '-'
+            header = True
+            if obj.__name__ in MINOR_SCHEMAS:
+                level = '^'
+            if obj.__name__ in DOCLESS_SCHEMAS:
+                header=False
+            result[obj.__name__] = convert_schema_to_list_table(obj, level=level, header=header)
+    return result
 
 def aim_schema_generate():
     aim_doc = os.path.abspath(os.path.dirname(__file__)).split(os.sep)[:-3]
     aim_doc.append('docs')
     aim_doc.append('aim-config.rst')
     aim_config_doc = os.sep.join(aim_doc)
+    tables_dict = create_tables_from_schema()
 
     with open(aim_config_doc, 'w') as f:
-        f.write(
-            aim_config_template.format(
-                **{'account': convert_schema_to_list_table(schemas.IAccount),
-                   'network': convert_schema_to_list_table(schemas.INetwork),
-                   'vpc': convert_schema_to_list_table(schemas.IVPC),
-                   'natgateway': convert_schema_to_list_table(schemas.INATGateway),
-                   'vpngateway': convert_schema_to_list_table(schemas.IVPNGateway),
-                   'privatehostedzone': convert_schema_to_list_table(schemas.IPrivateHostedZone),
-                   'applications': convert_schema_to_list_table(schemas.IApplicationEngines),
-                   'application': convert_schema_to_list_table(schemas.IApplication),
-                   'environment': convert_schema_to_list_table(schemas.IEnvironment),
-                   'environmentdefault': convert_schema_to_list_table(schemas.IEnvironmentDefault),
-                   'environmentregion': convert_schema_to_list_table(schemas.IEnvironmentRegion),
-                   'resourcegroups': convert_schema_to_list_table(schemas.IResourceGroups),
-                   'resourcegroup': convert_schema_to_list_table(schemas.IResourceGroup),
-                   'resources': convert_schema_to_list_table(schemas.IResources),
-                   'resource': convert_schema_to_list_table(schemas.IResource),
-                   'alarmset': convert_schema_to_list_table(schemas.IAlarmSet),
-                   'alarm': convert_schema_to_list_table(schemas.ICloudWatchAlarm),
-                   'logsource': convert_schema_to_list_table(schemas.ICWAgentLogSource),
-                   'adminiamuser': convert_schema_to_list_table(schemas.IAdminIAMUser),
-                   'segment': convert_schema_to_list_table(schemas.ISegment),
-                   'securitygroup': convert_schema_to_list_table(schemas.ISecurityGroup),
-                   'egressrule': convert_schema_to_list_table(schemas.IEgressRule),
-                   'ingressrule': convert_schema_to_list_table(schemas.IIngressRule),
-                }
-            )
-        )
+        f.write(aim_config_template.format(**tables_dict))
+
     print('Wrote to {}'.format(aim_config_doc))

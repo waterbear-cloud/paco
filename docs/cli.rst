@@ -18,11 +18,8 @@ accounts. You can run this command and it will give you usage help:
 
     Commands:
     delete     Delete AIM managed resources
-    describe   Describe an AIM project
-    ftest      Functional testing of an AIM project
     init       Initializes AIM Project files
     provision  Provision an AIM project or a specific environment.
-    shell      Open a shell to an instance.
     validate   Validate an AIM project
 
 For most commands, you will need to tell ``aim`` where your AIM config directory is located.

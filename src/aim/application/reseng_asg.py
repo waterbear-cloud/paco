@@ -18,7 +18,6 @@ instance_profile: false
 path: /
 role_name: %s""" % ("ASGInstance")
             role_config_dict = yaml.load(role_config_yaml)
-            breakpoint()
             role_config = models.iam.Role('instance_iam_role', self.resource)
             role_config.apply_config(role_config_dict)
         else:
