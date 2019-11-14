@@ -56,15 +56,15 @@ class LogGroups(CFTemplate):
 
             # provide prefixed LogGroup name as a CFN Parameter
             param_name = 'Name' + loggroup_logical_id
-            parameter = self.create_cfn_parameter(
+            log_group_name_parameter = self.create_cfn_parameter(
                 param_type = 'String',
                 name = param_name,
                 description = 'LogGroup name',
                 value = prefixed_log_group_name,
                 use_troposphere = True
             )
-            template.add_parameter(parameter)
-            cfn_export_dict['LogGroupName'] = troposphere.Ref(param_name)
+            template.add_parameter(log_group_name_parameter)
+            cfn_export_dict['LogGroupName'] = troposphere.Ref(log_group_name_parameter)
 
             # override default retention?
             # 1. log_group.expire_events_after_days <- specific to single log group
@@ -80,10 +80,16 @@ class LogGroups(CFTemplate):
             if retention != 'Never':
                 cfn_export_dict["RetentionInDays"] = retention
 
+            log_group_resource = troposphere.logs.LogGroup.from_dict(
+                loggroup_logical_id,
+                cfn_export_dict
+            )
+            template.add_resource(log_group_resource)
+
             # Metric Filters
             for metric_filter in log_group.metric_filters.values():
                 mf_dict = {
-                    'LogGroupName': prefixed_log_group_name,
+                    'LogGroupName': troposphere.Ref(log_group_name_parameter),
                     'FilterPattern': metric_filter.filter_pattern,
                 }
                 mt_list = []
@@ -106,13 +112,8 @@ class LogGroups(CFTemplate):
                     self.create_cfn_logical_id('MetricFilter' + metric_filter.name),
                     mf_dict,
                 )
+                metric_filter_resource.DependsOn = log_group_resource
                 template.add_resource(metric_filter_resource)
-
-            log_group_resource = troposphere.logs.LogGroup.from_dict(
-                loggroup_logical_id,
-                cfn_export_dict
-            )
-            template.add_resource(log_group_resource)
 
         # Generate the Template
         self.set_template(template.to_yaml())

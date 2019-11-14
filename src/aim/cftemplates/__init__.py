@@ -37,3 +37,4 @@ from aim.cftemplates.route53_hostedzone import Route53HostedZone
 from aim.cftemplates.route53_recordset import Route53RecordSet
 from aim.cftemplates.secrets_manager import SecretsManager
 from aim.cftemplates.ebs import EBS
+from aim.cftemplates.codedeployapplication import CodeDeployApplication

@@ -11,6 +11,7 @@ from aim.models import vocabulary
 from aim.cftemplates.cftemplates import CFTemplate
 from aim.models.locations import get_parent_by_interface
 from aim.utils import prefixed_name
+from aim.core.exception import InvalidLogSetConfiguration
 
 
 class CFBaseAlarm(CFTemplate):
@@ -194,7 +195,23 @@ class CWAlarms(CFBaseAlarm):
                 if schemas.ICloudWatchLogAlarm.providedBy(alarm):
                     # Namespace look-up for LogAlarms
                     obj = get_parent_by_interface(alarm, schemas.IMonitorConfig)
-                    log_group = obj.log_sets[alarm.log_set_name].log_groups[alarm.log_group_name]
+                    try:
+                        log_group = obj.log_sets[alarm.log_set_name].log_groups[alarm.log_group_name]
+                    except KeyError:
+                        raise InvalidLogSetConfiguration("""
+Invalid Log Set configuration:
+
+Log Set: {}
+Log Group: {}
+Resource: {} (type: {})
+Resource aim.ref: {}
+
+HINT: Ensure that the monitoring.log_sets for the resource is enabled and that the Log Set and Log Group names match.
+
+""".format(alarm.log_set_name, alarm.log_group_name, resource.name, resource.type, resource.aim_ref)
+                        )
+                        breakpoint()
+                        a=12
                     alarm_export_dict['Namespace'] = "AIM/" + prefixed_name(
                         resource, log_group.get_log_group_name(), self.aim_ctx.legacy_flag
                     )

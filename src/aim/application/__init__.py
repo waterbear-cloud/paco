@@ -15,3 +15,4 @@ from aim.application.reseng_snstopic import SNSTopicResourceEngine
 from aim.application.reseng_s3bucket import S3BucketResourceEngine
 from aim.application.reseng_eip import EIPResourceEngine
 from aim.application.reseng_ebs import EBSResourceEngine
+from aim.application.reseng_codedeployapplication import CodeDeployApplicationResourceEngine

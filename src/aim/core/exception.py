@@ -47,3 +47,9 @@ class UnsupportedCloudFormationParameterType(Exception):
 
 class CloudFormationParameterAimRefMissingDotExtension(Exception):
     "Parameters with aim.ref values need to match <Name>.<OutputName> format."
+
+class InvalidLogSetConfiguration(Exception):
+    "Invalid Log Set configuration"
+
+class AimUnsupportedFeature(Exception):
+    "Feature does not yet exist"
