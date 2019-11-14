@@ -24,7 +24,8 @@ class CodeDeployApplication(CFTemplate):
         env_ctx,
         app_id,
         grp_id,
-        cdapp
+        cdapp,
+        role
     ):
         super().__init__(
             aim_ctx,
@@ -45,96 +46,22 @@ class CodeDeployApplication(CFTemplate):
             camel_case=True
         )
 
-        # Resources
+        # Service Role ARN parameter
+        service_role_arn_param = self.create_cfn_parameter(
+            param_type='String',
+            name='ServiceRoleArn',
+            description='The codedeploy service Role to assume.',
+            value=role.get_arn(),
+            use_troposphere=True,
+            troposphere_template=self.template,
+        )
+
+        # CodeDeploy Application
         cdapp_resource = troposphere.codedeploy.Application(
             'CodeDeployApplication',
             ComputePlatform=cdapp.compute_platform
         )
         self.template.add_resource(cdapp_resource)
-
-        # Service Role
-        service_role_logical_id = 'CodeDeployServiceRole'
-        service_role_name = self.create_iam_resource_name(
-            name_list=[self.res_name_prefix, 'CodeDeployServiceRole'],
-            filter_id='IAM.Role.RoleName'
-        )
-        service_role_resource = troposphere.iam.Role(
-            service_role_logical_id,
-            RoleName=service_role_name,
-            AssumeRolePolicyDocument=PolicyDocument(
-                Version="2012-10-17",
-                Statement=[
-                    Statement(
-                        Effect=Allow,
-                        Action=[ AssumeRole ],
-                        Principal=Principal("Service", ['codedeploy.{}.amazonaws.com'.format(aws_region)]),
-                    )
-                ]
-            )
-        )
-        self.template.add_resource(service_role_resource)
-
-        # CodeDeploy ServiceRole Policy
-        if cdapp.compute_platform == "Server":
-            policy_resource = troposphere.iam.PolicyType(
-                title='CodeDeployServicePolicy',
-                PolicyName='CodeDeployService',
-                PolicyDocument=PolicyDocument(
-                    Version='2012-10-17',
-                    Statement=[
-                        Statement(
-                            Effect=Allow,
-                            Action=[
-                                awacs.autoscaling.CompleteLifecycleAction,
-                                awacs.autoscaling.DeleteLifecycleHook,
-                                awacs.autoscaling.DescribeAutoScalingGroups,
-                                awacs.autoscaling.DescribeLifecycleHooks,
-                                awacs.autoscaling.PutLifecycleHook,
-                                awacs.autoscaling.RecordLifecycleActionHeartbeat,
-                                awacs.autoscaling.CreateAutoScalingGroup,
-                                awacs.autoscaling.UpdateAutoScalingGroup,
-                                awacs.autoscaling.EnableMetricsCollection,
-                                awacs.autoscaling.DescribePolicies,
-                                awacs.autoscaling.DescribeScheduledActions,
-                                awacs.autoscaling.DescribeNotificationConfigurations,
-                                awacs.autoscaling.DescribeLifecycleHooks,
-                                awacs.autoscaling.SuspendProcesses,
-                                awacs.autoscaling.ResumeProcesses,
-                                awacs.autoscaling.AttachLoadBalancers,
-                                awacs.autoscaling.PutScalingPolicy,
-                                awacs.autoscaling.PutScheduledUpdateGroupAction,
-                                awacs.autoscaling.PutNotificationConfiguration,
-                                awacs.autoscaling.PutLifecycleHook,
-                                awacs.autoscaling.DescribeScalingActivities,
-                                awacs.autoscaling.DeleteAutoScalingGroup,
-                                awacs.ec2.DescribeInstances,
-                                awacs.ec2.DescribeInstanceStatus,
-                                awacs.ec2.TerminateInstances,
-                                awacs.tag.GetResources,
-                                awacs.sns.Publish,
-                                awacs.cloudwatch.DescribeAlarms,
-                                awacs.cloudwatch.PutMetricAlarm,
-                                awacs.elasticloadbalancing.DescribeLoadBalancers,
-                                awacs.elasticloadbalancing.DescribeInstanceHealth,
-                                awacs.elasticloadbalancing.RegisterInstancesWithLoadBalancer,
-                                awacs.elasticloadbalancing.DeregisterInstancesFromLoadBalancer,
-                                awacs.elasticloadbalancing.DescribeTargetGroups,
-                                awacs.elasticloadbalancing.DescribeTargetHealth,
-                                awacs.elasticloadbalancing.RegisterTargets,
-                                awacs.elasticloadbalancing.DeregisterTargets,
-                            ],
-                            Resource=['*']
-                        )
-                    ],
-                ),
-                Roles=[
-                    troposphere.Ref(service_role_resource)
-                ]
-            )
-            self.template.add_resource(policy_resource)
-        else:
-            raise AimUnsupportedFeature("Only a service role for 'Server' compute platform.")
-        policy_resource.DependsOn = [service_role_resource.title]
 
         # DeploymentGroup resources
         for deploy_group in cdapp.deployment_groups.values():
@@ -161,7 +88,7 @@ class CodeDeployApplication(CFTemplate):
             cfn_export_dict = {
                 'Deployment': deployment_dict,
                 'ApplicationName': troposphere.Ref(cdapp_resource),
-                'ServiceRoleArn': troposphere.GetAtt(service_role_resource, 'Arn'),
+                'ServiceRoleArn': troposphere.Ref(service_role_arn_param),
             }
             if deploy_group.autoscalinggroups:
                 cfn_export_dict['AutoScalingGroups'] = []
@@ -175,8 +102,6 @@ class CodeDeployApplication(CFTemplate):
             )
             self.template.add_resource(deploy_group_resource)
             deploy_group_resource.DependsOn = []
-            deploy_group_resource.DependsOn.append(policy_resource.title)
-            deploy_group_resource.DependsOn.append(service_role_resource.title)
             deploy_group_resource.DependsOn.append(cdapp_resource.title)
 
             # User-defined Policies
