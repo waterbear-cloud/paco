@@ -17,6 +17,7 @@ import aim.cftemplates
 import json
 import os
 import pathlib
+import shutil
 import tarfile
 from aim.stack_group import StackHooks, Stack, StackTags
 from aim import models, utils
@@ -58,11 +59,22 @@ class LaunchBundle():
             self.group_id,
             self.resource_id
         )
-        self.s3_bucket_ref = None
         self.bundle_files = []
         self.package_path = None
         self.cache_id = ""
         self.s3_key = None
+        # EC2 Manager Bucket Reference
+        self.s3_bucket_ref = '.'.join([
+            self.resource_config.aim_ref_parts,
+            self.manager.id, 'bucket'
+        ])
+        instance_iam_role_arn_ref = self.resource_config.aim_ref + '.instance_iam_role.arn'
+        self.instance_iam_role_arn = self.aim_ctx.get_ref(instance_iam_role_arn_ref)
+        self.bundles_path = os.path.join(self.build_path, 'LaunchBundles')
+        self.bundle_folder = self.name
+        self.package_filename = str.join('.', [self.bundle_folder, 'tgz'])
+        self.package_path = os.path.join(self.bundles_path, self.package_filename)
+
 
     def set_launch_script(self, launch_script):
         """Set the script run to launch the bundle. By convention, this file
@@ -88,40 +100,27 @@ class LaunchBundle():
          - Sets ref to S3 bucket and instance IAM role arn
         """
         orig_cwd = os.getcwd()
-        bundles_path = os.path.join(self.build_path, 'LaunchBundles')
-        pathlib.Path(bundles_path).mkdir(parents=True, exist_ok=True)
-        os.chdir(bundles_path)
+        pathlib.Path(self.bundles_path).mkdir(parents=True, exist_ok=True)
+        os.chdir(self.bundles_path)
 
         # mkdir Bundle/
-        bundle_folder = self.name
-        pathlib.Path(bundle_folder).mkdir(parents=True, exist_ok=True)
+        pathlib.Path(self.bundle_folder).mkdir(parents=True, exist_ok=True)
 
         # Launch script
         contents_md5 = ""
         for bundle_file in self.bundle_files:
-            file_path = os.path.join(bundle_folder, bundle_file['name'])
+            file_path = os.path.join(self.bundle_folder, bundle_file['name'])
             with open(file_path, "w") as output_fd:
                 output_fd.write(bundle_file['contents'])
             contents_md5 += md5sum(str_data=bundle_file['contents'])
 
         self.cache_id = md5sum(str_data=contents_md5)
 
-        lb_tar_filename = str.join('.', [bundle_folder, 'tgz'])
-        lb_tar = tarfile.open(lb_tar_filename, "w:gz")
-        lb_tar.add(bundle_folder, recursive=True)
+        lb_tar = tarfile.open(self.package_filename, "w:gz")
+        lb_tar.add(self.bundle_folder, recursive=True)
         lb_tar.close()
         os.chdir(orig_cwd)
-        self.package_filename = lb_tar_filename
-        self.package_path = os.path.join(bundles_path, lb_tar_filename)
 
-        # EC2 Manager Bucket Reference
-        self.s3_bucket_ref = '.'.join([
-            self.resource_config.aim_ref_parts,
-            self.manager.id, 'bucket'
-        ])
-
-        instance_iam_role_arn_ref = self.resource_config.aim_ref + '.instance_iam_role.arn'
-        self.instance_iam_role_arn = self.aim_ctx.get_ref(instance_iam_role_arn_ref)
         if self.instance_iam_role_arn == None:
             raise StackException(
                     AimErrorCode.Unknown,
@@ -184,13 +183,21 @@ class EC2LaunchManager():
     def bucket_id(self, resource_id):
         return '-'.join([resource_id, self.id])
 
-    def stack_hook(self, hook, bundle):
+    def upload_bundle_stack_hook(self, hook, bundle):
         "Uploads the launch bundle to an S3 bucket"
         s3_ctl = self.aim_ctx.get_controller('S3')
         bucket_name = s3_ctl.get_bucket_name(bundle.s3_bucket_ref)
         s3_client = self.account_ctx.get_aws_client('s3')
         bundle_s3_key = os.path.join("LaunchBundles", bundle.package_filename)
         s3_client.upload_file(bundle.package_path, bucket_name, bundle_s3_key)
+
+    def remove_bundle_stack_hook(self, hook, bundle):
+        "Remove the launch bundle from an S3 bucket"
+        s3_ctl = self.aim_ctx.get_controller('S3')
+        bucket_name = s3_ctl.get_bucket_name(bundle.s3_bucket_ref)
+        s3_client = self.account_ctx.get_aws_client('s3')
+        bundle_s3_key = os.path.join("LaunchBundles", bundle.package_filename)
+        s3_client.delete_object(Bucket=bucket_name, Key=bundle_s3_key)
 
     def stack_hook_cache_id(self, hook, bundle):
         return bundle.cache_id
@@ -207,13 +214,36 @@ class EC2LaunchManager():
             name='EC2LaunchManager',
             stack_action='create',
             stack_timing='post',
-            hook_method=self.stack_hook,
+            hook_method=self.upload_bundle_stack_hook,
             cache_method=self.stack_hook_cache_id,
             hook_arg=bundle
         )
         stack_hooks.add(
             'EC2LaunchManager', 'update', 'post',
-            self.stack_hook, self.stack_hook_cache_id, bundle
+            self.upload_bundle_stack_hook, self.stack_hook_cache_id, bundle
+        )
+        s3_ctl = self.aim_ctx.get_controller('S3')
+        s3_ctl.add_stack_hooks(resource_ref=bundle.s3_bucket_ref, stack_hooks=stack_hooks)
+
+    def remove_bundle_from_s3_bucket(self, bundle):
+        """Adds stack hook which will remove a launch bundle from an S3 bucket when
+        the stack is created or updated."""
+        cache_context = '.'.join([bundle.app_id, bundle.group_id, bundle.resource_id])
+        if cache_context not in self.cache_id:
+            self.cache_id[cache_context] = ''
+        self.cache_id[cache_context] += bundle.cache_id
+        stack_hooks = StackHooks(self.aim_ctx)
+        stack_hooks.add(
+            name='EC2LaunchManager',
+            stack_action='create',
+            stack_timing='post',
+            hook_method=self.remove_bundle_stack_hook,
+            cache_method=self.stack_hook_cache_id,
+            hook_arg=bundle
+        )
+        stack_hooks.add(
+            'EC2LaunchManager', 'update', 'post',
+            self.remove_bundle_stack_hook, self.stack_hook_cache_id, bundle
         )
         s3_ctl = self.aim_ctx.get_controller('S3')
         s3_ctl.add_stack_hooks(resource_ref=bundle.s3_bucket_ref, stack_hooks=stack_hooks)
@@ -621,6 +651,12 @@ statement:
         self.add_bundle_to_s3_bucket(bundle)
         self.launch_bundles[bundle.s3_bucket_ref].append(bundle)
 
+    def remove_bundle(self, bundle):
+        if bundle.s3_bucket_ref not in self.launch_bundles:
+            self.init_ec2lm_s3_bucket(bundle.resource_config, bundle.instance_iam_role_arn)
+            self.launch_bundles[bundle.s3_bucket_ref] = []
+        self.remove_bundle_from_s3_bucket(bundle)
+
     def lb_add_cfn_init(self, resource):
         """Creates a launch bundle to download and run cfn-init"""
         # Check if this bundle is enabled with config such as:
@@ -628,9 +664,27 @@ statement:
         #    launch_options:
         #      cfn_init_config_sets:
         #        - SomeSet
-        if resource.launch_options == None or \
+
+        # Create the Launch Bundle and configure it
+        app_name = get_parent_by_interface(resource, schemas.IApplication).name
+        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
+
+        cfn_init_lb = LaunchBundle(
+            self.aim_ctx,
+            "cfn-init",
+            self,
+            app_name,
+            group_name,
+            resource.name,
+            resource,
+            self.bucket_id(resource.name)
+        )
+
+        if resource.cfn_init == None or \
+            resource.launch_options == None or \
             resource.launch_options.cfn_init_config_sets == None or \
             len(resource.launch_options.cfn_init_config_sets) == 0:
+            self.remove_bundle(cfn_init_lb)
             return
 
         # TODO: Add ubuntu and other distro support
@@ -643,19 +697,7 @@ statement:
     ','.join(resource.launch_options.cfn_init_config_sets)
 )
 
-        # Create the Launch Bundle and configure it
-        app_name = get_parent_by_interface(resource, schemas.IApplication).name
-        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
-        cfn_init_lb = LaunchBundle(
-            self.aim_ctx,
-            "cfn-init",
-            self,
-            app_name,
-            group_name,
-            resource.name,
-            resource,
-            self.bucket_id(resource.name)
-        )
+
         cfn_init_lb.set_launch_script(launch_script)
 
         # Save Configuration
@@ -667,6 +709,34 @@ statement:
          - Installs an entry in /etc/fstab
          - On launch runs mount
         """
+        app_name = get_parent_by_interface(resource, schemas.IApplication).name
+        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
+       # Create the Launch Bundle and configure it
+        efs_lb = LaunchBundle(
+            self.aim_ctx,
+            "EFS",
+            self,
+            app_name,
+            group_name,
+            resource.name,
+            resource,
+            self.bucket_id(resource.name)
+        )
+
+        efs_enabled = False
+        if len(resource.efs_mounts) >= 0:
+            process_mount_targets = ""
+            for efs_mount in resource.efs_mounts:
+                if efs_mount.enabled == False:
+                    continue
+                efs_enabled = True
+                efs_id_hash = utils.md5sum(str_data=efs_mount.target)
+                process_mount_targets += "process_mount_target {} {}\n".format(efs_mount.folder, efs_id_hash)
+
+        if efs_enabled == False:
+            self.remove_bundle(efs_lb)
+            return
+
         # TODO: Add ubuntu and other distro support
         launch_script_template = """#!/bin/bash
 
@@ -703,21 +773,12 @@ function process_mount_target()
 
 %s
 """
-        process_mount_targets = ""
-        for efs_mount in resource.efs_mounts:
-            if efs_mount.enabled == False:
-                continue
-            efs_id_hash = utils.md5sum(str_data=efs_mount.target)
-            process_mount_targets += "process_mount_target {} {}\n".format(efs_mount.folder, efs_id_hash)
 
         launch_script = launch_script_template % (
             vocabulary.user_data_script['install_efs_utils'][resource.instance_ami_type],
             vocabulary.user_data_script['enable_efs_utils'][resource.instance_ami_type],
             process_mount_targets,
             vocabulary.user_data_script['mount_efs'][resource.instance_ami_type])
-
-        app_name = get_parent_by_interface(resource, schemas.IApplication).name
-        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
 
         policy_config_yaml = """
 name: 'DescribeTags'
@@ -743,17 +804,6 @@ statement:
             change_protected=resource.change_protected
         )
 
-        # Create the Launch Bundle and configure it
-        efs_lb = LaunchBundle(
-            self.aim_ctx,
-            "EFS",
-            self,
-            app_name,
-            group_name,
-            resource.name,
-            resource,
-            self.bucket_id(resource.name)
-        )
         efs_lb.set_launch_script(launch_script)
 
         # Save Configuration
@@ -765,6 +815,25 @@ statement:
          - Installs an entry in /etc/fstab
          - On launch runs mount
         """
+        app_name = get_parent_by_interface(resource, schemas.IApplication).name
+        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
+
+        # Create the Launch Bundle and configure it
+        ebs_lb = LaunchBundle(
+            self.aim_ctx,
+            "EBS",
+            self,
+            app_name,
+            group_name,
+            resource.name,
+            resource,
+            self.bucket_id(resource.name)
+        )
+
+        if len(resource.ebs_volume_mounts) == 0:
+            self.remove_bundle(ebs_lb)
+            return
+
         # TODO: Add ubuntu and other distro support
         launch_script_template = """#!/bin/bash
 
@@ -862,9 +931,6 @@ function process_volume_mount()
             process_mount_volumes)
             #vocabulary.user_data_script['mount_efs'][resource.instance_ami_type])
 
-        app_name = get_parent_by_interface(resource, schemas.IApplication).name
-        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
-
         policy_config_yaml = """
 name: 'AssociateVolume'
 enabled: true
@@ -890,17 +956,6 @@ statement:
             change_protected=resource.change_protected
         )
 
-        # Create the Launch Bundle and configure it
-        ebs_lb = LaunchBundle(
-            self.aim_ctx,
-            "EBS",
-            self,
-            app_name,
-            group_name,
-            resource.name,
-            resource,
-            self.bucket_id(resource.name)
-        )
         ebs_lb.set_launch_script(launch_script)
 
         # Save Configuration
@@ -923,6 +978,22 @@ statement:
         monitoring = resource.monitoring
         app_name = get_parent_by_interface(resource, schemas.IApplication).name
         group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
+
+        # Create the Launch Bundle and configure it
+        cw_lb = LaunchBundle(
+            self.aim_ctx,
+            "CloudWatchAgent",
+            self,
+            app_name,
+            group_name,
+            resource.name,
+            resource,
+            self.bucket_id(resource.name)
+        )
+
+        if resource.monitoring == None or resource.monitoring.enabled == False:
+            self.remove_bundle(cw_lb)
+            return
 
         # Launch script
         launch_script_template = """#!/bin/bash
@@ -1084,17 +1155,7 @@ statement:
             change_protected=resource.change_protected
         )
 
-        # Create the Launch Bundle and configure it
-        cw_lb = LaunchBundle(
-            self.aim_ctx,
-            "CloudWatchAgent",
-            self,
-            app_name,
-            group_name,
-            resource.name,
-            resource,
-            self.bucket_id(resource.name)
-        )
+        # Set the launch script
         cw_lb.set_launch_script(launch_script)
         cw_lb.add_file('amazon-cloudwatch-agent.json', agent_config)
 
@@ -1178,6 +1239,12 @@ statement:
 
         # Save Configuration
         self.add_bundle(ssm_lb)
+
+    def process_bundles(self, resource, instance_iam_role_ref):
+        self.app_engine.ec2_launch_manager.lb_add_cloudwatch_agent(instance_iam_role_ref, resource)
+        self.app_engine.ec2_launch_manager.lb_add_efs_mounts(instance_iam_role_ref, resource)
+        self.app_engine.ec2_launch_manager.lb_add_ebs_volume_mounts(instance_iam_role_ref, resource)
+        self.app_engine.ec2_launch_manager.lb_add_cfn_init(resource)
 
     def validate(self):
         pass
