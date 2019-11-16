@@ -33,7 +33,8 @@ class ALB(CFTemplate):
             config_ref=alb_config.aim_ref_parts,
             stack_group=stack_group,
             stack_tags=stack_tags,
-            environment_name=self.env_ctx.env_id
+            environment_name=self.env_ctx.env_id,
+            change_protected=alb_config.change_protected
         )
         self.set_aws_name('ALB', grp_id, alb_config.name)
 
@@ -295,7 +296,9 @@ class ALB(CFTemplate):
                         {'Field': 'host-header', 'Values': [rule.host] }
                     ]
                     cfn_export_dict['Priority'] = rule.priority
-                    logical_listener_rule_name = logical_listener_name + logical_rule_name
+                    logical_listener_rule_name = self.create_cfn_logical_id_join(
+                        str_list=[logical_listener_name, 'Rule', logical_rule_name]
+                    )
                     listener_rule_resource = troposphere.elasticloadbalancingv2.ListenerRule.from_dict(
                         logical_listener_rule_name,
                         cfn_export_dict
@@ -359,6 +362,7 @@ class ALB(CFTemplate):
                     Value=troposphere.GetAtt(alb_resource, 'CanonicalHostedZoneID')
                 )
             )
+
             self.register_stack_output_config(alb_config.aim_ref_parts + '.canonicalhostedzoneid', 'LoadBalancerCanonicalHostedZoneID')
             self.template.add_output(
                 troposphere.Output(
@@ -367,6 +371,8 @@ class ALB(CFTemplate):
                 )
             )
             self.register_stack_output_config(alb_config.aim_ref_parts + '.dnsname', 'LoadBalancerDNSName')
+
+            self.set_template(self.template.to_yaml())
 
             if self.aim_ctx.legacy_flag('route53_record_set_2019_10_16') == False:
                 route53_ctl = self.aim_ctx.get_controller('route53')
@@ -385,5 +391,3 @@ class ALB(CFTemplate):
                             stack_group=self.stack_group,
                             config_ref=alb_config.aim_ref_parts + '.dns'
                         )
-
-        self.set_template(self.template.to_yaml())

@@ -131,8 +131,9 @@ class CWAlarms(CFBaseAlarm):
 
         self.alarm_action_param_map = {}
         self.notification_param_map = {}
+        alarms_are_enabled = False
         if resource.is_enabled() and resource.monitoring.enabled:
-            self.add_alarms(
+            alarms_are_enabled = self.add_alarms(
                 template,
                 alarms,
                 resource,
@@ -141,6 +142,7 @@ class CWAlarms(CFBaseAlarm):
                 alarm_id,
                 alarm_set_id,
             )
+        self.template.enabled = alarms_are_enabled
         self.set_template(template.to_yaml())
 
     def add_alarms(
@@ -168,7 +170,12 @@ class CWAlarms(CFBaseAlarm):
                 use_troposphere = True
             )
             template.add_parameter(dimension_param)
+        alarms_are_enabled = False
         for alarm in alarms:
+            if alarm.enabled == True:
+                alarms_are_enabled = True
+            else:
+                continue
             if len(alarm.dimensions) > 0:
                 for dimension in alarm.dimensions:
                     dimension.parameter = self.create_cfn_parameter(
@@ -180,8 +187,6 @@ class CWAlarms(CFBaseAlarm):
                     )
                     template.add_parameter(dimension.parameter)
 
-        # Add Alarm resources
-        for alarm in alarms:
             # compute dynamic attributes for cfn_export_dict
             alarm_export_dict = alarm.cfn_export_dict
             self.set_alarm_actions_to_cfn_export(alarm, alarm_export_dict)
@@ -210,8 +215,6 @@ HINT: Ensure that the monitoring.log_sets for the resource is enabled and that t
 
 """.format(alarm.log_set_name, alarm.log_group_name, resource.name, resource.type, resource.aim_ref)
                         )
-                        breakpoint()
-                        a=12
                     alarm_export_dict['Namespace'] = "AIM/" + prefixed_name(
                         resource, log_group.get_log_group_name(), self.aim_ctx.legacy_flag
                     )
@@ -257,3 +260,5 @@ HINT: Ensure that the monitoring.log_sets for the resource is enabled and that t
                 Value=troposphere.Ref(alarm_resource)
             )
             template.add_output(alarm_output)
+        return alarms_are_enabled
+
