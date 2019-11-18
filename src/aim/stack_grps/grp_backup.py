@@ -90,8 +90,3 @@ class BackupVaultsStackGroup(StackGroup):
             self.stack_list.append(
                 backup_vault_template.stack
             )
-
-
-    def resolve_ref(self, ref):
-        breakpoint()
-        return None
