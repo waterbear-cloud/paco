@@ -10,6 +10,7 @@ from aim.core.yaml import YAML
 from aim.stack_grps.grp_application import ApplicationStackGroup
 from aim.stack_grps.grp_network import NetworkStackGroup
 from aim.stack_grps.grp_secretsmanager import SecretsManagerStackGroup
+from aim.stack_grps.grp_backup import BackupVaultsStackGroup
 from aim.stack_group import StackTags, stack_group, StackGroup
 
 yaml=YAML(typ="safe", pure=True)
@@ -99,6 +100,18 @@ class EnvironmentContext():
             self.application_stack_grps[app_id] = application_stack_grp
             self.stack_grps.append(application_stack_grp)
             application_stack_grp.init()
+
+        # Backup
+        if self.config.backup_vaults:
+            self.backup_stack_grp = BackupVaultsStackGroup(
+                self.aim_ctx,
+                self.account_ctx,
+                self,
+                self.config.backup_vaults,
+                StackTags(self.stack_tags)
+            )
+            self.backup_stack_grp.init()
+            self.stack_grps.append(self.backup_stack_grp)
 
         self.aim_ctx.log_action_col('Init', 'Environment', self.env_id+' '+self.region)
 

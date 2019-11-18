@@ -1,10 +1,10 @@
 Changelog for aim
 =================
 
-3.1.1 (unreleased)
+3.2.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- AWS Backup service is supported by AIM. Create BackupVaults with BackupPlans and BackupSelections.
 
 
 3.1.0 (2019-11-06)
