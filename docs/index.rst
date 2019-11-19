@@ -8,18 +8,30 @@ Overview
 
 AIM is a cloud orchestration tool for AWS.
 
-AIM works by using configuration files that semantically describe your
-infrastructure, networks, environments and AWS resources. It can generate
-CloudFormation stacks and provisions and manages those stacks in your AWS accounts.
+AIM uses configuration files that semantically describe your applications,
+networks, environments and resources. With those it can then create complete
+environments in your AWS accounts.
+
+Applications and networks are defined as blocks of default configuration and acts
+as a blueprint. You then name your applications in the environments and regions you want to
+provision them in. Automatically replicate your AWS resources through development, staging
+and production environments.
+
+Get started by `installing`_ AIM and connecting it to your AWS accounts.
+
+.. _`installing`: ./install.html
 
 Project Status
 --------------
 
-AIM is capable of reliably deploying robust AWS environments. However, there is a lot more we want to add to AIM!
+AIM is in use for deploying production AWS environments.
 
-As AIM is a young project, it's API and design may be subject to frequent changes.
-It is used for real-world production environmentes though, so backward breaking changes will
-be minimized with reasonable migration paths.
+However, AIM is a young project and there is much more we want to add. For example,
+AIM supports about 30 AWS services (EC2, S3, RDS, Lambda, API Gateway), but there are
+many services not yet supported. Supported services may also support every configuration
+setting for every resource.
+
+The AIM CLI is also loosely documented and we plan to overhaul it's UI and fully document it.
 
 Source Code, Issues and Support
 -------------------------------
