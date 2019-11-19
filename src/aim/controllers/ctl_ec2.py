@@ -48,9 +48,11 @@ class EC2Controller(Controller):
         self.init_done = True
         if controller_args['command'] == 'init':
             return
-        self.ec2_service_name = controller_args['arg_1']
+        scope = controller_args['arg_2']
+        self.scopes = scope.split('.')
+        self.ec2_service_name = self.scopes[1]
         if self.ec2_service_name == 'keypairs':
-            self.keypair_id = controller_args['arg_2']
+            self.keypair_id = self.scopes[2]
             if self.keypair_id == None:
                 print("error: missing keypair id")
                 print("aim provision ec2 keypairs <keypair_id>")

@@ -10,52 +10,127 @@ from functools import wraps
 
 pass_aim_context = click.make_pass_decorator(AimContext, ensure=True)
 
-controller_types = """
-\b
-  account: Accounts.
-    File at ./Accounts/<NAME>.yaml
+config_types = """
+CONFIG_TYPE and CONFIG_SCOPE must be:
 
 \b
-  acm: ACM resources.
-    File at ./Resources/acm.yaml
+  Account resources
+    CONFIG_TYPE: account
+    CONFIG_SCOPE: filename in the `Accounts` directory.
 
 \b
-  cloudtrail: CloudTrail resources.
-    File at ./Resources/cloudtrail.yaml
+  Global resources
+    CONFIG_TYPE: resource
+    CONFIG_SCOPE: filename in the `Resources` directory.
+    examples:
+      resource ec2.keypairs.mykeypair
+      resource cloudtrail
+      resource codecommit
+      resource iam
 
 \b
-  codecommit: CodeCommit resources.
-    File at ./Resources/codecommit.yaml
-
-\b
-  ec2: EC2 resources.
-    File at ./Resources/ec2.yaml
-
-\b
-  iam: IAM resources.
-    File at ./Resources/iam.yaml
-
-\b
-  netenv: NetworkEnvironment.
-    The NAME argument must be an aim.ref style dotted name in the format:
-      "<ne_name>.<environment>.<region_name>.applications.<app_name>.groups.<resource_group_name>.resources.<resource_name>"
-    Only the NetworkEnvironment name and Environment name are required. Examples:
+  NetworkEnvironment resources
+    CONFIG_TYPE: netenv
+    CONFIG_SCOPE: filename in the `NetworkEnvironments` directory and dotted scope within that file.
+      The dotted filename is in the format: <netenv_name>.<environment_name>.<region>
+    examlpes:
       netenv mynet.dev
-      netenv mynet.dev.us-west-2.applications.myapp.groups.mygroup.resources.myresource
-    File at ./NetworkEnvironments/<NAME>.yaml
+      netenv mynet.dev.us-west-2
+      netenv mynet.dev.us-west-2.applications.myapp.groups.somegroup.resources.webserver
 
 \b
-  notificationgroups: NotificationGroups.
-    File at ./Resources/NotificationGroups.yaml
+  Service resources
+    CONFIG_TYPE: service
+    CONFIG_SCOPE: filename in the `Services` directory.
+    examples:
+      service notification
+      service security
 
-\b
-  route53: Route53 resources.
-    File at ./NetworkEnvironments/route53.yaml
-
-\b
-  s3: S3 Bucket resources.
-    File at ./Resources/s3.yaml
 """
+
+def set_cloud_options(
+    command_name,
+    aim_ctx,
+    verbose,
+    nocache,
+    yes,
+    disable_validation,
+    quiet_changes_only,
+    config_type,
+    config_scope,
+    home
+):
+    aim_ctx.verbose = verbose
+    aim_ctx.nocache = nocache
+    aim_ctx.yes = yes
+    aim_ctx.disable_validation = disable_validation
+    aim_ctx.quiet_changes_only = quiet_changes_only
+    aim_ctx.command = command_name
+    init_aim_home_option(aim_ctx, home)
+    if not aim_ctx.home:
+        print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')
+        sys.exit()
+    aim_ctx.load_project()
+    if config_type == 'resource':
+        controller_type = config_scope.split('.')[0]
+        controller_args = {
+            'command': command_name,
+            'arg_1': controller_type,
+            'arg_2': config_scope,
+            'arg_3': None,
+            'arg_4': None
+        }
+    else:
+        controller_type = config_type
+        controller_args = {
+            'command': command_name,
+            'arg_1': config_scope,
+            'arg_2': None,
+            'arg_3': None,
+            'arg_4': None
+        }
+    return controller_type, controller_args
+
+def cloud_options(func):
+    """
+    decorator to add cloud options
+    """
+    func = click.option(
+        '-v', '--verbose',
+        is_flag=True,
+        default=False,
+        help='Enables verbose mode.'
+    )(func)
+    func = click.option(
+        '-n', '--nocache',
+        is_flag=True,
+        default=False,
+        help='Disables the AIM CloudFormation stack cache.'
+    )(func)
+    func = click.option(
+        '-y', '--yes',
+        is_flag=True,
+        default=False,
+        help='Responds "yes" to any Yes/No prompts.'
+    )(func)
+    func = click.option(
+        '-d', '--disable-validation',
+        is_flag=True,
+        default=False,
+        help='Supresses validation differences.'
+    )(func)
+    func = click.option(
+        '-c', '--quiet-changes-only',
+        is_flag=True,
+        default=False,
+        help='Supresses Cache, Protected, and Disabled messages.'
+    )(func)
+    return func
+
+def cloud_args(func):
+    func = click.argument("config_scope", required=True, type=click.STRING)(func)
+    func = click.argument("config_type", required=True, type=click.STRING)(func)
+    return func
 
 def controller_args(func):
     """

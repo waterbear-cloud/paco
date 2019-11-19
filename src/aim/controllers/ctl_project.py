@@ -20,9 +20,11 @@ yaml.default_flow_sytle = False
 
 class ProjectController(Controller):
     def __init__(self, aim_ctx):
-        super().__init__(aim_ctx,
-                         "Account",
-                         "")
+        super().__init__(
+            aim_ctx,
+            "Project",
+            ""
+        )
         self.init_done = False
         self.credentials_path = pathlib.Path(os.path.join(self.aim_ctx.home, '.credentials.yaml'))
         self.credentials = {
