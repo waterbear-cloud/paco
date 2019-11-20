@@ -65,6 +65,7 @@ class CodeDeployApplication(CFTemplate):
 
         # DeploymentGroup resources
         for deploy_group in cdapp.deployment_groups.values():
+            if not deploy_group.is_enabled(): continue
 
             # Deployment configuration
             deploy_group_logical_id = self.create_cfn_logical_id('DeploymentGroup' + deploy_group.name)
