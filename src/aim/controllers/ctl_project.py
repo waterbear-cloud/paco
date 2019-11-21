@@ -61,7 +61,7 @@ class ProjectController(Controller):
             if key in context.keys():
                 self.project_context[key] = context[key]
 
-    def init(self, controller_args):
+    def init(self, command=None, model_obj=None):
         if self.init_done == True:
             return
         self.init_done = True
@@ -76,6 +76,7 @@ class ProjectController(Controller):
             print("project_name: " + self.project_context['project_name'])
             allowed_key_list = []
             for key in self.project_context.keys():
+                if key.startswith('_computed_'): continue
                 if self.project_context[key] == None:
                     allowed_key = key + "_allowed_values"
                     allowed_values = None
@@ -84,6 +85,7 @@ class ProjectController(Controller):
                         allowed_key_list.append(allowed_key)
                     self.project_context[key] = self.aim_ctx.input("%s" % key, allowed_values=allowed_values)
 
+            self.project_context['_computed_aim_home_path'] = self.aim_ctx.home
             self.project_context['master_admin_iam_username'] = 'aim-project-init'
             # Remove the allowed key so we do not save it to the context file
             for key in allowed_key_list:
@@ -159,23 +161,6 @@ class ProjectController(Controller):
         # Loading the account controller will initialize the account yamls
         account_ctl = self.aim_ctx.get_controller('account')
         account_ctl.init_accounts_yaml()
-
-    def init_command(self, controller_args):
-        if controller_args['arg_1'] == None:
-            self.init_project()
-            self.init_credentials()
-            self.init_accounts()
-        elif controller_args['arg_1'] == 'credentials':
-            self.init_credentials(force=True)
-        else:
-            print("Unknown 'project init' argument: {}".format(controller_args['arg_1']))
-            sys.exit(1)
-
-
-
-        print("\nProject Initialization Complete")
-        print("Next, provision the project:")
-        print("\n\taim provision project --home <project folder>\n")
 
     def provision(self):
         account_ctl = self.aim_ctx.get_controller('account')

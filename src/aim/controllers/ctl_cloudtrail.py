@@ -100,7 +100,7 @@ class CloudTrailController(Controller):
         self.cloudtrail = self.aim_ctx.project['resource']['cloudtrail']
         self.stack_grps = []
 
-    def init(self, controller_args):
+    def init(self, command=None, model_obj=None):
         if self.init_done:
             return
         self.init_done = True

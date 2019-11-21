@@ -28,7 +28,7 @@ class CloudWatchController(Controller):
 
         #self.aim_ctx.log("Route53 Service: Configuration: %s" % (name)
 
-    def init(self, controller_args):
+    def init(self, command=None, model_obj=None):
         if self.init_done:
             return
         self.config.resolv_ref_obj = self

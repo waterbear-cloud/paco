@@ -600,15 +600,13 @@ class IAMController(Controller):
             #     - Manage SSH keys
 
 
-
-
-    def init(self, controller_args):
-        if controller_args == None:
+    def init(self, command=None, model_obj=None):
+        if model_obj == None:
             return
         if self.init_done == True:
             return
         self.init_done = True
-        if controller_args['arg_1'] == 'users':
+        if model_obj.aim_ref_list[2] == 'users':
             self.init_users()
 
     def create_managed_policy(

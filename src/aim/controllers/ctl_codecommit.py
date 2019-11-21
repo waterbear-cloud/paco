@@ -29,13 +29,13 @@ class CodeCommitController(Controller):
         self.stack_grps = []
         self.init_done = False
 
-    def init(self, controller_args):
+    def init(self, command=None, model_obj=None):
         if self.init_done:
             return
         self.init_done = True
         self.aim_ctx.log_action_col("Init", "CodeCommit")
-        if controller_args:
-            self.name = controller_args['arg_1']
+        if model_obj:
+            self.name = model_obj.aim_ref_list[1]
         self.config = self.aim_ctx.project['resource']['codecommit']
         # Sets the CodeCommit reference resolver object to forward all
         # all aim.ref resource.codecommit.* calls to self.resolve_ref()

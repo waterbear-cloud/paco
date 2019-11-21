@@ -1,7 +1,7 @@
 import click
 import sys
 from aim.core.exception import StackException
-from aim.commands.helpers import pass_aim_context, controller_args, aim_home_option, init_aim_home_option
+from aim.commands.helpers import pass_aim_context, aim_home_option, init_aim_home_option
 
 @click.command('shell', short_help='Open a shell to an instance.')
 @click.argument("netenv_id", required=True, type=click.STRING)

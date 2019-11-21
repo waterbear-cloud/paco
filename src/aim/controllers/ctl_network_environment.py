@@ -297,10 +297,11 @@ class EnvironmentContext():
 
 class NetEnvController(Controller):
     def __init__(self, aim_ctx):
-        super().__init__(aim_ctx,
-                         "NE",
-                         None)
-
+        super().__init__(
+            aim_ctx,
+            "NE",
+            None
+        )
         self.sub_envs = {}
         self.netenv_id = None
         self.config = None
@@ -330,41 +331,40 @@ class NetEnvController(Controller):
     def init_command(self, controller_args):
         if controller_args['arg_1'].find('.secrets_manager.'):
             parts = controller_args['arg_1'].split('.')
-            environment = parts[1]
-            region = parts[2]
+            environment = parts[2]
+            region = parts[3]
             account_ctx = self.aim_ctx.get_account_context(account_ref=self.config[environment][region].network.aws_account)
-            secret_name = 'netenv.'+controller_args['arg_1']
+            secret_name = controller_args['arg_1']
             self.secrets_manager(secret_name, account_ctx, region)
 
-    def init(self, controller_args):
-        if self.init_done == True or controller_args == None:
+    def init(self, command=None, model_obj=None):
+        if self.init_done == True:
             return
         self.init_done = True
         netenv_id = None
         env_id = None
         region = None
         resource_arg = None
-        aim_command = controller_args['command']
-        netenv_arg = controller_args['arg_1']
-
+        aim_command = command
+        netenv_arg = model_obj.aim_ref_parts
         if netenv_arg == None:
-            message = "Command: aim {} netenv {}\n".format(aim_command, netenv_arg)
-            message += "Error:   Missing NetEnv argument:  <netenv>.<environment>[.<region>.<option>.<resource>.<path>]"
+            message = "Command: aim {} {}\n".format(aim_command, netenv_arg)
+            message += "Error:   Missing NetEnv argument:  netenv.<netenv>.<environment>[.<region>.<option>.<resource>.<path>]"
             raise StackException(
                 AimErrorCode.Unknown,
                 message = message
             )
 
-        arg_1_parts = controller_args['arg_1'].split('.', 3)
-        netenv_id = arg_1_parts[0]
+        netenv_parts = netenv_arg.split('.', 4)[1:]
+        netenv_id = netenv_parts[0]
         if netenv_id in self.aim_ctx.project['netenv'].keys():
             self.netenv_id = netenv_id
-            if len(arg_1_parts) > 1:
-                env_id = arg_1_parts[1]
-            if len(arg_1_parts) > 2:
-                region = arg_1_parts[2]
-            if len(arg_1_parts) > 3:
-                resource_arg = arg_1_parts[3]
+            if len(netenv_parts) > 1:
+                env_id = netenv_parts[1]
+            if len(netenv_parts) > 2:
+                region = netenv_parts[2]
+            if len(netenv_parts) > 3:
+                resource_arg = netenv_parts[3]
         else:
             raise StackException(
                 AimErrorCode.Unknown,
@@ -374,7 +374,7 @@ class NetEnvController(Controller):
         self.config = self.aim_ctx.project['netenv'][self.netenv_id]
 
         if env_id not in self.config.keys():
-            message = "Command: aim {} netenv {}\n".format(aim_command, netenv_arg)
+            message = "Command: aim {} {}\n".format(aim_command, netenv_arg)
             message += "Error:   Network Environment '{}' does not have an Environment named '{}'.\n".format(netenv_id, env_id)
             raise StackException(
                 AimErrorCode.Unknown,
@@ -387,7 +387,7 @@ class NetEnvController(Controller):
         else:
             regions = [region]
             if region not in self.config[env_id].keys():
-                message = "Command: aim {} netenv {}\n".format(aim_command, netenv_arg)
+                message = "Command: aim {} {}\n".format(aim_command, netenv_arg)
                 message += "Error:   Environment '{}' does not have region '{}'.".format(env_id, region)
                 raise StackException(
                     AimErrorCode.Unknown,
@@ -405,7 +405,7 @@ class NetEnvController(Controller):
                     done_parts_str += '.'
                 done_parts_str += res_part
                 if hasattr(config_obj, res_part) == False and res_part not in config_obj.keys():
-                    message = "Command: aim {} netenv {}\n".format(aim_command, netenv_arg)
+                    message = "Command: aim {} {}\n".format(aim_command, netenv_arg)
                     message += "Error:   Unable to locate resource: {}".format(done_parts_str)
                     raise StackException(
                         AimErrorCode.Unknown,
@@ -418,7 +418,7 @@ class NetEnvController(Controller):
                 first = False
 
         self.aim_ctx.log_action_col("Init", "NetEnv", self.netenv_id)
-        self.stack_group_filter = 'netenv.' + netenv_arg
+        self.stack_group_filter = netenv_arg
         if regions:
             for region in regions:
                 self.init_sub_env(env_id, region)

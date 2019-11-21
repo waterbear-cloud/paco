@@ -4,6 +4,7 @@ import sys
 from aim.config.aim_context import AimContext, AccountContext
 from aim.core.exception import AimException, StackException
 from aim.models.exceptions import InvalidAimProjectFile, UnusedAimProjectField, InvalidAimReference
+from aim.models.references import get_model_obj_from_ref
 from boto3.exceptions import Boto3Error
 from botocore.exceptions import BotoCoreError, ClientError
 from functools import wraps
@@ -11,44 +12,45 @@ from functools import wraps
 pass_aim_context = click.make_pass_decorator(AimContext, ensure=True)
 
 config_types = """
-CONFIG_TYPE and CONFIG_SCOPE must be:
+CONFIG_SCOPE must be an AIM Reference to an AIM object. These can be
+constructed by matching a top-level directory name, with a filename
+and then optionally walking through keys within that file. Each
+part is separated by the . character.
 
 \b
-  Account resources
-    CONFIG_TYPE: account
-    CONFIG_SCOPE: filename in the `Accounts` directory.
+  account. objects : AWS Accounts
+    Location: files in the `Accounts` directory.
+    Examples:
+      accounts.dev
+      accounts.master
 
 \b
-  Global resources
-    CONFIG_TYPE: resource
-    CONFIG_SCOPE: filename in the `Resources` directory.
+  resource. objects : Global Resources
+    Location: files in the `Resources` directory.
     examples:
-      resource ec2.keypairs.mykeypair
-      resource cloudtrail
-      resource codecommit
-      resource iam
+      resource.ec2.keypairs.mykeypair
+      resource.cloudtrail
+      resource.codecommit
+      resource.iam
 
 \b
-  NetworkEnvironment resources
-    CONFIG_TYPE: netenv
-    CONFIG_SCOPE: filename in the `NetworkEnvironments` directory and dotted scope within that file.
-      The dotted filename is in the format: <netenv_name>.<environment_name>.<region>
+  netenv. objects : NetworkEnvironments
+    Location: files in the `NetworkEnvironments` directory.
     examlpes:
-      netenv mynet.dev
-      netenv mynet.dev.us-west-2
-      netenv mynet.dev.us-west-2.applications.myapp.groups.somegroup.resources.webserver
+      netenv.mynet.dev
+      netenv.mynet.dev.us-west-2
+      netenv.mynet.dev.us-west-2.applications.myapp.groups.somegroup.resources.webserver
 
 \b
-  Service resources
-    CONFIG_TYPE: service
-    CONFIG_SCOPE: filename in the `Services` directory.
+  service. objects : AIM Pluggable Extensions
+    Location: files in the `Services` directory.
     examples:
-      service notification
-      service security
+      service.notification
+      service.security
 
 """
 
-def set_cloud_options(
+def init_cloud_command(
     command_name,
     aim_ctx,
     verbose,
@@ -56,7 +58,6 @@ def set_cloud_options(
     yes,
     disable_validation,
     quiet_changes_only,
-    config_type,
     config_scope,
     home
 ):
@@ -71,25 +72,26 @@ def set_cloud_options(
         print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')
         sys.exit()
     aim_ctx.load_project()
-    if config_type == 'resource':
-        controller_type = config_scope.split('.')[0]
-        controller_args = {
-            'command': command_name,
-            'arg_1': controller_type,
-            'arg_2': config_scope,
-            'arg_3': None,
-            'arg_4': None
-        }
+    scope_parts = config_scope.split('.')
+    if scope_parts[0] == 'resource':
+        controller_type = scope_parts[1]
     else:
-        controller_type = config_type
-        controller_args = {
-            'command': command_name,
-            'arg_1': config_scope,
-            'arg_2': None,
-            'arg_3': None,
-            'arg_4': None
-        }
-    return controller_type, controller_args
+        controller_type = scope_parts[0]
+
+    # Locate a model object and summarize it
+    aim_ref = 'aim.ref {}'.format(config_scope)
+    obj = get_model_obj_from_ref(aim_ref, aim_ctx.project)
+    print('Object selected to {}:'.format(command_name))
+    print('  Name: {}'.format(
+        getattr(obj, 'name', 'unnamed')
+    ))
+    print('  Type: {}'.format(obj.__class__.__name__))
+    if getattr(obj, 'title', None):
+        print('  Title: {}'.format(obj.title))
+    if hasattr(obj, 'aim_ref_parts'):
+        print('  Reference: {}'.format(obj.aim_ref_parts))
+
+    return controller_type, obj
 
 def cloud_options(func):
     """
@@ -128,20 +130,9 @@ def cloud_options(func):
     return func
 
 def cloud_args(func):
-    func = click.argument("config_scope", required=True, type=click.STRING)(func)
-    func = click.argument("config_type", required=True, type=click.STRING)(func)
+    func = click.argument("CONFIG_SCOPE", required=True, type=click.STRING)(func)
     return func
 
-def controller_args(func):
-    """
-    decorator to add controller args
-    """
-    func = click.argument("arg_4", required=False, type=click.STRING)(func)
-    func = click.argument("arg_3", required=False, type=click.STRING)(func)
-    func = click.argument("arg_2", required=False, type=click.STRING)(func)
-    func = click.argument("arg_1", required=False, type=click.STRING)(func)
-    func = click.argument("controller_type", required=True, type=click.STRING)(func)
-    return func
 
 def aim_home_option(func):
     """

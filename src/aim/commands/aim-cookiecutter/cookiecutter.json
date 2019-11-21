@@ -14,6 +14,7 @@
     "master_account_id": "{{ 'Master AWS Account Id' | env_override('AIM_MASTER_ACCOUNT_ID') }}",
     "master_admin_iam_username": "{{ 'Master Admin IAM Username' | env_override('AIM_MASTER_ADMIN_IAM_USERNAME') }}",
     "master_root_email": "root@example.com",
+    "_computed_aim_home_path": "",
     "_extensions": [
         "aim.commands.cmd_init.EnvOverrideExtension"
     ]

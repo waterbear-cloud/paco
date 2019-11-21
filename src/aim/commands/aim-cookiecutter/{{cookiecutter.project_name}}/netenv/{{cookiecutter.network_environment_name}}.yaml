@@ -4,6 +4,7 @@ network:
   availability_zones: 3
   enabled: true
   vpc:
+    enabled: true
     enable_dns_hostnames: true
     enable_dns_support: true
     enable_internet_gateway: true
@@ -19,10 +20,10 @@ network:
         enabled: false
     private_hosted_zone:
       enabled: false
-      name: example.internal
     security_groups:
       {{cookiecutter.application_name}}:
         alb:
+          enabled: true
           egress:
             - cidr_ip: 0.0.0.0/0
               name: ANY
@@ -34,6 +35,7 @@ network:
               protocol: tcp
               to_port: 80
         web:
+          enabled: true
           egress:
             - cidr_ip: 0.0.0.0/0
               name: ANY
@@ -60,6 +62,7 @@ applications:
     managed_updates: true
     groups:
       site:
+        enabled: true
         type: Application
         order: 1
         resources:
@@ -126,7 +129,6 @@ applications:
 
 environments:
 {% if cookiecutter.starting_template == 'simple-web-app' %}
-
   dev:
     title: "Development Environment"
     default:

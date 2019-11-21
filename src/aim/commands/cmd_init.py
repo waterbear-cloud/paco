@@ -2,7 +2,7 @@ import click
 import os
 import os.path
 import sys
-from aim.commands.helpers import pass_aim_context, controller_args, aim_home_option, init_aim_home_option
+from aim.commands.helpers import pass_aim_context, aim_home_option, init_aim_home_option
 from cookiecutter.main import cookiecutter
 from jinja2.ext import Extension
 
@@ -46,9 +46,6 @@ def init_project(ctx, project_name):
     aim_ctx.load_project(project_init=True)
     ctl_project = aim_ctx.get_controller('project')
     ctl_project.init_project()
-    ctl_project.init_credentials()
-    ctl_project.init_accounts()
-
 
 @init_group.command(name="credentials")
 @aim_home_option
@@ -59,7 +56,36 @@ def init_credentials(ctx, home='.'):
     """
     aim_ctx = ctx.obj
     aim_ctx.command = 'init credentials'
-    aim_ctx.home = home
-    aim_ctx.load_project()
+    init_aim_home_option(aim_ctx, home)
+    aim_ctx.load_project(project_init=True)
     ctl_project = aim_ctx.get_controller('project')
     ctl_project.init_credentials()
+
+@init_group.command(name="accounts")
+@aim_home_option
+@click.pass_context
+def init_accounts(ctx, home='.'):
+    """
+    Initializes the accounts for an AIM Project.
+    """
+    aim_ctx = ctx.obj
+    aim_ctx.command = 'init accounts'
+    init_aim_home_option(aim_ctx, home)
+    aim_ctx.load_project()
+    ctl_project = aim_ctx.get_controller('project')
+    ctl_project.init_accounts()
+
+@init_group.command(name="netenv")
+@aim_home_option
+@click.pass_context
+def init_netenv(ctx, home='.'):
+    """
+    Initializes a netenv resource for an AIM Project.
+    """
+    aim_ctx = ctx.obj
+    aim_ctx.command = 'init netenv'
+    init_aim_home_option(aim_ctx, home)
+    aim_ctx.load_project()
+    ctl_project = aim_ctx.get_controller('project')
+    # ToDo: FixMe! pass proper NetEnv info to init_command ...
+    ctl_project.init_command()

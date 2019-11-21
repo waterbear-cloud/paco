@@ -3,7 +3,7 @@ import sys
 from aim.core.exception import StackException
 from aim.commands.helpers import (
     pass_aim_context, aim_home_option, handle_exceptions, cloud_options,
-    set_cloud_options, cloud_args, config_types
+    init_cloud_command, cloud_args, config_types
 )
 
 
@@ -20,24 +20,23 @@ def validate_command(
     yes,
     disable_validation,
     quiet_changes_only,
-    config_type,
     config_scope,
     home='.'
 ):
     "Validate resources"
-    controller_type, controller_args = set_cloud_options(
-        'validate',
+    command = 'validate'
+    controller_type, obj = init_cloud_command(
+        command,
         aim_ctx,
         verbose,
         nocache,
         yes,
         disable_validation,
         quiet_changes_only,
-        config_type,
         config_scope,
         home
     )
-    controller = aim_ctx.get_controller(controller_type, controller_args)
+    controller = aim_ctx.get_controller(controller_type, 'validate', obj)
     controller.validate()
 
 validate_command.help = """
