@@ -2,7 +2,7 @@ import click
 import os
 import os.path
 import sys
-from aim.commands.helpers import pass_aim_context, controller_args, aim_home_option, init_aim_home_option
+from aim.commands.helpers import pass_aim_context, aim_home_option, init_aim_home_option
 from cookiecutter.main import cookiecutter
 from jinja2.ext import Extension
 
@@ -19,50 +19,73 @@ class EnvOverrideExtension(Extension):
         super(EnvOverrideExtension, self).__init__(environment)
         environment.filters['env_override'] = env_override
 
-@click.command('init', short_help='Initializes AIM Project files', help="""
-Initializes AIM Project files. The types of resources possible are:
+def init_args(func):
+    func = click.argument("ACTION", required=True, type=click.STRING)(func)
+    return func
 
- - project: Create the skeleton configuration directory and files
-        for an empty or complete AIM Project.
+@click.group(name="init")
+@click.pass_context
+def init_group(aim_ctx):
+    """
+    Commands for initializing AIM Projects.
+    """
+    pass
 
-""")
-#@click.argument('controller_type', default='project', type=click.STRING)
-#@click.option(
-#    "-r",
-#    "--region",
-#    help="AWS region code, e.g. us-west-2",
-#)
-#@click.option(
-#    "-k",
-#    "--keypair_name",
-#    help="EC2 keypair name",
-#)
+@init_group.command(name="project")
+@click.argument("project-name")
+@click.pass_context
+def init_project(ctx, project_name):
+    """
+    Creates a new directory with a boilerplate AIM Project in it.
+    """
+    aim_ctx = ctx.obj
+    aim_ctx.command = 'init project'
+
+    # As we are initializing the project, laod_project needs to behave differently
+    aim_ctx.home = os.getcwd() + os.sep + project_name
+    aim_ctx.load_project(project_init=True)
+    ctl_project = aim_ctx.get_controller('project')
+    ctl_project.init_project()
+
+@init_group.command(name="credentials")
 @aim_home_option
-@controller_args
-@pass_aim_context
-def init_command(aim_ctx, controller_type, arg_1=None, arg_2=None, arg_3=None, arg_4=None, home='.'):
-    """Initializes AIM Configuration"""
-    aim_ctx.command = 'init'
+@click.pass_context
+def init_credentials(ctx, home='.'):
+    """
+    Initializes the .credentials file for an AIM Project.
+    """
+    aim_ctx = ctx.obj
+    aim_ctx.command = 'init credentials'
     init_aim_home_option(aim_ctx, home)
-    if not aim_ctx.home:
-        print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')
-        sys.exit()
+    aim_ctx.load_project(project_init=True)
+    ctl_project = aim_ctx.get_controller('project')
+    ctl_project.init_credentials()
 
-    aim_ctx.log("Init: Controller: {}  arg_1({}) arg_2({}) arg_3({}) arg_4({})".format(controller_type, arg_1, arg_2, arg_3, arg_4) )
+@init_group.command(name="accounts")
+@aim_home_option
+@click.pass_context
+def init_accounts(ctx, home='.'):
+    """
+    Initializes the accounts for an AIM Project.
+    """
+    aim_ctx = ctx.obj
+    aim_ctx.command = 'init accounts'
+    init_aim_home_option(aim_ctx, home)
+    aim_ctx.load_project()
+    ctl_project = aim_ctx.get_controller('project')
+    ctl_project.init_accounts()
 
-    # If we are initializing the project, laod_project needs to behave differently
-    project_init=False
-    if controller_type == 'project':
-         if arg_1 == None or arg_1 == 'credentials':
-            project_init=True
-    aim_ctx.load_project(project_init=project_init)
-
-    controller_args = {
-        'arg_1': arg_1,
-        'arg_2': arg_2,
-        'arg_3': arg_3,
-        'arg_4': arg_4,
-        'command': 'init'
-    }
-    controller = aim_ctx.get_controller(controller_type, controller_args)
-    controller.init_command(controller_args)
+@init_group.command(name="netenv")
+@aim_home_option
+@click.pass_context
+def init_netenv(ctx, home='.'):
+    """
+    Initializes a netenv resource for an AIM Project.
+    """
+    aim_ctx = ctx.obj
+    aim_ctx.command = 'init netenv'
+    init_aim_home_option(aim_ctx, home)
+    aim_ctx.load_project()
+    ctl_project = aim_ctx.get_controller('project')
+    # ToDo: FixMe! pass proper NetEnv info to init_command ...
+    ctl_project.init_command()

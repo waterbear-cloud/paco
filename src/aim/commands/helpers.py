@@ -4,69 +4,135 @@ import sys
 from aim.config.aim_context import AimContext, AccountContext
 from aim.core.exception import AimException, StackException
 from aim.models.exceptions import InvalidAimProjectFile, UnusedAimProjectField, InvalidAimReference
+from aim.models.references import get_model_obj_from_ref
 from boto3.exceptions import Boto3Error
 from botocore.exceptions import BotoCoreError, ClientError
 from functools import wraps
 
 pass_aim_context = click.make_pass_decorator(AimContext, ensure=True)
 
-controller_types = """
-\b
-  account: Accounts.
-    File at ./Accounts/<NAME>.yaml
+config_types = """
+CONFIG_SCOPE must be an AIM Reference to an AIM object. These can be
+constructed by matching a top-level directory name, with a filename
+and then optionally walking through keys within that file. Each
+part is separated by the . character.
 
 \b
-  acm: ACM resources.
-    File at ./Resources/acm.yaml
+  account. objects : AWS Accounts
+    Location: files in the `Accounts` directory.
+    Examples:
+      accounts.dev
+      accounts.master
 
 \b
-  cloudtrail: CloudTrail resources.
-    File at ./Resources/cloudtrail.yaml
+  resource. objects : Global Resources
+    Location: files in the `Resources` directory.
+    examples:
+      resource.ec2.keypairs.mykeypair
+      resource.cloudtrail
+      resource.codecommit
+      resource.iam
 
 \b
-  codecommit: CodeCommit resources.
-    File at ./Resources/codecommit.yaml
+  netenv. objects : NetworkEnvironments
+    Location: files in the `NetworkEnvironments` directory.
+    examlpes:
+      netenv.mynet.dev
+      netenv.mynet.dev.us-west-2
+      netenv.mynet.dev.us-west-2.applications.myapp.groups.somegroup.resources.webserver
 
 \b
-  ec2: EC2 resources.
-    File at ./Resources/ec2.yaml
+  service. objects : AIM Pluggable Extensions
+    Location: files in the `Services` directory.
+    examples:
+      service.notification
+      service.security
 
-\b
-  iam: IAM resources.
-    File at ./Resources/iam.yaml
-
-\b
-  netenv: NetworkEnvironment.
-    The NAME argument must be an aim.ref style dotted name in the format:
-      "<ne_name>.<environment>.<region_name>.applications.<app_name>.groups.<resource_group_name>.resources.<resource_name>"
-    Only the NetworkEnvironment name and Environment name are required. Examples:
-      netenv mynet.dev
-      netenv mynet.dev.us-west-2.applications.myapp.groups.mygroup.resources.myresource
-    File at ./NetworkEnvironments/<NAME>.yaml
-
-\b
-  notificationgroups: NotificationGroups.
-    File at ./Resources/NotificationGroups.yaml
-
-\b
-  route53: Route53 resources.
-    File at ./NetworkEnvironments/route53.yaml
-
-\b
-  s3: S3 Bucket resources.
-    File at ./Resources/s3.yaml
 """
 
-def controller_args(func):
+def init_cloud_command(
+    command_name,
+    aim_ctx,
+    verbose,
+    nocache,
+    yes,
+    disable_validation,
+    quiet_changes_only,
+    config_scope,
+    home
+):
+    aim_ctx.verbose = verbose
+    aim_ctx.nocache = nocache
+    aim_ctx.yes = yes
+    aim_ctx.disable_validation = disable_validation
+    aim_ctx.quiet_changes_only = quiet_changes_only
+    aim_ctx.command = command_name
+    init_aim_home_option(aim_ctx, home)
+    if not aim_ctx.home:
+        print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')
+        sys.exit()
+    aim_ctx.load_project()
+    scope_parts = config_scope.split('.')
+    if scope_parts[0] == 'resource':
+        controller_type = scope_parts[1]
+    else:
+        controller_type = scope_parts[0]
+
+    # Locate a model object and summarize it
+    aim_ref = 'aim.ref {}'.format(config_scope)
+    obj = get_model_obj_from_ref(aim_ref, aim_ctx.project)
+    print('Object selected to {}:'.format(command_name))
+    print('  Name: {}'.format(
+        getattr(obj, 'name', 'unnamed')
+    ))
+    print('  Type: {}'.format(obj.__class__.__name__))
+    if getattr(obj, 'title', None):
+        print('  Title: {}'.format(obj.title))
+    if hasattr(obj, 'aim_ref_parts'):
+        print('  Reference: {}'.format(obj.aim_ref_parts))
+
+    return controller_type, obj
+
+def cloud_options(func):
     """
-    decorator to add controller args
+    decorator to add cloud options
     """
-    func = click.argument("arg_4", required=False, type=click.STRING)(func)
-    func = click.argument("arg_3", required=False, type=click.STRING)(func)
-    func = click.argument("arg_2", required=False, type=click.STRING)(func)
-    func = click.argument("arg_1", required=False, type=click.STRING)(func)
-    func = click.argument("controller_type", required=True, type=click.STRING)(func)
+    func = click.option(
+        '-v', '--verbose',
+        is_flag=True,
+        default=False,
+        help='Enables verbose mode.'
+    )(func)
+    func = click.option(
+        '-n', '--nocache',
+        is_flag=True,
+        default=False,
+        help='Disables the AIM CloudFormation stack cache.'
+    )(func)
+    func = click.option(
+        '-y', '--yes',
+        is_flag=True,
+        default=False,
+        help='Responds "yes" to any Yes/No prompts.'
+    )(func)
+    func = click.option(
+        '-d', '--disable-validation',
+        is_flag=True,
+        default=False,
+        help='Supresses validation differences.'
+    )(func)
+    func = click.option(
+        '-c', '--quiet-changes-only',
+        is_flag=True,
+        default=False,
+        help='Supresses Cache, Protected, and Disabled messages.'
+    )(func)
     return func
+
+def cloud_args(func):
+    func = click.argument("CONFIG_SCOPE", required=True, type=click.STRING)(func)
+    return func
+
 
 def aim_home_option(func):
     """

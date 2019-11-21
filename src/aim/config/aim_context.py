@@ -258,12 +258,12 @@ class AimContext(object):
 
     def load_project(self, project_init=False):
         "Load an AIM Project from YAML, initialize settings and controllers, and load Service plug-ins."
-        print("Loading AIM Project at %s" % (self.home))
         self.project_folder = self.home
         if project_init == True:
             return
 
         # Load the model from YAML
+        print("Loading AIM Project at %s" % (self.home))
         self.project = load_project_from_yaml(self.project_folder, None)
 
         # Settings
@@ -302,7 +302,7 @@ class AimContext(object):
             self.services[plugin_name.lower()] = service
             self.log_action_col('Init', 'Service', plugin_name, 'Completed')
 
-    def get_controller(self, controller_type, controller_args=None):
+    def get_controller(self, controller_type, command=None, model_obj=None):
         """Gets a controller by name and calls .init() on it with any controller args"""
         controller_type = controller_type.lower()
         controller = None
@@ -313,13 +313,13 @@ class AimContext(object):
                 controller = aim.controllers.klass[controller_type](self)
                 self.controllers[controller_type] = controller
         else:
-            service_name = controller_args['arg_1']
+            service_name = model_obj.aim_ref_list[1]
             if service_name.lower() not in self.services:
                 message = "Could not find Service: {}".format(service_name)
                 raise StackException(AimErrorCode.Unknown, message = message)
             controller = self.services[service_name.lower()]
 
-        controller.init(controller_args)
+        controller.init(command, model_obj)
         return controller
 
     def log(self, msg, *args):

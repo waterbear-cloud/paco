@@ -42,15 +42,15 @@ class EC2Controller(Controller):
 
         print("%s%s%s: %s" % (header, service_name, component_name, message))
 
-    def init(self, controller_args):
+    def init(self, command=None, model_obj=None):
         if self.init_done:
             return
         self.init_done = True
-        if controller_args['command'] == 'init':
+        if command == 'init':
             return
-        self.ec2_service_name = controller_args['arg_1']
+        self.ec2_service_name = model_obj.aim_ref_list[2]
         if self.ec2_service_name == 'keypairs':
-            self.keypair_id = controller_args['arg_2']
+            self.keypair_id = model_obj.aim_ref_list[3]
             if self.keypair_id == None:
                 print("error: missing keypair id")
                 print("aim provision ec2 keypairs <keypair_id>")
@@ -69,53 +69,8 @@ class EC2Controller(Controller):
                 else:
                     # TOOD: Make this more verbose
                     raise StackException(AimErrorCode.Unknown)
-
         else:
             print("EC2 Service: Unknown EC2 service name: %s" % self.ec2_service_name)
-
-    def init_command(self, controller_args):
-        ec2_component = controller_args['arg_1']
-        if ec2_component != 'keypairs':
-            print("Unknown EC2 init component: {}".format(ec2_component))
-            return
-        keypair_name = controller_args['arg_2']
-        keypair_account = controller_args['arg_3']
-        keypair_region = controller_args['arg_4']
-        if keypair_name == None or keypair_region == None:
-            print("aim init keypair <keypair_name> <account_name> <region>")
-            return
-        base_dir = os.path.join(self.aim_ctx.project_folder, 'Resources')
-        ec2_config = None
-        ec2_file = None
-        if os.path.isfile(base_dir + os.sep + 'EC2.yaml'):
-            ec2_file = base_dir + os.sep + 'EC2.yaml'
-        elif os.path.isfile(base_dir + os.sep + 'EC2.yml'):
-            ec2_file = base_dir + os.sep + 'EC2.yml'
-
-        if ec2_file != None:
-            with open(ec2_file, 'r') as stream:
-                ec2_config = yaml.load(stream)
-        else:
-            ec2_file = os.path.isfile(base_dir + os.sep + 'EC2.yaml')
-
-        if ec2_config == None:
-            ec2_config = {'keypairs': {}}
-        account_ctx = self.aim_ctx.get_account_context(account_name=keypair_account)
-        print("\nAIM EC2 keypair initialization")
-        print("------------------------------\n")
-        keypair_full_name = "{}-{}-{}".format(keypair_name, keypair_account, keypair_region)
-        ec2_config['keypairs'][keypair_name] = {
-            'name': keypair_full_name,
-            'region': keypair_region,
-            'account': account_ctx.gen_ref()
-        }
-        with open(ec2_file, 'w') as stream:
-            yaml.dump(ec2_config, stream)
-
-        print("Added keypair {} for account {} and region {} to file at {}.".format(
-            keypair_name, keypair_account, keypair_region, ec2_file
-        ))
-
 
     def validate(self):
         if self.ec2_service_name == 'keypairs':

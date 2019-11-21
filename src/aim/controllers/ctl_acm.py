@@ -18,7 +18,7 @@ class ACMController(Controller):
 
         #self.aim_ctx.log("ACM Service: Configuration: %s" % (name))
 
-    def init(self, controller_args):
+    def init(self, command=None, model_obj=None):
         pass
 
     def validate(self):

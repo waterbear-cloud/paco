@@ -116,7 +116,7 @@ class ASG(CFTemplate):
             launch_config_dict['IamInstanceProfile'] = role_profile_arn
 
         # CloudFormation Init
-        if asg_config.cfn_init:
+        if asg_config.cfn_init and asg_config.is_enabled():
             launch_config_dict['Metadata'] = troposphere.autoscaling.Metadata(
                 asg_config.cfn_init.export_as_troposphere()
             )
@@ -244,62 +244,63 @@ class ASG(CFTemplate):
             )
 
         # EFS FileSystemId Tags
-        for efs_mount in asg_config.efs_mounts:
-            target_hash = utils.md5sum(str_data=efs_mount.target)
-            if references.is_ref(efs_mount.target) == True:
-                efs_value = efs_mount.target + '.id'
-            else:
-                efs_value = efs_mount.target
-            efs_id_param = self.create_cfn_parameter(
-                param_type='String',
-                name='EFSId'+target_hash,
-                description='EFS Id',
-                value=efs_value,
-                use_troposphere=True,
-                troposphere_template=template)
-            asg_tag = troposphere.autoscaling.Tag(
-                'efs-id-' + target_hash,
-                troposphere.Ref(efs_id_param),
-                True
-            )
-            asg_dict['Tags'].append(asg_tag)
+        if asg_config.is_enabled():
+            for efs_mount in asg_config.efs_mounts:
+                target_hash = utils.md5sum(str_data=efs_mount.target)
+                if references.is_ref(efs_mount.target) == True:
+                    efs_value = efs_mount.target + '.id'
+                else:
+                    efs_value = efs_mount.target
+                efs_id_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name='EFSId'+target_hash,
+                    description='EFS Id',
+                    value=efs_value,
+                    use_troposphere=True,
+                    troposphere_template=template)
+                asg_tag = troposphere.autoscaling.Tag(
+                    'efs-id-' + target_hash,
+                    troposphere.Ref(efs_id_param),
+                    True
+                )
+                asg_dict['Tags'].append(asg_tag)
 
-        # EBS Volume Id and Device name Tags
-        for ebs_volume_mount in asg_config.ebs_volume_mounts:
-            if ebs_volume_mount.is_enabled() == False:
-                continue
-            volume_hash = utils.md5sum(str_data=ebs_volume_mount.volume)
-            if references.is_ref(ebs_volume_mount.volume) == True:
-                ebs_volume_id_value = ebs_volume_mount.volume + '.id'
-            else:
-                ebs_volume_id_value = ebs_volume_mount.volume
-            # Volume Id
-            ebs_volume_id_param = self.create_cfn_parameter(
-                param_type='String',
-                name='EBSVolumeId'+volume_hash,
-                description='EBS Volume Id',
-                value=ebs_volume_id_value,
-                use_troposphere=True,
-                troposphere_template=template)
-            ebs_volume_id_tag = troposphere.autoscaling.Tag(
-                'ebs-volume-id-' + volume_hash,
-                troposphere.Ref(ebs_volume_id_param),
-                True
-            )
-            asg_dict['Tags'].append(ebs_volume_id_tag)
-            #ebs_device_param = self.create_cfn_parameter(
-            #    param_type='String',
-            #    name='EBSDevice'+volume_hash,
-            #   description='EBS Device Name',
-            #    value=ebs_volume_mount.device,
-            #    use_troposphere=True,
-            #    troposphere_template=template)
-            #ebs_device_tag = troposphere.autoscaling.Tag(
-            #    'ebs-device-' + volume_hash,
-            #    troposphere.Ref(ebs_device_param),
-            #    True
-            #)
-            #asg_dict['Tags'].append(ebs_device_tag)
+            # EBS Volume Id and Device name Tags
+            for ebs_volume_mount in asg_config.ebs_volume_mounts:
+                if ebs_volume_mount.is_enabled() == False:
+                    continue
+                volume_hash = utils.md5sum(str_data=ebs_volume_mount.volume)
+                if references.is_ref(ebs_volume_mount.volume) == True:
+                    ebs_volume_id_value = ebs_volume_mount.volume + '.id'
+                else:
+                    ebs_volume_id_value = ebs_volume_mount.volume
+                # Volume Id
+                ebs_volume_id_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name='EBSVolumeId'+volume_hash,
+                    description='EBS Volume Id',
+                    value=ebs_volume_id_value,
+                    use_troposphere=True,
+                    troposphere_template=template)
+                ebs_volume_id_tag = troposphere.autoscaling.Tag(
+                    'ebs-volume-id-' + volume_hash,
+                    troposphere.Ref(ebs_volume_id_param),
+                    True
+                )
+                asg_dict['Tags'].append(ebs_volume_id_tag)
+                #ebs_device_param = self.create_cfn_parameter(
+                #    param_type='String',
+                #    name='EBSDevice'+volume_hash,
+                #   description='EBS Device Name',
+                #    value=ebs_volume_mount.device,
+                #    use_troposphere=True,
+                #    troposphere_template=template)
+                #ebs_device_tag = troposphere.autoscaling.Tag(
+                #    'ebs-device-' + volume_hash,
+                #    troposphere.Ref(ebs_device_param),
+                #    True
+                #)
+                #asg_dict['Tags'].append(ebs_device_tag)
 
         asg_res = troposphere.autoscaling.AutoScalingGroup.from_dict(
             'ASG',

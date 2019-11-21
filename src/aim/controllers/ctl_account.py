@@ -15,9 +15,11 @@ yaml.default_flow_sytle = False
 
 class AccountController(Controller):
     def __init__(self, aim_ctx):
-        super().__init__(aim_ctx,
-                         "Account",
-                         "")
+        super().__init__(
+            aim_ctx,
+            "Account",
+            ""
+        )
         self.master_stack_group = None
         self.org_stack_group_list = []
         self.init_done = False
@@ -31,8 +33,6 @@ class AccountController(Controller):
                 self.master_account_config = account_config
                 self.master_account_ctx = self.aim_ctx.get_account_context(account_name=account_id)
                 break
-
-        #self.aim_ctx.log("AWS Account Service")
 
     def validate(self):
         self.init_master_stack_group()
@@ -56,15 +56,10 @@ class AccountController(Controller):
     def cache_id(self, hook, hook_arg):
         return self.init_accounts_cache_id
 
-    def init(self, controller_args):
-
+    def init(self, command=None, model_obj=None):
         if self.master_account_config == None:
             raise StackException(AimErrorCode.Unknown)
-
         self.init_accounts_yaml()
-
-    def init_command(self, controller_args):
-        pass
 
     def init_master_stack_group(self):
         # Master account goes first

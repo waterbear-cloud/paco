@@ -251,7 +251,7 @@ class S3Controller(Controller):
                 )
                 self.add_bucket(bucket_config)
 
-    def init_s3_resource(self, controller_args, stack_tags):
+    def init_s3_resource(self, stack_tags):
         if self.init_s3_resource_done == True:
             return
         self.aim_ctx.log_action_col("Init", "S3")
@@ -275,9 +275,9 @@ class S3Controller(Controller):
         self.init_bucket_environments(s3_env_map, stack_tags)
         self.aim_ctx.log_action_col("Init", "S3", "Completed")
 
-    def init(self, controller_args):
-        if controller_args != None:
-            self.init_s3_resource(controller_args, stack_tags=None)
+    def init(self, command=None, model_obj=None):
+        if model_obj != None:
+            self.init_s3_resource(stack_tags=None)
 
     def init_context(self, account_ctx, region, resource_ref, stack_group, stack_tags):
         if resource_ref.startswith('aim.ref '):

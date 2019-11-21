@@ -93,6 +93,14 @@ class RDS(CFTemplate):
         self.init_template('RDS')
         template = self.template
 
+        if not rds_config.is_enabled():
+            # Remove RDS resource and leave a dummy template is not enabled
+            self.template.add_resource(
+                troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
+            )
+            self.set_template(template.to_yaml())
+            return
+
         rds_logical_id = 'PrimaryDBInstance'
 
         # DB Subnet Group
@@ -164,7 +172,6 @@ class RDS(CFTemplate):
                 option_group_dict )
             template.add_resource(option_group_res)
 
-        # RDSMySql
         # RDS Mysql
         if schemas.IRDSMysql.providedBy(rds_config):
             sg_param_ref_list = []

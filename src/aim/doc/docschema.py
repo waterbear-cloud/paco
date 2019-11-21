@@ -993,7 +993,6 @@ def convert_schema_to_list_table(schema, level='-', header=True):
     output.append('\n')
 
     # No table for schemas with no fields, e.g. IDBParameters
-    #if schema.__name__ == 'IDBParameters': breakpoint()
     if len(zope.schema.getFields(schema).keys()) > 0:
 
         # Indicate if object is a container
