@@ -135,7 +135,7 @@ class AccountContext(object):
 
 # deep diff formatting
 def getFromSquareBrackets(s):
-    return re.findall(r"\['?([A-Za-z0-9_]+)'?\]", s)
+    return re.findall(r"\['?([A-Za-z0-9_]+)'?\]", s.replace('{', '').replace('}',''))
 
 def print_diff_list(change_t, level=1):
     print('', end='\n')
@@ -172,7 +172,6 @@ def print_diff_object(diff_obj, diff_obj_key):
             change_t = root_change.t1
         elif diff_obj_key == 'type_changes':
             change_t = root_change.t1
-
         print("    ({}) {}".format(type(change_t).__name__, node_str))
         if diff_obj_key == 'values_changed':
             print("\told: {}".format(root_change.t1))

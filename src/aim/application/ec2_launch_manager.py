@@ -1086,7 +1086,7 @@ echo "Running: /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl 
             collect_list = agent_config['logs']['logs_collected']['files']['collect_list']
             for log_source in monitoring.log_sets.get_all_log_sources():
                 log_group = get_parent_by_interface(log_source, schemas.ICloudWatchLogGroup)
-                prefixed_log_group_name = prefixed_name(resource, log_group.get_log_group_name(), self.aim_ctx.legacy_flag)
+                prefixed_log_group_name = prefixed_name(resource, log_group.get_full_log_group_name(), self.aim_ctx.legacy_flag)
                 source_config = {
                     "file_path": log_source.path,
                     "log_group_name": prefixed_log_group_name,
@@ -1122,10 +1122,10 @@ statement:
             log_stream_resources = ""
             for log_group in monitoring.log_sets.get_all_log_groups():
                 log_group_resources += "      - arn:aws:logs:{}:{}:log-group:{}:*\n".format(
-                    self.aws_region, self.account_ctx.id, prefixed_name(resource, log_group.get_log_group_name(), self.aim_ctx.legacy_flag)
+                    self.aws_region, self.account_ctx.id, prefixed_name(resource, log_group.get_full_log_group_name(), self.aim_ctx.legacy_flag)
                 )
                 log_stream_resources += "      - arn:aws:logs:{}:{}:log-group:{}:log-stream:*\n".format(
-                    self.aws_region, self.account_ctx.id, prefixed_name(resource, log_group.get_log_group_name(), self.aim_ctx.legacy_flag)
+                    self.aws_region, self.account_ctx.id, prefixed_name(resource, log_group.get_full_log_group_name(), self.aim_ctx.legacy_flag)
                 )
             policy_config_yaml += """
   - effect: Allow

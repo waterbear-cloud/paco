@@ -50,7 +50,7 @@ class LogGroups(CFTemplate):
         default_retention = cw_logging.expire_events_after_days
         for log_group in self.resource.monitoring.log_sets.get_all_log_groups():
             cfn_export_dict = {}
-            log_group_name = log_group.get_log_group_name()
+            log_group_name = log_group.get_full_log_group_name()
             prefixed_log_group_name = prefixed_name(resource, log_group_name, self.aim_ctx.legacy_flag)
             loggroup_logical_id = self.create_cfn_logical_id('LogGroup' + log_group_name)
 
