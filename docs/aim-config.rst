@@ -43,11 +43,11 @@ files each with a different format. This directories are:
 Also at the top level are ``project.yaml`` and ``aim-project-version.txt`` files.
 
 The ``aim-project-version.txt`` is a simple one line file with the version of the AIM Project
-file format, e.g. ``2.1``. The AIM Project file format version contains a major and a medium
+file format, e.g. ``2.1``. The AIM project file format version contains a major and a medium
 version. The major version indicates backwards incompatable changes, while the medium
 version indicates additions of new object types and fields.
 
-The ``project.yaml`` contains gloabl information about the AIM Project. It also contains
+The ``project.yaml`` contains gloabl information about the AIM project. It also contains
 an ``aim_project_version`` field that is loaded from ``aim-project-version.txt``.
 
 The YAML files are organized as nested key-value dictionaries. In each sub-directory,
@@ -7624,12 +7624,40 @@ IAM Resource contains IAM Users who can login and have different levels of acces
       - Title
       - Title
     * - users
-      - Container of IAMUser_ AIM schemas
+      - Container of IAMUsers_ AIM schemas
       - .. fa:: times
       - 
       - 
       - IAM Users
       - IAMResource
+
+
+
+IAMUsers
+---------
+
+
+
+.. _IAMUsers:
+
+.. list-table:: :guilabel:`IAMUsers` |bars| Container where the keys are the ``name`` field.
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Title
 
 
 
