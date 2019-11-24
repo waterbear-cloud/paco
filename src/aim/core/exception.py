@@ -53,3 +53,6 @@ class InvalidLogSetConfiguration(Exception):
 
 class AimUnsupportedFeature(Exception):
     "Feature does not yet exist"
+
+class InvalidAIMScope(Exception):
+    "AIM Reference not valid in this context."

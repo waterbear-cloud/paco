@@ -1,0 +1,3 @@
+cw_logging:
+  expire_events_after_days: '90'
+  log_sets:

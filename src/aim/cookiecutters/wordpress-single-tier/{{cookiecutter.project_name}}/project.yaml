@@ -1,0 +1,4 @@
+name: {{cookiecutter.project_name}}
+title: {{cookiecutter.project_title}}
+active_regions:
+  - {{cookiecutter.aws_default_region}}

@@ -398,7 +398,7 @@ EC2LM_AIM_ENVIRONMENT_REF={0[aim_environment_ref]:s}
 
 # Escape a string for sed replacements
 function sed_escape() {{
-    RES="${{1//$'\n'/\\n}}"
+    RES="${{1//$'\\n'/\\n}}"
     RES="${{RES//./\\.}}"
     RES="${{RES//\//\\/}}"
     RES="${{RES// /\\ }}"
@@ -876,6 +876,15 @@ function process_volume_mount()
             exit 1
         fi
     done
+
+    # Initialize filesystem if blank
+    sleep 5
+    FILE_FMT=$(file -s $EBS_DEVICE)
+    BLANK_FMT="$EBS_DEVICE: data"
+    if [ "$FILE_FMT" == "$BLANK_FMT" ] ; then
+        echo "Initializing EBS Volume with FS type $FILESYSTEM"
+        /sbin/mkfs -t $FILESYSTEM $EBS_DEVICE
+    fi
 
     # Setup fstab
     echo "Volume UUID: blkid $EBS_DEVICE |grep UUID |cut -d '\\"' -f 2"

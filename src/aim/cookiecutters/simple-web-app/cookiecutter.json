@@ -1,9 +1,4 @@
 {
-    "starting_template": [
-        "empty",
-        "simple-web-app",
-        "complete-web-app"
-    ],
     "project_name": "myproj",
     "project_title": "My AIM Project",
     "network_environment_name": "mynet",

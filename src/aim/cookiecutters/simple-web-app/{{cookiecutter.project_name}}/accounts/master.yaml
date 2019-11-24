@@ -4,4 +4,6 @@ is_master: true
 account_id: '{{cookiecutter.master_account_id}}'
 region: '{{cookiecutter.aws_default_region}}'
 root_email: '{{cookiecutter.master_root_email}}'
-admin_delegate_role_name: 'WaterbearCloud-AIM-Administrator-Access-Role'
+admin_delegate_role_name: 'AIM-Admin-Delegate-Role'
+organization_account_ids:
+  - master
