@@ -41,6 +41,8 @@ class EC2Controller(Controller):
         # ToDo: enable resource.ec2.keypairs
         if schemas.IEC2Resource.providedBy(model_obj):
             self.keypairs = model_obj.keypairs.values()
+        elif schemas.IEC2KeyPairs.providedBy(model_obj):
+            self.keypairs = model_obj.values()
         elif schemas.IEC2KeyPair.providedBy(model_obj):
             self.keypairs = [ model_obj ]
         elif model_obj != None:
@@ -76,12 +78,13 @@ class EC2Controller(Controller):
         for keypair in self.keypairs:
             if hasattr(keypair, '_aws_info'):
                 self.print_keypair(keypair, "Key pair already provisioned.")
-            keypair._aws_info = keypair._ec2_client.create_key_pair(KeyName=keypair.name)
-            self.print_keypair(keypair, "Key pair created successfully.")
-            self.print_keypair(keypair, "Account: %s" % (keypair._account_ctx.get_name()), sub_entry=True)
-            self.print_keypair(keypair, "Region:  %s" % (keypair.region), sub_entry=True)
-            self.print_keypair(keypair, "Fingerprint: %s" % (keypair._aws_info['KeyFingerprint']), sub_entry=True)
-            self.print_keypair(keypair, "Key: \n%s" % (keypair._aws_info['KeyMaterial']), sub_entry=True)
+            else:
+                keypair._aws_info = keypair._ec2_client.create_key_pair(KeyName=keypair.name)
+                self.print_keypair(keypair, "Key pair created successfully.")
+                self.print_keypair(keypair, "Account: %s" % (keypair._account_ctx.get_name()), sub_entry=True)
+                self.print_keypair(keypair, "Region:  %s" % (keypair.region), sub_entry=True)
+                self.print_keypair(keypair, "Fingerprint: %s" % (keypair._aws_info['KeyFingerprint']), sub_entry=True)
+                self.print_keypair(keypair, "Key: \n%s" % (keypair._aws_info['KeyMaterial']), sub_entry=True)
 
     def delete(self):
         for keypair in self.keypairs:
