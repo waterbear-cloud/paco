@@ -40,25 +40,25 @@ make up an AIM project. All of the files are in YAML_ format.
 In the top-level directory are sub-directories that contain YAML
 files each with a different format. This directories are:
 
-  * ``Accounts/``: Each file in this directory is an AWS account.
+  * ``accounts/``: Each file in this directory is an AWS account.
 
-  * ``NetworkEnvironments/``: This is the main show. Each file in this
-    directory defines a complete set of networks, applications and environments.
-    These can be provisioned into any of the accounts.
+  * ``netenv/``: Each file in this directory defines a complete set of networks, applications and environments.
+    Environments are provisioned into your accounts.
 
-  * ``MonitorConfig/``: These contain alarm and log source information.
+  * ``monitor/``: These contain alarm and logging configuration.
 
-  * ``Resources/``: These contain global or shared resources, such as
-    S3 Buckets, IAM Users, EC2 Keypairs.
+  * ``resource/``: For global resources, such as S3 Buckets, IAM Users, EC2 Keypairs.
+
+  * ``service/``: For extension plug-ins.
 
 Also at the top level are ``project.yaml`` and ``aim-project-version.txt`` files.
 
 The ``aim-project-version.txt`` is a simple one line file with the version of the AIM Project
-file format, e.g. ``2.1``. The AIM Project file format version contains a major and a medium
+file format, e.g. ``2.1``. The AIM project file format version contains a major and a medium
 version. The major version indicates backwards incompatable changes, while the medium
 version indicates additions of new object types and fields.
 
-The ``project.yaml`` contains gloabl information about the AIM Project. It also contains
+The ``project.yaml`` contains gloabl information about the AIM project. It also contains
 an ``aim_project_version`` field that is loaded from ``aim-project-version.txt``.
 
 The YAML files are organized as nested key-value dictionaries. In each sub-directory,
@@ -132,29 +132,6 @@ The ``title`` field is available in almost all AIM schemas. This is intended to 
 a human readable name. This field can contain any character except newline.
 The ``title`` field can also be added as a Tag to resources, so any characters
 beyond 255 characters would be truncated.
-
-
-YAML Gotchas
-------------
-
-YAML allows unquoted scalar values. For the account_id field you could write:
-
-
-.. code-block:: yaml
-
-    account_id: 00223456789
-
-However, when this field is read by the YAML parser, it will attempt to convert this to an integer.
-Instead of the string '00223456789', the field will be an integer of 223456789.
-
-You can quote scalar values in YAML with single quotes or double quotes:
-
-.. code-block:: yaml
-
-    account_id: '00223456789' # single quotes can contain double quote characters
-    account_id: "00223456789" # double quotes can contain single quote characters
-
-.. _YAML: https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html
 
 
 Enabled/Disabled
@@ -899,6 +876,8 @@ The ``Resources/IAM.yaml`` file contains IAM Users. Each user account can be giv
 different levels of access a set of AWS accounts.
 
 {IIAMResource}
+
+{IIAMUsers}
 
 {IIAMUser}
 

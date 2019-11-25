@@ -1,5 +1,4 @@
 network:
-{% if cookiecutter.starting_template == 'simple-web-app' %}
   title: "{{cookiecutter.network_environment_title}}"
   availability_zones: 3
   enabled: true
@@ -52,10 +51,7 @@ network:
       web:
         enabled: true
 
-{% endif %}
-
 applications:
-{% if cookiecutter.starting_template == 'simple-web-app' %}
   {{cookiecutter.application_name}}:
     title: {{cookiecutter.application_title}}
     enabled: true
@@ -124,11 +120,7 @@ applications:
               echo "<html><body><h1>Hello world!</h1></body></html>" > /var/www/html/index.html
               service httpd start
 
-{% endif %}
-
-
 environments:
-{% if cookiecutter.starting_template == 'simple-web-app' %}
   dev:
     title: "Development Environment"
     default:
@@ -181,6 +173,3 @@ environments:
               az2_cidr: 10.20.4.0/24
     {{cookiecutter.aws_default_region}}:
       enabled: false
-
-{% endif -%}
-

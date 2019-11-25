@@ -47,8 +47,6 @@ class ProjectController(Controller):
             'aws_default_region_allowed_values': vocabulary.aws_regions.keys(),
             'master_account_id': None,
             'master_root_email': None,
-            'starting_template': None,
-            'starting_template_allowed_values': ["empty", "simple-web-app", "complete-web-app"]
         }
         if self.project_context_path.exists():
             self.load_project_context()
@@ -66,14 +64,36 @@ class ProjectController(Controller):
             return
         self.init_done = True
 
+    def choose_template(self, starting_templates):
+        print("Choose a starting project template:\n")
+        index = 1
+        index_dict = {}
+        for name, description in starting_templates.items():
+            print(f"{index}: {name}\n   {description}")
+            index_dict[str(index)] = name
+            index += 1
+
+        while True:
+            answer = input("\nEnter a number or name: ")
+            if answer in starting_templates:
+                return answer
+            if answer in index_dict:
+                return index_dict[answer]
+            print("Not a valid selection.")
+
+
     def init_project(self):
+        starting_templates = {
+            'simple-web-app': "A minimal skeleton with a simple web application.",
+            'wordpress-single-tier': "A single-tier WordPress application.",
+        }
         print("\nAIM Project Initialization")
         print("--------------------------\n")
         if self.project_context_path.exists() == True:
-            print("AIM Project has already been initialized.\n")
+            print("AIM project has already been initialized.\n")
         else:
-            print("About to create a new AIM Project directory at %s\n" % self.aim_ctx.home)
-            print("project_name: " + self.project_context['project_name'])
+            print("About to create a new AIM project directory at %s\n" % self.aim_ctx.home)
+            cookiecutter_project = self.choose_template(starting_templates)
             allowed_key_list = []
             for key in self.project_context.keys():
                 if key.startswith('_computed_'): continue
@@ -91,7 +111,7 @@ class ProjectController(Controller):
             for key in allowed_key_list:
                 del self.project_context[key]
             cookiecutter(
-                os.path.join(os.path.dirname(__file__), '../commands', 'aim-cookiecutter'),
+                os.path.join(os.path.dirname(__file__), '..', 'cookiecutters', cookiecutter_project),
                 no_input=True,
                 extra_context=self.project_context
             )
@@ -116,14 +136,12 @@ class ProjectController(Controller):
             print("aim init project credentials\n")
             return
 
-        self.credentials['aws_default_region']        = self.project_context['aws_default_region']
+        self.credentials['aws_default_region'] = self.project_context['aws_default_region']
         self.credentials['master_account_id'] = self.project_context['master_account_id']
-        print("master_account_id: " + self.credentials['master_account_id'])
-        print("aws_default_region: " + self.credentials['aws_default_region'])
-        self.credentials['aws_access_key_id']         = self.aim_ctx.input("aws_access_key_id")
-        self.credentials['aws_secret_access_key']     = self.aim_ctx.input("aws_secret_access_key")
         self.credentials['master_admin_iam_username'] = self.aim_ctx.input("master_admin_iam_username")
         self.credentials['admin_iam_role_name'] = self.aim_ctx.input("admin_iam_role_name")
+        self.credentials['aws_access_key_id'] = self.aim_ctx.input("aws_access_key_id")
+        self.credentials['aws_secret_access_key']  = self.aim_ctx.input("aws_secret_access_key")
         self.credentials['mfa_session_expiry_secs'] = 43200
         self.credentials['assume_role_session_expiry_secs'] = 3600
 
@@ -162,12 +180,4 @@ class ProjectController(Controller):
         account_ctl = self.aim_ctx.get_controller('account')
         account_ctl.init_accounts_yaml()
 
-    def provision(self):
-        account_ctl = self.aim_ctx.get_controller('account')
-        account_ctl.provision()
-        print("\nProject Provisioning Complete")
-
-    def validate(self):
-        account_ctl = self.aim_ctx.get_controller('account')
-        account_ctl.validate()
 

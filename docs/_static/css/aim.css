@@ -60,7 +60,7 @@
   padding: 1em 0 5px 0 !important;
 }
 
-.wy-nav-content span.caption-text
+.wy-nav-content .wy-table-responsive span.caption-text
  {
     border: 1px solid black;
     border-bottom: none;
@@ -103,3 +103,7 @@
   font-size: 13px !important;
 }
 
+.rst-content dl.simple dt {
+  border-top: none;
+  color: black;
+}

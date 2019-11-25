@@ -59,8 +59,7 @@ Quickstart Labs
    :maxdepth: 3
 
    install
-   quickstart101
-   quickstart102
+   aim_init
 
 AIM Engine CLI
 --------------

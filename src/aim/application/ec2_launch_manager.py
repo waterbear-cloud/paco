@@ -913,6 +913,15 @@ function process_volume_mount()
         fi
     done
 
+    # Initialize filesystem if blank
+    sleep 5
+    FILE_FMT=$(file -s $EBS_DEVICE)
+    BLANK_FMT="$EBS_DEVICE: data"
+    if [ "$FILE_FMT" == "$BLANK_FMT" ] ; then
+        echo "Initializing EBS Volume with FS type $FILESYSTEM"
+        /sbin/mkfs -t $FILESYSTEM $EBS_DEVICE
+    fi
+
     # Setup fstab
     echo "Volume UUID: blkid $EBS_DEVICE |grep UUID |cut -d '\\"' -f 2"
     COUNT=0

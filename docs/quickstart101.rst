@@ -118,10 +118,10 @@ error message "DELETE_FAILED: Cannot delete entity, must delete MFA device first
 .. _`Google Authenticator`: https://en.wikipedia.org/wiki/Google_Authenticator
 
 
-Create an AIM Project
+Create an AIM project
 ---------------------
 
-An AIM Project is a directory of specially named sub-directories
+An AIM project is a directory of specially named sub-directories
 containing YAML files each requiring speccific formats.
 These configuration sub-directories and files are documented
 on the `AIM Configuration`_ page.

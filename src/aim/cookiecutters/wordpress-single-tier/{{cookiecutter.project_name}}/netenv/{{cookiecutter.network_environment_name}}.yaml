@@ -1,0 +1,181 @@
+network:
+  title: "{{cookiecutter.network_environment_title}}"
+  availability_zones: 1
+  enabled: true
+  vpc:
+    enabled: true
+    enable_dns_hostnames: true
+    enable_dns_support: true
+    enable_internet_gateway: true
+    nat_gateway:
+      {{cookiecutter.application_name}}:
+        enabled: false
+    vpn_gateway:
+      {{cookiecutter.application_name}}:
+        enabled: false
+    private_hosted_zone:
+      enabled: false
+    security_groups:
+      {{cookiecutter.application_name}}:
+        web:
+          enabled: true
+          egress:
+            - cidr_ip: 0.0.0.0/0
+              name: ANY
+              protocol: "-1"
+          ingress:
+            - from_port: 80
+              to_port: 80
+              name: HTTP
+              protocol: tcp
+              cidr_ip: 0.0.0.0/0
+            - from_port: 22
+              to_port: 22
+              name: SSH
+              protocol: tcp
+              cidr_ip: 0.0.0.0/0
+    segments:
+      public:
+        enabled: true
+
+backup_vaults:
+  {{cookiecutter.application_name}}:
+    enabled: true
+    plans:
+      ebs:
+        title: EBS Backups
+        enabled: true
+        plan_rules:
+          - title: Daily EBS backups
+            schedule_expression: cron(0 7 ? * * *)
+            lifecycle_delete_after_days: 7
+        selections:
+          - title: EBS Daily Backups Selection
+            tags:
+              - condition_type: STRINGEQUALS
+                condition_key: AIM-Application-Resource-Name
+                condition_value: wp_volume
+              - condition_type: STRINGEQUALS
+                condition_key: aim.env.name
+                condition_value: prod
+
+applications:
+  {{cookiecutter.application_name}}:
+    title: {{cookiecutter.application_title}}
+    enabled: true
+    managed_updates: true
+    groups:
+      site:
+        enabled: true
+        type: Application
+        order: 1
+        resources:
+          eip:
+            title: static IP address
+            type: EIP
+            order: 1
+            enabled: true
+            # dns:
+            #   - domain_name: example.com
+            #     hosted_zone: aim.ref resource.route53.speechteach_club
+            #     ttl: 60
+            #   - domain_name: www.example.com
+            #     hosted_zone: aim.ref resource.route53.speechteach_club
+            #     ttl: 60
+          wp_volume:
+            type: EBS
+            order: 2
+            enabled: true
+            size_gib: 12
+            volume_type: gp2
+            availability_zone: 1
+          web:
+            title: Bitnami WordPress server
+            type: ASG
+            order: 3
+            enabled: true
+            eip: aim.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.eip
+            associate_public_ip_address: true
+            availability_zone: 1
+            ebs_volume_mounts:
+              - volume: aim.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.wp_volume
+                enabled: true
+                folder: /mnt/bitnami
+                device: /dev/xvdf
+                filesystem: ext4
+            instance_iam_role:
+              enabled: true
+            instance_ami: ami-088ff11f4bf97f53b # ToDo
+            instance_ami_type: ubuntu
+            instance_key_pair: aim.ref resource.ec2.keypairs.aimkeypair
+            instance_monitoring: false
+            instance_type: t2.micro
+            update_policy_max_batch_size: 1
+            update_policy_min_instances_in_service: 0
+            max_instances: 1
+            min_instances: 0
+            desired_capacity: 1
+            security_groups:
+              - aim.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.web
+            segment: public
+            user_data_script: |
+              #!/bin/bash
+              swap_on 4
+              # prepare wordpress volume if empty
+              # otherwise clean root /opt/bitnami and symlink the wordpress volume
+              if [ ! -f /mnt/bitnami/use_wordpress ] ; then
+                # stop existing root mounted app
+                /etc/init.d/bitnami stop
+                # copy to dedicated volume
+                rsync -avz /opt/bitnami/ /mnt/bitnami/
+                rm -rf /opt/bitnami/
+                ln -s /mnt/bitnami/ /opt/bitnami
+              else
+                /etc/init.d/bitnami stop
+                rm -rf /opt/bitnami/
+                ln -s /mnt/bitnami/ /opt/bitnami
+              fi
+              # start wordpress services
+              /etc/init.d/bitnami start
+
+environments:
+  prod:
+    title: "Production Environment"
+    default:
+      network:
+        aws_account: aim.ref accounts.master
+        availability_zones: 1
+        vpc:
+          cidr: 10.20.0.0/16
+          segments:
+            public:
+              az1_cidr: 10.20.1.0/24
+              internet_access: true
+    {{cookiecutter.aws_default_region}}:
+      enabled: true
+      backup_vaults:
+        {{cookiecutter.application_name}}:
+          enabled: true
+      applications:
+        {{cookiecutter.application_name}}:
+          enabled: true
+  dev:
+    title: "Development Environment"
+    default:
+      applications:
+        {{cookiecutter.application_name}}:
+          enabled: true
+      network:
+        aws_account: aim.ref accounts.master
+        availability_zones: 1
+        vpc:
+          cidr: 10.20.0.0/16
+          segments:
+            public:
+              az1_cidr: 10.20.2.0/24
+              internet_access: true
+    {{cookiecutter.aws_default_region}}:
+      enabled: false
+      backup_vaults:
+        {{cookiecutter.application_name}}:
+          enabled: false
