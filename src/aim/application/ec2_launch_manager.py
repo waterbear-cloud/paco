@@ -398,15 +398,51 @@ EC2LM_AIM_ENVIRONMENT_REF={0[aim_environment_ref]:s}
 
 # Escape a string for sed replacements
 function sed_escape() {{
-    RES="${{1//$'\n'/\\n}}"
-    RES="${{RES//./\\.}}"
-    RES="${{RES//\//\\/}}"
-    RES="${{RES// /\\ }}"
-    RES="${{RES//!/\\!}}"
-    RES="${{RES//-/\\-}}"
-    RES="${{RES//,/\\,}}"
-    RES="${{RES//&/\\&}}"
+    RES="${{1//$'\\n'/\\\\n}}"
+    RES="${{RES//./\\\\.}}"
+    RES="${{RES//\\//\\\\/}}"
+    RES="${{RES// /\\\\ }}"
+    RES="${{RES//!/\\\\!}}"
+    RES="${{RES//-/\\\\-}}"
+    RES="${{RES//,/\\\\,}}"
+    RES="${{RES//&/\\\\&}}"
     echo "${{RES}}"
+}}
+
+# Runs another function in a timeout loop.
+# ec2lm_timeout <function> <timeout_secs>
+#   <function> returns: 0 == success
+#                       1 == keep waiting
+#                     > 1 == error code and abort
+#
+# ec2lm_timeout returns: 0 == success
+#                        1 == timed out
+#                      > 1 == error
+function ec2lm_timeout() {{
+    FUNCTION=$1
+    TIMEOUT_SECS=$2
+
+    COUNT=0
+    while :
+    do
+        OUTPUT=$($FUNCTION)
+        RES=$?
+        if [ $RES -eq 0 ] ; then
+            echo "ec2lm_timeout: Function '$FUNCTION' returned sucessfully: $OUTPUT"
+            return $RES
+        fi
+        if [ $RES -gt 1 ] ; then
+            echo "ec2lm_timeout: Function '$FUNCTION' returned an error: $RES: $OUTPUT"
+            return $RES
+        fi
+        if [ $COUNT -eq $TIMEOUT_SECS ] ; then
+            echo "ec2lm_timeout: Function '$FUNCTION' timed out after $TIMEOUT_SECS seconds"
+            return 1
+        fi
+        COUNT=$(($COUNT + 1))
+        sleep 1
+    done
+
 }}
 
 # Launch Bundles
@@ -1056,12 +1092,12 @@ echo "Running: /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl 
             agent_config["metrics"] = {
                 "metrics_collected": {},
                 "append_dimensions": {
-                    "ImageId": "${aws:ImageId}",
-                    "InstanceId": "${aws:InstanceId}",
-                    "InstanceType": "${aws:InstanceType}",
+                    #"ImageId": "${aws:ImageId}",
+                    #"InstanceId": "${aws:InstanceId}",
+                    #"InstanceType": "${aws:InstanceType}",
                     "AutoScalingGroupName": "${aws:AutoScalingGroupName}"
                 },
-                "aggregation_dimensions" : [["AutoScalingGroupName"], ["InstanceId", "InstanceType"],[]]
+                "aggregation_dimensions" : [["AutoScalingGroupName"]]
             }
             collected = agent_config['metrics']['metrics_collected']
             for metric in monitoring.metrics:
@@ -1071,8 +1107,13 @@ echo "Running: /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl 
                     interval = monitoring.collection_interval
                 collected[metric.name] = {
                     "measurement": metric.measurements,
-                    "collection_interval": interval
+                    "collection_interval": interval,
                 }
+                if metric.resources and len(metric.resources) > 0:
+                    collected[metric.name]['resources'] = metric.resources
+                if metric.name == 'disk':
+                    collected[metric.name]['drop_device'] = metric.drop_device
+
 
         # if there is logging, add it to the cwagent config
         if monitoring.log_sets:
