@@ -367,10 +367,6 @@ function install_wget() {
 }
 """ % vocabulary.user_data_script['install_wget'][instance_ami_type]
 
-    def add_ec2lm_function_eip(self, ec2lm_bucket_name, resource, grp_id, instance_iam_role_ref):
-        """Adds functions for associating EIPs"""
-        self.ec2lm_functions_script[ec2lm_bucket_name] += self.user_data_eip(resource, grp_id, instance_iam_role_ref)
-
     def add_ec2lm_function_secrets(self, ec2lm_bucket_name, resource, grp_id, instance_iam_role_ref):
         """Adds functions for getting secrets from Secrets Manager"""
         self.ec2lm_functions_script[ec2lm_bucket_name] += self.user_data_secrets(resource, grp_id, instance_iam_role_ref)
@@ -419,24 +415,26 @@ function sed_escape() {{
 #                        1 == timed out
 #                      > 1 == error
 function ec2lm_timeout() {{
+    TIMEOUT_SECS=$1
+    shift
     FUNCTION=$1
-    TIMEOUT_SECS=$2
+    shift
 
     COUNT=0
     while :
     do
-        OUTPUT=$($FUNCTION)
+        OUTPUT=$($FUNCTION $@)
         RES=$?
         if [ $RES -eq 0 ] ; then
-            echo "ec2lm_timeout: Function '$FUNCTION' returned sucessfully: $OUTPUT"
+            echo $OUTPUT
             return $RES
         fi
         if [ $RES -gt 1 ] ; then
-            echo "ec2lm_timeout: Function '$FUNCTION' returned an error: $RES: $OUTPUT"
+            echo "EC2LM: ec2lm_timeout: Function '$FUNCTION' returned an error: $RES: $OUTPUT"
             return $RES
         fi
         if [ $COUNT -eq $TIMEOUT_SECS ] ; then
-            echo "ec2lm_timeout: Function '$FUNCTION' timed out after $TIMEOUT_SECS seconds"
+            echo "EC2LM: ec2lm_timeout: Function '$FUNCTION' timed out after $TIMEOUT_SECS seconds"
             return 1
         fi
         COUNT=$(($COUNT + 1))
@@ -447,9 +445,6 @@ function ec2lm_timeout() {{
 
 # Launch Bundles
 function ec2lm_launch_bundles() {{
-    mkdir -p $EC2LM_FOLDER/LaunchBundles
-    aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ $EC2LM_FOLDER
-
     cd $EC2LM_FOLDER/LaunchBundles/
 
     echo "Loading Launch Bundles"
@@ -516,9 +511,13 @@ echo "CacheId: {0[cache_id]}"
 {0[update_packages]}
 {0[install_aws_cli]}
 
+EC2LM_FOLDER='/opt/aim/EC2Manager/'
 EC2LM_FUNCTIONS=ec2lm_functions.bash
-aws s3 cp s3://{0[ec2lm_bucket_name]}/$EC2LM_FUNCTIONS --region={0[region]} /tmp/$EC2LM_FUNCTIONS
-. /tmp/$EC2LM_FUNCTIONS
+mkdir -p $EC2LM_FOLDER
+
+aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
+
+. $EC2LM_FOLDER/$EC2LM_FUNCTIONS
 
 {0[launch_bundles]}
 """
@@ -553,9 +552,6 @@ aws s3 cp s3://{0[ec2lm_bucket_name]}/$EC2LM_FUNCTIONS --region={0[region]} /tmp
 
         if resource.user_data_pre_script != None:
             script_table['pre_script'] = resource.user_data_pre_script
-
-        if resource.eip != None:
-            self.add_ec2lm_function_eip(ec2lm_bucket_name, resource, grp_id, instance_iam_role_ref)
 
         if resource.secrets != None and len(resource.secrets) > 0:
             self.add_ec2lm_function_secrets(ec2lm_bucket_name, resource, grp_id, instance_iam_role_ref)
@@ -622,60 +618,6 @@ statement:
         )
 
         return secrets_script
-
-    def user_data_eip(self,resource, grp_id, instance_iam_role_ref):
-        eip_script = """
-EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=AIM-EIP-Allocation-Id" --query 'Tags[0].Value' |tr -d '"')
-EIP_IP=$(aws ec2 describe-addresses --allocation-ids $EIP_ALLOC_ID --query 'Addresses[0].PublicIp' --region $REGION | tr -d '"')
-aws ec2 associate-address --instance-id $INSTANCE_ID --allocation-id $EIP_ALLOC_ID --region $REGION
-# Wait for the EIP to associate
-COUNT=0
-TIMEOUT=10
-echo -n "Waiting for EIP to associate"
-while :
-do
-  PUBLIC_IP=$(curl http://169.254.169.254/latest/meta-data/public-ipv4/)
-  if [ "$PUBLIC_IP" == "$EIP_IP" ] ; then
-    echo
-    echo "EIP Association Successful"
-    break
-  fi
-  echo -n "."
-  sleep 1
-  COUNT=$(($COUNT+1))
-  if [ $COUNT -eq $TIMEOUT ] ; then
-    echo
-    echo "ERROR: Unable to associate EIP: Timedout after $TIMEOUT seconds"
-    break
-  fi
-done
-"""
-        policy_config_yaml = """
-name: 'AssociateEIP'
-enabled: true
-statement:
-  - effect: Allow
-    action:
-      - 'ec2:AssociateAddress'
-      - 'ec2:DescribeAddresses'
-    resource:
-      - '*'
-"""
-
-        policy_ref = '{}.{}.eip.policy'.format(resource.aim_ref_parts, self.id)
-        policy_id = '-'.join([resource.name, 'eip'])
-        iam_ctl = self.aim_ctx.get_controller('IAM')
-        iam_ctl.add_managed_policy(
-            role_ref=instance_iam_role_ref,
-            parent_config=resource,
-            group_id=grp_id,
-            policy_id=policy_id,
-            policy_ref=policy_ref,
-            policy_config_yaml=policy_config_yaml,
-            change_protected=resource.change_protected
-        )
-
-        return eip_script
 
     def add_bundle(self, bundle):
         bundle.build()
@@ -873,7 +815,48 @@ statement:
         # TODO: Add ubuntu and other distro support
         launch_script_template = """#!/bin/bash
 
-. /tmp/ec2lm_functions.bash
+. /opt/aim/EC2Manager/ec2lm_functions.bash
+
+# Attach EBS Volume
+function ec2lm_attach_ebs_volume() {
+    EBS_VOLUME_ID=$1
+    EBS_DEVICE=$2
+
+    aws ec2 attach-volume --region $REGION --volume-id $EBS_VOLUME_ID --instance-id $INSTANCE_ID --device $EBS_DEVICE 2>/tmp/ec2lm_attach.output
+    RES=$?
+    if [ $? -eq 0 ] ; then
+        echo "EC2LM: EBS: Successfully attached $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE"
+        return 0
+    fi
+    return 1
+}
+
+# Checks if a volume has been attached
+# ec2lm_volume_is_attached <device>
+# Return: 0 == True
+#         1 == False
+function ec2lm_volume_is_attached() {
+    DEVICE=$1
+    OUTPUT=$(file -s $DEVICE)
+    if [[ $OUTPUT == *"No such file or directory"* ]] ; then
+        return 1
+    fi
+    return 0
+}
+
+# Checks if a volume has been attached
+# ec2lm_volume_is_attached <device>
+# Return: 0 == True
+#         1 == False
+function ec2lm_get_volume_uuid() {
+    EBS_DEVICE=$1
+    VOLUME_UUID=$(/sbin/blkid $EBS_DEVICE |grep UUID |cut -d'"' -f 2)
+    if [ "${VOLUME_UUID}" != "" ] ; then
+        echo $VOLUME_UUID
+        return 0
+    fi
+    return 1
+}
 
 # Attach and Mount an EBS Volume
 function process_volume_mount()
@@ -882,6 +865,8 @@ function process_volume_mount()
     EBS_VOLUME_ID_HASH=$2
     FILESYSTEM=$3
     EBS_DEVICE=$4
+
+    echo "EC2LM: EBS: Process Volume Mount: Begin"
 
     # Get EBS Volume Tags and Device
     EBS_VOLUME_ID=$(ec2lm_instance_tag_value "ebs-volume-id-$EBS_VOLUME_ID_HASH")
@@ -892,29 +877,27 @@ function process_volume_mount()
     fi
     mkdir -p $MOUNT_FOLDER
 
-    COUNT=0
-    TIMEOUT=300
-    echo "EC2LM: EBS: Attaching $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE: Timeout = $TIMEOUT"
-    while :
-    do
-        aws ec2 attach-volume --region $REGION --volume-id $EBS_VOLUME_ID --instance-id $INSTANCE_ID --device $EBS_DEVICE 2>/tmp/ec2lm_attach.output
-        if [ $? -eq 0 ] ; then
-            echo "Successfully attached  $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE"
-            break
-        fi
-        sleep 1
-        COUNT=$(($COUNT + 1))
-        if [ $COUNT -eq $TIMEOUT ] ; then
-            echo
-            echo "Unable to attach $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE"
-            cat /tmp/ec2lm_attach.output
-            shutdown -H now
-            exit 1
-        fi
-    done
+    TIMEOUT_SECS=300
+    echo "EC2LM: EBS: Attaching $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE: Timeout = $TIMEOUT_SECS"
+    OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_attach_ebs_volume $EBS_VOLUME_ID $EBS_DEVICE)
+    if [ $? -eq 1 ] ; then
+        echo "EC2LM: EBS: Unable to attach $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE"
+        echo "EC2LM: EBS: Error: $OUTPUT"
+        cat /tmp/ec2lm_attach.output
+        exit 1
+    fi
 
     # Initialize filesystem if blank
-    sleep 5
+    echo "EC2LM: EBS: Waiting for volume to become available: $EBS_DEVICE"
+    TIMEOUT_SECS=30
+    OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_volume_is_attached $EBS_DEVICE)
+    if [ $? -eq 1 ] ; then
+        echo "EC2LM: EBS: Error: Unable to detect the attached volume $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE."
+        echo "EC2LM: EBS: Error: $OUTPUT"
+        exit 1
+    fi
+
+    # Format: Make a filesystem if the device
     FILE_FMT=$(file -s $EBS_DEVICE)
     BLANK_FMT="$EBS_DEVICE: data"
     if [ "$FILE_FMT" == "$BLANK_FMT" ] ; then
@@ -923,33 +906,31 @@ function process_volume_mount()
     fi
 
     # Setup fstab
-    echo "Volume UUID: blkid $EBS_DEVICE |grep UUID |cut -d '\\"' -f 2"
-    COUNT=0
-    VOLUME_UUID=""
-    echo "Getting Volume UUID for $EBS_DEVICE"
-    TIMEOUT=30
-    while :
-    do
-        VOLUME_UUID=$(/sbin/blkid $EBS_DEVICE |grep UUID |cut -d'"' -f 2)
-        if [ "${VOLUME_UUID}" != "" ] ; then
-            break
-        fi
-        echo -e '.'
-        sleep 1
-        COUNT=$(($COUNT + 1))
-        if [ $COUNT -eq $TIMEOUT ] ; then
-            echo
-            echo "Unable to get volume UUID for $EBS_DEVICE"
-            /sbin/blkid
-            exit 1
-        fi
-    done
-    echo "$EBS_DEVICE UUID: $VOLUME_UUID"
+    echo "EC2LM: EBS: Getting Volume UUID for $EBS_DEVICE"
+    TIMEOUT_SECS=30
+    VOLUME_UUID=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_get_volume_uuid $EBS_DEVICE)
+    if [ $? -eq 1 ] ; then
+        echo "EC2LM: EBS: Unable to get volume UUID for $EBS_DEVICE"
+        echo "EC2LM: EBS: Error: $OUTPUT"
+        /sbin/blkid
+        exit 1
+    fi
+
+    # /etc/fstab entry
+    echo "EC2LM: EBS: $EBS_DEVICE UUID: $VOLUME_UUID"
+    FSTAB_ENTRY="UUID=$VOLUME_UUID $MOUNT_FOLDER $FILESYSTEM defaults,nofail 0 2"
+    echo "EC2LM: EBS: Configuring /etc/fstab: $FSTAB_ENTRY"
     grep -v -E "^UUID=$VOLUME_UUID" /etc/fstab >/tmp/fstab.ebs_new
-    echo "UUID=$VOLUME_UUID $MOUNT_FOLDER $FILESYSTEM defaults,nofail 0 2" >>/tmp/fstab.ebs_new
+    echo $FSTAB_ENTRY >>/tmp/fstab.ebs_new
     mv /tmp/fstab.ebs_new /etc/fstab
     chmod 0664 /etc/fstab
+
+    # Mount Volume
+    echo "EC2LM: EBS: Mounting $MOUNT_FOLDER"
     mount $MOUNT_FOLDER
+    echo "EC2LM: EBS: Process Volume Mount: Done"
+
+    return 0
 }
 
 %s
@@ -1006,6 +987,96 @@ statement:
         # Save Configuration
         self.add_bundle(ebs_lb)
 
+    def lb_add_eip(self, instance_iam_role_ref, resource):
+        """Creates a launch bundle to configure Elastic IPs"""
+
+        app_name = get_parent_by_interface(resource, schemas.IApplication).name
+        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
+
+        # Create the Launch Bundle and configure it
+        eip_lb = LaunchBundle(
+            self.aim_ctx,
+            "EIP",
+            self,
+            app_name,
+            group_name,
+            resource.name,
+            resource,
+            self.bucket_id(resource.name)
+        )
+
+        if resource.eip == None:
+            self.remove_bundle(eip_lb)
+            return
+
+        # TODO: Add ubuntu and other distro support
+        launch_script = """#!/bin/bash
+. /opt/aim/EC2Manager/ec2lm_functions.bash
+
+function ec2lm_eip_is_associated() {
+    EIP_IP=$1
+    PUBLIC_IP=$(curl http://169.254.169.254/latest/meta-data/public-ipv4/)
+    if [ "$PUBLIC_IP" == "$EIP_IP" ] ; then
+        echo "EC2LM: EIP: Association Successful"
+        return 0
+    fi
+    return 1
+}
+
+# Allocation ID
+EIP_ALLOCATION_EC2_TAG_KEY_NAME="AIM-EIP-Allocation-Id"
+echo "EC2LM: EIP: Getting Allocation ID from EC2 Tag $EIP_ALLOCATION_EC2_TAG_KEY_NAME"
+EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=$EIP_ALLOCATION_EC2_TAG_KEY_NAME" --query 'Tags[0].Value' |tr -d '"')
+
+# IP Address
+echo "EC2LM: EIP: Getting IP Address for $EIP_ALLOC_ID"
+EIP_IP=$(aws ec2 describe-addresses --allocation-ids $EIP_ALLOC_ID --query 'Addresses[0].PublicIp' --region $REGION | tr -d '"')
+
+# Association
+echo "EC2LM: EIP: Assocating $EIP_ALLOC_ID - $EIP_IP"
+aws ec2 associate-address --instance-id $INSTANCE_ID --allocation-id $EIP_ALLOC_ID --region $REGION
+
+# Wait for Association
+TIMEOUT_SECS=30
+OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_eip_is_associated $EIP_IP)
+RES=$?
+if [ $RES -lt 2 ] ; then
+    echo "$OUTPUT"
+else
+    echo "EC2LM: EIP: Error: $OUTPUT"
+fi
+"""
+
+        policy_config_yaml = """
+name: 'AssociateEIP'
+enabled: true
+statement:
+  - effect: Allow
+    action:
+      - 'ec2:AssociateAddress'
+      - 'ec2:DescribeAddresses'
+    resource:
+      - '*'
+"""
+
+        policy_ref = '{}.{}.eip.policy'.format(resource.aim_ref_parts, self.id)
+        policy_id = '-'.join([resource.name, 'eip'])
+        iam_ctl = self.aim_ctx.get_controller('IAM')
+        iam_ctl.add_managed_policy(
+            role_ref=instance_iam_role_ref,
+            parent_config=resource,
+            group_id=group_name,
+            policy_id=policy_id,
+            policy_ref=policy_ref,
+            policy_config_yaml=policy_config_yaml,
+            change_protected=resource.change_protected
+        )
+
+        eip_lb.set_launch_script(launch_script)
+
+        # Save Configuration
+        self.add_bundle(eip_lb)
+
     def lb_add_cloudwatch_agent(
         self,
         instance_iam_role_ref,
@@ -1044,7 +1115,7 @@ statement:
         launch_script_template = """#!/bin/bash
 
 # Load EC2 Launch Manager helper functions
-. /tmp/ec2lm_functions.bash
+. /opt/aim/EC2Manager/ec2lm_functions.bash
 
 # Download the agent
 LB_DIR=$(pwd)
@@ -1291,6 +1362,7 @@ statement:
         self.add_bundle(ssm_lb)
 
     def process_bundles(self, resource, instance_iam_role_ref):
+        self.app_engine.ec2_launch_manager.lb_add_eip(instance_iam_role_ref, resource)
         self.app_engine.ec2_launch_manager.lb_add_cloudwatch_agent(instance_iam_role_ref, resource)
         self.app_engine.ec2_launch_manager.lb_add_efs_mounts(instance_iam_role_ref, resource)
         self.app_engine.ec2_launch_manager.lb_add_ebs_volume_mounts(instance_iam_role_ref, resource)

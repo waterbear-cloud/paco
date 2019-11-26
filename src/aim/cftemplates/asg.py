@@ -65,7 +65,7 @@ class ASG(CFTemplate):
             param_type='String',
             name='InstanceKeyPair',
             description='The EC2 SSH KeyPair to assign each ASG instance.',
-            value=asg_config.instance_key_pair,
+            value=asg_config.instance_key_pair+'.keypair_name',
             use_troposphere=True,
             troposphere_template=template
         )
