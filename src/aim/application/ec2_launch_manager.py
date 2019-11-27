@@ -159,6 +159,7 @@ class EC2LaunchManager():
         self.stack_tags = stack_tags
         self.ec2lm_functions_script = {}
         self.ec2lm_buckets = {}
+        self.launch_bundle_names = ['EIP', 'CloudWatchAgent', 'EFS', 'EBS', 'cfn-init']
         self.build_path = os.path.join(
             self.aim_ctx.build_folder,
             'EC2LaunchManager',
@@ -338,28 +339,29 @@ function swap_on() {
         if [ $CUR_SWAP_FILE_SIZE -eq $(($SWAP_SIZE_GB*1073741824)) ] ; then
             swapon /swapfile
             if [ $? -eq 0 ] ; then
-                echo "Enabling existing ${SWAP_SIZE_GB}GB Swapfile: /swapfile"
+                echo "EC2LM: Swap: Enabling existing ${SWAP_SIZE_GB}GB Swapfile: /swapfile"
             fi
         fi
     fi
     if [ "$(swapon -s|grep -v Filename|wc -c)" == "0" ]; then
-        echo "Enabling a ${SWAP_SIZE_GB}GB Swapfile: /swapfile"
+        echo "EC2LM: Swap: Enabling a ${SWAP_SIZE_GB}GB Swapfile: /swapfile"
         dd if=/dev/zero of=/swapfile bs=1024 count=$(($SWAP_SIZE_GB*1024))k
         chmod 0600 /swapfile
         mkswap /swapfile
         swapon /swapfile
     else
-        echo "Swap already enabled"
+        echo "EC2LM: Swap: Swap already enabled"
     fi
     swapon -s
     free
+    echo "EC2LM: Swap: Done"
 }
 """
 
     def add_ec2lm_function_wget(self, ec2lm_bucket_name, instance_ami_type):
         self.ec2lm_functions_script[ec2lm_bucket_name] += """
 # HTTP Client Path
-function install_wget() {
+function ec2lm_install_wget() {
     CLIENT_PATH=$(which wget)
     if [ $? -eq 1 ] ; then
         %s
@@ -377,7 +379,8 @@ function install_wget() {
             'aim_environment': self.app_engine.env_ctx.env_id,
             'aim_network_environment': self.app_engine.env_ctx.netenv_id,
             'aim_environment_ref': self.app_engine.env_ctx.config.aim_ref_parts,
-            'aws_account_id': self.account_ctx.id
+            'aws_account_id': self.account_ctx.id,
+            'launch_bundle_names': ' '.join(self.launch_bundle_names)
         }
 
         script_template = """
@@ -447,23 +450,24 @@ function ec2lm_timeout() {{
 function ec2lm_launch_bundles() {{
     cd $EC2LM_FOLDER/LaunchBundles/
 
-    echo "Loading Launch Bundles"
-    for BUNDLE_PACKAGE in *.tgz
+    echo "EC2LM: LaunchBundles: Loading"
+    for BUNDLE_NAME in {0[launch_bundle_names]:s}
     do
-        BUNDLE_FOLDER=${{BUNDLE_PACKAGE//'.tgz'/}}
-        echo "$BUNDLE_FOLDER: Unpacking:"
+        BUNDLE_FOLDER=$BUNDLE_NAME
+        BUNDLE_PACKAGE=$BUNDLE_NAME".tgz"
+        echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Unpacking:"
         if [ ! -f "$BUNDLE_PACKAGE" ] ; then
-            echo "Unable to find package: $BUNDLE_PACKAGE"
+            echo "EC2LM: LaunchBundles: Skipping disabled package: $BUNDLE_PACKAGE"
             continue
         fi
         tar xvfz $BUNDLE_PACKAGE
         chown -R root.root $BUNDLE_FOLDER
-        echo "$BUNDLE_FOLDER: Launching bundle"
+        echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Launching bundle"
         cd $BUNDLE_FOLDER
         chmod u+x ./launch.sh
         ./launch.sh
         cd ..
-        echo "$BUNDLE_FOLDER: Done"
+        echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Done"
     done
 }}
 
@@ -473,6 +477,17 @@ function ec2lm_instance_tag_value() {{
     aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=$TAG_NAME" --query 'Tags[0].Value' |tr -d '"'
 }}
 
+# Runs pip
+function ec2lm_pip() {{
+    for PIP_CMD in pip3 pip2 pip
+    do
+        which $PIP_CMD >/dev/null 2>&1
+        if [ $? -eq 0 ] ; then
+            $PIP_CMD $@
+            return
+        fi
+    done
+}}
 """
         self.ec2lm_functions_script[ec2lm_bucket_name] = script_template.format(script_table)
 
@@ -504,9 +519,9 @@ statement:
     def user_data_script(self, app_id, grp_id, resource_id, resource, instance_iam_role_ref):
         """BASH script that will load the launch bundle from user_data"""
         script_fmt = """#!/bin/bash
-echo "EC2 Launch Manager"
-echo "Script: $0"
-echo "CacheId: {0[cache_id]}"
+echo "EC2LM: Start"
+echo "EC2LM: Script: $0"
+echo "EC2LM: CacheId: {0[cache_id]}"
 {0[pre_script]}
 {0[update_packages]}
 {0[install_aws_cli]}
@@ -536,7 +551,7 @@ aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
             'cache_id': None,
             'ec2lm_bucket_name': ec2lm_bucket_name,
             'install_aws_cli': vocabulary.user_data_script['install_aws_cli'][resource.instance_ami_type],
-            'launch_bundles': 'echo "No launch bundles to load."\n',
+            'launch_bundles': 'echo "EC2LM: No launch bundles to load."\n',
             'update_packages': '',
             'pre_script': '',
             'region': resource.region_name
@@ -635,7 +650,7 @@ statement:
             self.launch_bundles[bundle.s3_bucket_ref] = []
         self.remove_bundle_from_s3_bucket(bundle)
 
-    def lb_add_cfn_init(self, resource):
+    def lb_add_cfn_init(self, bundle_name, instance_iam_role_ref, resource):
         """Creates a launch bundle to download and run cfn-init"""
         # Check if this bundle is enabled with config such as:
         #  asg:
@@ -649,7 +664,7 @@ statement:
 
         cfn_init_lb = LaunchBundle(
             self.aim_ctx,
-            "cfn-init",
+            bundle_name,
             self,
             app_name,
             group_name,
@@ -681,7 +696,7 @@ statement:
         # Save Configuration
         self.add_bundle(cfn_init_lb)
 
-    def lb_add_efs_mounts(self, instance_iam_role_ref, resource):
+    def lb_add_efs(self, bundle_name, instance_iam_role_ref, resource):
         """Creates a launch bundle to configure EFS mounts:
 
          - Installs an entry in /etc/fstab
@@ -692,7 +707,7 @@ statement:
        # Create the Launch Bundle and configure it
         efs_lb = LaunchBundle(
             self.aim_ctx,
-            "EFS",
+            bundle_name,
             self,
             app_name,
             group_name,
@@ -787,7 +802,7 @@ statement:
         # Save Configuration
         self.add_bundle(efs_lb)
 
-    def lb_add_ebs_volume_mounts(self, instance_iam_role_ref, resource):
+    def lb_add_ebs(self, bundle_name, instance_iam_role_ref, resource):
         """Creates a launch bundle to configure EBS Volume mounts:
 
          - Installs an entry in /etc/fstab
@@ -799,7 +814,7 @@ statement:
         # Create the Launch Bundle and configure it
         ebs_lb = LaunchBundle(
             self.aim_ctx,
-            "EBS",
+            bundle_name,
             self,
             app_name,
             group_name,
@@ -901,7 +916,7 @@ function process_volume_mount()
     FILE_FMT=$(file -s $EBS_DEVICE)
     BLANK_FMT="$EBS_DEVICE: data"
     if [ "$FILE_FMT" == "$BLANK_FMT" ] ; then
-        echo "Initializing EBS Volume with FS type $FILESYSTEM"
+        echo "EC2LM: EBS: Initializing EBS Volume with FS type $FILESYSTEM"
         /sbin/mkfs -t $FILESYSTEM $EBS_DEVICE
     fi
 
@@ -987,7 +1002,7 @@ statement:
         # Save Configuration
         self.add_bundle(ebs_lb)
 
-    def lb_add_eip(self, instance_iam_role_ref, resource):
+    def lb_add_eip(self, bundle_name, instance_iam_role_ref, resource):
         """Creates a launch bundle to configure Elastic IPs"""
 
         app_name = get_parent_by_interface(resource, schemas.IApplication).name
@@ -996,7 +1011,7 @@ statement:
         # Create the Launch Bundle and configure it
         eip_lb = LaunchBundle(
             self.aim_ctx,
-            "EIP",
+            bundle_name,
             self,
             app_name,
             group_name,
@@ -1037,7 +1052,7 @@ echo "EC2LM: EIP: Assocating $EIP_ALLOC_ID - $EIP_IP"
 aws ec2 associate-address --instance-id $INSTANCE_ID --allocation-id $EIP_ALLOC_ID --region $REGION
 
 # Wait for Association
-TIMEOUT_SECS=30
+TIMEOUT_SECS=300
 OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_eip_is_associated $EIP_IP)
 RES=$?
 if [ $RES -lt 2 ] ; then
@@ -1077,8 +1092,9 @@ statement:
         # Save Configuration
         self.add_bundle(eip_lb)
 
-    def lb_add_cloudwatch_agent(
+    def lb_add_cloudwatchagent(
         self,
+        bundle_name,
         instance_iam_role_ref,
         resource
     ):
@@ -1098,7 +1114,7 @@ statement:
         # Create the Launch Bundle and configure it
         cw_lb = LaunchBundle(
             self.aim_ctx,
-            "CloudWatchAgent",
+            bundle_name,
             self,
             app_name,
             group_name,
@@ -1113,7 +1129,7 @@ statement:
 
         # Launch script
         launch_script_template = """#!/bin/bash
-
+echo "EC2LM: CloudWatch: Begin"
 # Load EC2 Launch Manager helper functions
 . /opt/aim/EC2Manager/ec2lm_functions.bash
 
@@ -1121,15 +1137,19 @@ statement:
 LB_DIR=$(pwd)
 mkdir /tmp/aim/
 cd /tmp/aim/
-install_wget # build in function
+ec2lm_install_wget # built in function
+
+echo "EC2LM: CloudWatch: Downloading agent"
 wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{0[agent_path]:s}/{0[agent_object]:s}
 wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{0[agent_path]:s}/{0[agent_object]:s}.sig
 
 # Verify the agent
+echo "EC2LM: CloudWatch: Downloading and importing agent GPG key"
 TRUSTED_FINGERPRINT=$(echo "9376 16F3 450B 7D80 6CBD 9725 D581 6730 3B78 9C72" | tr -d ' ')
 wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent/assets/amazon-cloudwatch-agent.gpg
 gpg --import amazon-cloudwatch-agent.gpg
 
+echo "EC2LM: CloudWatch: Verify agent signature"
 KEY_ID="$(gpg --list-packets amazon-cloudwatch-agent.gpg 2>&1 | awk '/keyid:/{{ print $2 }}' | tr -d ' ')"
 FINGERPRINT="$(gpg --fingerprint ${{KEY_ID}} 2>&1 | tr -d ' ')"
 OBJECT_FINGERPRINT="$(gpg --verify {0[agent_object]:s}.sig {0[agent_object]:s} 2>&1 | tr -d ' ')"
@@ -1140,13 +1160,14 @@ if [[ ${{FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* || ${{OBJECT_FINGERPRINT}} 
 fi
 
 # Install the agent
-echo "Running: {0[install_command]:s} {0[agent_object]}"
+echo "EC2LM: CloudWatch: Installing agent: {0[install_command]:s} {0[agent_object]}"
 {0[install_command]:s} {0[agent_object]}
 
 cd ${{LB_DIR}}
 
-echo "Running: /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:amazon-cloudwatch-agent.json -s"
+echo "EC2LM: CloudWatch: Updating configuration"
 /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:amazon-cloudwatch-agent.json -s
+echo "EC2LM: CloudWatch: Done"
 """
 
 
@@ -1164,6 +1185,7 @@ echo "Running: /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl 
                 "metrics_collection_interval": 60,
                 "region": self.aws_region,
                 "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
+                #"debug": True
             }
         }
 
@@ -1362,11 +1384,9 @@ statement:
         self.add_bundle(ssm_lb)
 
     def process_bundles(self, resource, instance_iam_role_ref):
-        self.app_engine.ec2_launch_manager.lb_add_eip(instance_iam_role_ref, resource)
-        self.app_engine.ec2_launch_manager.lb_add_cloudwatch_agent(instance_iam_role_ref, resource)
-        self.app_engine.ec2_launch_manager.lb_add_efs_mounts(instance_iam_role_ref, resource)
-        self.app_engine.ec2_launch_manager.lb_add_ebs_volume_mounts(instance_iam_role_ref, resource)
-        self.app_engine.ec2_launch_manager.lb_add_cfn_init(resource)
+        for bundle_name in self.launch_bundle_names:
+            bundle_method = getattr(self, 'lb_add_' + bundle_name.replace('-', '_').lower())
+            bundle_method(bundle_name, instance_iam_role_ref, resource)
 
     def validate(self):
         pass

@@ -6,6 +6,7 @@ import aim.models.services
 import json
 import troposphere
 from aim import utils
+import aim.models
 from aim.models import schemas
 from aim.models import vocabulary
 from aim.cftemplates.cftemplates import CFTemplate
@@ -230,15 +231,18 @@ HINT: Ensure that the monitoring.log_sets for the resource is enabled and that t
             # a primary dimension and the resource's resource_name
             # This only happens for Resource-level Alarms
             # MetricFilter LogGroup Alarms must have no dimensions
-            if alarm_export_dict['Namespace'].startswith('Logs/'):
-                dimensions = []
-            elif schemas.IResource.providedBy(resource) and len(alarm.dimensions) < 1:
-                dimensions = [
-                    {'Name': vocabulary.cloudwatch[resource.type]['dimension'],
-                     'Value': troposphere.Ref(dimension_param)}
-                ]
-            else:
-                dimensions = []
+            dimensions = []
+            if alarm_export_dict['Namespace'].startswith('Logs/') == False:
+                if schemas.IResource.providedBy(resource) and len(alarm.dimensions) < 1:
+                    dimensions.append(
+                        {'Name': vocabulary.cloudwatch[resource.type]['dimension'],
+                         'Value': troposphere.Ref(dimension_param)}
+                    )
+                elif schemas.IASG.providedBy(resource):
+                    dimensions.append(
+                        {'Name': vocabulary.cloudwatch[resource.type]['dimension'],
+                        'Value': troposphere.Ref(dimension_param)}
+                    )
                 for dimension in alarm.dimensions:
                     dimensions.append(
                         {'Name': dimension.name, 'Value': troposphere.Ref(dimension.parameter)}
