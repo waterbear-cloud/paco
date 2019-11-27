@@ -5,16 +5,16 @@
 Configuration Basics
 ********************
 
-Paco Configuration Overview
+Paco configuration overview
 ===========================
 
-Paco configuration is a complete declarative description of an Infrastructure-as-Code
-cloud project. These files semantically describe cloud resources and logical groupings of those
+Paco configuration is a complete declarative description of a cloud project.
+These files semantically describe cloud resources and logical groupings of those
 resources. The contents of these files describe accounts, networks, environments, applications,
 resources, services, and monitoring configuration.
 
 The Paco configuration files are parsed into a Python object model by the library
-``paco.models``. This object model is used by Paco Orchestration to provision
+``paco.models``. This object model is used by Paco to provision
 AWS resources using CloudFormation. However, the object model is a standalone
 Python package and can be used to work with cloud infrastructure semantically
 with other tooling.
