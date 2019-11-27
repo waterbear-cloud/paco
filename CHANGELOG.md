@@ -1,7 +1,7 @@
 Changelog for paco
 ==================
 
-3.2.0 (unreleased)
+3.2.0 (2019-11-27)
 ------------------
 
 - AIM has been renamed to Paco: Prescribed automation for cloud orchestration.
