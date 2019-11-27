@@ -63,7 +63,7 @@ setup(
     entry_points={
         'console_scripts': [
             'aim = aim.commands.cli:cli',
-            'aim_doc = aim.doc.docschema:aim_schema_generate',
+            'paco_doc = aim.doc.docschema:aim_schema_generate',
         ]
     },
     extras_require={

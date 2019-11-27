@@ -10,8 +10,7 @@ html_theme_options = {
     'display_version': True,
     'prev_next_buttons_location': 'bottom',
     'style_external_links': False,
-#    'vcs_pageview_mode': '',
-    'style_nav_header_background': '#010101',
+    'style_nav_header_background': '#ffffff',
     # Toc options
     'collapse_navigation': True,
     'sticky_navigation': True,
@@ -19,7 +18,7 @@ html_theme_options = {
     'includehidden': True,
     'titles_only': False
 }
-html_logo = './images/waterbear-cloud-url-head-1.png'
+html_logo = './images/paco-logo.png'
 html_static_path = ['_static',]
 
 
@@ -42,16 +41,18 @@ intersphinx_mapping = {
 }
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['.templates']
+templates_path = ['_templates']
 
 # The suffix of source filenames.
 source_suffix = '.rst'
 
 # The master toctree document.
-master_doc = 'index'
+master_doc = 'contents'
+html_additional_pages = {'index': 'index.html'}
+
 
 # General substitutions.
-project = 'AIM'
+project = 'Paco'
 thisyear = datetime.datetime.now().year
 copyright = '2018-%s, Waterbear Cloud' % thisyear
 

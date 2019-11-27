@@ -1,3 +1,53 @@
+/* splash */
+
+.paco-body {
+  background-color: #ffffff;
+}
+
+.paco-container {
+  text-align: left;
+  margin: 40px auto 40px 300px;
+  width: 800px;
+}
+
+.paco-splash {
+  text-align: left;
+  align: left;
+}
+
+.waterbear-header {
+  background-color: black;
+  padding: 8px 20px 8px 300px;
+}
+
+.paco-section {
+  margin-top: 40px;
+}
+
+.paco-right {
+  float: right;
+  margin: 12px 0px 10px 30px;
+}
+
+.paco-left {
+  float: left;
+  margin: 12px 30px 10px 0px;
+}
+
+/* navigation */
+
+.wy-side-nav-search {
+  border-right: 1px solid #9b9b9b;
+}
+
+.wy-side-nav-search>div.version {
+  color: #7a7c7c;
+}
+
+a.icon-home {
+  color: #3066be;
+}
+
 .wy-nav-content {
   background: #ffffff !important;
 }

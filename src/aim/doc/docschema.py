@@ -1,5 +1,5 @@
 """
-Loads aim.models.schemas and generates the doc file at ./doc/aim-config.rst
+Loads paco.models.schemas and generates the doc file at ./doc/paco-config.rst
 from the schema definition.
 """
 
@@ -9,23 +9,23 @@ from aim.models import schemas
 from zope.interface.common.mapping import IMapping
 
 
-aim_config_template = """
-.. _aim-config:
+paco_config_template = """
+.. _paco-config:
 
 ********************
 Configuration Basics
 ********************
 
-AIM Configuration Overview
-==========================
+Paco Configuration Overview
+===========================
 
-AIM configuration is a complete declarative description of an Infrastructure-as-Code
+Paco configuration is a complete declarative description of an Infrastructure-as-Code
 cloud project. These files semantically describe cloud resources and logical groupings of those
 resources. The contents of these files describe accounts, networks, environments, applications,
 resources, services, and monitoring configuration.
 
-The AIM configuration files are parsed into a Python object model by the library
-``aim.models``. This object model is used by AIM Orchestration to provision
+The Paco configuration files are parsed into a Python object model by the library
+``paco.models``. This object model is used by Paco Orchestration to provision
 AWS resources using CloudFormation. However, the object model is a standalone
 Python package and can be used to work with cloud infrastructure semantically
 with other tooling.
@@ -34,8 +34,8 @@ with other tooling.
 File format overview
 --------------------
 
-AIM configuration is a directory of files and sub-directories that
-make up an AIM project. All of the files are in YAML_ format.
+Paco configuration is a directory of files and sub-directories that
+make up an Paco project. All of the files are in YAML_ format.
 
 In the top-level directory are sub-directories that contain YAML
 files each with a different format. This directories are:
@@ -51,18 +51,18 @@ files each with a different format. This directories are:
 
   * ``service/``: For extension plug-ins.
 
-Also at the top level are ``project.yaml`` and ``aim-project-version.txt`` files.
+Also at the top level are ``project.yaml`` and ``paco-project-version.txt`` files.
 
-The ``aim-project-version.txt`` is a simple one line file with the version of the AIM Project
-file format, e.g. ``2.1``. The AIM project file format version contains a major and a medium
+The ``paco-project-version.txt`` is a simple one line file with the version of the Paco project
+file format, e.g. ``2.1``. The Paco project file format version contains a major and a medium
 version. The major version indicates backwards incompatable changes, while the medium
 version indicates additions of new object types and fields.
 
-The ``project.yaml`` contains gloabl information about the AIM project. It also contains
-an ``aim_project_version`` field that is loaded from ``aim-project-version.txt``.
+The ``project.yaml`` contains gloabl information about the Paco project. It also contains
+an ``paco_project_version`` field that is loaded from ``paco-project-version.txt``.
 
 The YAML files are organized as nested key-value dictionaries. In each sub-directory,
-key names map to relevant AIM schemas. An AIM schema is a set of fields that describe
+key names map to relevant Paco schemas. An Paco schema is a set of fields that describe
 the field name, type and constraints.
 
 An example of how this hierarchy looks, in a NetworksEnvironent file, a key name ``network:``
@@ -80,9 +80,9 @@ an attribute named ``vpc:`` which contains attributes for the VPC schema. That l
             enable_dns_support: true
             enable_internet_gateway: true
 
-Some key names map to AIM schemas that are containers. For containers, every key must contain
-a set of key/value pairs that map to the AIM schema that container is for.
-Every AIM schema in a container has a special ``name`` attribute, this attribute is derived
+Some key names map to Paco schemas that are containers. For containers, every key must contain
+a set of key/value pairs that map to the Paco schema that container is for.
+Every Paco schema in a container has a special ``name`` attribute, this attribute is derived
 from the key name used in the container.
 
 For example, the NetworkEnvironments has a key name ``environments:`` that maps
@@ -128,16 +128,17 @@ Key names have the following restrictions:
 Certain AWS resources have additional naming limitations, namely S3 bucket names
 can not contain uppercase letters and certain resources have a name length of 64 characters.
 
-The ``title`` field is available in almost all AIM schemas. This is intended to be
+The ``title`` field is available in almost all Paco schemas. This is intended to be
 a human readable name. This field can contain any character except newline.
 The ``title`` field can also be added as a Tag to resources, so any characters
 beyond 255 characters would be truncated.
 
+.. _YAML: https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html
 
 Enabled/Disabled
 ================
 
-Many AIM schemas have an ``enabled:`` field. If an Environment, Application or Resource field
+Many Paco schemas have an ``enabled:`` field. If an Environment, Application or Resource field
 have ``enabled: True``, that indicates it should be provisioned. If ``enabled: False`` is set,
 then the resource won't be provisioned.
 
@@ -159,7 +160,7 @@ entire environment.
             enabled: true
             default:
                 applications:
-                    my-aim-example:
+                    my-paco-example:
                         enabled: false
                     reporting-app:
                         enabled: true
@@ -167,44 +168,44 @@ entire environment.
             enabled: false
             default:
                 applications:
-                    my-aim-example:
+                    my-paco-example:
                         enabled: true
                     reporting-app:
                         enabled: true
 
-.. Attention:: Note that currently, this field is only applied during the ``aim provision`` command.
-    If you want delete an environment or application, you need to do so explicitly with the ``aim delete`` command.
+.. Attention:: Note that currently, this field is only applied during the ``paco provision`` command.
+    If you want delete an environment or application, you need to do so explicitly with the ``paco delete`` command.
 
 References and Substitutions
 ============================
 
 Some values can be special references. These will allow you to reference other values in
-your AIM Configuration.
+your Paco Configuration.
 
- * ``aim.ref netenv``: NetworkEnvironment reference
+ * ``paco.ref netenv``: NetworkEnvironment reference
 
- * ``aim.ref resource``: Resource reference
+ * ``paco.ref resource``: Resource reference
 
- * ``aim.ref accounts``: Account reference
+ * ``paco.ref accounts``: Account reference
 
- * ``aim.ref function``: Function reference
+ * ``paco.ref function``: Function reference
 
- * ``aim.ref service``: Service reference
+ * ``paco.ref service``: Service reference
 
 References are in the format:
 
 ``type.ref name.seperated.by.dots``
 
-In addition, the ``aim.sub`` string indicates a substitution.
+In addition, the ``paco.sub`` string indicates a substitution.
 
-aim.ref netenv
---------------
+paco.ref netenv
+---------------
 
-To refer to a value in a NetworkEnvironment use an ``aim.ref netenv`` reference. For example:
+To refer to a value in a NetworkEnvironment use an ``paco.ref netenv`` reference. For example:
 
-``aim.ref netenv.my-aim-example.network.vpc.security_groups.app.lb``
+``paco.ref netenv.my-paco-example.network.vpc.security_groups.app.lb``
 
-After ``aim.ref netenv`` should be a part which matches the filename of a file (without the .yaml or .yml extension)
+After ``paco.ref netenv`` should be a part which matches the filename of a file (without the .yaml or .yml extension)
 in the NetworkEnvironments directory.
 
 The next part will start to walk down the YAML tree in the specified file. You can
@@ -212,9 +213,9 @@ either refer to a part in the ``applications`` or ``network`` section.
 
 Keep walking down the tree, until you reach the name of a field. This final part is sometimes
 a field name that you don't supply in your configuration, and is instead can be generated
-by the AIM Engine after it has provisioned the resource in AWS.
+by the Paco Engine after it has provisioned the resource in AWS.
 
-An example where a ``aim.ref netenv`` refers to the id of a SecurityGroup:
+An example where a ``paco.ref netenv`` refers to the id of a SecurityGroup:
 
 .. code-block:: yaml
 
@@ -229,13 +230,13 @@ An example where a ``aim.ref netenv`` refers to the id of a SecurityGroup:
                             - from_port: 80
                             name: HTTP
                             protocol: tcp
-                            source_security_group: aim.ref netenv.my-aim-example.network.vpc.security_groups.app.lb
+                            source_security_group: paco.ref netenv.my-paco-example.network.vpc.security_groups.app.lb
 
 You can refer to an S3 Bucket and it will return the ARN of the bucket:
 
 .. code-block:: yaml
 
-    artifacts_bucket: aim.ref netenv.my-aim-example.applications.app.groups.cicd.resources.cpbd_s3
+    artifacts_bucket: paco.ref netenv.my-paco-example.applications.app.groups.cicd.resources.cpbd_s3
 
 SSL Certificates can be added to a load balancer. If a reference needs to look-up the name or id of an AWS
 Resource, it needs to first be provisioned, the ``order`` field controls the order in which resources
@@ -266,17 +267,17 @@ and configured with the ACM cert:
                             - port: 443
                                 protocol: HTTPS
                                 ssl_certificates:
-                                - aim.ref netenv.my-aim-example.applications.app.groups.site.resources.cert
+                                - paco.ref netenv.my-paco-example.applications.app.groups.site.resources.cert
 
 
-aim.ref resource
-----------------
+paco.ref resource
+-----------------
 
-To refer to a global resource created in the Resources directory, use an ``aim.ref resource``. For example:
+To refer to a global resource created in the Resources directory, use an ``paco.ref resource``. For example:
 
-``aim.ref resource.route53.example``
+``paco.ref resource.route53.example``
 
-After the ``aim.ref resource`` the next part should matche the filename of a file
+After the ``paco.ref resource`` the next part should matche the filename of a file
 (without the .yaml or .yml extension)  in the Resources directory.
 Subsequent parts will walk down the YAML in that file.
 
@@ -284,7 +285,7 @@ In the example below, the ``hosted_zone`` of a Route53 record is looked up.
 
 .. code-block:: yaml
 
-    # NetworkEnvironments/my-aim-example.yaml
+    # NetworkEnvironments/my-paco-example.yaml
 
     applications:
         app:
@@ -292,7 +293,7 @@ In the example below, the ``hosted_zone`` of a Route53 record is looked up.
                 site:
                     alb:
                         dns:
-                        - hosted_zone: aim.ref resource.route53.example
+                        - hosted_zone: paco.ref resource.route53.example
 
     # Resources/Route53.yaml
 
@@ -300,15 +301,15 @@ In the example below, the ``hosted_zone`` of a Route53 record is looked up.
     example:
         enabled: true
         domain_name: example.com
-        account: aim.ref accounts.prod
+        account: paco.ref accounts.prod
 
 
-aim.ref accounts
-----------------
+paco.ref accounts
+-----------------
 
-To refer to an AWS Account in the Accounts directory, use ``aim.ref``. For example:
+To refer to an AWS Account in the Accounts directory, use ``paco.ref``. For example:
 
-``aim.ref accounts.dev``
+``paco.ref accounts.dev``
 
 Account references should matches the filename of a file (without the .yaml or .yml extension)
 in the Accounts directory.
@@ -321,14 +322,14 @@ to control which account an environment should be deployed to:
     environments:
         dev:
             network:
-                aws_account: aim.ref accounts.dev
+                aws_account: paco.ref accounts.dev
 
-aim.ref function
-----------------
+paco.ref function
+-----------------
 
 A reference dynamically resolved at runtime. For example:
 
-``aim.ref function.aws.ec2.ami.latest.amazon-linux-2``
+``paco.ref function.aws.ec2.ami.latest.amazon-linux-2``
 
 Currently can only look-up AMI IDs. Can be either ``aws.ec2.ami.latest.amazon-linux-2``
 or ``aws.ec2.ami.latest.amazon-linux``.
@@ -337,21 +338,21 @@ or ``aws.ec2.ami.latest.amazon-linux``.
 
     web:
         type: ASG
-        instance_ami: aim.ref function.aws.ec2.ami.latest.amazon-linux-2
+        instance_ami: paco.ref function.aws.ec2.ami.latest.amazon-linux-2
 
-aim.ref service
----------------
+paco.ref service
+----------------
 
-To refer to a service created in the Services directory, use an ``aim.ref service``. For example:
+To refer to a service created in the Services directory, use an ``paco.ref service``. For example:
 
-``aim.ref service.notification.<account>.<region>.applications.notification.groups.lambda.resources.snstopic``
+``paco.ref service.notification.<account>.<region>.applications.notification.groups.lambda.resources.snstopic``
 
-Services are plug-ins that extend AIM with additional functionality. For example, custom notification, patching, back-ups
-and cost optimization services could be developed and installed into an AIM application to provide custom business
+Services are plug-ins that extend Paco with additional functionality. For example, custom notification, patching, back-ups
+and cost optimization services could be developed and installed into an Paco application to provide custom business
 functionality.
 
-aim.sub
--------
+paco.sub
+--------
 
 Can be used to look-up a value and substitute the results into a templated string.
 
@@ -383,9 +384,9 @@ and logging the applications have, and which environments they are in.
 These files are hierarchical. They can nest many levels deep. At each
 node in the hierarchy a different config type is required. At the top level
 there must be three key names, ``network:``, ``applications:`` and ``environments:``.
-The ``network:`` must contain a key/value pairs that match a NetworkEnvironment AIM schema.
+The ``network:`` must contain a key/value pairs that match a NetworkEnvironment Paco schema.
 The ``applications:`` and ``environments:`` are containers that hold Application
-and Environment AIM schemas.
+and Environment Paco schemas.
 
 .. code-block:: yaml
 
@@ -396,7 +397,7 @@ and Environment AIM schemas.
         # more network YAML here ...
 
     applications:
-        my-aim-app:
+        my-paco-app:
             managed_updates: true
             # more application YAML here ...
         reporting-app:
@@ -482,7 +483,7 @@ Networks have the following hierarchy:
                                 - from_port: 80
                                   name: HTTP
                                   protocol: tcp
-                                  source_security_group: aim.ref netenv.my-aim-example.network.vpc.security_groups.app.lb
+                                  source_security_group: paco.ref netenv.my-paco-example.network.vpc.security_groups.app.lb
                                   to_port: 80
 
 {INetwork}
@@ -586,7 +587,7 @@ In turn, each ResourceGroup contains ``resources:`` with names such as ``cpbd``,
 .. code-block:: yaml
 
     applications:
-        my-aim-app:
+        my-paco-app:
             enabled: true
             groups:
                 cicd:
@@ -704,13 +705,13 @@ Console to switch between performance and debug configuration quickl in an emerg
 
   You can set the initial password with ``master_user_password``, however this requires storing a password
   in plain-text on disk. This is fine if you have a process for changing the password after creating a database,
-  however, the AIM Secrets Manager support allows you to use a ``secrets_password`` instead of the
+  however, the Paco Secrets Manager support allows you to use a ``secrets_password`` instead of the
   ``master_user_password`` field:
 
   .. code-block:: yaml
 
       type: RDSMysql
-      secrets_password: aim.ref netenv.mynet.secrets_manager.app.grp.mysql
+      secrets_password: paco.ref netenv.mynet.secrets_manager.app.grp.mysql
 
   Then in your NetworkEnvironments ``secrets_manager`` configuration you would write:
 
@@ -758,11 +759,11 @@ Console to switch between performance and debug configuration quickl in an emerg
     - error
     - slowquery
   security_groups:
-    - aim.ref netenv.mynet.network.vpc.security_groups.app.database
-  segment: aim.ref netenv.mynet.network.vpc.segments.private
+    - paco.ref netenv.mynet.network.vpc.security_groups.app.database
+  segment: paco.ref netenv.mynet.network.vpc.segments.private
   primary_domain_name: database.example.internal
-  primary_hosted_zone: aim.ref netenv.mynet.network.vpc.private_hosted_zone
-  parameter_group: aim.ref netenv.mynet.applications.app.groups.web.resources.dbparams_performance
+  primary_hosted_zone: paco.ref netenv.mynet.network.vpc.private_hosted_zone
+  parameter_group: paco.ref netenv.mynet.applications.app.groups.web.resources.dbparams_performance
 
 
 
@@ -1041,17 +1042,17 @@ def convert_field_to_table_row(schema, field, table_row_template):
         data_type = 'Boolean'
     elif data_type == 'Object':
         if field.schema.extends(IMapping):
-            data_type = 'Container of {}_ AIM schemas'.format(field.schema.__name__[1:])
+            data_type = 'Container of {}_ Paco schemas'.format(field.schema.__name__[1:])
         else:
-            data_type = '{}_ AIM schema'.format(field.schema.__name__[1:])
+            data_type = '{}_ Paco schema'.format(field.schema.__name__[1:])
     elif data_type == 'Dict':
         if field.value_type and hasattr(field.value_type, 'schema'):
-            data_type = 'Container of {}_ AIM schemas'.format(field.value_type.schema.__name__[1:])
+            data_type = 'Container of {}_ Paco schemas'.format(field.value_type.schema.__name__[1:])
         else:
             data_type = 'Dict'
     elif data_type == 'List':
         if field.value_type and not zope.schema.interfaces.IText.providedBy(field.value_type):
-            data_type = 'List of {}_ AIM schemas'.format(field.value_type.schema.__name__[1:])
+            data_type = 'List of {}_ Paco schemas'.format(field.value_type.schema.__name__[1:])
         else:
             data_type = 'List of Strings'
 
@@ -1166,13 +1167,13 @@ def create_tables_from_schema():
     return result
 
 def aim_schema_generate():
-    aim_doc = os.path.abspath(os.path.dirname(__file__)).split(os.sep)[:-3]
-    aim_doc.append('docs')
-    aim_doc.append('aim-config.rst')
-    aim_config_doc = os.sep.join(aim_doc)
+    paco_doc = os.path.abspath(os.path.dirname(__file__)).split(os.sep)[:-3]
+    paco_doc.append('docs')
+    paco_doc.append('paco-config.rst')
+    paco_config_doc = os.sep.join(paco_doc)
     tables_dict = create_tables_from_schema()
 
-    with open(aim_config_doc, 'w') as f:
-        f.write(aim_config_template.format(**tables_dict))
+    with open(paco_config_doc, 'w') as f:
+        f.write(paco_config_template.format(**tables_dict))
 
-    print('Wrote to {}'.format(aim_config_doc))
+    print('Wrote to {}'.format(paco_config_doc))

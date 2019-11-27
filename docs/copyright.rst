@@ -1,7 +1,7 @@
 Copyright, Trademarks, and Attributions
 =======================================
 
-*AIM*
+*Paco*
 
 by Kevin Lindsay and Kevin Teague
 
