@@ -455,11 +455,11 @@ function ec2lm_launch_bundles() {{
     do
         BUNDLE_FOLDER=$BUNDLE_NAME
         BUNDLE_PACKAGE=$BUNDLE_NAME".tgz"
-        echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Unpacking:"
         if [ ! -f "$BUNDLE_PACKAGE" ] ; then
             echo "EC2LM: LaunchBundles: Skipping disabled package: $BUNDLE_PACKAGE"
             continue
         fi
+        echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Unpacking $BUNDLE_PACKAGE"
         tar xvfz $BUNDLE_PACKAGE
         chown -R root.root $BUNDLE_FOLDER
         echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Launching bundle"
