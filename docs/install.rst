@@ -9,11 +9,11 @@ download and install a Python_ interpreter.
 Ideally you will want to install Paco in a self-contained Python environment. For some guidance
 on managing Python applications check out `Python on macos`_ or `Python on Windows`_.
 
-Install the `paco` Python package. If you are using `pip3` then you would run:
+Install the `paco-cloud` Python package. If you are using `pip3` then you would run:
 
 .. code-block:: bash
 
-  $ pip3 install paco
+  $ pip3 install paco-cloud
 
 You should now have a CLI application named `paco`.
 
