@@ -8,7 +8,7 @@ from aim.commands.helpers import (
 from aim.core.exception import StackException
 
 
-@click.command('delete', short_help='Delete AIM managed resources')
+@click.command('delete', short_help='Delete Paco managed resources')
 @aim_home_option
 @cloud_args
 @cloud_options

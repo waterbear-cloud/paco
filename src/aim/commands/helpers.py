@@ -12,7 +12,7 @@ from functools import wraps
 pass_aim_context = click.make_pass_decorator(AimContext, ensure=True)
 
 config_types = """
-CONFIG_SCOPE must be an AIM Reference to an AIM object. These can be
+CONFIG_SCOPE must be a Paco reference to a Paco object. These can be
 constructed by matching a top-level directory name, with a filename
 and then optionally walking through keys within that file. Each
 part is separated by the . character.
@@ -42,7 +42,7 @@ part is separated by the . character.
       netenv.mynet.dev.us-west-2.applications.myapp.groups.somegroup.resources.webserver
 
 \b
-  service. objects : AIM Pluggable Extensions
+  service. objects : Paco Pluggable Extensions
     Location: files in the `Services` directory.
     examples:
       service.notification
@@ -69,7 +69,7 @@ def init_cloud_command(
     aim_ctx.command = command_name
     init_aim_home_option(aim_ctx, home)
     if not aim_ctx.home:
-        print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')
+        print('Paco configuration directory needs to be specified with either --home or PACO_HOME environment variable.')
         sys.exit()
     aim_ctx.load_project()
     scope_parts = config_scope.split('.')
@@ -107,7 +107,7 @@ def cloud_options(func):
         '-n', '--nocache',
         is_flag=True,
         default=False,
-        help='Disables the AIM CloudFormation stack cache.'
+        help='Disables the Paco CloudFormation stack cache.'
     )(func)
     func = click.option(
         '-y', '--yes',
@@ -136,19 +136,19 @@ def cloud_args(func):
 
 def aim_home_option(func):
     """
-    decorater to add AIM Home option
+    decorater to add Paco Home option
     """
     func = click.option(
         "--home",
         type=click.Path(exists=True, file_okay=False, resolve_path=True),
-        help="Path to an AIM Project configuration folder. Can also be set with the environment variable AIM_HOME.",
+        help="Path to an Paco project configuration folder. Can also be set with the environment variable PACO_HOME.",
     )(func)
     return func
 
 def init_aim_home_option(ctx, home):
-    # --home overrides the AIM_HOME Env var
+    # --home overrides the PACO_HOME Env var
     if not home:
-        home = os.environ.get('AIM_HOME')
+        home = os.environ.get('PACO_HOME')
     if home is not None:
         ctx.home = home
 

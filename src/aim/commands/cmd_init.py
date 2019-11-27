@@ -27,7 +27,7 @@ def init_args(func):
 @click.pass_context
 def init_group(aim_ctx):
     """
-    Commands for initializing AIM projects.
+    Commands for initializing Paco projects.
     """
     pass
 
@@ -36,7 +36,7 @@ def init_group(aim_ctx):
 @click.pass_context
 def init_project(ctx, project_name):
     """
-    Creates a new directory with a boilerplate AIM project in it.
+    Creates a new directory with a tempalted Paco project in it.
     """
     aim_ctx = ctx.obj
     aim_ctx.command = 'init project'
@@ -66,7 +66,7 @@ def init_credentials(ctx, home='.'):
 @click.pass_context
 def init_accounts(ctx, home='.'):
     """
-    Initializes the accounts for an AIM project.
+    Initializes the accounts for an Paco project.
     """
     aim_ctx = ctx.obj
     aim_ctx.command = 'init accounts'
@@ -80,7 +80,7 @@ def init_accounts(ctx, home='.'):
 @click.pass_context
 def init_netenv(ctx, home='.'):
     """
-    Initializes a netenv resource for an AIM project.
+    Initializes a netenv resource for an Paco project.
     """
     aim_ctx = ctx.obj
     aim_ctx.command = 'init netenv'

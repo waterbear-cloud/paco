@@ -62,7 +62,7 @@ setup(
     package_dir={'': 'src'},
     entry_points={
         'console_scripts': [
-            'aim = aim.commands.cli:cli',
+            'paco = aim.commands.cli:cli',
             'paco_doc = aim.doc.docschema:aim_schema_generate',
         ]
     },

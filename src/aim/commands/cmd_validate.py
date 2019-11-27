@@ -7,7 +7,7 @@ from aim.commands.helpers import (
 )
 
 
-@click.command('validate', short_help='Validate an AIM project')
+@click.command('validate', short_help='Validate a Paco project')
 @aim_home_option
 @cloud_args
 @cloud_options
