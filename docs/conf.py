@@ -18,9 +18,8 @@ html_theme_options = {
     'includehidden': True,
     'titles_only': False
 }
-html_logo = './images/paco-logo.png'
+html_logo = '_static/images/paco-logo.png'
 html_static_path = ['_static',]
-
 
 def setup(app):
     app.add_stylesheet('css/aim.css')

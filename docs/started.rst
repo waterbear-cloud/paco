@@ -93,11 +93,11 @@ install a CloudFormation template that will create a dedicated User and Role to 
      "Create stack (with new resources (standard))" button. Choose "Upload a template file" and
      then "Choose file" and choose the PacoInitialization.yaml file. Then click "Next".
 
-     .. image:: ./images/quickstart101-create-stack-init.png
+     .. image:: _static/images/quickstart101-create-stack-init.png
 
   #. Enter "PacoAccess" as the Stack name and enter the name of a new IAM User. Then click "Next".
 
-     .. image:: ./images/quickstart101-stack-init-details.png
+     .. image:: _static/images/quickstart101-stack-init-details.png
 
   #. On the "Configure stack options" screen you can leave everything default and click "Next".
      On the "Review PacoInitialization" you can also leave all the defaults click
@@ -112,7 +112,7 @@ Next you will need to set-up the new User account with an API key:
   1. In the AWS Console, go to the Identity and Access Management (IAM) Service, click on "Users"
      and click on the User name you supplied earlier. Then click on the "Security credentials" tab.
 
-     .. image:: ./images/quickstart101-user-start.png
+     .. image:: _static/images/quickstart101-user-start.png
 
   #. Set-up multi-factor authentication (MFA). Where it says, "Assigned MFA device" click on "Manage".
      Choose "Virtual MFA device" and use either Authy_ or `Google Authenticator`_ on your computer or phone

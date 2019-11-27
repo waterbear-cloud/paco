@@ -23,9 +23,9 @@ in the development environment and a minimum of two t2.medium's in the productio
 configuration will have the production environment disabled, so that you will learn
 how to provision each environment separately.
 
-    .. image:: ./images/simple-dev-env.png
+    .. image:: _static/images/simple-dev-env.png
 
-    .. image:: ./images/simple-prod-env.png
+    .. image:: _static/images/simple-prod-env.png
 
 Install Paco
 ------------
@@ -65,12 +65,12 @@ quickstarts.
      and then "Choose file" and choose the PacoInitialization.yaml file.
      Then click "Next".
 
-     .. image:: ./images/quickstart101-create-stack-init.png
+     .. image:: _static/images/quickstart101-create-stack-init.png
 
   #. Enter "PacoInitialization" as the Stack name and enter
      the name of a new IAM User. Then click "Next".
 
-     .. image:: ./images/quickstart101-stack-init-details.png
+     .. image:: _static/images/quickstart101-stack-init-details.png
 
   #. On the "Configure stack options" screen you can leave everything
      default and click "Next". On the "Review PacoInitialization" you
@@ -85,7 +85,7 @@ quickstarts.
      to the Paco Administrator role. For this quickstart, it's not necessary, but is
      useful when you have a multi-account set-up and watch to easily switch between accounts.
 
-     .. image:: ./images/quickstart101-stack-outputs.png
+     .. image:: _static/images/quickstart101-stack-outputs.png
 
 .. _PacoInitialization.yaml: ./_static/templates/PacoInitialization.yaml
 
@@ -94,7 +94,7 @@ Next you will need to set-up the new user account and create an API key. Follow 
   1. In the AWS Console, go to the Identity and Access Management (IAM) Service, click on "Users"
      and click on the User name you supplied earlier. Then click on the "Security credentials" tab.
 
-     .. image:: ./images/quickstart101-user-start.png
+     .. image:: _static/images/quickstart101-user-start.png
 
   #. Set-up multi-factor authentication (MFA). As this account has full administrator access, it
      is critical to keep this secure. The delegate role is configured so that it can only be
@@ -145,7 +145,7 @@ on the `Paco Configuration`_ page.
     think carefully as after you launch prod, you will be stuck
     with them for a long time ...
 
-    .. image:: ./images/aim-name-parts.png
+    .. image:: _static/images/aim-name-parts.png
 
 The ``aim init`` command will create a skeleton directory structure
 to help you get started quickly.
@@ -565,13 +565,13 @@ You should see the following output on the CLI:
 While this is running, you can visit the AWS Console and go to the CloudFormation service and watch
 the stacks being launched. You will see the stack ``NE-mynet-dev-Net-VPC`` created first.
 
-    .. image:: ./images/simple-stack-one.png
+    .. image:: _static/images/simple-stack-one.png
 
 Where possible, Paco will launch multiple stacks at once, for example, the web and public subnets stacks
 will both be created at the same time. It will take about 10 minutes for all of the stacks to be created
 to build the ``dev`` environment. When it's done you should see eight stacks,
 
-    .. image:: ./images/simple-stack-two.png
+    .. image:: _static/images/simple-stack-two.png
 
 Notice that stack names such as ``NE-mynet-dev-App-myapp-ASG-site-web`` are built by concatenating
 together the names you chose when you created the Paco project. You can use the CloudFormation search
@@ -579,16 +579,16 @@ feature to display just the stacks requried a particular aspect of your environm
 search for ``dev-App`` to display the stacks that provision the application resources for the dev environment,
 or ``dev-Net`` to display the stacks that provision the network resources for that environment.
 
-    .. image:: ./images/simple-stack-three.png
+    .. image:: _static/images/simple-stack-three.png
 
 Now visit the EC2 service in the AWS Console and you should see an instance running:
 
-    .. image:: ./images/simple-ec2-one.png
+    .. image:: _static/images/simple-ec2-one.png
 
 Then click on **Load Balancers** in the EC2 Resources and you should see an application load balancer
 running:
 
-    .. image:: ./images/simple-alb-one.png
+    .. image:: _static/images/simple-alb-one.png
 
 Copy the DNS name to the clipboard and paste it into your web browser. Your application should
 return a static web page:

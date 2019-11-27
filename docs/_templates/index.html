@@ -23,7 +23,7 @@
   <body class="paco-body">
 
   <div class="waterbear-header">
-      <a href="https://waterbear.cloud"><img src="_images/waterbear-cloud-url-head-1.png" alt="Waterbear Cloud" height="25" /></a>
+      <a href="https://waterbear.cloud"><img src="{{ pathto('_static/images/waterbear-cloud-url-head-1.png', 1) }}" alt="Waterbear Cloud" height="25" /></a>
   </div>
 
   <div class="paco-container">
@@ -34,10 +34,10 @@
 
   <div itemprop="articleBody">
 
-    <img class="biglogo" src="_images/paco-logo.png">
+    <img class="biglogo" src="{{ pathto('_static/images/paco-logo.png', 1) }}">
 
     <div class="paco-section">
-    <img alt="Paco provision" class="paco-right" src="_images/paco-provision.png" />
+    <img alt="Paco provision" class="paco-right" src="{{ pathto('_static/images/paco-provision.png', 1) }}" />
     <h1>Use Paco to provision and manage your AWS environments</h1>
     <ul>
       <li><p><em class="fa fa-check"></em> 100% automation of the creation and management of your cloud resources.</p></li>
@@ -51,7 +51,7 @@
     </div>
 
     <div class="paco-section">
-    <img alt="_images/clone-envs.png" class="paco-left" src="_images/clone-envs.png" />
+    <img alt="_images/clone-envs.png" class="paco-left" src="{{ pathto('_static/images/clone-envs.png', 1) }}" />
     <h1>Turnkey AWS solutions, repeatable environments and DRY configuration</h1>
     <ul>
         <li><p><em class="fa fa-check"></em> Complete turnkey solutions out-of-the box.</p></li>
@@ -86,7 +86,7 @@
     </div>
 
     <div class="paco-section">
-    <img alt="_images/example_yaml.png" class="paco-right" src="_images/example_yaml.png" />
+    <img alt="_images/example_yaml.png" class="paco-right" src="{{ pathto('_static/images/example_yaml.png', 1) }}" />
     <h1>Declarative semantic configuration for your cloud</h1>
     <ul>
       <li><p><em class="fa fa-check"></em> Declarative configuration needed only.</p></li>
@@ -102,8 +102,8 @@
       <h2>Install Paco and get started today</h2>
       <p>Paco is free and open source with the <a class="reference external" href="https://github.com/waterbear-cloud/aim/">source code</a>
           on GitHub.</p>
-      <p>Get started by <a class="reference external" href="./install.html">installing</a> Paco and
-      <a class="reference external" href="./started.html">connecting it to your AWS account</a>.</p>
+      <p>Get started by <a class="reference external" href="{{ pathto("install") }}">installing</a> Paco and
+      <a class="reference external" href="{{ pathto("started") }}">connecting it to your AWS account</a>.</p>
 
     </div>
 
