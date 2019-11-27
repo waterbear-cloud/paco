@@ -18,10 +18,10 @@ Paco CLI
    cli
 
 Paco project configuration
----------------------------
+--------------------------
 
 .. toctree::
-   :caption: YAML Configuration
+   :caption: Paco project configuration
    :maxdepth: 3
 
    paco-config

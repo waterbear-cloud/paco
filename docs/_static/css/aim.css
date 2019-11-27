@@ -34,6 +34,36 @@
   margin: 12px 30px 10px 0px;
 }
 
+.paco-links ul {
+  list-style-type: none;
+  margin: 18px 0 0 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #333;
+}
+
+.paco-links li {
+  float: left;
+}
+
+li.paco-doc {
+  color: #e1e1e1;
+  padding: 12px 16px;
+  background-color: #afafaf;
+}
+
+.paco-links li a {
+  display: block;
+  color: white;
+  text-align: center;
+  padding: 12px 16px;
+  text-decoration: none;
+}
+
+.paco-links li a:hover {
+  background-color: #111;
+}
+
 /* navigation */
 
 .wy-side-nav-search {
