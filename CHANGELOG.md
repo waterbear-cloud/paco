@@ -1,8 +1,12 @@
-Changelog for aim
-=================
+Changelog for paco
+==================
 
 3.2.0 (unreleased)
 ------------------
+
+- AIM has been renamed to Paco: Prescribed automation for cloud orchestration.
+  The CLI is now ``paco`` with a PACO_HOME environment variables. The
+  PyPI package is at ``paco-cloud``.
 
 - AWS Backup service is supported by AIM. Create BackupVaults with BackupPlans and BackupSelections.
 
