@@ -1,2 +1,2 @@
-export PS1="(aim-dev) \h \W$ "
+export PS1="(paco-dev) \h \W$ "
 export PATH=${buildout:bin-directory}:$PATH

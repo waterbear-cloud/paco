@@ -12,11 +12,11 @@ from aim.commands.helpers import pass_aim_context
 @click.group()
 @click.version_option(
     version=pkg_resources.require("aim")[0].version,
-    prog_name="AIM: Application Infrastructure Manager"
+    prog_name="Paco: Prescribed automation for cloud orchestration"
 )
 @pass_aim_context
 def cli(ctx):
-    """AIM: Application Infrastructure Manager"""
+    """Paco: Prescribed automation for cloud orchestration"""
     pass
 
 cli.add_command(init_group)

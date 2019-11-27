@@ -3,14 +3,14 @@
 Quickstart Lab 101
 ==================
 
-This quickstart will walk you through creating and provisioning an AIM project.
-An AIM project is a directory of YAML files that semantically describes an
+This quickstart will walk you through creating and provisioning an Paco project.
+An Paco project is a directory of YAML files that semantically describes an
 Infrastructure as code (IaC) project. It consists of
-data for concepts such as networks, applications and environments. AIM projects
-can be provisioned to AWS using the AIM CLI.
+data for concepts such as networks, applications and environments. Paco projects
+can be provisioned to AWS using the Paco CLI.
 
-You will learn how to create an AIM project that hosts a simple web application.
-You will copy a starting AIM project template, and provision the resources
+You will learn how to create an Paco project that hosts a simple web application.
+You will copy a starting Paco project template, and provision the resources
 it defines to an AWS account. This will give you simple but working application.
 Later Quickstarts will demonstrate how to add a bastion, monitoring,
 alerting and a CI/CD.
@@ -23,57 +23,57 @@ in the development environment and a minimum of two t2.medium's in the productio
 configuration will have the production environment disabled, so that you will learn
 how to provision each environment separately.
 
-    .. image:: ./images/simple-dev-env.png
+    .. image:: _static/images/simple-dev-env.png
 
-    .. image:: ./images/simple-prod-env.png
+    .. image:: _static/images/simple-prod-env.png
 
-Install AIM
------------
+Install Paco
+------------
 
-The AIM application is installable as a Python package. This will give you the ``aim`` command on
-your CLI. The AIM CLI will read AIM Projects and provision AWS Resources from it.
+The Paco application is installable as a Python package. This will give you the ``aim`` command on
+your CLI. The Paco CLI will read Paco Projects and provision AWS Resources from it.
 
-You can install AIM with pip:
+You can install Paco with pip:
 
 ``pip install aim``
 
 For more details, see the Installation_ page. After you have installed
-AIM you should have ``aim`` available on your comand-line.
+Paco you should have ``aim`` available on your comand-line.
 Try running ``aim --help`` to confirm that's it's properly installed.
 
 .. _Installation: ./install.html
 
-Create an AIM Administration User
----------------------------------
+Create an Paco Administration User
+----------------------------------
 
 You will create an new AWS IAM User that only has permissions to switch to a
-role that can delegate administrator access to AIM. These steps will involve
+role that can delegate administrator access to Paco. These steps will involve
 installing a CloudFormation template to create the IAM User and IAM Role,
 then setting up the new User account with MFA and creating an API key.
 
 First, to create the user and role, follow the steps below to create a CloudFormation
-stack from our AIMInitialization.yaml_ template. It is possible to use AIM with an existing
+stack from our PacoInitialization.yaml_ template. It is possible to use Paco with an existing
 IAM User account, but it is highly recommended to use a dedicated user account.
 By using the CloudFormation template, you can simply delete the CloudFormation stack
 when you are finished and it will remove all aim access that you need for these
 quickstarts.
 
-  1. Download the AIMInitialization.yaml_ CloudFormation template.
+  1. Download the PacoInitialization.yaml_ CloudFormation template.
 
   #. Access your AWS Console, visit the CloudFormation Service
      and click on the "Create stack" button. Choose "Upload a template file"
-     and then "Choose file" and choose the AIMInitialization.yaml file.
+     and then "Choose file" and choose the PacoInitialization.yaml file.
      Then click "Next".
 
-     .. image:: ./images/quickstart101-create-stack-init.png
+     .. image:: _static/images/quickstart101-create-stack-init.png
 
-  #. Enter "AIMInitialization" as the Stack name and enter
+  #. Enter "PacoInitialization" as the Stack name and enter
      the name of a new IAM User. Then click "Next".
 
-     .. image:: ./images/quickstart101-stack-init-details.png
+     .. image:: _static/images/quickstart101-stack-init-details.png
 
   #. On the "Configure stack options" screen you can leave everything
-     default and click "Next". On the "Review AIMInitialization" you
+     default and click "Next". On the "Review PacoInitialization" you
      can also leave all the defaults click
      "I acknowledge that AWS CloudFormation might create IAM resources with custom names."
      to confirm that this stack can create an IAM User.
@@ -82,19 +82,19 @@ quickstarts.
   #. Wait a couple minutes for the stack to finish create. Take note on the "Outputs"
      tab that there is a "SigninUrl" field. These is an optional URL you can use if
      you want to use the same user that you use the aws cli with to login to and switch
-     to the AIM Administrator role. For this quickstart, it's not necessary, but is
+     to the Paco Administrator role. For this quickstart, it's not necessary, but is
      useful when you have a multi-account set-up and watch to easily switch between accounts.
 
-     .. image:: ./images/quickstart101-stack-outputs.png
+     .. image:: _static/images/quickstart101-stack-outputs.png
 
-.. _AIMInitialization.yaml: ./_static/templates/AIMInitialization.yaml
+.. _PacoInitialization.yaml: ./_static/templates/PacoInitialization.yaml
 
 Next you will need to set-up the new user account and create an API key. Follow these steps:
 
   1. In the AWS Console, go to the Identity and Access Management (IAM) Service, click on "Users"
      and click on the User name you supplied earlier. Then click on the "Security credentials" tab.
 
-     .. image:: ./images/quickstart101-user-start.png
+     .. image:: _static/images/quickstart101-user-start.png
 
   #. Set-up multi-factor authentication (MFA). As this account has full administrator access, it
      is critical to keep this secure. The delegate role is configured so that it can only be
@@ -105,12 +105,12 @@ Next you will need to set-up the new user account and create an API key. Follow 
 
   #. Create an AWS Access Key. While still on the "Security credentials" tab, click on "Create access key".
      You will be given an "Access key ID" and "Secret access key". Save these somewhere safe and secure.
-     You will need these credentials later when you set-up the AIM project.
+     You will need these credentials later when you set-up the Paco project.
 
-Now you are ready to create an AIM project. Note that when you are finished and wish to clean-up all AWS
+Now you are ready to create an Paco project. Note that when you are finished and wish to clean-up all AWS
 resources for this quickstart, you will first need to return to this user and manually delete the
 Assigned MFA Device and Access key. Then you can go to the CloudFormation service and delete the
-AIMInitialization stack. If you try and delete the stack without doing this first, you will get the
+PacoInitialization stack. If you try and delete the stack without doing this first, you will get the
 error message "DELETE_FAILED: Cannot delete entity, must delete MFA device first.".
 
 .. _Authy: https://authy.com/
@@ -118,17 +118,17 @@ error message "DELETE_FAILED: Cannot delete entity, must delete MFA device first
 .. _`Google Authenticator`: https://en.wikipedia.org/wiki/Google_Authenticator
 
 
-Create an AIM project
----------------------
+Create an Paco project
+----------------------
 
-An AIM project is a directory of specially named sub-directories
+An Paco project is a directory of specially named sub-directories
 containing YAML files each requiring speccific formats.
 These configuration sub-directories and files are documented
-on the `AIM Configuration`_ page.
+on the `Paco Configuration`_ page.
 
-.. _`AIM Configuration`: ./aim-config.html
+.. _`Paco Configuration`: ./paco-config.html
 
-.. Attention:: Names are used extensively in AIM projects. Every object has a name.
+.. Attention:: Names are used extensively in Paco projects. Every object has a name.
     All Accounts, NetworkEnvironments, Applications, Environments and more will be named.
     These **names should be as short as possible** as they are concatened together
     to create unique AWS Resource Names.
@@ -145,7 +145,7 @@ on the `AIM Configuration`_ page.
     think carefully as after you launch prod, you will be stuck
     with them for a long time ...
 
-    .. image:: ./images/aim-name-parts.png
+    .. image:: _static/images/aim-name-parts.png
 
 The ``aim init`` command will create a skeleton directory structure
 to help you get started quickly.
@@ -154,10 +154,10 @@ to help you get started quickly.
 
     $ aim init
 
-    AIM Project initialization
-    --------------------------
+    Paco Project initialization
+    ---------------------------
 
-    About to create a new AIM Project directory at /Users/username/projects/myproj
+    About to create a new Paco Project directory at /Users/username/projects/myproj
 
     Select starting_template:
     1 - empty
@@ -177,18 +177,18 @@ and you don't have to worry about the length.
 .. code-block:: text
 
     project_name [myproj]: myproj
-    project_title [My AIM Project]: My AIM Project
+    project_title [My Paco Project]: My Paco Project
 
 Next you will be asked for network and application names and titles. In this simple
 walkthrough, you will create one network and one application. In more complex
-AIM uses, you can create a single network and deploy mulitple applications into it.
+Paco uses, you can create a single network and deploy mulitple applications into it.
 
 .. code-block:: text
 
     network_environment_name [mynet]: mynet
-    network_environment_title [My AIM NetworkEnvironment]: My AIM NetworkEnvironment
+    network_environment_title [My Paco NetworkEnvironment]: My Paco NetworkEnvironment
     application_name [myapp]: myapp
-    application_title [My AIM Application]: My AIM Application
+    application_title [My Paco Application]: My Paco Application
 
 
 You will be asked for a default AWS Region name, if you don't know
@@ -209,14 +209,14 @@ You can leave this blank if you don't have them handy, and edit the file at
     aws_access_key_id [Administrator AWS Access Key ID]: ********
     aws_secret_access_key [Administrator AWS Secret Access Key]: ********
 
-At this point you should have a working AIM Project. You can run the
+At this point you should have a working Paco Project. You can run the
 ``aim describe`` command to get a summary of your project. This will
 also ensure that your files are in the correct format.
 
 .. code-block:: text
 
     $ aim --home ./myproj/ describe
-    Project: myproj - My first AIM project
+    Project: myproj - My first Paco project
     Location: /Users/username/projects/myproj
 
     Accounts
@@ -225,11 +225,11 @@ also ensure that your files are in the correct format.
     Network Environments
     - basic_network - Basic Network
 
-Review the AIM project configuration
-------------------------------------
+Review the Paco project configuration
+-------------------------------------
 
-Your format of your AIM project directory is documented
-on the `AIM Configuration`_ page. If you look in this directory,
+Your format of your Paco project directory is documented
+on the `Paco Configuration`_ page. If you look in this directory,
 you will see a file at ``./NetworkEnvironments/mynet.yaml``.
 
 This YAML file contains all of your main configuration. It will
@@ -240,7 +240,7 @@ this file will describe your network and looks like this:
 
     network:
 
-        title: "My AIM Network"
+        title: "My Paco Network"
         availability_zones: 2
         enabled: true
         vpc:
@@ -302,7 +302,7 @@ section. There is only one application in this quickstart and it is named ``myap
     applications:
 
         myapp:
-            title: My AIM Application
+            title: My Paco Application
             enabled: true
             managed_updates: true
             groups:
@@ -432,7 +432,7 @@ provisioned.
             eu-central-1:
                 enabled: false
 
-.. _`AIM Configuration`: ./aim-config.html
+.. _`Paco Configuration`: ./paco-config.html
 
 
 Provision an EC2 keypair
@@ -444,7 +444,7 @@ to use this keypair for SSH access.
 
 The ``aim provision`` command is used to create AWS resources. The provision
 command takes the name of a controller and a component. This combination
-of controller and component will map to different sections of an AIM project
+of controller and component will map to different sections of an Paco project
 and provision AWS resources to support that configuration.
 
 The EC2 controller and keypair component maps to the ``keypairs:`` configuration
@@ -498,10 +498,10 @@ Provision an environment
 
 The ``aim provision`` command create or updates the AWS resources needed for environments.
 
-This command needs the path to an AIM Project directory. For this command you can either
-supply this argument with the ``--home`` switch, or set the environment variable ``AIM_HOME``.
+This command needs the path to an Paco Project directory. For this command you can either
+supply this argument with the ``--home`` switch, or set the environment variable ``Paco_HOME``.
 
-The provision command can act on different AIM configuration types, such as NetEnv, S3, Route53 and IAM.
+The provision command can act on different Paco configuration types, such as NetEnv, S3, Route53 and IAM.
 These types are called controllers and they control how CloudFormation stacks are provisioned.
 The NetEnv controller will provision a complete NetworkEnvironment YAML file, which you can
 run to provision the ``dev`` environment for the ``mynet`` NetworkEnvironment.
@@ -565,30 +565,30 @@ You should see the following output on the CLI:
 While this is running, you can visit the AWS Console and go to the CloudFormation service and watch
 the stacks being launched. You will see the stack ``NE-mynet-dev-Net-VPC`` created first.
 
-    .. image:: ./images/simple-stack-one.png
+    .. image:: _static/images/simple-stack-one.png
 
-Where possible, AIM will launch multiple stacks at once, for example, the web and public subnets stacks
+Where possible, Paco will launch multiple stacks at once, for example, the web and public subnets stacks
 will both be created at the same time. It will take about 10 minutes for all of the stacks to be created
 to build the ``dev`` environment. When it's done you should see eight stacks,
 
-    .. image:: ./images/simple-stack-two.png
+    .. image:: _static/images/simple-stack-two.png
 
 Notice that stack names such as ``NE-mynet-dev-App-myapp-ASG-site-web`` are built by concatenating
-together the names you chose when you created the AIM project. You can use the CloudFormation search
+together the names you chose when you created the Paco project. You can use the CloudFormation search
 feature to display just the stacks requried a particular aspect of your environment. For example,
 search for ``dev-App`` to display the stacks that provision the application resources for the dev environment,
 or ``dev-Net`` to display the stacks that provision the network resources for that environment.
 
-    .. image:: ./images/simple-stack-three.png
+    .. image:: _static/images/simple-stack-three.png
 
 Now visit the EC2 service in the AWS Console and you should see an instance running:
 
-    .. image:: ./images/simple-ec2-one.png
+    .. image:: _static/images/simple-ec2-one.png
 
 Then click on **Load Balancers** in the EC2 Resources and you should see an application load balancer
 running:
 
-    .. image:: ./images/simple-alb-one.png
+    .. image:: _static/images/simple-alb-one.png
 
 Copy the DNS name to the clipboard and paste it into your web browser. Your application should
 return a static web page:
@@ -609,7 +609,7 @@ delete your environments and networks.
     and run ``aim provision NetEnv dev`` to recreate your envrionment.
     However, it does take about 20 minutes to spin up a new environment.
 
-    If you have completely deleted aim or your AIM project, and left
+    If you have completely deleted aim or your Paco project, and left
     the AWS resources provisioned, then you can login to the AWS Console
     and go to the CloudFormation service. There you can manually delete
     all of the CloudFormation stacks to remove everything from your

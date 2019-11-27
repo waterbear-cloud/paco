@@ -12,7 +12,7 @@ EC2 instance and SecurityGroup, then you will deploy those updates to AWS. The E
 instance will be launched in the public subnets, where a new SecurityGroup will
 allow SSH access to the web servers in your private subnet.
 
-    .. image:: ./images/quickstart102-dev-bastion.png
+    .. image:: _static/images/quickstart102-dev-bastion.png
 
 Add bastion configuration
 -------------------------
@@ -67,7 +67,7 @@ at the YAML location ``applications:  myapp: groups``:
   the sections to verify that your configuration has the correct indentation.
   You should see something like this:
 
-  .. image:: ./images/quickstart102-indent-folded.png
+  .. image:: _static/images/quickstart102-indent-folded.png
 
 You will see that in the ASG resource you added that there is a reference to
 a new security group:
@@ -257,7 +257,7 @@ existing ones as necessary.
 After this you should be able to go to the EC2 Service in the AWS Console and see a
 new EC2 instance running.
 
-.. image:: ./images/quickstart102-instance.png
+.. image:: _static/images/quickstart102-instance.png
 
 .. Attention:: If you are running against a real-world or production deployment,
   it is highly recommended to save your AIM project to version control before
@@ -295,7 +295,7 @@ a newly launched instance in the bastion autoscaling group using UserData comman
 Now go back to the EC2 Service in the AWS Console and find the private IP address
 of the web server:
 
-.. image:: ./images/quickstart102-private-ip.png
+.. image:: _static/images/quickstart102-private-ip.png
 
 Exit the bastion and copy your ``aimkeypair.pem`` file to the bastion so that it
 can be used to connect to the private web servers.

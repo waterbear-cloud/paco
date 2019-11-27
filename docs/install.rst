@@ -3,30 +3,30 @@
 Installation
 ============
 
-AIM requires Python 3.7 or higher. As AIM requires newer release of Python, you may need to
+Paco requires Python 3.7 or higher. As Paco requires newer release of Python, you may need to
 download and install a Python_ interpreter.
 
-Ideally you will want to install AIM in a self-contained Python environment. For some guidance
+Ideally you will want to install Paco in a self-contained Python environment. For some guidance
 on managing Python applications check out `Python on macos`_ or `Python on Windows`_.
 
-Install the `aim` Python package. If you are using `pip3` then you would run:
+Install the `paco-cloud` Python package. If you are using `pip3` then you would run:
 
 .. code-block:: bash
 
-  $ pip3 install aim
+  $ pip3 install paco-cloud
 
-You should now have a CLI application named `aim`.
+You should now have a CLI application named `paco`.
 
 .. code-block:: bash
 
-  $ aim --help
-  Usage: aim [OPTIONS] COMMAND [ARGS]...
+  $ paco --help
+  Usage: paco [OPTIONS] COMMAND [ARGS]...
 
-    AIM: Application Infrastructure Manager
+    Paco: Prescribed Automation for Cloud Orchestration
   ...
 
-It is recommended for production usage to pin the version AIM that you are running with to the
-project that contains the AIM configuration files.
+It is recommended for production usage to pin the version Paco that you are running with to the
+project that contains the Paco configuration files.
 
 
 .. _Python: https://www.python.org/downloads/

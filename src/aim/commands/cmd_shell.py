@@ -15,7 +15,7 @@ def shell_command(aim_ctx, netenv_id, env_id, region, instance_ref, home='.'):
     aim_ctx.command = 'shell'
     init_aim_home_option(aim_ctx, home)
     if not aim_ctx.home:
-        print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')
+        print('AIM configuration directory needs to be specified with either --home or PACO_HOME environment variable.')
         sys.exit()
 
     aim_ctx.load_project()

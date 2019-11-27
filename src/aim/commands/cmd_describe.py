@@ -5,7 +5,7 @@ from aim.commands.helpers import pass_aim_context, aim_home_option, init_aim_hom
 from aim.utils.cache import load_cached_project
 
 
-@click.command('describe', short_help='Describe an AIM project')
+@click.command('describe', short_help='Describe a Paco project')
 @aim_home_option
 @pass_aim_context
 @handle_exceptions
@@ -14,7 +14,7 @@ def describe_command(ctx, home='.'):
     ctx.command = 'describe'
     init_aim_home_option(ctx, home)
     if not ctx.home:
-        print('AIM configuration directory needs to be specified with either --home or AIM_HOME environment variable.')
+        print('Paco configuration directory needs to be specified with either --home or PACO_HOME environment variable.')
         sys.exit()
     project = load_cached_project(ctx.home)
 

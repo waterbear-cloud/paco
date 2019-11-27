@@ -204,7 +204,7 @@ def create_log_col(col='', col_size=0, message_len=0, wrap_text=False):
 
 class AimContext(object):
     """
-    Contains `aim` CLI arguments and options and manages command-line interactions.
+    Contains `paco` CLI arguments and options and manages command-line interactions.
     """
 
     def __init__(self, home=None):
@@ -263,7 +263,7 @@ class AimContext(object):
             return
 
         # Load the model from YAML
-        print("Loading AIM Project at %s" % (self.home))
+        print("Loading Paco project: %s" % (self.home))
         self.project = load_project_from_yaml(self.project_folder, None)
 
         # Settings

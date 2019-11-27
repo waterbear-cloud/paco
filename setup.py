@@ -15,21 +15,21 @@ docs_extras = [
 ]
 
 setup(
-    name='aim',
+    name='paco-cloud',
     version=version,
     author='Waterbear Cloud',
     author_email='hello@waterbear.cloud',
-    description='AIM: Application Infrastructure Manager',
+    description='Paco: Prescribed automation for cloud orchestration',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url='https://github.com/waterbear-cloud/aim',
+    url='https://github.com/waterbear-cloud/paco',
     classifiers=[
         "Intended Audience :: Developers",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3.7",
         "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
     ],
-    keywords=['AWS','Waterbear','Cloud','Infrastructure-as-Code'],
+    keywords=['AWS','Waterbear','Cloud','Infrastructure as Code', 'CloudFormation'],
     install_requires=[
         'aim.models',
         'boto3',
@@ -62,8 +62,8 @@ setup(
     package_dir={'': 'src'},
     entry_points={
         'console_scripts': [
-            'aim = aim.commands.cli:cli',
-            'aim_doc = aim.doc.docschema:aim_schema_generate',
+            'paco = aim.commands.cli:cli',
+            'paco_doc = aim.doc.docschema:aim_schema_generate',
         ]
     },
     extras_require={
