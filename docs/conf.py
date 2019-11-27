@@ -22,7 +22,7 @@ html_logo = '_static/images/paco-logo.png'
 html_static_path = ['_static',]
 
 def setup(app):
-    app.add_stylesheet('css/aim.css')
+    app.add_stylesheet('css/paco.css')
 
 
 # Add any Sphinx extension module names here, as strings. They can be
@@ -33,10 +33,8 @@ extensions = [
     'sphinx_fontawesome'
     ]
 
-# Looks for aim.model's objects
+# Looks for paco.model's objects
 intersphinx_mapping = {
-#    'aim.models':
-#    ('https://github.com/waterbear-cloud/aim.models', None),
 }
 
 # Add any paths that contain templates here, relative to this directory.
