@@ -1,18 +1,22 @@
 Changelog for paco
 ==================
 
-3.2.1 (unreleased)
+3.3.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Changed
+
+- Changed dependency from `aim.models` to `paco.models`
+
+- Renamed all things `aim` to `paco`.
 
 
 3.2.0 (2019-11-27)
 ------------------
 
 - AIM has been renamed to Paco: Prescribed automation for cloud orchestration.
-  The CLI is now ``paco`` with a PACO_HOME environment variables. The
-  PyPI package is at ``paco-cloud``.
+  The CLI is now `paco` with a PACO_HOME environment variables. The
+  PyPI package is at `paco-cloud`.
 
 - AWS Backup service is supported by paco. Create BackupVaults with BackupPlans and BackupSelections.
 
