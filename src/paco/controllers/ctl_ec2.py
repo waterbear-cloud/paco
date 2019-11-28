@@ -28,7 +28,7 @@ class EC2Controller(Controller):
             for _ in range(len(service_name)):
                 service_name_space += " "
             service_name = service_name_space
-        print("%s%s%s: %s" % (header, service_name, keypair.name, message))
+        print("%s%s%s: %s" % (header, service_name, keypair.keypair_name, message))
 
     def init(self, command=None, model_obj=None):
         if self.init_done:
@@ -57,7 +57,7 @@ class EC2Controller(Controller):
             )
             try:
                 keypair._aws_info = keypair._ec2_client.describe_key_pairs(
-                    KeyNames=[keypair.name]
+                    KeyNames=[keypair.keypair_name]
                 )['KeyPairs'][0]
             except ClientError as e:
                 if e.response['Error']['Code'] == 'InvalidKeyPair.NotFound':
@@ -79,7 +79,7 @@ class EC2Controller(Controller):
             if hasattr(keypair, '_aws_info'):
                 self.print_keypair(keypair, "Key pair already provisioned.")
             else:
-                keypair._aws_info = keypair._ec2_client.create_key_pair(KeyName=keypair.name)
+                keypair._aws_info = keypair._ec2_client.create_key_pair(KeyName=keypair.keypair_name)
                 self.print_keypair(keypair, "Key pair created successfully.")
                 self.print_keypair(keypair, "Account: %s" % (keypair._account_ctx.get_name()), sub_entry=True)
                 self.print_keypair(keypair, "Region:  %s" % (keypair.region), sub_entry=True)
@@ -90,7 +90,7 @@ class EC2Controller(Controller):
         for keypair in self.keypairs:
             if hasattr(keypair, '_aws_info'):
                 self.print_keypair(keypair,"Deleting key pair.")
-                keypair._ec2_client.delete_key_pair(KeyName=keypair.name)
+                keypair._ec2_client.delete_key_pair(KeyName=keypair.keypair_name)
                 self.print_keypair(keypair, "Delete successful.", sub_entry=True)
             else:
                 self.print_keypair(keypair, "Key pair does not exist.")
