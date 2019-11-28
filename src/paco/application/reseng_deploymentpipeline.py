@@ -2,6 +2,7 @@ from paco import cftemplates
 from paco.application.res_engine import ResourceEngine
 from paco.core.yaml import YAML
 from paco.models import schemas
+from paco import models
 
 yaml=YAML()
 yaml.default_flow_sytle = False
