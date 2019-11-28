@@ -26,6 +26,14 @@ Paco project configuration
 
    paco-config
 
+Paco cloud supoprt
+------------------
+
+.. toctree::
+   :caption: Paco cloud support
+   :maxdepth: 3
+
+   resourcesupport
 
 Copyright, Trademarks, and Attributions
 ---------------------------------------

@@ -45,7 +45,10 @@ source_suffix = '.rst'
 
 # The master toctree document.
 master_doc = 'contents'
-html_additional_pages = {'index': 'index.html'}
+html_additional_pages = {
+    'index': 'index.html',
+    'resourcesupport': 'resourcesupport.html'
+}
 
 
 # General substitutions.

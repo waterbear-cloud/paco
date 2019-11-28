@@ -1,0 +1,177 @@
+{% extends "layout.html" %}
+{% set title = _('Cloud resource support') %}
+{% block body %}
+  <h1>{{ _('Cloud resource support') }}</h1>
+
+  <p>These are the cloud resources currently support by Paco.</p>
+
+<table class="docutils align-default">
+  <colgroup>
+  <col style="width: 33%" />
+  <col style="width: 34%" />
+  <col style="width: 33%" />
+  </colgroup>
+  <thead>
+    <tr><th class="head" colspan="3">Application Resources</th></tr>
+  </thead>
+  <thead>
+    <tr class="row-odd">
+    <th class="head"><p>AWS Service</p></th>
+    <th class="head"><p>AWS Resources</p></th>
+    <th class="head"><p>Paco Resource Type</p></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><p>API Gateway</p></td>
+      <td><p>
+        AWS::ApiGateway::RestApi<br />
+        AWS::ApiGateway::Model<br />
+        AWS::ApiGateway::Resource<br />
+        AWS::ApiGateway::Method<br />
+        AWS::ApiGateway::Deployment<br />
+        AWS::ApiGateway::Stage
+      </p></td>
+      <td><p>ApiGateway</p></td>
+    </tr>
+
+    <tr>
+        <td><p>Certificate Manager</p></td>
+        <td><p></p></td>
+        <td><p>ACM</p></td>
+    </tr>
+    <tr>
+        <td><p>CloudFront</p></td>
+        <td><p>AWS::CloudFront::Distribution<br />
+          AWS::CloudFront::CloudFrontOriginAccessIdentity<br />
+          AWS::Route53::RecordSet<br />
+        </p></td>
+        <td><p>CloudFront</p></td>
+    </tr>
+
+    <tr>
+        <td><p>Code Deploy</p></td>
+        <td><p>AWS::CodeDeploy::Application<br />
+          AWS::CodeDeploy::DeploymentGroup<br />
+        </p></td>
+        <td><p>CodeDeployApplication</p></td>
+    </tr>
+
+    <tr>
+        <td><p>CodePipeline</p></td>
+        <td><p>
+          CodePipeline ActionTypeId<br/>
+          CodePipeline Action<br/>
+        </p></td>
+        <td><p>CodePipeBuildDeploy</p></td>
+    </tr>
+    <tr>
+        <td rowspan="4"><p>EC2</p></td>
+        <td><p>
+            AWS::AutoScaling::AutoScalingGroup<br />
+            AWS::AutoScaling::LaunchConfiguration<br />
+            AWS::AutoScaling::ScalingPolicy<br />
+            AWS::AutoScaling::LifecycleHook<br />
+            </p></td>
+        <td><p>AutoScalingGroup</p></td>
+    </tr>
+    <tr>
+        <td><p>
+            AWS::EC2::Volume
+            </p></td>
+        <td><p>EBS</p></td>
+    </tr>
+    <tr>
+        <td><p>
+            AWS::EC2::EIP
+            </p></td>
+        <td><p>EIP</p></td>
+    </tr>
+    <tr>
+        <td><p>
+            AWS::ElasticLoadBalancingV2::LoadBalancer<br />
+            AWS::ElasticLoadBalancingV2::TargetGroup<br />
+            AWS::ElasticLoadBalancingV2::Listener<br />
+            AWS::ElasticLoadBalancingV2::ListenerRule
+            </p></td>
+        <td><p>LBApplication</p></td>
+    </tr>
+
+    <tr>
+        <td><p>ElastiCache</p></td>
+        <td><p>
+            AWS::ElastiCache::ReplicationGroup<br />
+            AWS::ElastiCache::SubnetGroup
+            </p></td>
+        <td><p>ElastiCacheRedis</p></td>
+    </tr>
+
+    <tr>
+        <td><p>Elastic File System</p></td>
+        <td><p>
+            AWS::EFS::FileSystem<br />
+            AWS::EFS::MountTarget
+            </p></td>
+        <td><p>EFS</p></td>
+    </tr>
+
+    <tr>
+        <td><p>EventBridge</p></td>
+        <td><p>
+            AWS::Events::Rule
+            </p></td>
+        <td><p>EventsRule</p></td>
+    </tr>
+
+
+    <tr>
+        <td><p>Lambda</p></td>
+        <td><p>
+            AWS::Lambda::Function<br />
+            AWS::Lambda::Permission<br />
+            AWS::SNS::Subscription
+            </p></td>
+        <td><p>Lambda</p></td>
+    </tr>
+    <tr>
+      <td rowspan="2"><p>Relational Database Service (RDS)</p></td>
+      <td><p>AWS::RDS::DBInstance<br />
+        AWS::SecretsManager::SecretTargetAttachment</p></td>
+      <td><p>RDSMySQL</p></td>
+    </tr>
+    <tr>
+        <td><p>AWS::RDS::DBParameterGroup<br />
+          </p></td>
+        <td><p>DBParameterGroup</p></td>
+    </tr>
+    <tr>
+        <td><p>Route 53</p></td>
+        <td><p>
+            AWS::Route53::HealthCheck<br />
+            AWS::CloudWatch::Alarm
+            </p></td>
+        <td><p>Route53HealthCheck</p></td>
+    </tr>
+    <tr>
+        <td><p>S3</p></td>
+        <td><p>
+            AWS::S3::Bucket<br />
+            AWS::S3::BucketPolicy<br />
+            </p></td>
+        <td><p>S3Bucket</p></td>
+    </tr>
+    <tr>
+        <td><p>Simple Notification Service</p></td>
+        <td><p>
+            AWS::SNS::Topic<br />
+            AWS::SNS::Subscription<br />
+            AWS::SNS::TopicPolicy
+            </p></td>
+        <td><p>SNSTopic</p></td>
+    </tr>
+
+
+  </tbody>
+</table>
+
+{% endblock %}
