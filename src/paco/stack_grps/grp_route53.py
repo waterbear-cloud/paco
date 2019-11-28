@@ -16,7 +16,7 @@ class Route53StackGroup(StackGroup):
         # Initialize config with a deepcopy of the project defaults
         self.config = route53_config
         self.account_ctx = account_ctx
-        self.stack_list = []
+        self.zone_stack_map = {}
         if self.paco_ctx.legacy_flag('route53_hosted_zone_2019_10_12') == True:
             self.init_legacy()
         else:
@@ -36,7 +36,7 @@ class Route53StackGroup(StackGroup):
             )
             route53_stack = route53_template.stack
             route53_stack.set_termination_protection(True)
-            self.stack_list.append(route53_stack)
+            self.zone_stack_map[zone_id] = route53_stack
 
     def init_legacy(self):
         config_ref = 'resource.route53'
@@ -50,7 +50,7 @@ class Route53StackGroup(StackGroup):
 
         route53_stack = route53_template.stack
         route53_stack.set_termination_protection(True)
-        self.stack_list.append(route53_stack)
+        self.zone_stack_map[zone_id] = route53_stack
 
     def has_zone_id(self, zone_id):
         if self.config.account_has_zone(self.account_ctx.get_name(), zone_id):
@@ -58,8 +58,8 @@ class Route53StackGroup(StackGroup):
         return False
 
     def get_stack(self, zone_id):
-        if self.config.account_has_zone(self.account_ctx.get_name(), zone_id):
-            return self.stack_list[0]
+        if zone_id in self.zone_stack_map.keys():
+            return self.zone_stack_map[zone_id]
         return None
 
     def validate(self):
