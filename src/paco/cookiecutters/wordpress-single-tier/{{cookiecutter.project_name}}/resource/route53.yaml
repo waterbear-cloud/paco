@@ -1,0 +1,5 @@
+hosted_zones:
+  {{cookiecutter.application_name}}:
+    enabled: true
+    domain_name: example.com
+    account: paco.ref accounts.master

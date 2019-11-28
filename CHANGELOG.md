@@ -14,7 +14,7 @@ Changelog for paco
   The CLI is now ``paco`` with a PACO_HOME environment variables. The
   PyPI package is at ``paco-cloud``.
 
-- AWS Backup service is supported by AIM. Create BackupVaults with BackupPlans and BackupSelections.
+- AWS Backup service is supported by paco. Create BackupVaults with BackupPlans and BackupSelections.
 
 
 3.1.0 (2019-11-06)
@@ -114,7 +114,7 @@ Changelog for paco
 
 ### Added
 
-- New directory `aimdata` is created within an AIM Project by AIM. This is used to record state
+- New directory `aimdata` is created within an AIM Project by paco. This is used to record state
   of AIM provisioning. CloudFormation templates used to create stacks in AWS are cached as well
   as the last copy of the AIM Project YAML files. These files are used to speed up subsequent
   runs and more importantly can show you what is changed between AIM runs to make it easier to
@@ -156,12 +156,12 @@ Changelog for paco
   AWS Console. This requires deletion and reprovisioning of AWS resources. Templates now have new
   consistent ways to create their names, so this should be the last time this change happens.
 
-- CLI: References to NetworkEnvironments now use consistent `aim.ref` syntax, e.g.
+- CLI: References to NetworkEnvironments now use consistent `paco.ref` syntax, e.g.
   `aim provision netenv <ne>.<env>.<region>`
 
 - All stacks are created with Termination Protection set.
 
-- CF template base class `aim.cftemplates.cftemplates.CFTemplate` has new methods for creating consistent
+- CF template base class `paco.cftemplates.cftemplates.CFTemplate` has new methods for creating consistent
   AWS names: `create_resource_name()`, `create_resoruce_name_join()`, `create_cfn_logical_id()`,
   and `create_cfn_logical_id_join()`.
 
@@ -171,7 +171,7 @@ Changelog for paco
 
 - S3 controller now relies on the bucket name to come from the S3Bucket model object.
 
-- Lambda code.s3_bucket field can now be an aim.ref or a plain bucket name.
+- Lambda code.s3_bucket field can now be an paco.ref or a plain bucket name.
 
 - You can provision without specifying the region and it will include all regions in an env.
 
@@ -195,8 +195,8 @@ Changelog for paco
 
 ### Added
 
-- Moved aim reference generation into the Model. Model objects now have .aim_ref and
-  .aim_ref_parts properties which contain their aim.ref reference.
+- Moved aim reference generation into the Model. Model objects now have .paco_ref and
+  .paco_ref_parts properties which contain their paco.ref reference.
 
 - Added StackOutputsManger(). This now creates and maintains $AIM_HOME/ResourceMap.yaml
   which will include a complete list of all stack outputs that are referenced using the
@@ -216,7 +216,7 @@ Changelog for paco
 
 - Consolidated CFTemplates and Stack's and other Stack cleanups.
 
-- CloudWatch Alarms multi-Dimension Alarms now expect an aim.ref. CloudWatch Alarms are now Troposphere.
+- CloudWatch Alarms multi-Dimension Alarms now expect an paco.ref. CloudWatch Alarms are now Troposphere.
 
 
 1.4.0 (2019-08-21)
@@ -227,7 +227,7 @@ Changelog for paco
 - CloudTrail resource adds basic CloudTrail provisioning.
 
 - LogGroups are created for all groups that the CloudWatch Agent will require.
-  Uses the new Logging schema in aim.models.
+  Uses the new Logging schema in paco.models.
 
 - Added CloudFront application Resource
 
@@ -280,9 +280,9 @@ Changelog for paco
 ### Changed
 
  - AIM references have a new format! It's simpler and more consistent.
-   Every ref now starts with ``aim.ref ``.
+   Every ref now starts with ``paco.ref ``.
 
- - Created ``aim.utils`` to clean up AimContext object.
+ - Created ``paco.utils`` to clean up PacoContext object.
 
 1.1.0 (2019-07-24)
 ------------------
@@ -319,7 +319,7 @@ Changelog for paco
 
 ### Added
 
-- Initial documentation with AIM project site at https://aim.waterbear.cloud/en/latest/
+- Initial documentation with AIM project site at https://paco.waterbear.cloud/en/latest/
 
 - Added init command with ability to create starting templates for AIM projects
   with the cookiecutter project under the hood.
@@ -330,7 +330,7 @@ Changelog for paco
 
 - Document and refactor AIM CLI.
 
-- Moved yaml.py to aim.core
+- Moved yaml.py to paco.core
 
 - Refactored S3 Controller
 

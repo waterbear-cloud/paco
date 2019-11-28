@@ -6,7 +6,7 @@ semantic YAML files.
 
 # Resources
 
- - [Documentation](https://aim.waterbear.cloud)
+ - [Documentation](https://paco.waterbear.cloud)
 
  - [PyPI Package](https://pypi.org/project/paco/)
 

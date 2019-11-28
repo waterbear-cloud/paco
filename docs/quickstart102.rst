@@ -41,7 +41,7 @@ at the YAML location ``applications:  myapp: groups``:
         health_check_type: EC2
         instance_iam_role:
           enabled: true
-        instance_ami: aim.ref function.aws.ec2.ami.latest.amazon-linux-2
+        instance_ami: paco.ref function.aws.ec2.ami.latest.amazon-linux-2
         instance_key_pair: aimkeypair
         instance_monitoring: false
         instance_type: t2.micro
@@ -53,7 +53,7 @@ at the YAML location ``applications:  myapp: groups``:
         update_policy_max_batch_size: 1
         update_policy_min_instances_in_service: 0
         security_groups:
-          - aim.ref netenv.mynet.network.vpc.security_groups.myapp.bastion
+          - paco.ref netenv.mynet.network.vpc.security_groups.myapp.bastion
         user_data_script: |
           #!/bin/bash
           yum update -y
@@ -75,7 +75,7 @@ a new security group:
 .. code-block:: yaml
 
   security_groups:
-    - aim.ref netenv.mynet.network.vpc.security_groups.myapp.bastion
+    - paco.ref netenv.mynet.network.vpc.security_groups.myapp.bastion
 
 This new ``bastion`` security group will allow SSH access from your IP address to
 EC2 instances that belong to this security group. You will also modify the ``web``
@@ -110,7 +110,7 @@ Then add the following the ingress rule to the ``web:`` security group:
     to_port: 22
     name: SSH
     protocol: tcp
-    source_security_group: aim.ref netenv.mynet.network.vpc.security_groups.myapp.bastion
+    source_security_group: paco.ref netenv.mynet.network.vpc.security_groups.myapp.bastion
 
 Your final network configuration should look like this:
 
@@ -161,13 +161,13 @@ Your final network configuration should look like this:
               - from_port: 80
                 name: HTTP
                 protocol: tcp
-                source_security_group: aim.ref netenv.mynet.network.vpc.security_groups.myapp.alb
+                source_security_group: paco.ref netenv.mynet.network.vpc.security_groups.myapp.alb
                 to_port: 80
               - from_port: 22
                 to_port: 22
                 name: SSH
                 protocol: tcp
-                source_security_group: aim.ref netenv.mynet.network.vpc.security_groups.myapp.bastion
+                source_security_group: paco.ref netenv.mynet.network.vpc.security_groups.myapp.bastion
           bastion:
             egress:
               - cidr_ip: 0.0.0.0/0

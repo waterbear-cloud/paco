@@ -31,7 +31,7 @@ setup(
     ],
     keywords=['AWS','Waterbear','Cloud','Infrastructure as Code', 'CloudFormation'],
     install_requires=[
-        'aim.models',
+        'paco.models',
         'boto3',
         'click',
         'cookiecutter',
@@ -43,27 +43,26 @@ setup(
         'deepdiff'
     ],
     packages=[
-        'aim.adapters',
-        'aim.api',
-        'aim.aws_api',
-        'aim.cftemplates',
-        'aim.commands',
-        'aim.config',
-        'aim.controllers',
-        'aim.core',
-        'aim.stack_group',
-        'aim.tests',
-        'aim.doc',
-        'aim.application',
-        'aim.utils'
+        'paco.adapters',
+        'paco.aws_api',
+        'paco.cftemplates',
+        'paco.commands',
+        'paco.config',
+        'paco.controllers',
+        'paco.core',
+        'paco.stack_group',
+        'paco.tests',
+        'paco.doc',
+        'paco.application',
+        'paco.utils'
     ],
     include_package_data=True,
     zip_safe=False,
     package_dir={'': 'src'},
     entry_points={
         'console_scripts': [
-            'paco = aim.commands.cli:cli',
-            'paco_doc = aim.doc.docschema:aim_schema_generate',
+            'paco = paco.commands.cli:cli',
+            'paco_doc = paco.doc.docschema:paco_schema_generate',
         ]
     },
     extras_require={

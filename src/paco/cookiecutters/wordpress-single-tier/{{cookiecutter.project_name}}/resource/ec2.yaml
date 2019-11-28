@@ -1,0 +1,5 @@
+keypairs:
+  aimkeypair:
+    name: "aimkeypair"
+    region: "{{cookiecutter.aws_default_region}}"
+    account: paco.ref accounts.master
