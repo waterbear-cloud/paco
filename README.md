@@ -1,14 +1,12 @@
-## Paco
+## Paco: Prescribed automation for cloud orchestration
 
-Paco is an all-in-one AWS infrastructure orchestration tool.
-It has a command-line interface for managing complete, working environments based on declarative,
-semantic YAML files.
+Paco is a cloud orchestration tool for AWS.
 
 # Resources
 
  - [Documentation](https://paco.waterbear.cloud)
 
- - [PyPI Package](https://pypi.org/project/paco/)
+ - [PyPI Package](https://pypi.org/project/paco-cloud)
 
 # Credits
 
