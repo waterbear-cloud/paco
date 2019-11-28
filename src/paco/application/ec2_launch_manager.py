@@ -1039,7 +1039,7 @@ statement:
 
         # TODO: Add ubuntu and other distro support
         launch_script = """#!/bin/bash
-. %s/EC2Manager/ec2lm_functions.bash
+. /opt/aim/EC2Manager/ec2lm_functions.bash
 
 function ec2lm_eip_is_associated() {
     EIP_IP=$1
