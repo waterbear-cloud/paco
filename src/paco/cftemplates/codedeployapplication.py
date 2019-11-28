@@ -2,7 +2,7 @@ import troposphere
 import troposphere.codedeploy
 from paco.cftemplates.cftemplates import CFTemplate
 from paco.models.references import get_model_obj_from_ref
-from paco.core.exception import AimUnsupportedFeature
+from paco.core.exception import PacoUnsupportedFeature
 from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action
 from awacs.sts import AssumeRole
 import awacs.autoscaling

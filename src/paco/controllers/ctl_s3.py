@@ -1,6 +1,6 @@
 import os
-from paco.core.exception import StackException, AimBucketExists
-from paco.core.exception import AimErrorCode
+from paco.core.exception import StackException, PacoBucketExists
+from paco.core.exception import PacoErrorCode
 from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
 from paco.stack_group import StackGroup
@@ -73,7 +73,7 @@ class S3Context():
         )
         if bucket_policy_only == False:
             if self.bucket_context['stack'] != None:
-                raise StackException(AimErrorCode.Unknown)
+                raise StackException(PacoErrorCode.Unknown)
             self.bucket_context['stack'] = s3_template.stack
 
     def add_bucket(
@@ -86,7 +86,7 @@ class S3Context():
     ):
         "Add a bucket: will create a stack and stack hooks as needed"
         if self.bucket_context['config'] != None:
-            raise AimBucketExists("Bucket already exists: %s" % (self.resource_ref))
+            raise PacoBucketExists("Bucket already exists: %s" % (self.resource_ref))
 
         bucket.bucket_name_prefix = bucket_name_prefix
         bucket.bucket_name_suffix = bucket_name_suffix
@@ -176,14 +176,14 @@ class S3Context():
             except botocore.exceptions.ClientError as e:
                 if e.response['Error']['Code'] != 'NoSuchBucket':
                     print("%s: %s" % (e.response['Error']['Code'], e.response['Error']['Message']))
-                    raise StackException(AimErrorCode.Unknown)
+                    raise StackException(PacoErrorCode.Unknown)
         else:
             self.paco_ctx.log_action_col('Run', 'Hook', 'Retain', bucket_name)
 
     def empty_bucket(self):
         if self.bucket_context == None:
             print("ctl_s3: empty_bucket: ERROR: Unable to locate stack group for group: " + group_id)
-            raise StackException(AimErrorCode.Unknown)
+            raise StackException(PacoErrorCode.Unknown)
         s3_client = self.account_ctx.get_aws_client('s3')
         bucket_name = self.bucket_context['config'].get_bucket_name()
         try:

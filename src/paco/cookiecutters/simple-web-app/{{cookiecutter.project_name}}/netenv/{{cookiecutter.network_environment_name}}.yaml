@@ -98,7 +98,7 @@ applications:
             instance_iam_role:
               enabled: true
             instance_ami: paco.ref function.aws.ec2.ami.latest.amazon-linux-2
-            instance_key_pair: paco.ref resource.ec2.keypairs.aimkeypair
+            instance_key_pair: paco.ref resource.ec2.keypairs.pacokeypair
             instance_monitoring: false
             instance_type: t2.nano
             max_instances: 2

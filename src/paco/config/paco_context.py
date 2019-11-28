@@ -7,7 +7,7 @@ import pathlib
 import pkg_resources
 import ruamel.yaml
 from paco.core.exception import StackException
-from paco.core.exception import AimErrorCode
+from paco.core.exception import PacoErrorCode
 from paco.models import vocabulary
 from paco.models.references import Reference
 from paco.models import references
@@ -36,12 +36,12 @@ class AccountContext(object):
         self.mfa_account = mfa_account
         self.aws_session = None
         self.temp_aws_session = None
-        role_cache_filename = '-'.join(['aim', paco_ctx.project.name, self.name])+'.role'
+        role_cache_filename = '-'.join(['paco', paco_ctx.project.name, self.name])+'.role'
         self.role_cache_path = os.path.join(
             os.path.expanduser('~'),
             '.aws/cli/cache',
             role_cache_filename)
-        session_cache_filename = '-'.join(['aim', paco_ctx.project.name])+'.session'
+        session_cache_filename = '-'.join(['paco', paco_ctx.project.name])+'.session'
         self.session_cache_path = os.path.join(
             os.path.expanduser('~'),
             '.aws/cli/cache',
@@ -72,7 +72,7 @@ class AccountContext(object):
 
     def get_mfa_session(self, admin_creds):
         if self.aws_session == None:
-            self.aws_session = paco.config.aws_credentials.AimSTS(
+            self.aws_session = paco.config.aws_credentials.PacoSTS(
                 self,
                 session_creds_path=self.session_cache_path,
                 role_creds_path=self.role_cache_path,
@@ -88,7 +88,7 @@ class AccountContext(object):
 
     def get_session(self, force=False):
         if self.aws_session == None:
-            self.aws_session = paco.config.aws_credentials.AimSTS(
+            self.aws_session = paco.config.aws_credentials.PacoSTS(
                     self,
                     session_creds_path=self.session_cache_path,
                     role_creds_path=self.role_cache_path,
@@ -216,11 +216,11 @@ class PacoContext(object):
         self.quiet_changes_only = False
         self.paco_path = os.getcwd()
         self.build_folder = None
-        self.aws_name = "AIM"
+        self.aws_name = "Paco"
         self.controllers = {}
         self.services = {}
         self.accounts = {}
-        self.logger = paco.core.log.get_aim_logger()
+        self.logger = paco.core.log.get_paco_logger()
         self.project = None
         self.master_account = None
         self.command = None
@@ -236,7 +236,7 @@ class PacoContext(object):
             account_ref = self.get_ref(account_ref)
             return self.get_account_context(account_ref=account_ref)
         elif account_name == None:
-            raise StackException(AimErrorCode.Unknown, message = "get_account_context was only passed None: Not enough context to get account.")
+            raise StackException(PacoErrorCode.Unknown, message = "get_account_context was only passed None: Not enough context to get account.")
 
         if account_name in self.accounts:
             return self.accounts[account_name]
@@ -250,14 +250,13 @@ class PacoContext(object):
 
     def get_region_from_ref(self, netenv_ref):
         region = netenv_ref.split(' ')[1]
-        # aimdemo.dev.us-west-2.applications
         region = region.split('.')[3]
         if region not in vocabulary.aws_regions.keys():
             return None
         return region
 
     def load_project(self, project_init=False):
-        "Load an AIM Project from YAML, initialize settings and controllers, and load Service plug-ins."
+        "Load a Paco Project from YAML, initialize settings and controllers, and load Service plug-ins."
         self.project_folder = self.home
         if project_init == True:
             return
@@ -316,14 +315,14 @@ class PacoContext(object):
             service_name = model_obj.paco_ref_list[1]
             if service_name.lower() not in self.services:
                 message = "Could not find Service: {}".format(service_name)
-                raise StackException(AimErrorCode.Unknown, message = message)
+                raise StackException(PacoErrorCode.Unknown, message = message)
             controller = self.services[service_name.lower()]
 
         controller.init(command, model_obj)
         return controller
 
     def log(self, msg, *args):
-        """Logs a message to aim logger if verbose is enabled."""
+        """Logs a message to paco logger if verbose is enabled."""
         if not self.verbose:
             return
         if args:
@@ -340,7 +339,7 @@ class PacoContext(object):
         return os.path.join(self.stacks_folder, stack_group_type+"/"+stack_type+".yml")
 
     def get_ref(self, paco_ref, account_ctx=None):
-        """Takes an AIM reference string (paco.ref <type>.<part>) and returns
+        """Takes a Paco reference string (paco.ref <type>.<part>) and returns
         the object or value that is being referenced.
 
         Note that for `paco.ref accounts.<account-name>` references, the acount id is returned
@@ -353,7 +352,7 @@ class PacoContext(object):
         )
 
     def confirm_yaml_changes(self, model_obj):
-        """Confirm changes made to the AIM Project YAML from the last run"""
+        """Confirm changes made to the Paco Project YAML from the last run"""
         if self.disable_validation == True:
             return
         applied_file_path, new_file_path = self.init_model_obj_store(model_obj)
@@ -370,8 +369,8 @@ class PacoContext(object):
         if len(deep_diff.keys()) == 0:
             return
 
-        print("--------------------------------------------------------")
-        print("Confirm AIM Project changes from previous YAML file:\n")
+        print("---------------------------------------------------------")
+        print("Confirm Paco Project changes from previous YAML file:\n")
         print("{}".format(new_file_path))
         if self.verbose:
             print()
@@ -399,7 +398,7 @@ class PacoContext(object):
             print_diff_object(deep_diff, 'iterable_item_added')
             print_diff_object(deep_diff, 'set_item_removed')
 
-        print("--------------------------------------------------------")
+        print("---------------------------------------------------------")
         if self.yes == True:
             return
         answer = self.input_confirm_action("\nAre these changes acceptable?")

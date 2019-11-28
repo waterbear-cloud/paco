@@ -8,7 +8,7 @@ import troposphere
 from enum import Enum
 from paco import utils
 from paco.core.yaml import YAML
-from paco.core.exception import StackException, AimErrorCode, AimException
+from paco.core.exception import StackException, PacoErrorCode, PacoException
 from paco.models import references
 from paco.models.references import Reference
 from paco.stack_group import Stack, StackOrder
@@ -50,7 +50,7 @@ class StackOutputParam():
 
     def add_stack_output(self, stack, stack_output_key):
         if stack_output_key == None:
-            raise AimException(AimErrorCode.Unknown, message="Stack Output key is unset")
+            raise PacoException(PacoErrorCode.Unknown, message="Stack Output key is unset")
         self.stack = stack
         for entry in self.entry_list:
             if entry['stack'] == stack:
@@ -115,8 +115,8 @@ def marshal_value_to_cfn_yaml(value):
     elif type(value) == str:
         return value
     else:
-        raise AimException(
-            AimErrorCode.Unknown,
+        raise PacoException(
+            PacoErrorCode.Unknown,
             message="Parameter could not be cast to a YAML value: {}".format(type(value))
         )
 
@@ -255,7 +255,7 @@ class CFTemplate():
         if self.stack.aws_region != None:
             yaml_path = os.path.join(yaml_path, self.stack.aws_region)
         else:
-            raise StackException(AimErrorCode.Unknown, message = "AWS region is unavailable: {}".format(yaml_path))
+            raise StackException(PacoErrorCode.Unknown, message = "AWS region is unavailable: {}".format(yaml_path))
 
         pathlib.Path(yaml_path).mkdir(parents=True, exist_ok=True)
         yaml_path = os.path.join(yaml_path, yaml_filename)
@@ -268,7 +268,7 @@ class CFTemplate():
         return yaml_path
 
     # Move this somewhere else?
-    def aim_sub(self):
+    def paco_sub(self):
         #print("Start sub")
         while True:
             # Isolate string between quotes: paco.sub ''
@@ -283,12 +283,12 @@ class CFTemplate():
                 end_idx = len(self.body)
             str_idx = self.body.find("'", sub_idx, end_idx)
             if str_idx == -1:
-                raise StackException(AimErrorCode.Unknown, message="paco.sub error")
+                raise StackException(PacoErrorCode.Unknown, message="paco.sub error")
             str_idx += 1
             end_str_idx = self.body.find("'", str_idx, end_idx)
             if end_str_idx == -1:
-                raise StackException(AimErrorCode.Unknown, message = "paco.sub error")
-            #print("Aim SUB: %s" % (self.body[str_idx:str_idx+(end_str_idx-str_idx)]))
+                raise StackException(PacoErrorCode.Unknown, message = "paco.sub error")
+            #print("Paco SUB: %s" % (self.body[str_idx:str_idx+(end_str_idx-str_idx)]))
             # Isolate any ${} replacements
             first_pass = True
             while True:
@@ -298,7 +298,7 @@ class CFTemplate():
                         message = 'Unable to find paco.ref in paco.sub expression.\n'
                         message += 'Stack: {}\n'.format(self.stack.get_name())
                         message += "paco.sub '{}'\n".format(self.body[str_idx:end_str_idx])
-                        raise StackException(AimErrorCode.Unknown, message = message)
+                        raise StackException(PacoErrorCode.Unknown, message = message)
                     else:
                         #print("break 2")
                         break
@@ -319,8 +319,8 @@ class CFTemplate():
                     sub_value = self.paco_ctx.get_ref(sub_ref)
                     if sub_value == None:
                         raise StackException(
-                            AimErrorCode.Unknown,
-                            message="cftemplate: aim_sub: Unable to locate value for ref: " + sub_ref
+                            PacoErrorCode.Unknown,
+                            message="cftemplate: paco_sub: Unable to locate value for ref: " + sub_ref
                         )
                     #print("Sub Value: %s" % (sub_value))
                     # Replace the ${}
@@ -368,7 +368,7 @@ class CFTemplate():
                     self.stack.get_name(),
                     self.get_yaml_path()
                 )
-                raise StackException(AimErrorCode.TemplateValidationError, message=message)
+                raise StackException(PacoErrorCode.TemplateValidationError, message=message)
         #self.paco_ctx.log("Validation successful")
         self.validate_template_changes()
 
@@ -403,7 +403,7 @@ class CFTemplate():
 
     def generate_template(self):
         "Write template to the filesystem"
-        self.aim_sub()
+        self.paco_sub()
         # Create folder and write template body to file
         pathlib.Path(self.build_folder).mkdir(parents=True, exist_ok=True)
         stream = open(self.get_yaml_path(), 'w')
@@ -578,7 +578,7 @@ class CFTemplate():
                 param_value = param_value.replace("<environment>", self.environment_name)
             elif param_value.find('<environment>') != -1:
                 raise StackException(
-                    AimErrorCode.Unknown,
+                    PacoErrorCode.Unknown,
                     message="cftemplate: set_parameter: <environment> tag exists but self.environment_name == None: " + param_value
                 )
             param_value = param_value.replace("<region>", self.aws_region)
@@ -589,7 +589,7 @@ class CFTemplate():
                 message += "Template: {}\n".format(self.aws_name)
                 message += "Parameter: {}\n".format(param_key)
                 raise StackException(
-                    AimErrorCode.Unknown,
+                    PacoErrorCode.Unknown,
                     message=message
                 )
             if isinstance(ref_value, Stack):
@@ -606,7 +606,7 @@ class CFTemplate():
         if param_entry == None:
             param_entry = Parameter(self, param_key, param_value)
             if param_entry == None:
-                raise StackException(AimErrorCode.Unknown, message = "set_parameter says NOOOOOOOOOO")
+                raise StackException(PacoErrorCode.Unknown, message = "set_parameter says NOOOOOOOOOO")
         # Append the parameter to our list
         self.parameters.append(param_entry)
 
@@ -629,9 +629,9 @@ class CFTemplate():
                 #if self.enabled == False:
                 #    return
             elif is_stack_list == True:
-                raise StackException(AimErrorCode.Unknown, message = 'Cannot have mixed Stacks and non-Stacks in the list: ' + param_ref)
+                raise StackException(PacoErrorCode.Unknown, message = 'Cannot have mixed Stacks and non-Stacks in the list: ' + param_ref)
             if value == None:
-                raise StackException(AimErrorCode.Unknown, message = 'Unable to resolve reference: ' + param_ref)
+                raise StackException(PacoErrorCode.Unknown, message = 'Unable to resolve reference: ' + param_ref)
             value_list.append([param_ref,value])
 
         # If this is the first time this stack has been provisioned,
@@ -687,14 +687,14 @@ class CFTemplate():
         "Gets the output key of a project reference"
         if isinstance(ref, Reference) == False:
             raise StackException(
-                AimErrorCode.Unknown,
+                PacoErrorCode.Unknown,
                 message="Invalid Reference object")
         if stack == None:
             stack = ref.resolve(self.paco_ctx.project)
         output_key = stack.get_outputs_key_from_ref(ref)
         if output_key == None:
             raise StackException(
-                AimErrorCode.Unknown,
+                PacoErrorCode.Unknown,
                 message="Unable to find outputkey for ref: %s" % ref.raw)
         return output_key
 
@@ -732,8 +732,8 @@ class CFTemplate():
     ):
         "Register stack output config"
         if config_ref.startswith('paco.ref'):
-            raise AimException(
-                AimErrorCode.Unknown,
+            raise PacoException(
+                PacoErrorCode.Unknown,
                 message='Registered stack output config reference must not start with paco.ref: ' + config_ref
             )
         stack_output_config = StackOutputConfig(config_ref, stack_output_key)
@@ -797,7 +797,7 @@ class CFTemplate():
         elif lb_type == 'nlb':
             return nlb_zone_id[lb_region]
         else:
-            raise AimException(AimErrorCode.Unknown)
+            raise PacoException(PacoErrorCode.Unknown)
 
     def resource_name_filter(self, name, filter_id, hash_long_names):
         "Checks a name against a filter and raises a StackException if it is not a valid AWS name"
@@ -841,7 +841,7 @@ class CFTemplate():
 
         if message != None:
             raise StackException(
-                AimErrorCode.Unknown,
+                PacoErrorCode.Unknown,
                     message="{}: {}: {}: {}".format(
                         filter_id,
                         self.config_ref,
@@ -876,7 +876,7 @@ class CFTemplate():
             # Only alphanum and dases are allowed
             pass
         else:
-            raise StackException(AimErrorCode.Unknown, message="Invalid filter Id: "+filter_id)
+            raise StackException(PacoErrorCode.Unknown, message="Invalid filter Id: "+filter_id)
 
         if remove_invalids == True:
             return ''
@@ -1023,7 +1023,7 @@ class CFTemplate():
                 item_ref += '.' + ref_attribute
             stack = self.paco_ctx.get_ref(item_ref)
             if isinstance(stack, Stack) == False:
-                raise AimException(AimErrorCode.Unknown, message="Reference must resolve to a stack")
+                raise PacoException(PacoErrorCode.Unknown, message="Reference must resolve to a stack")
             stack_output_key = self.get_stack_outputs_key_from_ref(Reference(item_ref))
             stack_output_param.add_stack_output(stack, stack_output_key)
 

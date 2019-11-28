@@ -1,13 +1,13 @@
 from enum import Enum
 
-AimErrorCode = Enum(
-    'AimErrorCode',
+PacoErrorCode = Enum(
+    'PacoErrorCode',
     '\
 Unknown TemplateValidationError InvalidNumberOfArguments StackInProgress \
 BadConfigFiles StackDoesNotExist StackOutputMissing InvalidStackName \
 WaiterError')
 
-class AimException(Exception):
+class PacoException(Exception):
     def __init__(self, code, message=None):
         super().__init__()
         self.code = code
@@ -17,21 +17,21 @@ class AimException(Exception):
             self.set_message(code)
 
     def set_message(self, code):
-        if code == AimErrorCode.Unknown:
+        if code == PacoErrorCode.Unknown:
             self.message = "Unknown error"
-        elif code == AimErrorCode.TemplateValidationError:
+        elif code == PacoErrorCode.TemplateValidationError:
             self.message = "A CloudFormation template failed to validate"
-        elif code == AimErrorCode.InvalidNumberOfArguments:
+        elif code == PacoErrorCode.InvalidNumberOfArguments:
             self.message = "Invalid number of arguments"
-        elif code == AimErrorCode.StackInProgress:
+        elif code == PacoErrorCode.StackInProgress:
             self.message = "The stack is already in progress"
-        elif code == AimErrorCode.BadConfigFiles:
+        elif code == PacoErrorCode.BadConfigFiles:
             self.message = "Config files can not be understood."
-        elif code == AimErrorCode.StackDoesNotExist:
+        elif code == PacoErrorCode.StackDoesNotExist:
             self.message = "Stack does not exist."
 
 
-class StackException(AimException):
+class StackException(PacoException):
     def __init__(self, code, message=None):
         super().__init__(code, message)
 
@@ -39,20 +39,20 @@ class StackException(AimException):
         error_str =  "StackException: " + self.code.name + ": " + self.message
         return error_str
 
-class AimBucketExists(Exception):
+class PacoBucketExists(Exception):
     "S3 Bucket already exists"
 
 class UnsupportedCloudFormationParameterType(Exception):
     "Unsupported Parameter Type"
 
-class CloudFormationParameterAimRefMissingDotExtension(Exception):
+class CloudFormationParameterPacoRefMissingDotExtension(Exception):
     "Parameters with paco.ref values need to match <Name>.<OutputName> format."
 
 class InvalidLogSetConfiguration(Exception):
     "Invalid Log Set configuration"
 
-class AimUnsupportedFeature(Exception):
+class PacoUnsupportedFeature(Exception):
     "Feature does not yet exist"
 
-class InvalidAIMScope(Exception):
-    "AIM Reference not valid in this context."
+class InvalidPacoScope(Exception):
+    "Paco Reference not valid in this context."

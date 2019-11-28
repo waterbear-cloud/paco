@@ -2,14 +2,14 @@ import paco.models
 import click
 import sys
 from paco.commands.helpers import (
-    aim_home_option, init_aim_home_option, pass_paco_context,
+    paco_home_option, init_paco_home_option, pass_paco_context,
     handle_exceptions, cloud_options, init_cloud_command, cloud_args, config_types
 )
 from paco.core.exception import StackException
 
 
 @click.command(name='provision', short_help='Provision resources to the cloud.')
-@aim_home_option
+@paco_home_option
 @cloud_args
 @cloud_options
 @pass_paco_context

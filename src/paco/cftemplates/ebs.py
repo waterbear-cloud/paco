@@ -62,7 +62,7 @@ class EBS(CFTemplate):
         )
         self.template.add_output(ebs_volume_id_output)
 
-        # AIM Stack Output Registration
+        # Paco Stack Output Registration
         self.register_stack_output_config(config_ref + ".id", ebs_volume_id_output.title)
 
         # Generate the Template

@@ -3,7 +3,7 @@ from paco.stack_grps.grp_route53 import Route53StackGroup
 from paco.stack_group import StackGroup
 from paco.cftemplates import Route53RecordSet
 from paco.core.exception import StackException
-from paco.core.exception import AimErrorCode
+from paco.core.exception import PacoErrorCode
 from paco.controllers.controllers import Controller
 
 class Route53RecordSetStackGroup(StackGroup):
@@ -55,7 +55,7 @@ class Route53Controller(Controller):
     def init_stack_groups(self):
         # TODO: Fixed above now with init done flag?
         if self.second == True:
-            raise StackException(AimErrorCode.Unknown)
+            raise StackException(PacoErrorCode.Unknown)
         self.second = True
         for account_name in self.config.get_hosted_zones_account_names():
             account_ctx = self.paco_ctx.get_account_context(account_name=account_name)

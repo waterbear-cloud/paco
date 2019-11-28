@@ -81,7 +81,7 @@ class EFS(CFTemplate):
             Description="Elastic File System ID.",
             Value=troposphere.Ref(efs_res)
         )
-        # AIM Stack Output Registration
+        # Paco Stack Output Registration
         self.register_stack_output_config(config_ref + ".id", efs_id_output_logical_id)
 
         # Mount Targets

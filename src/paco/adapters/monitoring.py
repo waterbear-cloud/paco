@@ -27,11 +27,11 @@ class MonitoringService():
             results[name] = {'low': 0, 'critical': 0, 'total': 0}
 
         for info in self.application.list_alarm_info(group_name):
-            aim_alarm = info['alarm']
-            aws_alarm = self.aws_alarm_info[self.alarm_prefix + aim_alarm.resource_name]
-            results[aim_alarm.classification]['total'] += 1
+            paco_alarm = info['alarm']
+            aws_alarm = self.aws_alarm_info[self.alarm_prefix + paco_alarm.resource_name]
+            results[paco_alarm.classification]['total'] += 1
             if aws_alarm['StateValue'] == 'ALARM':
-                results[aim_alarm.classification][aim_alarm.severity] += 1
+                results[paco_alarm.classification][paco_alarm.severity] += 1
 
         return results
 

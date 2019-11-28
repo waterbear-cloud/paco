@@ -1,7 +1,7 @@
 import paco.cftemplates
 import copy
 from paco.core.exception import StackException
-from paco.core.exception import AimErrorCode
+from paco.core.exception import PacoErrorCode
 from paco.cftemplates import IAMRoles, IAMManagedPolicies
 from paco.stack_group import StackEnum, StackOrder, Stack, StackGroup
 

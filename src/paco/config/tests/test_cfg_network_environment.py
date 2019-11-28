@@ -16,4 +16,4 @@ class TestNetEnvConfig():
 class TestNetEnvConfigDogFoodOne(TestNetEnvConfig):
 
     fixture_name = 'dogfood_one'
-    net_env_one = 'aimdemo'
+    net_env_one = 'pacodemo'

@@ -1,5 +1,5 @@
 """
-Test harnesses for aim init cookiecutter templates
+Test harnesses for paco init cookiecutter templates
 """
 
 import paco.models
@@ -29,16 +29,16 @@ def test_cookiecutter_template(starting_template, template_number, verbose):
 def init_test_dir():
     """Create a tmpdir for tests to run in"""
     # ToDo: make a real tmpdir ...
-    subprocess.call(["mkdir","aim_ftest"])
-    os.chdir('aim_ftest')
+    subprocess.call(["mkdir","paco_ftest"])
+    os.chdir('paco_ftest')
     try:
         shutil.rmtree('tproj')
     except FileNotFoundError:
         pass
 
 def test_cmd_init(verbose):
-    print("Testing 'aim init project'")
-    child = pexpect.spawn('aim init project')
+    print("Testing 'paco init project'")
+    child = pexpect.spawn('paco init project')
     if verbose:
         child.logfile = sys.stdout.buffer
     child.expect('.*Choose.*')
@@ -58,32 +58,32 @@ def test_cmd_init(verbose):
     child.expect('aws_default_region .*: ')
     child.sendline('us-west-2')
     child.expect('master_account_id .*: ')
-    child.sendline(os.environ['AIM_MASTER_ACCOUNT_ID'])
+    child.sendline(os.environ['PACO_MASTER_ACCOUNT_ID'])
     child.expect('master_admin_iam_username .*: ')
-    child.sendline(os.environ['AIM_MASTER_ADMIN_IAM_USERNAME'])
+    child.sendline(os.environ['PACO_MASTER_ADMIN_IAM_USERNAME'])
     child.expect('aws_access_key_id .*: ')
-    child.sendline(os.environ['AIM_AWS_ACCESS_KEY_ID'])
+    child.sendline(os.environ['PACO_AWS_ACCESS_KEY_ID'])
     child.expect('aws_secret_access_key .*: ')
-    child.sendline(os.environ['AIM_AWS_SECRET_ACCESS_KEY'])
+    child.sendline(os.environ['PACO_AWS_SECRET_ACCESS_KEY'])
     child.interact()
 
 def test_cmd_provision_keypair(verbose):
-    print("Testing 'aim provision EC2 keypair'")
-    child = pexpect.spawn('aim provision EC2 keypair aimkeypair --home tproj')
+    print("Testing 'paco provision EC2 keypair'")
+    child = pexpect.spawn('paco provision EC2 keypair pacokeypair --home tproj')
     if verbose:
         child.logfile = sys.stdout.buffer
     child.interact()
 
 def test_cmd_provision_netenv(verbose):
-    print("Testing 'aim provsion NetEnv tnet'")
-    child = pexpect.spawn('aim provision NetEnv tnet --home tproj')
+    print("Testing 'paco provsion NetEnv tnet'")
+    child = pexpect.spawn('paco provision NetEnv tnet --home tproj')
     if verbose:
         child.logfile = sys.stdout.buffer
     child.interact()
 
 def test_delete_netenv(verbose):
-    print("Deleting 'aim delete NetEnv tnet --home tproj'")
-    child = pexpect.spawn('aim delete NetEnv tnet --home tproj')
+    print("Deleting 'paco delete NetEnv tnet --home tproj'")
+    child = pexpect.spawn('paco delete NetEnv tnet --home tproj')
     if verbose:
         child.logfile = sys.stdout.buffer
     child.expect('.*Proceed with deletion.*')

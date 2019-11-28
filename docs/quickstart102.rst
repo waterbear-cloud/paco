@@ -3,11 +3,11 @@
 Quickstart Lab 102
 ==================
 
-In the first quickstart, you learned how to create and provision an AIM project. You
+In the first quickstart, you learned how to create and provision an Paco project. You
 will need the ``dev`` environment you provisioned at the end of Quickstart Lab 101 to
 use as the starting point for this Quickstart Lab 102.
 
-This quickstart will walk you through how to update an AIM project. You will add a new
+This quickstart will walk you through how to update an Paco project. You will add a new
 EC2 instance and SecurityGroup, then you will deploy those updates to AWS. The EC2
 instance will be launched in the public subnets, where a new SecurityGroup will
 allow SSH access to the web servers in your private subnet.
@@ -17,7 +17,7 @@ allow SSH access to the web servers in your private subnet.
 Add bastion configuration
 -------------------------
 
-First, you will add a bastion to your AIM Project. Open up the NetworkEnvrionments file
+First, you will add a bastion to your Paco project. Open up the NetworkEnvrionments file
 at ``./myproj/NetworkEnvironments/mynet.yaml``, and scroll down to the ``applications:`` section.
 
 Then add the following ``bastion:`` YAML to the ResourceGroups for the myapp application. This is
@@ -42,7 +42,7 @@ at the YAML location ``applications:  myapp: groups``:
         instance_iam_role:
           enabled: true
         instance_ami: paco.ref function.aws.ec2.ami.latest.amazon-linux-2
-        instance_key_pair: aimkeypair
+        instance_key_pair: pacokeypair
         instance_monitoring: false
         instance_type: t2.micro
         max_instances: 2
@@ -58,10 +58,8 @@ at the YAML location ``applications:  myapp: groups``:
           #!/bin/bash
           yum update -y
 
-.. Attention:: You need to get the indentation correct when you modify AIM YAML files,
-  otherwise the configuration will attempt to be applied to the wrong types. Currently
-  the AIM CLI does not report very helpful error messages, it is planned to add
-  more useful errors to AIM validation in the future.
+.. Attention:: You need to get the indentation correct when you modify Paco YAML files,
+  otherwise the configuration will attempt to be applied to the wrong types.
 
   If you have a text editor or IDE that does folding, you can collapse
   the sections to verify that your configuration has the correct indentation.
@@ -118,7 +116,7 @@ Your final network configuration should look like this:
 
   network:
 
-    title: "My AIM NetworkEnvironment"
+    title: "My Paco NetworkEnvironment"
     availability_zones: 2
     enabled: true
     region: eu-central-1
@@ -185,32 +183,32 @@ Your final network configuration should look like this:
         web:
           enabled: true
 
-Run ``aim describe`` to validate that your new configuration changes can be properly parsed:
+Run ``paco describe`` to validate that your new configuration changes can be properly parsed:
 
 .. code-block:: text
 
-  $ cd ~/projects # or where ever you put the AIM Project directory
-  $ aim describe --home myproj
-  Project: myproj - My AIM Project
+  $ cd ~/projects # or where ever you put the Paco project directory
+  $ paco describe --home myproj
+  Project: myproj - My Paco Project
   Location: /Users/username/projects/myproj
 
   Accounts
   - master - Master AWS Account
 
   Network Environments
-  - mynet - My AIM NetworkEnvironment
+  - mynet - My Paco NetworkEnvironment
 
 
 Provision the bastion
 ---------------------
 
-After you change an AIM project, you can run ``aim provision`` and aim will detect
+After you change a Paco project, you can run ``paco provision`` and paco will detect
 any changes to AWS resrouces and create new CloudFormation templates and update
 existing ones as necessary.
 
 .. code-block:: text
 
-  $ aim provision --home myproj/ NetEnv mynet
+  $ paco provision --home myproj/ NetEnv mynet
   Provisioning Configuration: NetEnv.mynet
   MFA Token: master: 123456
   Network Environment
@@ -260,10 +258,10 @@ new EC2 instance running.
 .. image:: _static/images/quickstart102-instance.png
 
 .. Attention:: If you are running against a real-world or production deployment,
-  it is highly recommended to save your AIM project to version control before
-  running ``aim provision``. If you take note of the version of AIM used to
-  provision your configuration with ``aim --version``, you should always be
-  able to use a version of your AIM project with the version of AIM to exactly
+  it is highly recommended to save your Paco project to version control before
+  running ``paco provision``. If you take note of the version of Paco used to
+  provision your configuration with ``paco --version``, you should always be
+  able to use a version of your Paco project with the version of Paco to exactly
   recreate an AWS environment.
 
 
@@ -282,7 +280,7 @@ a newly launched instance in the bastion autoscaling group using UserData comman
 
 .. code-block:: bash
 
-  $ ssh -i ~/path/to/aimkeypair.pem ec2-user@3.122.229.38
+  $ ssh -i ~/path/to/pacokeypair.pem ec2-user@3.122.229.38
 
         __|  __|_  )
         _|  (     /   Amazon Linux 2 AMI
@@ -297,12 +295,12 @@ of the web server:
 
 .. image:: _static/images/quickstart102-private-ip.png
 
-Exit the bastion and copy your ``aimkeypair.pem`` file to the bastion so that it
+Exit the bastion and copy your ``pacokeypair.pem`` file to the bastion so that it
 can be used to connect to the private web servers.
 
 .. code-block:: bash
 
-  $ scp -i ~/path/to/aimkeypair.pem ~/path/to/aimkeypair.pem ec2-user@3.122.229.38
+  $ scp -i ~/path/to/pacokeypair.pem ~/path/to/pacokeypair.pem ec2-user@3.122.229.38
 
 
 .. Attention:: Copying the public key to a bastion has security risks! If your bastion
@@ -315,12 +313,12 @@ can be used to connect to the private web servers.
     Host aimbastion
     HostName 34.219.60.67
     User ec2-user
-    IdentityFile ~/path/to/aimkeypair.pem
+    IdentityFile ~/path/to/pacokeypair.pem
 
     Host 10.20.*
-      IdentityFile  ~/path/to/aimkeypair.pem
+      IdentityFile  ~/path/to/pacokeypair.pem
       User ec2-user
-      ProxyCommand ssh -W %h:%p  ec2-user@aimbastion
+      ProxyCommand ssh -W %h:%p  ec2-user@pacobastion
 
   You would be able run ``ssh 10.20.4.25`` and connect directly and securely to an instance in the
   private subnet at IP address 10.20.4.25.
@@ -329,7 +327,7 @@ Now from the bastion instance, SSH to the web server:
 
 .. code-block:: bash
 
-  [ec2-user@ip-10-20-2-46 ~]$ ssh -i aimkeypair.pem ec2-user@10.20.4.193
+  [ec2-user@ip-10-20-2-46 ~]$ ssh -i pacokeypair.pem ec2-user@10.20.4.193
 
         __|  __|_  )
         _|  (     /   Amazon Linux 2 AMI
@@ -358,7 +356,7 @@ otherwise you will run up your AWS bill.
 
 .. code-block:: bash
 
-  $ aim delete --home myproj NetEnv mynet
+  $ paco delete --home myproj NetEnv mynet
   Proceed with deletion (y/N)? y
   Deleting: NetEnv.mynet
   Network Environment

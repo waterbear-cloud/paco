@@ -1,7 +1,7 @@
 import paco.cftemplates
 import paco.models.iam
 from paco.application.res_engine import ResourceEngine
-from paco.core.exception import AimUnsupportedFeature
+from paco.core.exception import PacoUnsupportedFeature
 
 
 class CodeDeployApplicationResourceEngine(ResourceEngine):
@@ -16,7 +16,7 @@ class CodeDeployApplicationResourceEngine(ResourceEngine):
         if self.resource.compute_platform == "Server":
             policy_arns = ['arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole']
         else:
-            raise AimUnsupportedFeature("Only a service role for 'Server' compute platform.")
+            raise PacoUnsupportedFeature("Only a service role for 'Server' compute platform.")
 
         role_dict = {
             'enabled': self.resource.is_enabled(),

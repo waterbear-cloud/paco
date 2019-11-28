@@ -92,11 +92,15 @@ class Route53RecordSet(CFTemplate):
             record_set_dict['TTL'] = record_set_config['dns'].ttl
             record_set_dict['ResourceRecords'] = []
             for resource_record in record_set_config['resource_records']:
-                record_hash = utils.md5sum(str_data=resource_record)
+                # legacy_flag: aim_name_2019_11_28 - hash with aim.ref instead of paco.ref
+                hash_name = resource_record
+                if self.paco_ctx.legacy_flag('aim_name_2019_11_28') == True:
+                    hash_name = 'aim' + hash_name[4:]
+                record_hash = utils.md5sum(str_data=hash_name)
                 resource_record_param = self.create_cfn_parameter(
                     param_type='String',
-                    name='ResourceRecord'+record_hash,
-                    description='Resource Record: '+resource_record,
+                    name='ResourceRecord' + record_hash,
+                    description='Resource Record: ' + hash_name,
                     value=resource_record,
                     use_troposphere=True,
                     troposphere_template=self.template

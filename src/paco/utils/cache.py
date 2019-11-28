@@ -24,7 +24,7 @@ def get_max_mtime(path, exclude):
 
 def load_cached_project(project_path):
     """
-    Creates or updates the aim model cache if any files have been modified since
+    Creates or updates the paco model cache if any files have been modified since
     the last cache time
     """
     last_mtime = get_max_mtime(project_path, exclude=('build'))
@@ -46,7 +46,7 @@ def load_cached_project(project_path):
         with open(mtime_cache_file) as cache_file:
             cache_mtime = cache_file.readlines()
         cache_mtime = float(cache_mtime[0])
-        # if you CTRL-C right after running aim, you can create the mtime file but not the pickle cache
+        # if you CTRL-C right after running paco, you can create the mtime file but not the pickle cache
         if cache_mtime < last_mtime or not os.path.isfile(model_cache_file):
             # cache is stale
             project = load_project_from_yaml(project_path, None)

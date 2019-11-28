@@ -203,7 +203,7 @@ class S3(CFTemplate):
                             conditions.append(StringEquals(condition_value))
                         else:
                             raise StackException(
-                                AimErrorCode.Unknown,
+                                PacoErrorCode.Unknown,
                                 message="Only StringEquals is a supported condition (*fix-me!*). Bucket name: {}".format(bucket_name)
                             )
                     statement_dict['Condition'] = Condition(conditions)

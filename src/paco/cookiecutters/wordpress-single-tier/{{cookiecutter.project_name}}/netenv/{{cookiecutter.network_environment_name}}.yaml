@@ -53,7 +53,7 @@ backup_vaults:
           - title: EBS Daily Backups Selection
             tags:
               - condition_type: STRINGEQUALS
-                condition_key: AIM-Application-Resource-Name
+                condition_key: Paco-Application-Resource-Name
                 condition_value: wp_volume
               - condition_type: STRINGEQUALS
                 condition_key: paco.env.name
@@ -107,7 +107,7 @@ applications:
               enabled: true
             instance_ami: ami-088ff11f4bf97f53b # ToDo
             instance_ami_type: ubuntu
-            instance_key_pair: paco.ref resource.ec2.keypairs.aimkeypair
+            instance_key_pair: paco.ref resource.ec2.keypairs.pacokeypair
             instance_monitoring: false
             instance_type: t2.micro
             update_policy_max_batch_size: 1

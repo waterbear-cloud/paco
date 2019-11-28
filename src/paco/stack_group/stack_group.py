@@ -5,7 +5,7 @@ import sys
 import time
 from paco import utils
 from paco.core.exception import StackException
-from paco.core.exception import AimException, AimErrorCode
+from paco.core.exception import PacoException, PacoErrorCode
 from botocore.exceptions import ClientError, WaiterError
 from enum import Enum
 from paco.core.yaml import YAML
@@ -43,7 +43,7 @@ class StackOutputsManager():
 
     def save(self, key):
         if self.outputs_path[key] == None:
-            raise StackException(AimErrorCode.Unknown, message="Outputs file has not been loaded.")
+            raise StackException(PacoErrorCode.Unknown, message="Outputs file has not been loaded.")
 
         self.outputs_path[key].parent.mkdir(parents=True, exist_ok=True)
 
@@ -52,7 +52,7 @@ class StackOutputsManager():
 
     def add(self, project_folder, new_outputs_dict):
         if len(new_outputs_dict.keys()) > 1:
-            raise StackException(AimErrorCode.Unknown, message="Outputs dict should only have one key. Investigate!")
+            raise StackException(PacoErrorCode.Unknown, message="Outputs dict should only have one key. Investigate!")
         if len(new_outputs_dict.keys()) == 0:
             return
         key = list(new_outputs_dict.keys())[0]
@@ -181,7 +181,7 @@ class Stack():
         self.termination_protection = False
         self.stack_suffix = stack_suffix
         if aws_region == None:
-            raise StackException(AimErrorCode.Unknown, message="AWS Region is not supplied")
+            raise StackException(PacoErrorCode.Unknown, message="AWS Region is not supplied")
         self.aws_region = aws_region
         # Load the template
         template.stack = self
@@ -200,8 +200,8 @@ class Stack():
         self.wait_for_delete = False
 
         self.tags = StackTags(stack_tags)
-        self.tags.add_tag('AIM-Stack', 'true')
-        self.tags.add_tag('AIM-Stack-Name', self.get_name())
+        self.tags.add_tag('Paco-Stack', 'true')
+        self.tags.add_tag('Paco-Stack-Name', self.get_name())
 
         self.outputs_value_cache = {}
 
@@ -277,7 +277,7 @@ class Stack():
         new_name = self.create_stack_name(name)
 
         if new_name[0].isalpha() == False:
-            raise StackException(AimErrorCode.InvalidStackName)
+            raise StackException(PacoErrorCode.InvalidStackName)
 
         return new_name
 
@@ -306,7 +306,7 @@ class Stack():
                         prefix_message=e.response['Error']['Message'],
                         skip_status = True
                     )
-                    raise StackException(AimErrorCode.Unknown, message=message)
+                    raise StackException(PacoErrorCode.Unknown, message=message)
             else:
                 self.status = StackStatus[stack_list['Stacks'][0]['StackStatus']]
                 self.stack_id = stack_list['Stacks'][0]['StackId']
@@ -358,12 +358,12 @@ class Stack():
                     message = self.get_stack_error_message()
                     message += 'Could not describe stack to get value for Outputs Key: {}\n'.format(key)
                     message += 'Account: ' + self.account_ctx.get_name()
-                    raise StackException(AimErrorCode.StackDoesNotExist, message = message)
+                    raise StackException(PacoErrorCode.StackDoesNotExist, message = message)
                 elif e.response['Error']['Code'] == 'ExpiredToken':
                     self.handle_token_expired('2')
                     continue
                 else:
-                    raise StackException(AimErrorCode.Unknown, message=e.response['Error']['Message'])
+                    raise StackException(PacoErrorCode.Unknown, message=e.response['Error']['Message'])
             break
 
         if 'Outputs' not in stack_metadata['Stacks'][0].keys():
@@ -371,7 +371,7 @@ class Stack():
             message += '\nHints:'
             message += '1. register_stack_output_config() calls are missing in the cftemplate.'
             message += '3. The stack has not yet been provisioned.'
-            raise StackException(AimErrorCode.StackOutputMissing, message=message)
+            raise StackException(PacoErrorCode.StackOutputMissing, message=message)
 
         for output in stack_metadata['Stacks'][0]['Outputs']:
             if output['OutputKey'] == key:
@@ -381,7 +381,7 @@ class Stack():
         message = self.get_stack_error_message()
         message += "Could not find Stack Output {} in stack_metadata:\n\n{}\n".format(key, stack_metadata)
         raise StackException(
-            AimErrorCode.StackOutputMissing,
+            PacoErrorCode.StackOutputMissing,
             message=message
         )
 
@@ -392,7 +392,7 @@ class Stack():
             message = self.get_stack_error_message()
             message += "Error: Unable to find outputs key for ref: {}\n".format(ref.raw)
             raise StackException(
-                AimErrorCode.Unknown,
+                PacoErrorCode.Unknown,
                 message=message)
         return key
 
@@ -425,10 +425,10 @@ class Stack():
                 return False
         try:
             new_cache_id = self.gen_cache_id()
-        except AimException as e:
-            if e.code == AimErrorCode.StackDoesNotExist:
+        except PacoException as e:
+            if e.code == PacoErrorCode.StackDoesNotExist:
                 return False
-            elif e.code == AimErrorCode.StackOutputMissing:
+            elif e.code == PacoErrorCode.StackOutputMissing:
                 return False
             else:
                 raise e
@@ -490,7 +490,7 @@ class Stack():
             stack_parameters = self.template.generate_stack_parameters()
         except StackException as e:
             e.message += "Error generating stack parameters for template\n"
-            if e.code == AimErrorCode.StackDoesNotExist:
+            if e.code == PacoErrorCode.StackDoesNotExist:
                 self.log_action("Provision", "Error")
                 e.message += "Stack: {}\n".format(self.get_name())
                 e.message += "Error: Depends on StackOutputs from a stack that does not yet exist.\n"
@@ -555,14 +555,14 @@ class Stack():
                     else:
                         message = self.get_stack_error_message()
                         message += "ValidationError: {}\n".format(e.response['Error']['Message'])
-                        raise StackException(AimErrorCode.Unknown, message = message)
+                        raise StackException(PacoErrorCode.Unknown, message = message)
                 elif e.response['Error']['Code'] == 'ExpiredToken':
                     self.handle_token_expired('3')
                     continue
                 else:
                     #message = "Stack: {}\nError: {}\n".format(self.get_name(), e.response['Error']['Message'])
                     message = self.get_stack_error_message()
-                    raise StackException(AimErrorCode.Unknown, message = message)
+                    raise StackException(PacoErrorCode.Unknown, message = message)
             break
 
         if self.cfn_stack_describe['EnableTerminationProtection'] == False:
@@ -684,7 +684,7 @@ class Stack():
         elif self.is_creating() == False and self.is_updating() == False:
             self.log_action("Provision", "Error")
             message = self.get_stack_error_message()
-            raise StackException(AimErrorCode.Unknown, message = message)
+            raise StackException(PacoErrorCode.Unknown, message = message)
 
     def delete(self):
         if self.change_protected == True:
@@ -773,7 +773,7 @@ class Stack():
             else:
                 message = self.get_stack_error_message()
                 raise StackException(
-                    AimErrorCode.WaiterError,
+                    PacoErrorCode.WaiterError,
                     message=message
                 )
 
@@ -788,7 +788,7 @@ class Stack():
                     self.log_action(action_name, "Error")
                     message = "Waiter Error:  {}\n".format(waiter_exception)
                     message += self.get_stack_error_message(message)
-                    raise StackException(AimErrorCode.WaiterError, message = message)
+                    raise StackException(PacoErrorCode.WaiterError, message = message)
                 self.log_action(action_name, "Done")
 
             if self.is_exists():

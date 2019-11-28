@@ -1,5 +1,5 @@
-AIM Documentation
------------------
+Paco Documentation
+------------------
 
 To build the docs:
 

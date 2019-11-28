@@ -2,8 +2,8 @@ import click
 import os
 import sys
 from paco.config.paco_context import PacoContext, AccountContext
-from paco.core.exception import AimException, StackException
-from paco.models.exceptions import InvalidAimProjectFile, UnusedAimProjectField, InvalidAimReference
+from paco.core.exception import PacoException, StackException
+from paco.models.exceptions import InvalidPacoProjectFile, UnusedPacoProjectField, InvalidPacoReference
 from paco.models.references import get_model_obj_from_ref
 from boto3.exceptions import Boto3Error
 from botocore.exceptions import BotoCoreError, ClientError
@@ -67,7 +67,7 @@ def init_cloud_command(
     paco_ctx.disable_validation = disable_validation
     paco_ctx.quiet_changes_only = quiet_changes_only
     paco_ctx.command = command_name
-    init_aim_home_option(paco_ctx, home)
+    init_paco_home_option(paco_ctx, home)
     if not paco_ctx.home:
         print('Paco configuration directory needs to be specified with either --home or PACO_HOME environment variable.')
         sys.exit()
@@ -134,7 +134,7 @@ def cloud_args(func):
     return func
 
 
-def aim_home_option(func):
+def paco_home_option(func):
     """
     decorater to add Paco Home option
     """
@@ -145,7 +145,7 @@ def aim_home_option(func):
     )(func)
     return func
 
-def init_aim_home_option(ctx, home):
+def init_paco_home_option(ctx, home):
     # --home overrides the PACO_HOME Env var
     if not home:
         home = os.environ.get('PACO_HOME')
@@ -161,12 +161,12 @@ def handle_exceptions(func):
         # return func(*args, **kwargs)
         try:
             return func(*args, **kwargs)
-        except (InvalidAimReference, UnusedAimProjectField, InvalidAimProjectFile, AimException, StackException, BotoCoreError,
+        except (InvalidPacoReference, UnusedPacoProjectField, InvalidPacoProjectFile, PacoException, StackException, BotoCoreError,
             ClientError, Boto3Error) as error:
             click.echo("\nERROR!\n")
             error_name = error.__class__.__name__
-            if error_name in ('InvalidAimProjectFile', 'UnusedAimProjectField', 'InvalidAimReference'):
-                click.echo("Invalid AIM project configuration files at {}".format(args[0].home))
+            if error_name in ('InvalidPacoProjectFile', 'UnusedPacoProjectField', 'InvalidPacoReference'):
+                click.echo("Invalid Paco project configuration files at {}".format(args[0].home))
                 if hasattr(error, 'args'):
                     if len(error.args) > 0:
                         click.echo(error.args[0])

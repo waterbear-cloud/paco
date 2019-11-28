@@ -121,7 +121,7 @@ class SNSTopics(CFTemplate):
                 account.account_id for account in self.paco_ctx.project.accounts.values()
             ]
             topic_policy_resource = troposphere.sns.TopicPolicy(
-                'TopicPolicyCrossAccountAIMProject',
+                'TopicPolicyCrossAccountPacoProject',
                 Topics = topics_ref_cross_list,
                 PolicyDocument = Policy(
                     Version = '2012-10-17',

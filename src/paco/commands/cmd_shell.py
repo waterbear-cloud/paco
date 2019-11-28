@@ -1,21 +1,21 @@
 import click
 import sys
 from paco.core.exception import StackException
-from paco.commands.helpers import pass_paco_context, aim_home_option, init_aim_home_option
+from paco.commands.helpers import pass_paco_context, paco_home_option, init_paco_home_option
 
 @click.command('shell', short_help='Open a shell to an instance.')
 @click.argument("netenv_id", required=True, type=click.STRING)
 @click.argument("env_id", required=True, type=click.STRING)
 @click.argument("region", required=True, type=click.STRING)
 @click.argument("instance_ref", required=True, type=click.STRING)
-@aim_home_option
+@paco_home_option
 @pass_paco_context
 def shell_command(paco_ctx, netenv_id, env_id, region, instance_ref, home='.'):
     """Open a shell to an instance"""
     paco_ctx.command = 'shell'
-    init_aim_home_option(paco_ctx, home)
+    init_paco_home_option(paco_ctx, home)
     if not paco_ctx.home:
-        print('AIM configuration directory needs to be specified with either --home or PACO_HOME environment variable.')
+        print('Paco configuration directory needs to be specified with either --home or PACO_HOME environment variable.')
         sys.exit()
 
     paco_ctx.load_project()

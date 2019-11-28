@@ -41,7 +41,7 @@ Resources:
   CMK:
     Type: AWS::KMS::Key
     Properties:
-      Description: AIM Generic KMS Customer Managed Key
+      Description: Paco Generic KMS Customer Managed Key
       EnableKeyRotation: true
       KeyPolicy:
         Version: "2012-10-17"

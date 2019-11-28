@@ -1,7 +1,7 @@
 import click
 import os, sys, time
 from paco.core.exception import StackException
-from paco.core.exception import AimErrorCode
+from paco.core.exception import PacoErrorCode
 from paco.controllers.controllers import Controller
 from paco.stack_group import StackHooks
 from paco.stack_grps.grp_account import AccountStackGroup
@@ -58,7 +58,7 @@ class AccountController(Controller):
 
     def init(self, command=None, model_obj=None):
         if self.master_account_config == None:
-            raise StackException(AimErrorCode.Unknown)
+            raise StackException(PacoErrorCode.Unknown)
         self.init_accounts_yaml()
 
     def init_master_stack_group(self):
@@ -115,7 +115,7 @@ class AccountController(Controller):
                 # Ask for Each Account Input
                 account_config = {
                     'account_type': 'AWS',
-                    'admin_delegate_role_name': 'WaterbearCloud-AIM-Administrator-Access-Role',
+                    'admin_delegate_role_name': 'WaterbearCloud-Paco-Administrator-Access-Role',
                     'region': None,
                     'name': None,
                     'title': None,

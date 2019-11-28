@@ -5,7 +5,7 @@ import stat
 import pathlib
 import sys
 from paco.core.exception import StackException
-from paco.core.exception import AimErrorCode
+from paco.core.exception import PacoErrorCode
 from paco.controllers.controllers import Controller
 from paco.stack_grps.grp_account import AccountStackGroup
 from paco.models import loader, vocabulary
@@ -87,12 +87,12 @@ class ProjectController(Controller):
             'simple-web-app': "A minimal skeleton with a simple web application.",
             'wordpress-single-tier': "A single-tier WordPress application.",
         }
-        print("\nAIM Project Initialization")
-        print("--------------------------\n")
+        print("\nPaco project initialization")
+        print("---------------------------\n")
         if self.project_context_path.exists() == True:
-            print("AIM project has already been initialized.\n")
+            print("Paco project has already been initialized.\n")
         else:
-            print("About to create a new AIM project directory at %s\n" % self.paco_ctx.home)
+            print("About to create a new Paco project directory at %s\n" % self.paco_ctx.home)
             cookiecutter_project = self.choose_template(starting_templates)
             allowed_key_list = []
             for key in self.project_context.keys():
@@ -105,8 +105,8 @@ class ProjectController(Controller):
                         allowed_key_list.append(allowed_key)
                     self.project_context[key] = self.paco_ctx.input("%s" % key, allowed_values=allowed_values)
 
-            self.project_context['_computed_aim_home_path'] = self.paco_ctx.home
-            self.project_context['master_admin_iam_username'] = 'aim-project-init'
+            self.project_context['_computed_paco_home_path'] = self.paco_ctx.home
+            self.project_context['master_admin_iam_username'] = 'paco-project-init'
             # Remove the allowed key so we do not save it to the context file
             for key in allowed_key_list:
                 del self.project_context[key]
@@ -124,16 +124,16 @@ class ProjectController(Controller):
                 )
 
     def init_credentials(self, force=False):
-        print("\nAIM Project Credentials Initialization")
-        print("--------------------------------------\n")
+        print("\nPaco project credentials initialization")
+        print("---------------------------------------\n")
         if self.project_context_path.exists() == False:
             print("Project does not exist: {}".format(self.project_context_path))
-            print("Run this command to initialize a project:\n\naim init project")
+            print("Run this command to initialize a project:\n\npaco init project")
             sys.exit(1)
 
         if self.credentials_path.exists() and force == False:
             print("Credentials already exist, run this command to reinitialize:\n")
-            print("aim init project credentials\n")
+            print("paco init project credentials\n")
             return
 
         self.credentials['aws_default_region'] = self.project_context['aws_default_region']

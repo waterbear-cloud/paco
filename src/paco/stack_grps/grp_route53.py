@@ -1,7 +1,7 @@
 import paco.cftemplates
 from paco.stack_group import StackEnum, StackOrder, Stack, StackGroup
 from paco.core.exception import StackException
-from paco.core.exception import AimErrorCode
+from paco.core.exception import PacoErrorCode
 
 
 class Route53StackGroup(StackGroup):

@@ -216,6 +216,6 @@ class IAMUsers(CFTemplate):
         #)
         #self.template.add_output(example_output)
 
-        # AIM Stack Output Registration
+        # Paco Stack Output Registration
         #self.register_stack_output_config(self.config_ref + ".id", example_output.title)
 

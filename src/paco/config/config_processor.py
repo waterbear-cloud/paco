@@ -20,7 +20,7 @@ class ConfigProcessor(object):
     # Receives each YAML file loaded by the ModelLoader
     def load_yaml(self, sub_folder, filename):
         full_yaml_path = os.path.join(self.paco_ctx.project_folder, sub_folder, filename)
-        applied_yaml_path = os.path.join(self.aim_applied_fodler)
+        applied_yaml_path = os.path.join(self.paco_applied_folder)
         print("Full Yaml: %s" % (full_yaml_path))
 
         pass

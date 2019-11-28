@@ -5,7 +5,7 @@ from paco.cftemplates.cftemplates import CFTemplate
 
 from paco.models import references
 from paco.models.references import Reference
-from paco.core.exception import StackException, AimErrorCode
+from paco.core.exception import StackException, PacoErrorCode
 from io import StringIO
 from enum import Enum
 
@@ -85,7 +85,6 @@ class SecurityGroups(CFTemplate):
             self.stack.wait_for_delete = True
 
     def create_group(self, sg_group_id, sg_name, sg_config, template, vpc_id_param):
-
         # GroupName
         group_name = self.create_resource_name_join(
             [ self.env_ctx.netenv_id, self.env_ctx.env_id, sg_group_id, sg_name ],
@@ -97,7 +96,10 @@ class SecurityGroups(CFTemplate):
         if sg_config.group_description != None and sg_config.group_description != '':
             group_description = sg_config.group_description
         else:
-            group_description = "AIM generated Security Group"
+            group_description = "Paco generated Security Group"
+            # legacy_flag: aim_name_2019_11_28 - Use AIM name
+            if self.paco_ctx.legacy_flag('aim_name_2019_11_28') == True:
+                group_description = "AIM generated Security Group"
 
         # Security Group
         group_logical_id = self.create_cfn_logical_id(sg_name)
@@ -112,19 +114,16 @@ class SecurityGroups(CFTemplate):
             )
         )
 
-        group_output_logical_id = group_logical_id+'Id'
-
+        group_output_logical_id = group_logical_id + 'Id'
         group_output = troposphere.Output(
             title = group_output_logical_id,
             Value = troposphere.Ref(group_res)
         )
         template.add_output(group_output)
-
         group_config_ref = '.'.join([self.config_ref, sg_name])
-        self.register_stack_output_config(group_config_ref+'.id', group_output_logical_id)
+        self.register_stack_output_config(group_config_ref + '.id', group_output_logical_id)
 
     def create_group_rules(self, sg_group_id, sg_name, sg_config, template):
-
         sg_group_config_ref = 'paco.ref ' + '.'.join([self.config_ref, sg_name])
         # Security Group Ingress and Egress rules
         for sg_rule_type in ['Ingress', 'Egress']:
@@ -138,7 +137,7 @@ class SecurityGroups(CFTemplate):
                 sg_rule_list = sg_config.egress
                 tropo_rule_method = troposphere.ec2.SecurityGroupEgress
             else:
-                raise StackException(AimErrorCode.Unknown)
+                raise StackException(PacoErrorCode.Unknown)
 
             # Ingress and Egress rules
             for sg_rule_config in sg_rule_list:
@@ -183,7 +182,7 @@ class SecurityGroups(CFTemplate):
                     else:
                         rule_dict['DestinationSecurityGroupId'] = sg_rule_config.destination_security_group
                 else:
-                    raise StackException(AimErrorCode.Unknown)
+                    raise StackException(PacoErrorCode.Unknown)
 
                 # SecurityGroup Ingress/Egress
                 rule_res = tropo_rule_method.from_dict(rule_name, rule_dict)
@@ -196,14 +195,18 @@ class SecurityGroups(CFTemplate):
         to it. It caches the parameter to allow multiple references
         from a single Parameter.
         """
-        group_ref_hash = utils.md5sum(str_data=group_ref)
+        # legacy_flag: aim_name_2019_11_28 - hash with aim.ref instead of paco.ref
+        hash_ref = group_ref
+        if self.paco_ctx.legacy_flag('aim_name_2019_11_28') == True:
+            hash_ref = 'aim' + group_ref[4:]
+        group_ref_hash = utils.md5sum(str_data=hash_ref)
         if group_ref_hash in self.source_group_param_cache.keys():
             return troposphere.Ref(self.source_group_param_cache[group_ref_hash])
 
         source_sg_param = self.create_cfn_parameter(
             param_type='AWS::EC2::SecurityGroup::Id',
-            name='SourceGroupId'+group_ref_hash,
-            description='Source Security Group - ' + group_ref,
+            name='SourceGroupId' + group_ref_hash,
+            description='Source Security Group - ' + hash_ref,
             value=group_ref+'.id',
             use_troposphere=True,
             troposphere_template=template)

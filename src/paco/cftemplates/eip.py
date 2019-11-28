@@ -70,7 +70,7 @@ class EIP(CFTemplate):
         )
         template.add_output(eip_alloc_id_output)
 
-        # AIM Stack Output Registration
+        # Paco Stack Output Registration
         self.register_stack_output_config(config_ref + ".address", eip_address_output.title)
         self.register_stack_output_config(config_ref + ".allocation_id", eip_alloc_id_output.title)
 

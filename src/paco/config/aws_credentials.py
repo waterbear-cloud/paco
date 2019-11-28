@@ -3,7 +3,7 @@ import boto3
 import paco
 import os
 from paco.core.exception import StackException
-from paco.core.exception import AimException, AimErrorCode
+from paco.core.exception import PacoException, PacoErrorCode
 from botocore.exceptions import ClientError, WaiterError
 
 
@@ -11,7 +11,7 @@ from botocore.exceptions import ClientError
 #import logging
 #logging.basicConfig(level=logging.DEBUG)
 
-class AimSTS(object):
+class PacoSTS(object):
     """
     Provides temporary long term credentials that generate short term
     credentials by assuming a role. When the short term credentials
@@ -109,7 +109,7 @@ class AimSTS(object):
                 role_creds = sts_client.assume_role(
                     DurationSeconds=self.assume_role_session_expiry_secs,
                     RoleArn=admin_iam_role_arn,
-                    RoleSessionName='aim-multiaccount-session',
+                    RoleSessionName='paco-multiaccount-session',
                     #TokenCode=token_code,
                     #SerialNumber=self.mfa_arn
                 )['Credentials']
@@ -118,7 +118,7 @@ class AimSTS(object):
                     message = '{}\n'.format(e)
                     message += 'Unable to assume roles: {}\n'.format(self.admin_iam_role_arn)
                     message += '                        {}\n'.format(self.org_admin_iam_role_arn)
-                    raise StackException(AimErrorCode.Unknown, message = message)
+                    raise StackException(PacoErrorCode.Unknown, message = message)
             else:
                 self.save_temp_creds(role_creds, self.role_creds_path)
                 break

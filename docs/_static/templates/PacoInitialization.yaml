@@ -1,13 +1,13 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
-Description: Creates a local Admin IAM user for AIM
+Description: Creates a local Admin IAM user for Paco
 
 Parameters:
 
   AdminIAMUserName1:
     Type: String
     Default: 'you@example.com'
-    Description: IAM user name of the AIM Administrator
+    Description: IAM user name of the Paco Administrator
 
 Resources:
 
@@ -15,7 +15,7 @@ Resources:
     Type: AWS::IAM::Role
     DependsOn: AdminIAMUser1
     Properties:
-      RoleName: !Sub 'AIM-Admin-Delegate-Role'
+      RoleName: !Sub 'Paco-Admin-Delegate-Role'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -40,7 +40,7 @@ Resources:
       - AdminIAMUser1
       - DelegateIAMRole
     Properties:
-      PolicyName: 'AIM-Admin-Assume-Role-Policy'
+      PolicyName: 'Paco-Admin-Assume-Role-Policy'
       PolicyDocument:
         Version: '2012-10-17'
         Statement:

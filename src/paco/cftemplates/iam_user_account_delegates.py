@@ -7,7 +7,7 @@ import troposphere.iam
 from paco import utils
 from paco.cftemplates.cftemplates import CFTemplate
 from paco.core.exception import StackException
-from paco.core.exception import AimErrorCode
+from paco.core.exception import PacoErrorCode
 from paco.models.references import Reference
 from awacs.aws import Allow, Action, Principal, Statement, Condition, MultiFactorAuthPresent, PolicyDocument, StringEquals
 from awacs.aws import Bool as AWACSBool
@@ -297,7 +297,7 @@ class IAMUserAccountDelegates(CFTemplate):
         #)
         #self.template.add_output(example_output)
 
-        # AIM Stack Output Registration
+        # Paco Stack Output Registration
         #self.register_stack_output_config(self.config_ref + ".id", example_output.title)
 
 

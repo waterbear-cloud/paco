@@ -1,6 +1,6 @@
 import os, sys
 from paco.core.exception import StackException
-from paco.core.exception import AimErrorCode, InvalidAIMScope
+from paco.core.exception import PacoErrorCode, InvalidPacoScope
 from paco.controllers.controllers import Controller
 from botocore.exceptions import ClientError, BotoCoreError
 from paco.core.yaml import YAML
@@ -46,7 +46,7 @@ class EC2Controller(Controller):
         elif schemas.IEC2KeyPair.providedBy(model_obj):
             self.keypairs = [ model_obj ]
         elif model_obj != None:
-            raise InvalidAIMScope("Scope of {} not operable.".format(model_obj.paco_ref_parts))
+            raise InvalidPacoScope("Scope of {} not operable.".format(model_obj.paco_ref_parts))
 
         for keypair in self.keypairs:
             aws_account_ref = keypair.account
@@ -64,7 +64,7 @@ class EC2Controller(Controller):
                     pass
                 else:
                     # TOOD: Make this more verbose
-                    raise StackException(AimErrorCode.Unknown)
+                    raise StackException(PacoErrorCode.Unknown)
 
     def validate(self):
         for keypair in self.keypairs:

@@ -19,7 +19,7 @@ def fixtures_path():
 
     # when run from a local test script (might need later if we run tests on commit etc)
     #path = os.path.abspath(inspect.stack()[-1][1]) # the path to the test script
-    #path = path.split(os.sep)[:-2] # should be aim project root
+    #path = path.split(os.sep)[:-2] # should be Paco project root
     #path.append('fixtures')
     #path = os.sep.join(path)
 

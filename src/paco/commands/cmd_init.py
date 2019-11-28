@@ -2,7 +2,7 @@ import click
 import os
 import os.path
 import sys
-from paco.commands.helpers import pass_paco_context, aim_home_option, init_aim_home_option
+from paco.commands.helpers import pass_paco_context, paco_home_option, init_paco_home_option
 from cookiecutter.main import cookiecutter
 from jinja2.ext import Extension
 
@@ -48,21 +48,21 @@ def init_project(ctx, project_name):
     ctl_project.init_project()
 
 @init_group.command(name="credentials")
-@aim_home_option
+@paco_home_option
 @click.pass_context
 def init_credentials(ctx, home='.'):
     """
-    Initializes the .credentials file for an AIM project.
+    Initializes the .credentials file for a Paco project.
     """
     paco_ctx = ctx.obj
     paco_ctx.command = 'init credentials'
-    init_aim_home_option(paco_ctx, home)
+    init_paco_home_option(paco_ctx, home)
     paco_ctx.load_project(project_init=True)
     ctl_project = paco_ctx.get_controller('project')
     ctl_project.init_credentials()
 
 @init_group.command(name="accounts")
-@aim_home_option
+@paco_home_option
 @click.pass_context
 def init_accounts(ctx, home='.'):
     """
@@ -70,13 +70,13 @@ def init_accounts(ctx, home='.'):
     """
     paco_ctx = ctx.obj
     paco_ctx.command = 'init accounts'
-    init_aim_home_option(paco_ctx, home)
+    init_paco_home_option(paco_ctx, home)
     paco_ctx.load_project()
     ctl_project = paco_ctx.get_controller('project')
     ctl_project.init_accounts()
 
 @init_group.command(name="netenv")
-@aim_home_option
+@paco_home_option
 @click.pass_context
 def init_netenv(ctx, home='.'):
     """
@@ -84,7 +84,7 @@ def init_netenv(ctx, home='.'):
     """
     paco_ctx = ctx.obj
     paco_ctx.command = 'init netenv'
-    init_aim_home_option(paco_ctx, home)
+    init_paco_home_option(paco_ctx, home)
     paco_ctx.load_project()
     ctl_project = paco_ctx.get_controller('project')
     # ToDo: FixMe! pass proper NetEnv info to init_command ...

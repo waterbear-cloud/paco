@@ -3,7 +3,7 @@ import os
 import time
 from paco.aws_api.acm import DNSValidatedACMCertClient
 from paco.core.exception import StackException
-from paco.core.exception import AimErrorCode
+from paco.core.exception import PacoErrorCode
 from paco.controllers.controllers import Controller
 
 
@@ -87,8 +87,8 @@ class ACMController(Controller):
                 # print("Certificate ARN: " + cert_domain + ": " + cert_arn)
                 return cert_arn
             else:
-                raise StackException(AimErrorCode.Unknown)
-        raise StackException(AimErrorCode.Unknown)
+                raise StackException(PacoErrorCode.Unknown)
+        raise StackException(PacoErrorCode.Unknown)
 
     def add_certificate_config(self, account_ctx, region, group_id, cert_id, cert_config):
         # print("Add Certificate Config: " + group_id + " " + cert_id)

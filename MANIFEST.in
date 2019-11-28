@@ -1,7 +1,7 @@
 global-exclude *.py[co]
 global-exclude *.egg-info
 
-graft src/aim
+graft src/paco
 recursive-exclude src __pycache__/*
 
 include README.md CHANGELOG.md version.txt

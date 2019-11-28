@@ -8,9 +8,9 @@ env
 .venv
 .pytest_cache
 
-# AIM Resources
+# Paco Resources
 Resources/
-aim_ftest
+paco_ftest
 
 # Buildout
 bin

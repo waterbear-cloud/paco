@@ -30,16 +30,16 @@ how to provision each environment separately.
 Install Paco
 ------------
 
-The Paco application is installable as a Python package. This will give you the ``aim`` command on
+The Paco application is installable as a Python package. This will give you the ``paco`` command on
 your CLI. The Paco CLI will read Paco Projects and provision AWS Resources from it.
 
 You can install Paco with pip:
 
-``pip install aim``
+``pip install paco-cloud``
 
 For more details, see the Installation_ page. After you have installed
-Paco you should have ``aim`` available on your comand-line.
-Try running ``aim --help`` to confirm that's it's properly installed.
+Paco you should have ``paco`` available on your comand-line.
+Try running ``paco --help`` to confirm that's it's properly installed.
 
 .. _Installation: ./install.html
 
@@ -55,7 +55,7 @@ First, to create the user and role, follow the steps below to create a CloudForm
 stack from our PacoInitialization.yaml_ template. It is possible to use Paco with an existing
 IAM User account, but it is highly recommended to use a dedicated user account.
 By using the CloudFormation template, you can simply delete the CloudFormation stack
-when you are finished and it will remove all aim access that you need for these
+when you are finished and it will remove all paco access that you need for these
 quickstarts.
 
   1. Download the PacoInitialization.yaml_ CloudFormation template.
@@ -147,12 +147,12 @@ on the `Paco Configuration`_ page.
 
     .. image:: _static/images/aim-name-parts.png
 
-The ``aim init`` command will create a skeleton directory structure
+The ``paco init`` command will create a skeleton directory structure
 to help you get started quickly.
 
 .. code-block:: text
 
-    $ aim init
+    $ paco init
 
     Paco Project initialization
     ---------------------------
@@ -200,7 +200,7 @@ the AWS Region names, you can use ``us-west-2``:
 
 Finally, you will supply the AWS Account and Administrator credentials.
 You can leave this blank if you don't have them handy, and edit the file at
-``<my-aim-project>/Accounts/.credentials`` to add them later.
+``<my-paco-project>/Accounts/.credentials`` to add them later.
 
 .. code-block:: text
 
@@ -210,12 +210,12 @@ You can leave this blank if you don't have them handy, and edit the file at
     aws_secret_access_key [Administrator AWS Secret Access Key]: ********
 
 At this point you should have a working Paco Project. You can run the
-``aim describe`` command to get a summary of your project. This will
+``paco describe`` command to get a summary of your project. This will
 also ensure that your files are in the correct format.
 
 .. code-block:: text
 
-    $ aim --home ./myproj/ describe
+    $ paco --home ./myproj/ describe
     Project: myproj - My first Paco project
     Location: /Users/username/projects/myproj
 
@@ -345,7 +345,7 @@ section. There is only one application in this quickstart and it is named ``myap
                     instance_iam_role:
                     enabled: true
                     instance_ami: 'ami-0cc293023f983ed53' # latest Amazon Linux 2, June 2019
-                    instance_key_pair: aimkeypair
+                    instance_key_pair: pacokeypair
                     instance_monitoring: false
                     instance_type: t2.nano
                     max_instances: 2
@@ -442,19 +442,19 @@ Before you can provision your environment, you first need to create
 an EC2 keypair. The EC2 instances you later launch will be configured
 to use this keypair for SSH access.
 
-The ``aim provision`` command is used to create AWS resources. The provision
+The ``paco provision`` command is used to create AWS resources. The provision
 command takes the name of a controller and a component. This combination
 of controller and component will map to different sections of an Paco project
 and provision AWS resources to support that configuration.
 
 The EC2 controller and keypair component maps to the ``keypairs:`` configuration
-in the file ``<aim-project>/Resources/EC2.yaml``. The ``simple-web-app`` starting template
-you used will has created configuration for a keypair named ``aimkeypair``. Run the
-command ``aim provision EC2 keypair aimkeypair --home myproj`` to create a keypair.
+in the file ``<paco-project>/Resources/EC2.yaml``. The ``simple-web-app`` starting template
+you used will has created configuration for a keypair named ``pacokeypair``. Run the
+command ``paco provision EC2 keypair pacokeypair --home myproj`` to create a keypair.
 
 .. code-block:: bash
 
-    $ aim provision EC2 keypair aimkeypair --home myproj
+    $ paco provision EC2 keypair pacokeypair --home myproj
     Provisioning Configuration: EC2.keypair
     Project: /Users/username/projects/myproj/
     EC2 Service: keypair: flimflam: Key pair created successfully.
@@ -487,7 +487,7 @@ command ``aim provision EC2 keypair aimkeypair --home myproj`` to create a keypa
     -----END RSA PRIVATE KEY-----
 
 Copy the whole section from ``-----BEGIN RSA PRIVATE KEY-----`` to ``-----END RSA PRIVATE KEY-----``
-and put this in a new file named ``aimkeypair.pem``. Run ``chmod 0400 aimkeypair.pem`` to give
+and put this in a new file named ``pacokeypair.pem``. Run ``chmod 0400 pacokeypair.pem`` to give
 this file private permissions. If this is for a real-world environent, you need to keep
 a copy of this file somewhere safe, as if you lose it you will not be able to SSH to your
 EC2 instances.
@@ -496,7 +496,7 @@ EC2 instances.
 Provision an environment
 ------------------------
 
-The ``aim provision`` command create or updates the AWS resources needed for environments.
+The ``paco provision`` command create or updates the AWS resources needed for environments.
 
 This command needs the path to an Paco Project directory. For this command you can either
 supply this argument with the ``--home`` switch, or set the environment variable ``Paco_HOME``.
@@ -506,12 +506,12 @@ These types are called controllers and they control how CloudFormation stacks ar
 The NetEnv controller will provision a complete NetworkEnvironment YAML file, which you can
 run to provision the ``dev`` environment for the ``mynet`` NetworkEnvironment.
 
-Now run ``aim provision --home myproj NetEnv mynet`` and you should provision the ``dev`` environment.
+Now run ``paco provision --home myproj NetEnv mynet`` and you should provision the ``dev`` environment.
 You should see the following output on the CLI:
 
 .. code-block:: text
 
-    $ aim provision NetEnv mynet --home myproj
+    $ paco provision NetEnv mynet --home myproj
     Provisioning Configuration: NetEnv.mynet
     MFA Token: master: 123456
     Network Environment
@@ -598,18 +598,18 @@ return a static web page:
 Clean-up and next steps
 -----------------------
 
-If you are finished, you can use the ``aim delete`` command to
+If you are finished, you can use the ``paco delete`` command to
 delete your environments and networks.
 
 .. Attention:: If you want to continue with Quickstart 102, you will
     need to leave the ``dev`` environment you created up and running.
     To save on AWS costs (the dev env costs about $1 per day to run),
     you can use the delete command to completely remove all your AWS
-    resources, then save your aim project directory for later use
-    and run ``aim provision NetEnv dev`` to recreate your envrionment.
+    resources, then save your paco project directory for later use
+    and run ``paco provision NetEnv dev`` to recreate your envrionment.
     However, it does take about 20 minutes to spin up a new environment.
 
-    If you have completely deleted aim or your Paco project, and left
+    If you have completely deleted paco or your Paco project, and left
     the AWS resources provisioned, then you can login to the AWS Console
     and go to the CloudFormation service. There you can manually delete
     all of the CloudFormation stacks to remove everything from your
@@ -620,7 +620,7 @@ with:
 
 .. code-block:: bash
 
-    $ aim delete NetEnv mynet
+    $ paco delete NetEnv mynet
 
 The next walkthrough, `Quickstart 102`_, will show you how to
 add an SSH bastion server and launch it in the public subnet,

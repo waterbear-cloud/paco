@@ -27,7 +27,7 @@ from paco.models.locations import get_parent_by_interface
 from paco.models.references import Reference
 from paco.utils import md5sum, prefixed_name
 from paco.core.exception import StackException
-from paco.core.exception import AimErrorCode
+from paco.core.exception import PacoErrorCode
 
 
 class LaunchBundle():
@@ -124,7 +124,7 @@ class LaunchBundle():
 
         if self.instance_iam_role_arn == None:
             raise StackException(
-                    AimErrorCode.Unknown,
+                    PacoErrorCode.Unknown,
                     message="ec2_launch_manager: LaunchBundle: build: Unable to locate value for ref: " + instance_iam_role_arn_ref
                 )
 
@@ -169,6 +169,10 @@ class EC2LaunchManager():
             self.aws_region,
             self.app_id
         )
+        self.paco_base_path = '/opt/paco'
+        # legacy_flag: aim_name_2019_11_28 - Use AIM name
+        if self.paco_ctx.legacy_flag('aim_name_2019_11_28') == True:
+            self.paco_base_path = '/opt/aim'
 
     def get_cache_id(self, resource, app_id, grp_id):
         cache_context = '.'.join([app_id, grp_id, resource.name])
@@ -375,13 +379,15 @@ function ec2lm_install_wget() {
         self.ec2lm_functions_script[ec2lm_bucket_name] += self.user_data_secrets(resource, grp_id, instance_iam_role_ref)
 
     def init_ec2lm_function(self, ec2lm_bucket_name, resource, instance_iam_role_ref):
+
         script_table = {
             'ec2lm_bucket_name': ec2lm_bucket_name,
-            'aim_environment': self.app_engine.env_ctx.env_id,
-            'aim_network_environment': self.app_engine.env_ctx.netenv_id,
-            'aim_environment_ref': self.app_engine.env_ctx.config.paco_ref_parts,
+            'paco_environment': self.app_engine.env_ctx.env_id,
+            'paco_network_environment': self.app_engine.env_ctx.netenv_id,
+            'paco_environment_ref': self.app_engine.env_ctx.config.paco_ref_parts,
             'aws_account_id': self.account_ctx.id,
-            'launch_bundle_names': ' '.join(self.launch_bundle_names)
+            'launch_bundle_names': ' '.join(self.launch_bundle_names),
+            'paco_base_path': self.paco_base_path
         }
 
         script_template = """
@@ -391,10 +397,10 @@ REGION="$(echo \"$AVAIL_ZONE\" | sed 's/[a-z]$//')"
 export AWS_DEFAULT_REGION=$REGION
 EC2LM_AWS_ACCOUNT_ID="{0[aws_account_id]:s}"
 EC2LM_STACK_NAME=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=aws:cloudformation:stack-name" --query 'Tags[0].Value' |tr -d '"')
-EC2LM_FOLDER='/opt/aim/EC2Manager/'
-EC2LM_AIM_NETWORK_ENVIRONMENT="{0[aim_network_environment]:s}"
-EC2LM_AIM_ENVIRONMENT="{0[aim_environment]:s}"
-EC2LM_AIM_ENVIRONMENT_REF={0[aim_environment_ref]:s}
+EC2LM_FOLDER='{0[paco_base_path]:s}/EC2Manager/'
+EC2LM_PACO_NETWORK_ENVIRONMENT="{0[paco_network_environment]:s}"
+EC2LM_PACO_ENVIRONMENT="{0[paco_environment]:s}"
+EC2LM_PACO_ENVIRONMENT_REF={0[paco_environment_ref]:s}
 
 # Escape a string for sed replacements
 function sed_escape() {{
@@ -519,6 +525,7 @@ statement:
 
     def user_data_script(self, app_id, grp_id, resource_id, resource, instance_iam_role_ref):
         """BASH script that will load the launch bundle from user_data"""
+
         script_fmt = """#!/bin/bash
 echo "EC2LM: Start"
 echo "EC2LM: Script: $0"
@@ -527,7 +534,7 @@ echo "EC2LM: CacheId: {0[cache_id]}"
 {0[update_packages]}
 {0[install_aws_cli]}
 
-EC2LM_FOLDER='/opt/aim/EC2Manager/'
+EC2LM_FOLDER='{0[paco_base_path]}/EC2Manager/'
 EC2LM_FUNCTIONS=ec2lm_functions.bash
 mkdir -p $EC2LM_FOLDER
 
@@ -541,7 +548,7 @@ aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
         instance_iam_role_arn = self.paco_ctx.get_ref(instance_iam_role_arn_ref)
         if instance_iam_role_arn == None:
             raise StackException(
-                    AimErrorCode.Unknown,
+                    PacoErrorCode.Unknown,
                     message="ec2_launch_manager: user_data_script: Unable to locate value for ref: " + instance_iam_role_arn_ref
                 )
         self.init_ec2lm_s3_bucket(resource, instance_iam_role_arn)
@@ -555,7 +562,8 @@ aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
             'launch_bundles': 'echo "EC2LM: No launch bundles to load."\n',
             'update_packages': '',
             'pre_script': '',
-            'region': resource.region_name
+            'region': resource.region_name,
+            'paco_base_path': self.paco_base_path
         }
         # Launch Bundles
         if len(self.launch_bundles.keys()) > 0:
@@ -683,11 +691,13 @@ statement:
 
         # TODO: Add ubuntu and other distro support
         launch_script = """#!/bin/bash
-. /opt/aim/EC2Manager/ec2lm_functions.bash
+. %s/EC2Manager/ec2lm_functions.bash
 %s
-/opt/aim/bin/cfn-init --stack=$EC2LM_STACK_NAME --resource=LaunchConfiguration --region=$REGION --configsets=%s
+%s/bin/cfn-init --stack=$EC2LM_STACK_NAME --resource=LaunchConfiguration --region=$REGION --configsets=%s
 """ % (
+    self.paco_base_path,
     vocabulary.user_data_script['install_cfn_init'][resource.instance_ami_type],
+    self.paco_base_path,
     ','.join(resource.launch_options.cfn_init_config_sets)
 )
 
@@ -831,7 +841,7 @@ statement:
         # TODO: Add ubuntu and other distro support
         launch_script_template = """#!/bin/bash
 
-. /opt/aim/EC2Manager/ec2lm_functions.bash
+. %s/EC2Manager/ec2lm_functions.bash
 
 # Attach EBS Volume
 function ec2lm_attach_ebs_volume() {
@@ -970,7 +980,9 @@ function process_volume_mount()
 
 
         launch_script = launch_script_template % (
-            process_mount_volumes)
+            self.paco_base_path,
+            process_mount_volumes
+        )
             #vocabulary.user_data_script['mount_efs'][resource.instance_ami_type])
 
         policy_config_yaml = """
@@ -1027,7 +1039,7 @@ statement:
 
         # TODO: Add ubuntu and other distro support
         launch_script = """#!/bin/bash
-. /opt/aim/EC2Manager/ec2lm_functions.bash
+. %s/EC2Manager/ec2lm_functions.bash
 
 function ec2lm_eip_is_associated() {
     EIP_IP=$1
@@ -1040,7 +1052,7 @@ function ec2lm_eip_is_associated() {
 }
 
 # Allocation ID
-EIP_ALLOCATION_EC2_TAG_KEY_NAME="AIM-EIP-Allocation-Id"
+EIP_ALLOCATION_EC2_TAG_KEY_NAME="Paco-EIP-Allocation-Id"
 echo "EC2LM: EIP: Getting Allocation ID from EC2 Tag $EIP_ALLOCATION_EC2_TAG_KEY_NAME"
 EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=$EIP_ALLOCATION_EC2_TAG_KEY_NAME" --query 'Tags[0].Value' |tr -d '"')
 
@@ -1132,12 +1144,12 @@ statement:
         launch_script_template = """#!/bin/bash
 echo "EC2LM: CloudWatch: Begin"
 # Load EC2 Launch Manager helper functions
-. /opt/aim/EC2Manager/ec2lm_functions.bash
+. {0[paco_base_path]:s}/EC2Manager/ec2lm_functions.bash
 
 # Download the agent
 LB_DIR=$(pwd)
-mkdir /tmp/aim/
-cd /tmp/aim/
+mkdir /tmp/paco/
+cd /tmp/paco/
 ec2lm_install_wget # built in function
 
 echo "EC2LM: CloudWatch: Downloading agent"
@@ -1175,7 +1187,8 @@ echo "EC2LM: CloudWatch: Done"
         launch_script_table = {
             'agent_path': vocabulary.cloudwatch_agent[resource.instance_ami_type]['path'],
             'agent_object': vocabulary.cloudwatch_agent[resource.instance_ami_type]['object'],
-            'install_command': vocabulary.cloudwatch_agent[resource.instance_ami_type]['install']
+            'install_command': vocabulary.cloudwatch_agent[resource.instance_ami_type]['install'],
+            'paco_base_path': self.paco_base_path,
         }
         launch_script = launch_script_template.format(launch_script_table)
 

@@ -80,7 +80,7 @@ the top-level ``environments`` key.
         netenv.mynet.dev.us-west-2
         netenv.mynet.dev.us-west-2.applications.myapp.groups.somegroup.resources.webserver
 
-    service. objects : AIM Pluggable Extensions
+    service. objects : Paco Pluggable Extensions
       Location: files in the `Services` directory.
       examples:
         service.notification

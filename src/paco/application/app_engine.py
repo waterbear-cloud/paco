@@ -9,7 +9,7 @@ from paco import models
 from paco.application.ec2_launch_manager import EC2LaunchManager
 from paco.models import schemas
 from paco.core.exception import StackException
-from paco.core.exception import AimErrorCode
+from paco.core.exception import PacoErrorCode
 from paco.stack_group import StackTags
 
 
@@ -42,7 +42,7 @@ class ApplicationEngine():
         self.ref_type = ref_type
         self.env_ctx = env_ctx
         self.stack_tags = stack_tags
-        self.stack_tags.add_tag( 'AIM-Application-Name', self.app_id )
+        self.stack_tags.add_tag( 'Paco-Application-Name', self.app_id )
 
     def get_aws_name(self):
         return self.stack_group.get_aws_name()
@@ -76,8 +76,8 @@ class ApplicationEngine():
             for res_id, resource in grp_config.resources_ordered():
                 # initial resource
                 stack_tags = StackTags(self.stack_tags)
-                stack_tags.add_tag('AIM-Application-Group-Name', grp_id)
-                stack_tags.add_tag('AIM-Application-Resource-Name', res_id)
+                stack_tags.add_tag('Paco-Application-Group-Name', grp_id)
+                stack_tags.add_tag('Paco-Application-Resource-Name', res_id)
                 resource.resolve_ref_obj = self
                 # Create a resource_engine object and initialize it
                 resource_engine = getattr(paco.application, resource.type + 'ResourceEngine', None)(
@@ -104,7 +104,7 @@ class ApplicationEngine():
             len(self.config.monitoring.health_checks.values()) > 0:
             for health_check in self.config.monitoring.health_checks.values():
                 stack_tags = StackTags(self.stack_tags)
-                stack_tags.add_tag('AIM-Application-HealthCheck-Name', health_check.name)
+                stack_tags.add_tag('Paco-Application-HealthCheck-Name', health_check.name)
                 health_check.resolve_ref_obj = self
                 # ToDo: enable other types when there is more than one
                 if health_check.type == 'Route53HealthCheck':
@@ -145,7 +145,7 @@ class ApplicationEngine():
                 asg_outputs_key = asg_stack.template.get_outputs_key_from_ref(ref)
                 if asg_outputs_key == None:
                     raise StackException(
-                        AimErrorCode.Unknown,
+                        PacoErrorCode.Unknown,
                         message="Unable to find outputkey for ref: %s" % ref.raw)
                 asg_name = asg_stack.get_outputs_value(asg_outputs_key)
                 asg_client = self.account_ctx.get_aws_client('autoscaling')

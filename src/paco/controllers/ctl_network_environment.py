@@ -5,7 +5,7 @@ import pathlib
 from paco import utils
 from paco.controllers.controllers import Controller
 from paco.core.exception import StackException
-from paco.core.exception import AimErrorCode
+from paco.core.exception import PacoErrorCode
 from paco.core.yaml import YAML
 from paco.stack_grps.grp_application import ApplicationStackGroup
 from paco.stack_grps.grp_network import NetworkStackGroup
@@ -345,13 +345,13 @@ class NetEnvController(Controller):
         env_id = None
         region = None
         resource_arg = None
-        aim_command = command
+        paco_command = command
         netenv_arg = model_obj.paco_ref_parts
         if netenv_arg == None:
-            message = "Command: aim {} {}\n".format(aim_command, netenv_arg)
+            message = "Command: paco {} {}\n".format(paco_command, netenv_arg)
             message += "Error:   Missing NetEnv argument:  netenv.<netenv>.<environment>[.<region>.<option>.<resource>.<path>]"
             raise StackException(
-                AimErrorCode.Unknown,
+                PacoErrorCode.Unknown,
                 message = message
             )
 
@@ -367,17 +367,17 @@ class NetEnvController(Controller):
                 resource_arg = netenv_parts[3]
         else:
             raise StackException(
-                AimErrorCode.Unknown,
+                PacoErrorCode.Unknown,
                 message="Network Environment does not exist: {}".format(netenv_id)
             )
 
         self.config = self.paco_ctx.project['netenv'][self.netenv_id]
 
         if env_id not in self.config.keys():
-            message = "Command: aim {} {}\n".format(aim_command, netenv_arg)
+            message = "Command: paco {} {}\n".format(paco_command, netenv_arg)
             message += "Error:   Network Environment '{}' does not have an Environment named '{}'.\n".format(netenv_id, env_id)
             raise StackException(
-                AimErrorCode.Unknown,
+                PacoErrorCode.Unknown,
                 message = message
             )
 
@@ -387,10 +387,10 @@ class NetEnvController(Controller):
         else:
             regions = [region]
             if region not in self.config[env_id].keys():
-                message = "Command: aim {} {}\n".format(aim_command, netenv_arg)
+                message = "Command: paco {} {}\n".format(paco_command, netenv_arg)
                 message += "Error:   Environment '{}' does not have region '{}'.".format(env_id, region)
                 raise StackException(
-                    AimErrorCode.Unknown,
+                    PacoErrorCode.Unknown,
                     message = message
                 )
 
@@ -405,10 +405,10 @@ class NetEnvController(Controller):
                     done_parts_str += '.'
                 done_parts_str += res_part
                 if hasattr(config_obj, res_part) == False and res_part not in config_obj.keys():
-                    message = "Command: aim {} {}\n".format(aim_command, netenv_arg)
+                    message = "Command: paco {} {}\n".format(paco_command, netenv_arg)
                     message += "Error:   Unable to locate resource: {}".format(done_parts_str)
                     raise StackException(
-                        AimErrorCode.Unknown,
+                        PacoErrorCode.Unknown,
                         message = message
                     )
                 if hasattr(config_obj, res_part):

@@ -1,7 +1,7 @@
 from paco.stack_group import StackEnum, StackOrder, Stack, StackGroup
 from paco.models import schemas
 from paco.core.exception import StackException
-from paco.core.exception import AimErrorCode
+from paco.core.exception import PacoErrorCode
 import paco.cftemplates
 
 
@@ -43,7 +43,7 @@ statement:
       - sts:AssumeRole
     resource:{}
 users:
-  - aim-project-init
+  - paco-project-init
     """.format(org_account_name, resource_list)
             ctl_iam = self.paco_ctx.get_controller('iam')
             ctl_iam.create_managed_policy(  self.paco_ctx,
@@ -81,7 +81,7 @@ users:
         print("Account Group Init: %s: Completed" % self.account_id)
 
     def resolve_ref(self, ref):
-        raise StackException(AimErrorCode.Unknown)
+        raise StackException(PacoErrorCode.Unknown)
 
     def validate(self):
         # Generate Stacks

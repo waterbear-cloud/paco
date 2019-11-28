@@ -386,14 +386,14 @@ Cloud account information
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - account_id
       - String
       - .. fa:: times
-      -
+      - 
       - Can only contain digits.
       - Account ID
       - Account
@@ -407,28 +407,28 @@ Cloud account information
     * - admin_delegate_role_name
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Administrator delegate IAM Role name for the account
       - Account
     * - admin_iam_users
       - Container of AdminIAMUser_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Admin IAM Users
       - Account
     * - is_master
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating if this a Master account
       - Account
     * - organization_account_ids
       - List of Strings
       - .. fa:: times
-      -
+      - 
       - Each string in the list must contain only digits.
       - A list of account ids to add to the Master account's AWS Organization
       - Account
@@ -442,7 +442,7 @@ Cloud account information
     * - root_email
       - String
       - .. fa:: check
-      -
+      - 
       - Must be a valid email address.
       - The email address for the root user of this account
       - Account
@@ -477,8 +477,8 @@ An AWS Account Administerator IAM User
     * - username
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - IAM Username
       - AdminIAMUser
 
@@ -627,28 +627,28 @@ Network
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - Availability Zones
       - NetworkEnvironment
     * - vpc
       - VPC_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - VPC
       - NetworkEnvironment
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - aws_account
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - AWS Account Reference
       - Network
 
@@ -659,7 +659,7 @@ VPC
 
 
     AWS Resource: VPC
-
+    
 
 .. _VPC:
 
@@ -684,57 +684,57 @@ VPC
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - cidr
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - CIDR
       - VPC
     * - enable_dns_hostnames
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Enable DNS Hostnames
       - VPC
     * - enable_dns_support
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Enable DNS Support
       - VPC
     * - enable_internet_gateway
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Internet Gateway
       - VPC
     * - nat_gateway
       - Container of NATGateway_ Paco schemas
       - .. fa:: check
       - {}
-      -
+      - 
       - NAT Gateway
       - VPC
     * - peering
       - Container of VPCPeering_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - VPC Peering
       - VPC
     * - private_hosted_zone
       - PrivateHostedZone_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Private hosted zone
       - VPC
     * - security_groups
@@ -747,15 +747,15 @@ VPC
     * - segments
       - Container of Segment_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Segments
       - VPC
     * - vpn_gateway
       - Container of VPNGateway_ Paco schemas
       - .. fa:: check
       - {}
-      -
+      - 
       - VPN Gateway
       - VPC
 
@@ -766,7 +766,7 @@ VPCPeering
 
 
     VPC Peering
-
+    
 
 .. _VPCPeering:
 
@@ -791,50 +791,50 @@ VPCPeering
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - network_environment
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Network Environment Reference
       - VPCPeering
     * - peer_account_id
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Remote peer AWS account Id
       - VPCPeering
     * - peer_region
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Remote peer AWS region
       - VPCPeering
     * - peer_role_name
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Remote peer role name
       - VPCPeering
     * - peer_vpcid
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Remote peer VPC Id
       - VPCPeering
     * - routing
       - List of VPCPeeringRoute_ Paco schemas
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Peering routes
       - VPCPeering
 
@@ -845,7 +845,7 @@ VPCPeeringRoute
 
 
     VPC Peering Route
-
+    
 
 .. _VPCPeeringRoute:
 
@@ -863,15 +863,15 @@ VPCPeeringRoute
     * - cidr
       - String
       - .. fa:: times
-      -
+      - 
       - A valid CIDR v4 block or an empty string
       - CIDR IP
       - VPCPeeringRoute
     * - segment
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Segment reference
       - VPCPeeringRoute
 
@@ -882,7 +882,7 @@ NATGateway
 
 
     AWS Resource: NAT Gateway
-
+    
 
 .. _NATGateway:
 
@@ -907,29 +907,29 @@ NATGateway
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - availability_zone
       - String
       - .. fa:: times
       - all
-      -
+      - 
       - Availability Zones to launch instances in.
       - NATGateway
     * - default_route_segments
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Default Route Segments
       - NATGateway
     * - segment
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Segment
       - NATGateway
 
@@ -940,7 +940,7 @@ VPNGateway
 
 
     AWS Resource: VPN Gateway
-
+    
 
 .. _VPNGateway:
 
@@ -970,7 +970,7 @@ PrivateHostedZone
 
 
     AWS Resource: Private Hosted Zone
-
+    
 
 .. _PrivateHostedZone:
 
@@ -995,15 +995,15 @@ PrivateHostedZone
     * - name
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Hosted zone name
       - PrivateHostedZone
     * - vpc_associations
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of VPC Ids
       - PrivateHostedZone
 
@@ -1014,7 +1014,7 @@ Segment
 
 
     AWS Resource: Segment
-
+    
 
 .. _Segment:
 
@@ -1039,57 +1039,57 @@ Segment
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - az1_cidr
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Availability Zone 1 CIDR
       - Segment
     * - az2_cidr
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Availability Zone 2 CIDR
       - Segment
     * - az3_cidr
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Availability Zone 3 CIDR
       - Segment
     * - az4_cidr
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Availability Zone 4 CIDR
       - Segment
     * - az5_cidr
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Availability Zone 5 CIDR
       - Segment
     * - az6_cidr
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Availability Zone 6 CIDR
       - Segment
     * - internet_access
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Internet Access
       - Segment
 
@@ -1100,7 +1100,7 @@ SecurityGroup
 
 
     AWS Resource: Security Group
-
+    
 
 .. _SecurityGroup:
 
@@ -1125,35 +1125,35 @@ SecurityGroup
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - egress
       - List of EgressRule_ Paco schemas
       - .. fa:: times
-      -
+      - 
       - Every list item must be an EgressRule
       - Egress
       - SecurityGroup
     * - group_description
       - String
       - .. fa:: times
-      -
+      - 
       - Up to 255 characters in length
       - Group description
       - SecurityGroup
     * - group_name
       - String
       - .. fa:: times
-      -
+      - 
       - Up to 255 characters in length. Cannot start with sg-.
       - Group name
       - SecurityGroup
     * - ingress
       - List of IngressRule_ Paco schemas
       - .. fa:: times
-      -
+      - 
       - Every list item must be an IngressRule
       - Ingress
       - SecurityGroup
@@ -1181,28 +1181,28 @@ Security group egress
     * - name
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Name
       - Name
     * - cidr_ip
       - String
       - .. fa:: times
-      -
+      - 
       - A valid CIDR v4 block or an empty string
       - CIDR IP
       - SecurityGroupRule
     * - cidr_ip_v6
       - String
       - .. fa:: times
-      -
+      - 
       - A valid CIDR v6 block or an empty string
       - CIDR IP v6
       - SecurityGroupRule
     * - description
       - String
       - .. fa:: times
-      -
+      - 
       - Max 255 characters. Allowed characters are a-z, A-Z, 0-9, spaces, and ._-:/()#,@[]+=;{}!$*.
       - Description
       - SecurityGroupRule
@@ -1223,7 +1223,7 @@ Security group egress
     * - protocol
       - String
       - .. fa:: times
-      -
+      - 
       - The IP protocol name (tcp, udp, icmp, icmpv6) or number.
       - IP Protocol
       - SecurityGroupRule
@@ -1237,7 +1237,7 @@ Security group egress
     * - destination_security_group
       - TextReference
       - .. fa:: times
-      -
+      - 
       - An AIM Reference to a SecurityGroup
       - Destination Security Group Reference
       - EgressRule
@@ -1265,28 +1265,28 @@ Security group ingress
     * - name
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Name
       - Name
     * - cidr_ip
       - String
       - .. fa:: times
-      -
+      - 
       - A valid CIDR v4 block or an empty string
       - CIDR IP
       - SecurityGroupRule
     * - cidr_ip_v6
       - String
       - .. fa:: times
-      -
+      - 
       - A valid CIDR v6 block or an empty string
       - CIDR IP v6
       - SecurityGroupRule
     * - description
       - String
       - .. fa:: times
-      -
+      - 
       - Max 255 characters. Allowed characters are a-z, A-Z, 0-9, spaces, and ._-:/()#,@[]+=;{}!$*.
       - Description
       - SecurityGroupRule
@@ -1307,7 +1307,7 @@ Security group ingress
     * - protocol
       - String
       - .. fa:: times
-      -
+      - 
       - The IP protocol name (tcp, udp, icmp, icmpv6) or number.
       - IP Protocol
       - SecurityGroupRule
@@ -1321,7 +1321,7 @@ Security group ingress
     * - source_security_group
       - TextReference
       - .. fa:: times
-      -
+      - 
       - An AIM Reference to a SecurityGroup
       - Source Security Group Reference
       - IngressRule
@@ -1384,7 +1384,7 @@ Environment
 
 
     Environment
-
+    
 
 .. _Environment:
 
@@ -1402,8 +1402,8 @@ Environment
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -1414,7 +1414,7 @@ EnvironmentDefault
 
 
     Default values for an Environment's configuration
-
+    
 
 .. _EnvironmentDefault:
 
@@ -1432,36 +1432,36 @@ EnvironmentDefault
     * - alarm_sets
       - Container of AlarmSets_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Alarm Sets
       - RegionContainer
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - applications
       - Container of ApplicationEngines_ Paco schemas
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Application container
       - EnvironmentDefault
     * - network
       - Container of Network_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Network
       - EnvironmentDefault
     * - secrets_manager
       - Container of SecretsManager_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Secrets Manager
       - EnvironmentDefault
 
@@ -1473,7 +1473,7 @@ EnvironmentRegion
 
     An actual provisioned Environment in a specific region.
     May contains overrides of the IEnvironmentDefault where needed.
-
+    
 
 .. _EnvironmentRegion:
 
@@ -1498,36 +1498,36 @@ EnvironmentRegion
     * - applications
       - Container of ApplicationEngines_ Paco schemas
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Application container
       - EnvironmentDefault
     * - network
       - Container of Network_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Network
       - EnvironmentDefault
     * - secrets_manager
       - Container of SecretsManager_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Secrets Manager
       - EnvironmentDefault
     * - alarm_sets
       - Container of AlarmSets_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Alarm Sets
       - RegionContainer
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -1608,8 +1608,8 @@ A collection of Application Engines
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -1620,7 +1620,7 @@ Application
 
 
     Application : An Application Engine configuration to run in a specific Environment
-
+    
 
 .. _Application:
 
@@ -1638,22 +1638,22 @@ Application
     * - groups
       - Container of ResourceGroups_ Paco schemas
       - .. fa:: check
-      -
-      -
-      -
+      - 
+      - 
+      - 
       - ApplicationEngine
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the application will be processed
       - ApplicationEngine
     * - dns_enabled
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -1666,22 +1666,22 @@ Application
     * - monitoring
       - MonitorConfig_ Paco schema
       - .. fa:: times
-      -
-      -
-      -
+      - 
+      - 
+      - 
       - Monitorable
     * - notifications
       - Container of AlarmNotifications_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Alarm Notifications
       - Notifiable
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -1708,8 +1708,8 @@ A collection of Application Resource Groups
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -1743,36 +1743,36 @@ A collection of Application Resources
     * - dns_enabled
       - Boolean
       - .. fa:: times
-      -
-      -
-      -
+      - 
+      - 
+      - 
       - ResourceGroup
     * - order
       - Int
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - The order in which the group will be deployed
       - ResourceGroup
     * - resources
       - Container of Resources_ Paco schemas
       - .. fa:: check
-      -
-      -
-      -
+      - 
+      - 
+      - 
       - ResourceGroup
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - ResourceGroup
     * - type
       - String
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Type
       - ResourceGroup
 
@@ -1799,8 +1799,8 @@ A collection of Application Resources
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -1811,7 +1811,7 @@ Resource
 
 
     AWS Resource to support an Application
-
+    
 
 .. _Resource:
 
@@ -1830,7 +1830,7 @@ Resource
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -1843,14 +1843,14 @@ Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
@@ -1858,14 +1858,14 @@ Resource
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
 
@@ -1899,7 +1899,7 @@ An Api Gateway Rest API resource
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -1913,83 +1913,83 @@ An Api Gateway Rest API resource
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
     * - api_key_source_type
       - String
       - .. fa:: times
-      -
+      - 
       - Must be one of 'HEADER' to read the API key from the X-API-Key header of a request or 'AUTHORIZER' to read the API key from the UsageIdentifierKey from a Lambda authorizer.
       - API Key Source Type
       - ApiGatewayRestApi
     * - binary_media_types
       - List of Strings
       - .. fa:: times
-      -
+      - 
       - Duplicates are not allowed. Slashes must be escaped with ~1. For example, image/png would be image~1png in the BinaryMediaTypes list.
       - Binary Media Types. The list of binary media types that are supported by the RestApi resource, such as image/png or application/octet-stream. By default, RestApi supports only UTF-8-encoded text payloads.
       - ApiGatewayRestApi
     * - body
       - String
       - .. fa:: times
-      -
+      - 
       - Must be valid JSON.
       - Body. An OpenAPI specification that defines a set of RESTful APIs in JSON or YAML format. For YAML templates, you can also provide the specification in YAML format.
       - ApiGatewayRestApi
     * - body_file_location
       - StringFileReference
       - .. fa:: times
-      -
+      - 
       - Must be valid path to a valid JSON document.
       - Path to a file containing the Body.
       - ApiGatewayRestApi
     * - body_s3_location
       - String
       - .. fa:: times
-      -
+      - 
       - Valid S3Location string to a valid JSON or YAML document.
       - The Amazon Simple Storage Service (Amazon S3) location that points to an OpenAPI file, which defines a set of RESTful APIs in JSON or YAML format.
       - ApiGatewayRestApi
     * - clone_from
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - CloneFrom. The ID of the RestApi resource that you want to clone.
       - ApiGatewayRestApi
     * - description
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Description of the RestApi resource.
       - ApiGatewayRestApi
     * - endpoint_configuration
       - List of Strings
       - .. fa:: times
-      -
+      - 
       - List of strings, each must be one of 'EDGE', 'REGIONAL', 'PRIVATE'
       - Endpoint configuration. A list of the endpoint types of the API. Use this field when creating an API. When importing an existing API, specify the endpoint configuration types using the `parameters` field.
       - ApiGatewayRestApi
@@ -1997,29 +1997,29 @@ An Api Gateway Rest API resource
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Indicates whether to roll back the resource if a warning occurs while API Gateway is creating the RestApi resource.
       - ApiGatewayRestApi
     * - methods
       - Container of ApiGatewayMethods_ Paco schemas
       - .. fa:: times
-      -
-      -
-      -
+      - 
+      - 
+      - 
       - ApiGatewayRestApi
     * - minimum_compression_size
       - Int
       - .. fa:: times
-      -
+      - 
       - A non-negative integer between 0 and 10485760 (10M) bytes, inclusive.
       - An integer that is used to enable compression on an API. When compression is enabled, compression or decompression is not applied on the payload if the payload size is smaller than this value. Setting it to zero allows compression for any payload size.
       - ApiGatewayRestApi
     * - models
       - Container of ApiGatewayModels_ Paco schemas
       - .. fa:: times
-      -
-      -
-      -
+      - 
+      - 
+      - 
       - ApiGatewayRestApi
     * - parameters
       - Dict
@@ -2031,23 +2031,23 @@ An Api Gateway Rest API resource
     * - policy
       - String
       - .. fa:: times
-      -
+      - 
       - Valid JSON document
       - A policy document that contains the permissions for the RestApi resource, in JSON format. To set the ARN for the policy, use the !Join intrinsic function with "" as delimiter and values of "execute-api:/" and "*".
       - ApiGatewayRestApi
     * - resources
       - Container of ApiGatewayResources_ Paco schemas
       - .. fa:: times
-      -
-      -
-      -
+      - 
+      - 
+      - 
       - ApiGatewayRestApi
     * - stages
       - Container of ApiGatewayStages_ Paco schemas
       - .. fa:: times
-      -
-      -
-      -
+      - 
+      - 
+      - 
       - ApiGatewayRestApi
 
 
@@ -2073,8 +2073,8 @@ Container for API Gateway Method objects
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -2101,8 +2101,8 @@ Container for API Gateway Model objects
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -2129,8 +2129,8 @@ Container for API Gateway Resource objects
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -2157,8 +2157,8 @@ Container for API Gateway Stage objects
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -2246,7 +2246,7 @@ to a target group, use the ``target_groups`` field on an ASG resource.
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -2259,64 +2259,64 @@ to a target group, use the ``target_groups`` field on an ASG resource.
     * - monitoring
       - MonitorConfig_ Paco schema
       - .. fa:: times
-      -
-      -
-      -
+      - 
+      - 
+      - 
       - Monitorable
     * - change_protected
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
     * - access_logs_bucket
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Bucket to store access logs in
       - LBApplication
     * - access_logs_prefix
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Access Logs S3 Bucket prefix
       - LBApplication
     * - dns
       - List of DNS_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of DNS for the ALB
       - LBApplication
     * - enable_access_logs
       - Boolean
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Write access logs to an S3 Bucket
       - LBApplication
     * - idle_timeout_secs
@@ -2329,36 +2329,36 @@ to a target group, use the ``target_groups`` field on an ASG resource.
     * - listeners
       - Container of Listener_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Listeners
       - LBApplication
     * - scheme
       - Choice
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Scheme
       - LBApplication
     * - security_groups
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Security Groups
       - LBApplication
     * - segment
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Id of the segment stack
       - LBApplication
     * - target_groups
       - Container of TargetGroup_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Target Groups
       - LBApplication
 
@@ -2385,29 +2385,29 @@ DNS
     * - domain_name
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Domain name
       - DNS
     * - hosted_zone
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Hosted Zone Id
       - DNS
     * - ssl_certificate
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - SSL certificate Reference
       - DNS
     * - ttl
       - Int
       - .. fa:: times
       - 300
-      -
+      - 
       - TTL
       - DNS
 
@@ -2434,43 +2434,43 @@ Listener
     * - port
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Port
       - PortProtocol
     * - protocol
       - Choice
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Protocol
       - PortProtocol
     * - redirect
       - PortProtocol_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Redirect
       - Listener
     * - rules
       - Container of ListenerRule_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Container of listener rules
       - Listener
     * - ssl_certificates
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of SSL certificate References
       - Listener
     * - target_group
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Target group
       - Listener
 
@@ -2504,36 +2504,36 @@ ListenerRule
     * - host
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Host header value
       - ListenerRule
     * - priority
       - Int
       - .. fa:: times
       - 1
-      -
+      - 
       - Forward condition priority
       - ListenerRule
     * - redirect_host
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - The host to redirect to
       - ListenerRule
     * - rule_type
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Type of Rule
       - ListenerRule
     * - target_group
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Target group name
       - ListenerRule
 
@@ -2560,15 +2560,15 @@ Port and Protocol
     * - port
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Port
       - PortProtocol
     * - protocol
       - Choice
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Protocol
       - PortProtocol
 
@@ -2596,7 +2596,7 @@ Target Group
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -2609,92 +2609,92 @@ Target Group
     * - port
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Port
       - PortProtocol
     * - protocol
       - Choice
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Protocol
       - PortProtocol
     * - change_protected
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
     * - connection_drain_timeout
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Connection drain timeout
       - TargetGroup
     * - health_check_http_code
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Health check HTTP codes
       - TargetGroup
     * - health_check_interval
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Health check interval
       - TargetGroup
     * - health_check_path
       - String
       - .. fa:: times
       - /
-      -
+      - 
       - Health check path
       - TargetGroup
     * - health_check_timeout
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Health check timeout
       - TargetGroup
     * - healthy_threshold
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Healthy threshold
       - TargetGroup
     * - unhealthy_threshold
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Unhealthy threshold
       - TargetGroup
 
@@ -2705,7 +2705,7 @@ ASG
 
 
     Auto Scaling Group
-
+    
 
 .. _ASG:
 
@@ -2724,7 +2724,7 @@ ASG
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -2737,35 +2737,35 @@ ASG
     * - monitoring
       - MonitorConfig_ Paco schema
       - .. fa:: times
-      -
-      -
-      -
+      - 
+      - 
+      - 
       - Monitorable
     * - change_protected
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
@@ -2773,77 +2773,77 @@ ASG
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Associate Public IP Address
       - ASG
     * - availability_zone
       - String
       - .. fa:: times
       - all
-      -
+      - 
       - Availability Zones to launch instances in.
       - ASG
     * - block_device_mappings
       - List of BlockDeviceMapping_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Block Device Mappings
       - ASG
     * - cfn_init
       - CloudFormationInit_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - CloudFormation Init
       - ASG
     * - cooldown_secs
       - Int
       - .. fa:: times
       - 300
-      -
+      - 
       - Cooldown seconds
       - ASG
     * - desired_capacity
       - Int
       - .. fa:: times
       - 1
-      -
+      - 
       - Desired capacity
       - ASG
     * - ebs_optimized
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - EBS Optimized
       - ASG
     * - ebs_volume_mounts
       - List of EBSVolumeMount_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Elastic Block Store Volume Mounts
       - ASG
     * - efs_mounts
       - List of EFSMount_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Elastic Filesystem Configuration
       - ASG
     * - eip
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Elastic IP Reference or AllocationId
       - ASG
     * - health_check_grace_period_secs
       - Int
       - .. fa:: times
       - 300
-      -
+      - 
       - Health check grace period in seconds
       - ASG
     * - health_check_type
@@ -2856,8 +2856,8 @@ ASG
     * - instance_ami
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Instance AMI
       - ASG
     * - instance_ami_type
@@ -2870,141 +2870,141 @@ ASG
     * - instance_iam_role
       - Role_ Paco schema
       - .. fa:: check
-      -
-      -
-      -
+      - 
+      - 
+      - 
       - ASG
     * - instance_key_pair
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Instance key pair reference
       - ASG
     * - instance_monitoring
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Instance monitoring
       - ASG
     * - instance_type
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Instance type
       - ASG
     * - launch_options
       - EC2LaunchOptions_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - EC2 Launch Options
       - ASG
     * - lifecycle_hooks
       - Container of ASGLifecycleHooks_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Lifecycle Hooks
       - ASG
     * - load_balancers
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Target groups
       - ASG
     * - max_instances
       - Int
       - .. fa:: times
       - 2
-      -
+      - 
       - Maximum instances
       - ASG
     * - min_instances
       - Int
       - .. fa:: times
       - 1
-      -
+      - 
       - Minimum instances
       - ASG
     * - scaling_policies
       - Container of ASGScalingPolicies_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Scaling Policies
       - ASG
     * - scaling_policy_cpu_average
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - Average CPU Scaling Polciy
       - ASG
     * - secrets
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of Secrets Manager References
       - ASG
     * - security_groups
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Security groups
       - ASG
     * - segment
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Segment
       - ASG
     * - target_groups
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Target groups
       - ASG
     * - termination_policies
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Terminiation policies
       - ASG
     * - update_policy_max_batch_size
       - Int
       - .. fa:: times
       - 1
-      -
+      - 
       - Update policy maximum batch size
       - ASG
     * - update_policy_min_instances_in_service
       - Int
       - .. fa:: times
       - 1
-      -
+      - 
       - Update policy minimum instances in service
       - ASG
     * - user_data_pre_script
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - User data pre-script
       - ASG
     * - user_data_script
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - User data script
       - ASG
 
@@ -3015,7 +3015,7 @@ ASGLifecycleHooks
 
 
     Container of ASG LifecycleHOoks
-
+    
 
 .. _ASGLifecycleHooks:
 
@@ -3033,8 +3033,8 @@ ASGLifecycleHooks
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -3045,7 +3045,7 @@ ASGScalingPolicies
 
 
     Container of Auto Scaling Group Scaling Policies
-
+    
 
 .. _ASGScalingPolicies:
 
@@ -3063,8 +3063,8 @@ ASGScalingPolicies
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -3091,21 +3091,21 @@ BlockDeviceMapping
     * - device_name
       - String
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - The device name exposed to the EC2 instance
       - BlockDeviceMapping
     * - ebs
       - BlockDevice_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Amazon Ebs volume
       - BlockDeviceMapping
     * - virtual_name
       - String
       - .. fa:: times
-      -
+      - 
       - The name must be in the form ephemeralX where X is a number starting from zero (0), for example, ephemeral0.
       - The name of the virtual device.
       - BlockDeviceMapping
@@ -3134,41 +3134,41 @@ BlockDevice
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Indicates whether to delete the volume when the instance is terminated.
       - BlockDevice
     * - encrypted
       - Boolean
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Specifies whether the EBS volume is encrypted.
       - BlockDevice
     * - iops
       - Int
       - .. fa:: times
-      -
+      - 
       - The maximum ratio of IOPS to volume size (in GiB) is 50:1, so for 5,000 provisioned IOPS, you need at least 100 GiB storage on the volume.
       - The number of I/O operations per second (IOPS) to provision for the volume.
       - BlockDevice
     * - size_gib
       - Int
       - .. fa:: times
-      -
+      - 
       - This can be a number from 1-1,024 for standard, 4-16,384 for io1, 1-16,384 for gp2, and 500-16,384 for st1 and sc1.
       - The volume size, in Gibibytes (GiB).
       - BlockDevice
     * - snapshot_id
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - The snapshot ID of the volume to use.
       - BlockDevice
     * - volume_type
       - String
       - .. fa:: check
-      -
+      - 
       - Must be one of standard, io1, gp2, st1 or sc1.
       - The volume type, which can be standard for Magnetic, io1 for Provisioned IOPS SSD, gp2 for General Purpose SSD, st1 for Throughput Optimized HDD, or sc1 for Cold HDD.
       - BlockDevice
@@ -3180,7 +3180,7 @@ EBSVolumeMount
 
 
     EBS Volume Mount Configuration
-
+    
 
 .. _EBSVolumeMount:
 
@@ -3205,29 +3205,29 @@ EBSVolumeMount
     * - device
       - String
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Device to mount the EBS Volume with.
       - EBSVolumeMount
     * - filesystem
       - String
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Filesystem to mount the EBS Volume with.
       - EBSVolumeMount
     * - folder
       - String
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Folder to mount the EBS Volume
       - EBSVolumeMount
     * - volume
       - TextReference
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - EBS Volume Resource Reference
       - EBSVolumeMount
 
@@ -3238,7 +3238,7 @@ EFSMount
 
 
     EFS Mount Folder and Target Configuration
-
+    
 
 .. _EFSMount:
 
@@ -3263,15 +3263,15 @@ EFSMount
     * - folder
       - String
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Folder to mount the EFS target
       - EFSMount
     * - target
       - TextReference
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - EFS Target Resource Reference
       - EFSMount
 
@@ -3282,7 +3282,7 @@ EC2LaunchOptions
 
 
     EC2 Launch Options
-
+    
 
 .. _EC2LaunchOptions:
 
@@ -3300,22 +3300,22 @@ EC2LaunchOptions
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - cfn_init_config_sets
       - List of Strings
       - .. fa:: times
       - []
-      -
+      - 
       - List of cfn-init config sets
       - EC2LaunchOptions
     * - update_packages
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Update Distribution Packages
       - EC2LaunchOptions
 
@@ -3342,29 +3342,29 @@ CloudFormationInit
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - config_sets
       - Container of CloudFormationConfigSets_ Paco schemas
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - CloudFormation Init configSets
       - CloudFormationInit
     * - configurations
       - Container of CloudFormationConfigurations_ Paco schemas
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - CloudFormation Init configurations
       - CloudFormationInit
     * - parameters
       - Dict
       - .. fa:: times
       - {}
-      -
+      - 
       - Parameters
       - CloudFormationInit
 
@@ -3391,8 +3391,8 @@ CloudFormationConfigSets
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -3419,8 +3419,8 @@ CloudFormationConfigurations
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -3431,7 +3431,7 @@ CodePipeBuildDeploy
 
 
     Code Pipeline: Build and Deploy
-
+    
 
 .. _CodePipeBuildDeploy:
 
@@ -3450,7 +3450,7 @@ CodePipeBuildDeploy
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -3464,168 +3464,168 @@ CodePipeBuildDeploy
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
     * - alb_target_group
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - ALB Target Group Reference
       - CodePipeBuildDeploy
     * - artifacts_bucket
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Artifacts S3 Bucket Reference
       - CodePipeBuildDeploy
     * - asg
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - ASG Reference
       - CodePipeBuildDeploy
     * - auto_rollback_enabled
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Automatic rollback enabled
       - CodePipeBuildDeploy
     * - codebuild_compute_type
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - CodeBuild Compute Type
       - CodePipeBuildDeploy
     * - codebuild_image
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - CodeBuild Docker Image
       - CodePipeBuildDeploy
     * - codecommit_repository
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - CodeCommit Respository
       - CodePipeBuildDeploy
     * - cross_account_support
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Cross Account Support
       - CodePipeBuildDeploy
     * - data_account
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Data Account Reference
       - CodePipeBuildDeploy
     * - deploy_config_type
       - String
       - .. fa:: times
       - HOST_COUNT
-      -
+      - 
       - Deploy Config Type
       - CodePipeBuildDeploy
     * - deploy_config_value
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - Deploy Config Value
       - CodePipeBuildDeploy
     * - deploy_instance_role
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Deploy Instance Role Reference
       - CodePipeBuildDeploy
     * - deploy_style_option
       - String
       - .. fa:: times
       - WITH_TRAFFIC_CONTROL
-      -
+      - 
       - Deploy Style Option
       - CodePipeBuildDeploy
     * - deployment_branch_name
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Deployment Branch Name
       - CodePipeBuildDeploy
     * - deployment_environment
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Deployment Environment
       - CodePipeBuildDeploy
     * - elb_name
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - ELB Name
       - CodePipeBuildDeploy
     * - manual_approval_enabled
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Manual approval enabled
       - CodePipeBuildDeploy
     * - manual_approval_notification_email
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Manual approval notification email
       - CodePipeBuildDeploy
     * - timeout_mins
       - Int
       - .. fa:: times
       - 60
-      -
+      - 
       - Timeout in Minutes
       - CodePipeBuildDeploy
     * - tools_account
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Tools Account Reference
       - CodePipeBuildDeploy
 
@@ -3653,7 +3653,7 @@ AWSCertificateManager
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -3667,49 +3667,49 @@ AWSCertificateManager
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
     * - domain_name
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Domain Name
       - AWSCertificateManager
     * - external_resource
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Marks this resource as external to avoid creating and validating it.
       - AWSCertificateManager
     * - subject_alternative_names
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Subject alternative names
       - AWSCertificateManager
 
@@ -3802,7 +3802,7 @@ RDSOptionConfiguration
 
 
 Option groups enable and configure features that are specific to a particular DB engine.
-
+    
 
 .. _RDSOptionConfiguration:
 
@@ -3820,29 +3820,29 @@ Option groups enable and configure features that are specific to a particular DB
     * - option_name
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Option Name
       - RDSOptionConfiguration
     * - option_settings
       - List of NameValuePair_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of option name value pairs.
       - RDSOptionConfiguration
     * - option_version
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Option Version
       - RDSOptionConfiguration
     * - port
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Port
       - RDSOptionConfiguration
 
@@ -3869,15 +3869,15 @@ A Name/Value pair to use for RDS Option Group configuration
     * - name
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Name
       - NameValuePair
     * - value
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Value
       - NameValuePair
 
@@ -3890,7 +3890,7 @@ RDSMysql
 The RDSMysql type extends the base RDS schema with a ``multi_az`` field. When you provision a Multi-AZ DB Instance,
 Amazon RDS automatically creates a primary DB Instance and synchronously replicates the data to a standby instance
 in a different Availability Zone (AZ).
-
+    
 
 .. _RDSMysql:
 
@@ -3909,7 +3909,7 @@ in a different Availability Zone (AZ).
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -3922,231 +3922,231 @@ in a different Availability Zone (AZ).
     * - monitoring
       - MonitorConfig_ Paco schema
       - .. fa:: times
-      -
-      -
-      -
+      - 
+      - 
+      - 
       - Monitorable
     * - allow_major_version_upgrade
       - Boolean
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Allow major version upgrades
       - RDS
     * - auto_minor_version_upgrade
       - Boolean
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Automatic minor version upgrades
       - RDS
     * - backup_preferred_window
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Backup Preferred Window
       - RDS
     * - backup_retention_period
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Backup Retention Period in days
       - RDS
     * - cloudwatch_logs_exports
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of CloudWatch Logs Exports
       - RDS
     * - db_instance_type
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - RDS Instance Type
       - RDS
     * - db_snapshot_identifier
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - DB Snapshot Identifier to restore from
       - RDS
     * - deletion_protection
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Deletion Protection
       - RDS
     * - dns
       - List of DNS_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of DNS for the RDS
       - RDS
     * - engine
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - RDS Engine
       - RDS
     * - engine_version
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - RDS Engine Version
       - RDS
     * - kms_key_id
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Enable Storage Encryption
       - RDS
     * - license_model
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - License Model
       - RDS
     * - maintenance_preferred_window
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Maintenance Preferred Window
       - RDS
     * - master_user_password
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Master User Password
       - RDS
     * - master_username
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Master Username
       - RDS
     * - option_configurations
       - List of RDSOptionConfiguration_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Option Configurations
       - RDS
     * - parameter_group
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - RDS Parameter Group
       - RDS
     * - port
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - DB Port
       - RDS
     * - primary_domain_name
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Primary Domain Name
       - RDS
     * - primary_hosted_zone
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Primary Hosted Zone
       - RDS
     * - publically_accessible
       - Boolean
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Assign a Public IP address
       - RDS
     * - secrets_password
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Secrets Manager password
       - RDS
     * - security_groups
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of VPC Security Group Ids
       - RDS
     * - segment
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Segment
       - RDS
     * - storage_encrypted
       - Boolean
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Enable Storage Encryption
       - RDS
     * - storage_size_gb
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - DB Storage Size in Gigabytes
       - RDS
     * - storage_type
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - DB Storage Type
       - RDS
     * - change_protected
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
@@ -4154,7 +4154,7 @@ in a different Availability Zone (AZ).
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Multiple Availability Zone deployment
       - RDSMysql
 
@@ -4165,7 +4165,7 @@ RDSAurora
 
 
     RDS Aurora
-
+    
 
 .. _RDSAurora:
 
@@ -4184,7 +4184,7 @@ RDSAurora
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -4197,246 +4197,246 @@ RDSAurora
     * - monitoring
       - MonitorConfig_ Paco schema
       - .. fa:: times
-      -
-      -
-      -
+      - 
+      - 
+      - 
       - Monitorable
     * - allow_major_version_upgrade
       - Boolean
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Allow major version upgrades
       - RDS
     * - auto_minor_version_upgrade
       - Boolean
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Automatic minor version upgrades
       - RDS
     * - backup_preferred_window
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Backup Preferred Window
       - RDS
     * - backup_retention_period
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Backup Retention Period in days
       - RDS
     * - cloudwatch_logs_exports
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of CloudWatch Logs Exports
       - RDS
     * - db_instance_type
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - RDS Instance Type
       - RDS
     * - db_snapshot_identifier
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - DB Snapshot Identifier to restore from
       - RDS
     * - deletion_protection
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Deletion Protection
       - RDS
     * - dns
       - List of DNS_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of DNS for the RDS
       - RDS
     * - engine
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - RDS Engine
       - RDS
     * - engine_version
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - RDS Engine Version
       - RDS
     * - kms_key_id
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Enable Storage Encryption
       - RDS
     * - license_model
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - License Model
       - RDS
     * - maintenance_preferred_window
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Maintenance Preferred Window
       - RDS
     * - master_user_password
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Master User Password
       - RDS
     * - master_username
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Master Username
       - RDS
     * - option_configurations
       - List of RDSOptionConfiguration_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Option Configurations
       - RDS
     * - parameter_group
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - RDS Parameter Group
       - RDS
     * - port
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - DB Port
       - RDS
     * - primary_domain_name
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Primary Domain Name
       - RDS
     * - primary_hosted_zone
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Primary Hosted Zone
       - RDS
     * - publically_accessible
       - Boolean
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Assign a Public IP address
       - RDS
     * - secrets_password
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Secrets Manager password
       - RDS
     * - security_groups
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of VPC Security Group Ids
       - RDS
     * - segment
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Segment
       - RDS
     * - storage_encrypted
       - Boolean
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Enable Storage Encryption
       - RDS
     * - storage_size_gb
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - DB Storage Size in Gigabytes
       - RDS
     * - storage_type
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - DB Storage Type
       - RDS
     * - change_protected
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
     * - secondary_domain_name
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Secondary Domain Name
       - RDSAurora
     * - secondary_hosted_zone
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Secondary Hosted Zone
       - RDSAurora
 
@@ -4447,7 +4447,7 @@ DBParameterGroup
 
 
     AWS::RDS::DBParameterGroup
-
+    
 
 .. _DBParameterGroup:
 
@@ -4466,7 +4466,7 @@ DBParameterGroup
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -4480,49 +4480,49 @@ DBParameterGroup
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
     * - description
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Description
       - DBParameterGroup
     * - family
       - String
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Database Family
       - DBParameterGroup
     * - parameters
       - Container of DBParameters_ Paco schemas
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Database Parameter set
       - DBParameterGroup
 
@@ -4540,7 +4540,7 @@ EC2
 
 
     EC2 Instance
-
+    
 
 .. _EC2:
 
@@ -4559,7 +4559,7 @@ EC2
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -4573,27 +4573,27 @@ EC2
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
@@ -4601,70 +4601,70 @@ EC2
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Associate Public IP Address
       - EC2
     * - disable_api_termination
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Disable API Termination
       - EC2
     * - instance_ami
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Instance AMI
       - EC2
     * - instance_key_pair
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Instance key pair reference
       - EC2
     * - instance_type
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Instance type
       - EC2
     * - private_ip_address
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Private IP Address
       - EC2
     * - root_volume_size_gb
       - Int
       - .. fa:: times
       - 8
-      -
+      - 
       - Root volume size GB
       - EC2
     * - security_groups
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Security groups
       - EC2
     * - segment
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Segment
       - EC2
     * - user_data_script
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - User data script
       - EC2
 
@@ -4753,7 +4753,7 @@ For the code that the Lambda function will run, use the ``code:`` block and spec
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -4766,77 +4766,77 @@ For the code that the Lambda function will run, use the ``code:`` block and spec
     * - monitoring
       - MonitorConfig_ Paco schema
       - .. fa:: times
-      -
-      -
-      -
+      - 
+      - 
+      - 
       - Monitorable
     * - change_protected
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
     * - code
       - LambdaFunctionCode_ Paco schema
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - The function deployment package.
       - Lambda
     * - description
       - String
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - A description of the function.
       - Lambda
     * - environment
       - Container of LambdaEnvironment_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Lambda Function Environment
       - Lambda
     * - handler
       - String
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Function Handler
       - Lambda
     * - iam_role
       - Role_ Paco schema
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - The IAM Role this Lambda will execute as.
       - Lambda
     * - layers
       - List of Strings
       - .. fa:: check
-      -
+      - 
       - Up to 5 Layer ARNs
       - Layers
       - Lambda
@@ -4844,49 +4844,49 @@ For the code that the Lambda function will run, use the ``code:`` block and spec
       - Int
       - .. fa:: times
       - 128
-      -
+      - 
       - Function memory size (MB)
       - Lambda
     * - reserved_concurrent_executions
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - Reserved Concurrent Executions
       - Lambda
     * - runtime
       - String
       - .. fa:: check
       - python3.7
-      -
+      - 
       - Runtime environment
       - Lambda
     * - sdb_cache
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - SDB Cache Domain
       - Lambda
     * - sns_topics
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of SNS Topic AIM References
       - Lambda
     * - timeout
       - Int
       - .. fa:: times
-      -
+      - 
       - Must be between 0 and 900 seconds.
       - Max function execution time in seconds.
       - Lambda
     * - vpc_config
       - LambdaVpcConfig_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Vpc Configuration
       - Lambda
 
@@ -4913,21 +4913,21 @@ The deployment package for a Lambda function.
     * - s3_bucket
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - An Amazon S3 bucket in the same AWS Region as your function
       - LambdaFunctionCode
     * - s3_key
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - The Amazon S3 key of the deployment package.
       - LambdaFunctionCode
     * - zipfile
       - StringFileReference
       - .. fa:: times
-      -
+      - 
       - Maximum of 4096 characters.
       - The function as an external file.
       - LambdaFunctionCode
@@ -4939,7 +4939,7 @@ LambdaEnvironment
 
 
     Lambda Environment
-
+    
 
 .. _LambdaEnvironment:
 
@@ -4957,8 +4957,8 @@ LambdaEnvironment
     * - variables
       - List of LambdaVariable_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Lambda Function Variables
       - LambdaEnvironment
 
@@ -4969,7 +4969,7 @@ LambdaVpcConfig
 
 
     Lambda Environment
-
+    
 
 .. _LambdaVpcConfig:
 
@@ -4987,22 +4987,22 @@ LambdaVpcConfig
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - security_groups
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of VPC Security Group Ids
       - LambdaVpcConfig
     * - segments
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - VPC Segments to attach the function
       - LambdaVpcConfig
 
@@ -5013,7 +5013,7 @@ LambdaVariable
 
 
     Lambda Environment Variable
-
+    
 
 .. _LambdaVariable:
 
@@ -5031,15 +5031,15 @@ LambdaVariable
     * - key
       - String
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Variable Name
       - LambdaVariable
     * - value
       - TextReference
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Variable Value
       - LambdaVariable
 
@@ -5050,7 +5050,7 @@ ManagedPolicy
 
 
     IAM Managed Policy
-
+    
 
 .. _ManagedPolicy:
 
@@ -5075,36 +5075,36 @@ ManagedPolicy
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - path
       - String
       - .. fa:: times
       - /
-      -
+      - 
       - Path
       - ManagedPolicy
     * - roles
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of Role Names
       - ManagedPolicy
     * - statement
       - List of Statement_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Statements
       - ManagedPolicy
     * - users
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of IAM Users
       - ManagedPolicy
 
@@ -5115,7 +5115,7 @@ S3Bucket
 
 
     S3 Bucket : A template describing an S3 Bbucket
-
+    
 
 .. _S3Bucket:
 
@@ -5134,7 +5134,7 @@ S3Bucket
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -5148,35 +5148,35 @@ S3Bucket
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
     * - account
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Account Reference
       - S3Bucket
     * - bucket_name
@@ -5190,49 +5190,49 @@ S3Bucket
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Creates and listens for a CloudFront Access Origin Identity
       - S3Bucket
     * - deletion_policy
       - String
       - .. fa:: times
       - delete
-      -
+      - 
       - Bucket Deletion Policy
       - S3Bucket
     * - external_resource
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether the S3 Bucket already exists or not
       - S3Bucket
     * - notifications
       - S3NotificationConfiguration_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Notification configuration
       - S3Bucket
     * - policy
       - List of S3BucketPolicy_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of S3 Bucket Policies
       - S3Bucket
     * - region
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Bucket region
       - S3Bucket
     * - versioning
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Enable Versioning on the bucket.
       - S3Bucket
 
@@ -5243,7 +5243,7 @@ S3BucketPolicy
 
 
     S3 Bucket Policy
-
+    
 
 .. _S3BucketPolicy:
 
@@ -5261,14 +5261,14 @@ S3BucketPolicy
     * - action
       - List of Strings
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - List of Actions
       - S3BucketPolicy
     * - aws
       - List of Strings
       - .. fa:: times
-      -
+      - 
       - Either this field or the principal field must be set.
       - List of AWS Principles.
       - S3BucketPolicy
@@ -5296,8 +5296,8 @@ S3BucketPolicy
     * - resource_suffix
       - List of Strings
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - List of AWS Resources Suffixes
       - S3BucketPolicy
 
@@ -5324,15 +5324,15 @@ S3LambdaConfiguration
     * - event
       - String
       - .. fa:: times
-      -
+      - 
       - Must be a supported event type: https://docs.aws.amazon.com/AmazonS3/latest/dev/NotificationHowTo.html
       - S3 bucket event for which to invoke the AWS Lambda function
       - S3LambdaConfiguration
     * - function
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Reference to a Lambda
       - S3LambdaConfiguration
 
@@ -5359,8 +5359,8 @@ S3NotificationConfiguration
     * - lambdas
       - List of S3LambdaConfiguration_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Lambda configurations
       - S3NotificationConfiguration
 
@@ -5422,7 +5422,7 @@ Simple Notification Service (SNS) Topic resource.
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -5436,27 +5436,27 @@ Simple Notification Service (SNS) Topic resource.
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
@@ -5464,21 +5464,21 @@ Simple Notification Service (SNS) Topic resource.
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Cross-account access from all other accounts in this project.
       - SNSTopic
     * - display_name
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Display name for SMS Messages
       - SNSTopic
     * - subscriptions
       - List of SNSTopicSubscription_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of SNS Topic Subscriptions
       - SNSTopic
 
@@ -5505,8 +5505,8 @@ SNSTopicSubscription
     * - endpoint
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - SNS Topic Endpoint
       - SNSTopicSubscription
     * - protocol
@@ -5524,7 +5524,7 @@ CloudFront
 
 
     CloudFront CDN Configuration
-
+    
 
 .. _CloudFront:
 
@@ -5543,7 +5543,7 @@ CloudFront
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -5556,106 +5556,106 @@ CloudFront
     * - monitoring
       - MonitorConfig_ Paco schema
       - .. fa:: times
-      -
-      -
-      -
+      - 
+      - 
+      - 
       - Monitorable
     * - change_protected
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
     * - cache_behaviors
       - List of CloudFrontCacheBehavior_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of Cache Behaviors
       - CloudFront
     * - custom_error_responses
       - List of CloudFrontCustomErrorResponse_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of Custom Error Responses
       - CloudFront
     * - default_cache_behavior
       - CloudFrontDefaultCacheBehavior_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Default Cache Behavior
       - CloudFront
     * - default_root_object
       - String
       - .. fa:: times
       - index.html
-      -
+      - 
       - The default path to load from the origin.
       - CloudFront
     * - domain_aliases
       - List of DNS_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of DNS for the Distribution
       - CloudFront
     * - factory
       - Container of CloudFrontFactory_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - CloudFront Factory
       - CloudFront
     * - origins
       - Container of CloudFrontOrigin_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Map of Origins
       - CloudFront
     * - price_class
       - String
       - .. fa:: times
       - All
-      -
+      - 
       - Price Class
       - CloudFront
     * - viewer_certificate
       - CloudFrontViewerCertificate_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Viewer Certificate
       - CloudFront
     * - webacl_id
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - WAF WebACLId
       - CloudFront
 
@@ -5682,57 +5682,57 @@ CloudFrontDefaultCacheBehavior
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - allowed_methods
       - List of Strings
       - .. fa:: times
       - ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT']
-      -
+      - 
       - List of Allowed HTTP Methods
       - CloudFrontDefaultCacheBehavior
     * - cached_methods
       - List of Strings
       - .. fa:: times
       - ['GET', 'HEAD', 'OPTIONS']
-      -
+      - 
       - List of HTTP Methods to cache
       - CloudFrontDefaultCacheBehavior
     * - compress
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Compress certain files automatically
       - CloudFrontDefaultCacheBehavior
     * - default_ttl
       - Int
       - .. fa:: check
       - 0
-      -
+      - 
       - Default TTTL
       - CloudFrontDefaultCacheBehavior
     * - forwarded_values
       - CloudFrontForwardedValues_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Forwarded Values
       - CloudFrontDefaultCacheBehavior
     * - target_origin
       - TextReference
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Target Origin
       - CloudFrontDefaultCacheBehavior
     * - viewer_protocol_policy
       - String
       - .. fa:: check
       - redirect-to-https
-      -
+      - 
       - Viewer Protocol Policy
       - CloudFrontDefaultCacheBehavior
 
@@ -5760,63 +5760,63 @@ CloudFrontCacheBehavior
       - List of Strings
       - .. fa:: times
       - ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT']
-      -
+      - 
       - List of Allowed HTTP Methods
       - CloudFrontDefaultCacheBehavior
     * - cached_methods
       - List of Strings
       - .. fa:: times
       - ['GET', 'HEAD', 'OPTIONS']
-      -
+      - 
       - List of HTTP Methods to cache
       - CloudFrontDefaultCacheBehavior
     * - compress
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Compress certain files automatically
       - CloudFrontDefaultCacheBehavior
     * - default_ttl
       - Int
       - .. fa:: check
       - 0
-      -
+      - 
       - Default TTTL
       - CloudFrontDefaultCacheBehavior
     * - forwarded_values
       - CloudFrontForwardedValues_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Forwarded Values
       - CloudFrontDefaultCacheBehavior
     * - target_origin
       - TextReference
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Target Origin
       - CloudFrontDefaultCacheBehavior
     * - viewer_protocol_policy
       - String
       - .. fa:: check
       - redirect-to-https
-      -
+      - 
       - Viewer Protocol Policy
       - CloudFrontDefaultCacheBehavior
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - path_pattern
       - String
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Path Pattern
       - CloudFrontCacheBehavior
 
@@ -5827,7 +5827,7 @@ CloudFrontFactory
 
 
     CloudFront Factory
-
+    
 
 .. _CloudFrontFactory:
 
@@ -5845,22 +5845,22 @@ CloudFrontFactory
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - domain_aliases
       - List of DNS_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of DNS for the Distribution
       - CloudFrontFactory
     * - viewer_certificate
       - CloudFrontViewerCertificate_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Viewer Certificate
       - CloudFrontFactory
 
@@ -5871,7 +5871,7 @@ CloudFrontOrigin
 
 
     CloudFront Origin Configuration
-
+    
 
 .. _CloudFrontOrigin:
 
@@ -5889,29 +5889,29 @@ CloudFrontOrigin
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - custom_origin_config
       - CloudFrontCustomOriginConfig_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Custom Origin Configuration
       - CloudFrontOrigin
     * - domain_name
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Origin Resource Reference
       - CloudFrontOrigin
     * - s3_bucket
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Origin S3 Bucket Reference
       - CloudFrontOrigin
 
@@ -5938,50 +5938,50 @@ CloudFrontCustomOriginConfig
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - http_port
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - HTTP Port
       - CloudFrontCustomOriginConfig
     * - https_port
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - HTTPS Port
       - CloudFrontCustomOriginConfig
     * - keepalive_timeout
       - Int
       - .. fa:: times
       - 5
-      -
+      - 
       - HTTP Keepalive Timeout
       - CloudFrontCustomOriginConfig
     * - protocol_policy
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Protocol Policy
       - CloudFrontCustomOriginConfig
     * - read_timeout
       - Int
       - .. fa:: times
       - 30
-      -
+      - 
       - Read timeout
       - CloudFrontCustomOriginConfig
     * - ssl_protocols
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of SSL Protocols
       - CloudFrontCustomOriginConfig
 
@@ -6008,29 +6008,29 @@ CloudFrontCustomErrorResponse
     * - error_caching_min_ttl
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Error Caching Min TTL
       - CloudFrontCustomErrorResponse
     * - error_code
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - HTTP Error Code
       - CloudFrontCustomErrorResponse
     * - response_code
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - HTTP Response Code
       - CloudFrontCustomErrorResponse
     * - response_page_path
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Response Page Path
       - CloudFrontCustomErrorResponse
 
@@ -6057,29 +6057,29 @@ CloudFrontViewerCertificate
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - certificate
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Certificate Reference
       - CloudFrontViewerCertificate
     * - minimum_protocol_version
       - String
       - .. fa:: times
       - TLSv1.1_2016
-      -
+      - 
       - Minimum SSL Protocol Version
       - CloudFrontViewerCertificate
     * - ssl_supported_method
       - String
       - .. fa:: times
       - sni-only
-      -
+      - 
       - SSL Supported Method
       - CloudFrontViewerCertificate
 
@@ -6106,29 +6106,29 @@ CloudFrontForwardedValues
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - cookies
       - CloudFrontCookies_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Forward Cookies
       - CloudFrontForwardedValues
     * - headers
       - List of Strings
       - .. fa:: times
       - ['*']
-      -
+      - 
       - Forward Headers
       - CloudFrontForwardedValues
     * - query_string
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Forward Query Strings
       - CloudFrontForwardedValues
 
@@ -6155,22 +6155,22 @@ CloudFrontCookies
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - forward
       - String
       - .. fa:: times
       - all
-      -
+      - 
       - Cookies Forward Action
       - CloudFrontCookies
     * - whitelisted_names
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - White Listed Names
       - CloudFrontCookies
 
@@ -6181,7 +6181,7 @@ ElastiCacheRedis
 
 
     Redis ElastiCache Interface
-
+    
 
 .. _ElastiCacheRedis:
 
@@ -6200,7 +6200,7 @@ ElastiCacheRedis
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -6213,162 +6213,162 @@ ElastiCacheRedis
     * - at_rest_encryption
       - Boolean
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Enable encryption at rest
       - ElastiCache
     * - auto_minor_version_upgrade
       - Boolean
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Enable automatic minor version upgrades
       - ElastiCache
     * - automatic_failover_enabled
       - Boolean
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Specifies whether a read-only replica is automatically promoted to read/write primary if the existing primary fails
       - ElastiCache
     * - az_mode
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - AZ mode
       - ElastiCache
     * - cache_clusters
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Number of Cache Clusters
       - ElastiCache
     * - cache_node_type
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Cache Node Instance type
       - ElastiCache
     * - description
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Replication Description
       - ElastiCache
     * - engine
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - ElastiCache Engine
       - ElastiCache
     * - engine_version
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - ElastiCache Engine Version
       - ElastiCache
     * - maintenance_preferred_window
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Preferred maintenance window
       - ElastiCache
     * - number_of_read_replicas
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Number of read replicas
       - ElastiCache
     * - parameter_group
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Parameter Group name or reference
       - ElastiCache
     * - port
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Port
       - ElastiCache
     * - security_groups
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of Security Groups
       - ElastiCache
     * - segment
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Segment
       - ElastiCache
     * - monitoring
       - MonitorConfig_ Paco schema
       - .. fa:: times
-      -
-      -
-      -
+      - 
+      - 
+      - 
       - Monitorable
     * - change_protected
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
     * - cache_parameter_group_family
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Cache Parameter Group Family
       - ElastiCacheRedis
     * - snapshot_retention_limit_days
       - Int
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Snapshot Retention Limit in Days
       - ElastiCacheRedis
     * - snapshot_window
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - The daily time range (in UTC) during which ElastiCache begins taking a daily snapshot of your node group (shard).
       - ElastiCacheRedis
 
@@ -6379,7 +6379,7 @@ DeploymentPipeline
 
 
     Code Pipeline: Build and Deploy
-
+    
 
 .. _DeploymentPipeline:
 
@@ -6398,7 +6398,7 @@ DeploymentPipeline
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -6412,56 +6412,56 @@ DeploymentPipeline
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
     * - build
       - Container of DeploymentPipelineBuildStage_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Deployment Pipeline Build Stage
       - DeploymentPipeline
     * - configuration
       - DeploymentPipelineConfiguration_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Deployment Pipeline General Configuration
       - DeploymentPipeline
     * - deploy
       - Container of DeploymentPipelineDeployStage_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Deployment Pipeline Deploy Stage
       - DeploymentPipeline
     * - source
       - Container of DeploymentPipelineSourceStage_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Deployment Pipeline Source Stage
       - DeploymentPipeline
 
@@ -6472,7 +6472,7 @@ DeploymentPipelineSourceStage
 
 
     A map of DeploymentPipeline source stage actions
-
+    
 
 .. _DeploymentPipelineSourceStage:
 
@@ -6490,8 +6490,8 @@ DeploymentPipelineSourceStage
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -6502,7 +6502,7 @@ DeploymentPipelineDeployStage
 
 
     A map of DeploymentPipeline deploy stage actions
-
+    
 
 .. _DeploymentPipelineDeployStage:
 
@@ -6520,8 +6520,8 @@ DeploymentPipelineDeployStage
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -6532,7 +6532,7 @@ DeploymentPipelineBuildStage
 
 
     A map of DeploymentPipeline build stage actions
-
+    
 
 .. _DeploymentPipelineBuildStage:
 
@@ -6550,8 +6550,8 @@ DeploymentPipelineBuildStage
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -6562,7 +6562,7 @@ DeploymentPipelineDeployCodeDeploy
 
 
     CodeDeploy DeploymentPipeline Deploy Stage
-
+    
 
 .. _DeploymentPipelineDeployCodeDeploy:
 
@@ -6588,70 +6588,70 @@ DeploymentPipelineDeployCodeDeploy
       - Int
       - .. fa:: times
       - 1
-      -
+      - 
       - The order in which to run this stage
       - DeploymentPipelineStageAction
     * - type
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - The type of DeploymentPipeline Source Stage
       - DeploymentPipelineStageAction
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - alb_target_group
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - ALB Target Group Reference
       - DeploymentPipelineDeployCodeDeploy
     * - auto_rollback_enabled
       - Boolean
       - .. fa:: check
       - True
-      -
+      - 
       - Automatic rollback enabled
       - DeploymentPipelineDeployCodeDeploy
     * - auto_scaling_group
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - ASG Reference
       - DeploymentPipelineDeployCodeDeploy
     * - deploy_instance_role
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Deploy Instance Role Reference
       - DeploymentPipelineDeployCodeDeploy
     * - deploy_style_option
       - String
       - .. fa:: times
       - WITH_TRAFFIC_CONTROL
-      -
+      - 
       - Deploy Style Option
       - DeploymentPipelineDeployCodeDeploy
     * - elb_name
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - ELB Name
       - DeploymentPipelineDeployCodeDeploy
     * - minimum_healthy_hosts
       - CodeDeployMinimumHealthyHosts_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - The minimum number of healthy instances that should be available at any time during the deployment.
       - DeploymentPipelineDeployCodeDeploy
 
@@ -6662,7 +6662,7 @@ CodeDeployMinimumHealthyHosts
 
 
     CodeDeploy Minimum Healthy Hosts
-
+    
 
 .. _CodeDeployMinimumHealthyHosts:
 
@@ -6680,22 +6680,22 @@ CodeDeployMinimumHealthyHosts
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
       - HOST_COUNT
-      -
+      - 
       - Deploy Config Type
       - CodeDeployMinimumHealthyHosts
     * - value
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - Deploy Config Value
       - CodeDeployMinimumHealthyHosts
 
@@ -6706,7 +6706,7 @@ DeploymentPipelineManualApproval
 
 
     ManualApproval DeploymentPipeline
-
+    
 
 .. _DeploymentPipelineManualApproval:
 
@@ -6732,28 +6732,28 @@ DeploymentPipelineManualApproval
       - Int
       - .. fa:: times
       - 1
-      -
+      - 
       - The order in which to run this stage
       - DeploymentPipelineStageAction
     * - type
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - The type of DeploymentPipeline Source Stage
       - DeploymentPipelineStageAction
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - manual_approval_notification_email
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Manual Approval Notification Email List
       - DeploymentPipelineManualApproval
 
@@ -6764,7 +6764,7 @@ DeploymentPipelineDeployS3
 
 
     Amazon S3 Deployment Provider
-
+    
 
 .. _DeploymentPipelineDeployS3:
 
@@ -6790,42 +6790,42 @@ DeploymentPipelineDeployS3
       - Int
       - .. fa:: times
       - 1
-      -
+      - 
       - The order in which to run this stage
       - DeploymentPipelineStageAction
     * - type
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - The type of DeploymentPipeline Source Stage
       - DeploymentPipelineStageAction
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - bucket
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - S3 Bucket Reference
       - DeploymentPipelineDeployS3
     * - extract
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether the deployment artifact will be unarchived.
       - DeploymentPipelineDeployS3
     * - object_key
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - S3 object key to store the deployment artifact as.
       - DeploymentPipelineDeployS3
 
@@ -6836,7 +6836,7 @@ DeploymentPipelineBuildCodeBuild
 
 
     CodeBuild DeploymentPipeline Build Stage
-
+    
 
 .. _DeploymentPipelineBuildCodeBuild:
 
@@ -6862,56 +6862,56 @@ DeploymentPipelineBuildCodeBuild
       - Int
       - .. fa:: times
       - 1
-      -
+      - 
       - The order in which to run this stage
       - DeploymentPipelineStageAction
     * - type
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - The type of DeploymentPipeline Source Stage
       - DeploymentPipelineStageAction
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - codebuild_compute_type
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - CodeBuild Compute Type
       - DeploymentPipelineBuildCodeBuild
     * - codebuild_image
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - CodeBuild Docker Image
       - DeploymentPipelineBuildCodeBuild
     * - deployment_environment
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Deployment Environment
       - DeploymentPipelineBuildCodeBuild
     * - role_policies
       - List of Policy_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Project IAM Role Policies
       - DeploymentPipelineBuildCodeBuild
     * - timeout_mins
       - Int
       - .. fa:: times
       - 60
-      -
+      - 
       - Timeout in Minutes
       - DeploymentPipelineBuildCodeBuild
 
@@ -6922,7 +6922,7 @@ DeploymentPipelineSourceCodeCommit
 
 
     CodeCommit DeploymentPipeline Source Stage
-
+    
 
 .. _DeploymentPipelineSourceCodeCommit:
 
@@ -6948,35 +6948,35 @@ DeploymentPipelineSourceCodeCommit
       - Int
       - .. fa:: times
       - 1
-      -
+      - 
       - The order in which to run this stage
       - DeploymentPipelineStageAction
     * - type
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - The type of DeploymentPipeline Source Stage
       - DeploymentPipelineStageAction
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - codecommit_repository
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - CodeCommit Respository
       - DeploymentPipelineSourceCodeCommit
     * - deployment_branch_name
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Deployment Branch Name
       - DeploymentPipelineSourceCodeCommit
 
@@ -6987,7 +6987,7 @@ DeploymentPipelineStageAction
 
 
     Deployment Pipeline Source Stage
-
+    
 
 .. _DeploymentPipelineStageAction:
 
@@ -7012,22 +7012,22 @@ DeploymentPipelineStageAction
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - run_order
       - Int
       - .. fa:: times
       - 1
-      -
+      - 
       - The order in which to run this stage
       - DeploymentPipelineStageAction
     * - type
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - The type of DeploymentPipeline Source Stage
       - DeploymentPipelineStageAction
 
@@ -7038,7 +7038,7 @@ DeploymentPipelineConfiguration
 
 
     Deployment Pipeline General Configuration
-
+    
 
 .. _DeploymentPipelineConfiguration:
 
@@ -7056,22 +7056,22 @@ DeploymentPipelineConfiguration
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - account
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - The account where Pipeline tools will be provisioned.
       - DeploymentPipelineConfiguration
     * - artifacts_bucket
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Artifacts S3 Bucket Reference
       - DeploymentPipelineConfiguration
 
@@ -7082,7 +7082,7 @@ EFS
 
 
     Elastic File System Resource
-
+    
 
 .. _EFS:
 
@@ -7101,7 +7101,7 @@ EFS
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -7115,27 +7115,27 @@ EFS
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
@@ -7143,21 +7143,21 @@ EFS
       - Boolean
       - .. fa:: check
       - False
-      -
+      - 
       - Encryption at Rest
       - EFS
     * - security_groups
       - List of Strings
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Security groups
       - EFS
     * - segment
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Segment
       - EFS
 
@@ -7168,7 +7168,7 @@ EIP
 
 
     Elastic IP
-
+    
 
 .. _EIP:
 
@@ -7187,7 +7187,7 @@ EIP
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -7201,35 +7201,35 @@ EIP
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
     * - dns
       - List of DNS_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of DNS for the EIP
       - EIP
 
@@ -7257,7 +7257,7 @@ Route53 Health Check
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -7271,27 +7271,27 @@ Route53 Health Check
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
@@ -7299,20 +7299,20 @@ Route53 Health Check
       - Int
       - .. fa:: times
       - 3
-      -
+      - 
       - Number of consecutive health checks that an endpoint must pass or fail for Amazon Route 53 to change the current status of the endpoint from unhealthy to healthy or vice versa.
       - Route53HealthCheck
     * - health_check_type
       - String
       - .. fa:: check
-      -
+      - 
       - Must be one of HTTP, HTTPS or TCP
       - Health Check Type
       - Route53HealthCheck
     * - health_checker_regions
       - List of Strings
       - .. fa:: times
-      -
+      - 
       - List of AWS Region names (e.g. us-west-2) from which to make health checks.
       - Health checker regions
       - Route53HealthCheck
@@ -7320,35 +7320,35 @@ Route53 Health Check
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Measure latency and display CloudWatch graph in the AWS Console
       - Route53HealthCheck
     * - load_balancer
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Load Balancer Endpoint
       - Route53HealthCheck
     * - match_string
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - String to match in the first 5120 bytes of the response
       - Route53HealthCheck
     * - port
       - Int
       - .. fa:: times
       - 80
-      -
+      - 
       - Port
       - Route53HealthCheck
     * - request_interval_fast
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Fast request interval will only wait 10 seconds between each health check response instead of the standard 30
       - Route53HealthCheck
     * - resource_path
@@ -7366,7 +7366,7 @@ EventsRule
 
 
     Events Rule
-
+    
 
 .. _EventsRule:
 
@@ -7385,7 +7385,7 @@ EventsRule
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -7399,49 +7399,49 @@ EventsRule
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
     * - description
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Description
       - EventsRule
     * - schedule_expression
       - String
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Schedule Expression
       - EventsRule
     * - targets
       - List of Strings
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - The AWS Resources that are invoked when the Rule is triggered.
       - EventsRule
 
@@ -7452,7 +7452,7 @@ EBS
 
 
     Elastic Block Store Volume
-
+    
 
 .. _EBS:
 
@@ -7471,7 +7471,7 @@ EBS
       - Boolean
       - .. fa:: times
       - True
-      -
+      - 
       - Boolean indicating whether DNS record sets will be created.
       - DNSEnablable
     * - enabled
@@ -7485,42 +7485,42 @@ EBS
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Boolean indicating whether this resource can be modified or not.
       - Resource
     * - order
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - The order in which the resource will be deployed
       - Resource
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - type
       - String
       - .. fa:: times
-      -
+      - 
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
     * - availability_zone
       - Int
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Availability Zone to create Volume in.
       - EBS
     * - size_gib
       - Int
       - .. fa:: check
       - 10
-      -
+      - 
       - Volume Size in GiB
       - EBS
     * - volume_type
@@ -7558,8 +7558,8 @@ Secrets Manager
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -7579,7 +7579,7 @@ IAMResource
 
 
 IAM Resource contains IAM Users who can login and have different levels of access to the AWS Console and API.
-
+    
 
 .. _IAMResource:
 
@@ -7597,15 +7597,15 @@ IAM Resource contains IAM Users who can login and have different levels of acces
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - users
       - Container of IAMUsers_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - IAM Users
       - IAMResource
 
@@ -7632,8 +7632,8 @@ IAMUsers
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -7644,7 +7644,7 @@ IAMUser
 
 
     IAM User
-
+    
 
 .. _IAMUser:
 
@@ -7669,57 +7669,57 @@ IAMUser
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - account
       - TextReference
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - AIM account reference to install this user
       - IAMUser
     * - account_whitelist
       - CommaList
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Comma separated list of AIM AWS account names this user has access to
       - IAMUser
     * - console_access_enabled
       - Boolean
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - Console Access Boolean
       - IAMUser
     * - description
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - IAM User Description
       - IAMUser
     * - permissions
       - Container of IAMUserPermissions_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - AIM IAM User Permissions
       - IAMUser
     * - programmatic_access
       - IAMUserProgrammaticAccess_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Programmatic Access
       - IAMUser
     * - username
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - IAM Username
       - IAMUser
 
@@ -7730,7 +7730,7 @@ IAMUserProgrammaticAccess
 
 
     IAM User Programmatic Access Configuration
-
+    
 
 .. _IAMUserProgrammaticAccess:
 
@@ -7756,14 +7756,14 @@ IAMUserProgrammaticAccess
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - Access key version id
       - IAMUserProgrammaticAccess
     * - access_key_2_version
       - Int
       - .. fa:: times
       - 0
-      -
+      - 
       - Access key version id
       - IAMUserProgrammaticAccess
 
@@ -7774,7 +7774,7 @@ IAMUserPermissions
 
 
     Group of IAM User Permissions
-
+    
 
 .. _IAMUserPermissions:
 
@@ -7792,8 +7792,8 @@ IAMUserPermissions
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -7827,36 +7827,36 @@ Role
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - assume_role_policy
       - AssumeRolePolicy_ Paco schema
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Assume role policy
       - Role
     * - global_role_name
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Role name is globally unique and will not be hashed
       - Role
     * - instance_profile
       - Boolean
       - .. fa:: times
       - False
-      -
+      - 
       - Instance profile
       - Role
     * - managed_policy_arns
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Managed policy ARNs
       - Role
     * - max_session_duration
@@ -7870,28 +7870,28 @@ Role
       - String
       - .. fa:: times
       - /
-      -
+      - 
       - Path
       - Role
     * - permissions_boundary
       - String
       - .. fa:: times
-      -
+      - 
       - Must be valid ARN
       - Permissions boundary ARN
       - Role
     * - policies
       - List of Policy_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Policies
       - Role
     * - role_name
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Role name
       - Role
 
@@ -7918,22 +7918,22 @@ AssumeRolePolicy
     * - aws
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of AWS Principles
       - AssumeRolePolicy
     * - effect
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Effect
       - AssumeRolePolicy
     * - service
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Service
       - AssumeRolePolicy
 
@@ -7960,15 +7960,15 @@ Policy
     * - name
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Policy name
       - Policy
     * - statement
       - List of Statement_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Statements
       - Policy
 
@@ -7995,29 +7995,29 @@ Statement
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - action
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Action(s)
       - Statement
     * - effect
       - String
       - .. fa:: times
-      -
+      - 
       - Must be one of: 'Allow', 'Deny'
       - Effect
       - Statement
     * - resource
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Resrource(s)
       - Statement
 
@@ -8063,7 +8063,7 @@ Alarm
 
 
     An Alarm
-
+    
 
 .. _Alarm:
 
@@ -8088,15 +8088,15 @@ Alarm
     * - notifications
       - Container of AlarmNotifications_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Alarm Notifications
       - Notifiable
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - classification
@@ -8109,22 +8109,22 @@ Alarm
     * - description
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Description
       - Alarm
     * - notification_groups
       - List of Strings
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - List of notificationn groups the alarm is subscribed to.
       - Alarm
     * - runbook_url
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Runbook URL
       - Alarm
     * - severity
@@ -8142,7 +8142,7 @@ AlarmSet
 
 
     A collection of Alarms
-
+    
 
 .. _AlarmSet:
 
@@ -8160,21 +8160,21 @@ AlarmSet
     * - notifications
       - Container of AlarmNotifications_ Paco schemas
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Alarm Notifications
       - Notifiable
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - resource_type
       - String
       - .. fa:: times
-      -
+      - 
       - Must be a valid AWS resource type
       - Resource type
       - AlarmSet
@@ -8186,7 +8186,7 @@ AlarmSets
 
 
     A collection of AlarmSets
-
+    
 
 .. _AlarmSets:
 
@@ -8204,8 +8204,8 @@ AlarmSets
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -8216,7 +8216,7 @@ Dimension
 
 
     A dimension of a metric
-
+    
 
 .. _Dimension:
 
@@ -8234,15 +8234,15 @@ Dimension
     * - name
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Dimension name
       - Dimension
     * - value
       - TextReference
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Value to look-up dimension
       - Dimension
 
@@ -8253,7 +8253,7 @@ CloudWatchLogSource
 
 
     Log source for a CloudWatch agent
-
+    
 
 .. _CloudWatchLogSource:
 
@@ -8271,50 +8271,50 @@ CloudWatchLogSource
     * - expire_events_after_days
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Expire Events After. Retention period of logs in this group
       - CloudWatchLogRetention
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - encoding
       - String
       - .. fa:: times
       - utf-8
-      -
+      - 
       - Encoding
       - CloudWatchLogSource
     * - log_stream_name
       - String
       - .. fa:: times
-      -
+      - 
       - CloudWatch Log Stream name
       - Log stream name
       - CloudWatchLogSource
     * - multi_line_start_pattern
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Multi-line start pattern
       - CloudWatchLogSource
     * - path
       - String
       - .. fa:: check
-      -
+      - 
       - Must be a valid filesystem path expression. Wildcard * is allowed.
       - Path
       - CloudWatchLogSource
     * - timestamp_format
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Timestamp format
       - CloudWatchLogSource
     * - timezone
@@ -8332,7 +8332,7 @@ AlarmNotifications
 
 
     Alarm Notifications
-
+    
 
 .. _AlarmNotifications:
 
@@ -8350,8 +8350,8 @@ AlarmNotifications
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
 
@@ -8362,7 +8362,7 @@ AlarmNotification
 
 
     Alarm Notification
-
+    
 
 .. _AlarmNotification:
 
@@ -8380,28 +8380,28 @@ AlarmNotification
     * - title
       - String
       - .. fa:: times
-      -
-      -
+      - 
+      - 
       - Title
       - Title
     * - classification
       - String
       - .. fa:: times
-      -
+      - 
       - Must be one of: 'performance', 'security', 'health' or ''.
       - Classification filter
       - AlarmNotification
     * - groups
       - List of Strings
       - .. fa:: check
-      -
-      -
+      - 
+      - 
       - List of groups
       - AlarmNotification
     * - severity
       - String
       - .. fa:: times
-      -
+      - 
       - Must be one of: 'low', 'critical'
       - Severity filter
       - AlarmNotification

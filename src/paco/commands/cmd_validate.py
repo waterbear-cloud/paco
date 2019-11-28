@@ -2,13 +2,13 @@ import click
 import sys
 from paco.core.exception import StackException
 from paco.commands.helpers import (
-    pass_paco_context, aim_home_option, handle_exceptions, cloud_options,
+    pass_paco_context, paco_home_option, handle_exceptions, cloud_options,
     init_cloud_command, cloud_args, config_types
 )
 
 
 @click.command('validate', short_help='Validate a Paco project')
-@aim_home_option
+@paco_home_option
 @cloud_args
 @cloud_options
 @pass_paco_context

@@ -5,7 +5,7 @@ import paco
 from paco.cftemplates import IAMRoles, IAMManagedPolicies,IAMUsers, IAMUserAccountDelegates
 from paco.controllers.controllers import Controller
 from paco.core.exception import StackException
-from paco.core.exception import AimErrorCode
+from paco.core.exception import PacoErrorCode
 from paco.core.yaml import YAML, Ref, Sub
 from paco.models.references import Reference
 from paco.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackTags, StackHooks
@@ -76,7 +76,7 @@ class PolicyContext():
         }
 
         policy_stack_tags = StackTags(self.stack_tags)
-        policy_stack_tags.add_tag('AIM-IAM-Resource-Type', 'ManagedPolicy')
+        policy_stack_tags.add_tag('Paco-IAM-Resource-Type', 'ManagedPolicy')
         policy_context['template'] = IAMManagedPolicies(self.paco_ctx,
                                                         self.account_ctx,
                                                         self.region,
@@ -141,7 +141,7 @@ class RoleContext():
             else:
                 # You specified both role_id and role_ref
                 # but they each returned different results.
-                raise StackException(AimErrorCode)
+                raise StackException(PacoErrorCode)
         elif role_by_id != None:
             return role_by_id
 
@@ -158,7 +158,7 @@ class RoleContext():
 
         if policy_ref in self.policy_context.keys():
             print("Managed policy already exists: %s" % (policy_ref) )
-            raise StackException(AimErrorCode.Unknown)
+            raise StackException(PacoErrorCode.Unknown)
 
         policy_config_dict = yaml.load(policy_config_yaml)
         policy_config_dict['roles'] = [self.role_name]
@@ -173,7 +173,7 @@ class RoleContext():
         }
 
         policy_stack_tags = StackTags(self.stack_tags)
-        policy_stack_tags.add_tag('AIM-IAM-Resource-Type', 'ManagedPolicy')
+        policy_stack_tags.add_tag('Paco-IAM-Resource-Type', 'ManagedPolicy')
         policy_context['template'] = IAMManagedPolicies(self.paco_ctx,
                                                         self.account_ctx,
                                                         self.region,
@@ -194,7 +194,7 @@ class RoleContext():
 
     def init_role(self):
         role_stack_tags = StackTags(self.stack_tags)
-        role_stack_tags.add_tag('AIM-IAM-Resource-Type', 'Role')
+        role_stack_tags.add_tag('Paco-IAM-Resource-Type', 'Role')
         self.role_config.resolve_ref_obj = self
         self.role_template = IAMRoles(self.paco_ctx,
                                       self.account_ctx,
@@ -247,7 +247,7 @@ class IAMController(Controller):
         self.policy_context = {}
         self.iam_config = self.paco_ctx.project['resource']['iam']
         self.iam_user_stack_groups = {}
-        self.iam_user_access_keys_sdb_domain = 'AIM-IAM-Users-Access-Keys-Meta'
+        self.iam_user_access_keys_sdb_domain = 'Paco-IAM-Users-Access-Keys-Meta'
         self.init_done = False
         #self.paco_ctx.log("IAM Service: Configuration: %s" % (name))
 
@@ -477,7 +477,7 @@ class IAMController(Controller):
                 }
                 if old_keys[key_num] != None:
                     print("Error: Cur keys have already been set.")
-                    raise StackException(AimErrorCode.Unknown, message='Cur keys have already been set')
+                    raise StackException(PacoErrorCode.Unknown, message='Cur keys have already been set')
                 old_keys[key_num] = key_config
 
             # Loop through user configuration and update keys
@@ -635,7 +635,7 @@ class IAMController(Controller):
                                                             change_protected=change_protected)
         else:
             print("Managed Policy already exists: %s" % (policy_ref))
-            raise StackException(AimErrorCode.Unknown)
+            raise StackException(PacoErrorCode.Unknown)
 
     def add_managed_policy(self, role_ref, *args, **kwargs):
         return self.role_context[role_ref].add_managed_policy(*args, **kwargs)
@@ -656,7 +656,7 @@ class IAMController(Controller):
 
         else:
             print("Role already exists: %s" % (role_ref))
-            raise StackException(AimErrorCode.Unknown)
+            raise StackException(PacoErrorCode.Unknown)
 
     def role_arn(self, role_ref):
         role_ref = role_ref.replace('paco.ref ', '')

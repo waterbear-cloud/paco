@@ -110,7 +110,8 @@ class NetworkStackGroup(StackGroup):
                 security_groups_config=sg_config[sg_id],
                 sg_group_id=sg_id,
                 sg_groups_config_ref=sg_groups_config_ref,
-                template_type='Rules' )
+                template_type='Rules'
+            )
 
         # Wait for Segment Stacks
         for segment_stack in self.segment_list:

@@ -1,6 +1,6 @@
 import os
 from paco.models import loader
-from paco.core.exception import StackException, AimErrorCode
+from paco.core.exception import StackException, PacoErrorCode
 
 class Controller():
 
@@ -33,6 +33,6 @@ class Controller():
             self.paco_ctx.apply_model_obj(self.model_obj)
         else:
             raise StackException(
-                AimErrorCode.Unknown,
+                PacoErrorCode.Unknown,
                 message = 'No model object to apply.'
             )

@@ -1,7 +1,7 @@
 from paco.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks
 import paco.cftemplates
 from paco.core.exception import StackException
-from paco.core.exception import AimErrorCode
+from paco.core.exception import PacoErrorCode
 from paco.utils import md5sum
 
 class CodeCommitStackGroup(StackGroup):

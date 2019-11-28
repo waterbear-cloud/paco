@@ -5,7 +5,7 @@ import troposphere.autoscaling
 import troposphere.policies
 from paco import utils
 from paco.cftemplates.cftemplates import CFTemplate
-from paco.core.exception import UnsupportedCloudFormationParameterType, CloudFormationParameterAimRefMissingDotExtension
+from paco.core.exception import UnsupportedCloudFormationParameterType, CloudFormationParameterPacoRefMissingDotExtension
 from paco.models import references
 from paco.models.references import Reference
 from io import StringIO
@@ -133,7 +133,7 @@ class ASG(CFTemplate):
                     )
                 if references.is_ref(value):
                     if key.find('.') == -1:
-                        raise CloudFormationParameterAimRefMissingDotExtension(
+                        raise CloudFormationParameterPacoRefMissingDotExtension(
                             "Parameter {} for ASG {} with an paco.ref value needs to match <Name>.<OutputName> format.".format(
                                 key, asg_config.name
                             )
@@ -240,7 +240,7 @@ class ASG(CFTemplate):
                 use_troposphere=True,
                 troposphere_template=template)
             asg_dict['Tags'].append(
-                troposphere.autoscaling.Tag('AIM-EIP-Allocation-Id', troposphere.Ref(eip_id_param), True)
+                troposphere.autoscaling.Tag('Paco-EIP-Allocation-Id', troposphere.Ref(eip_id_param), True)
             )
 
         # EFS FileSystemId Tags

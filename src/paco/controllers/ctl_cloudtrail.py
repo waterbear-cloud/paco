@@ -4,7 +4,7 @@ import os
 from paco.controllers.controllers import Controller
 from paco.stack_group import Stack, StackGroup
 from paco.models.loader import apply_attributes_from_config
-from paco.core.exception import AimBucketExists
+from paco.core.exception import PacoBucketExists
 from paco.models.references import get_model_obj_from_ref
 
 
@@ -70,7 +70,7 @@ class CloudTrailStackGroup(StackGroup):
                     s3bucket,
                     config_ref = s3_config_ref,
                 )
-            except AimBucketExists:
+            except PacoBucketExists:
                 # for multiple accounts there is only one bucket needed
                 pass
             # Create the CloudTrail stack and prepare it

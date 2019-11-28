@@ -4,7 +4,7 @@ from paco.stack_grps.grp_codecommit import CodeCommitStackGroup
 from paco.stack_grps.grp_iam import IAMStackGroup
 from paco.stack_group import stack_group
 from paco.core.exception import StackException
-from paco.core.exception import AimErrorCode
+from paco.core.exception import PacoErrorCode
 from paco.controllers.controllers import Controller
 from paco.core.yaml import YAML
 
