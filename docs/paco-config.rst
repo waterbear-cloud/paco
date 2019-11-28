@@ -1238,7 +1238,7 @@ Security group egress
       - TextReference
       - .. fa:: times
       - 
-      - An AIM Reference to a SecurityGroup
+      - A Paco reference to a SecurityGroup
       - Destination Security Group Reference
       - EgressRule
 
@@ -1322,7 +1322,7 @@ Security group ingress
       - TextReference
       - .. fa:: times
       - 
-      - An AIM Reference to a SecurityGroup
+      - An Paco reference to a SecurityGroup
       - Source Security Group Reference
       - IngressRule
 
@@ -2172,7 +2172,7 @@ The ``LBApplication`` resource type creates an Application Load Balancer. Use lo
 the internet to your web servers.
 
 Load balancers have ``listeners`` which will accept requrests on specified ports and protocols. If a listener
-uses the HTTPS protocol, it can have an aim reference to an SSL Certificate. A listener can then either
+uses the HTTPS protocol, it can have a Paco reference to an SSL Certificate. A listener can then either
 redirect the traffic to another port/protcol or send it one of it's named ``target_groups``.
 
 Each target group will specify it's health check configuration. To specify which resources will belong
@@ -4685,14 +4685,14 @@ For the code that the Lambda function will run, use the ``code:`` block and spec
     ``sdb_cache``: Create a SimpleDB Domain and IAM Policy that grants full access to that domain. Will
     also make the domain available to the Lambda function as an environment variable named ``SDB_CACHE_DOMAIN``.
 
-    ``sns_topics``: Subscribes the Lambda to SNS Topics. For each AIM reference to an SNS Topic,
-    AIM will create an SNS Topic Subscription so that the Lambda function will recieve all messages sent to that SNS Topic.
+    ``sns_topics``: Subscribes the Lambda to SNS Topics. For each Paco reference to an SNS Topic,
+    Paco will create an SNS Topic Subscription so that the Lambda function will recieve all messages sent to that SNS Topic.
     It will also create a Lambda Permission granting that SNS Topic the ability to publish to the Lambda.
 
-    **S3 Bucket Notification permission** AIM will check all resources in the Application for any S3 Buckets configured
+    **S3 Bucket Notification permission** Paco will check all resources in the Application for any S3 Buckets configured
     to notify this Lambda. Lambda Permissions will be created to allow those S3 Buckets to invoke the Lambda.
 
-    **Events Rule permission** AIM will check all resources in the Application for CloudWatch Events Rule that are configured
+    **Events Rule permission** Paco will check all resources in the Application for CloudWatch Events Rule that are configured
     to notify this Lambda and create a Lambda permission to allow that Event Rule to invoke the Lambda.
 
 .. code-block:: yaml
@@ -4873,7 +4873,7 @@ For the code that the Lambda function will run, use the ``code:`` block and spec
       - .. fa:: times
       - 
       - 
-      - List of SNS Topic AIM References
+      - List of SNS Topic Paco references
       - Lambda
     * - timeout
       - Int
@@ -5375,7 +5375,7 @@ Simple Notification Service (SNS) Topic resource.
 .. sidebar:: Prescribed Automation
 
     ``cross_account_access``: Creates an SNS Topic Policy which will grant all of the AWS Accounts in this
-    AIM Project access to the ``sns.Publish`` permission for this SNS Topic.
+    Paco Project access to the ``sns.Publish`` permission for this SNS Topic.
 
 .. code-block:: yaml
     :caption: Example SNSTopic resource YAML
@@ -7678,14 +7678,14 @@ IAMUser
       - .. fa:: check
       - 
       - 
-      - AIM account reference to install this user
+      - Paco account reference to install this user
       - IAMUser
     * - account_whitelist
       - CommaList
       - .. fa:: times
       - 
       - 
-      - Comma separated list of AIM AWS account names this user has access to
+      - Comma separated list of Paco AWS account names this user has access to
       - IAMUser
     * - console_access_enabled
       - Boolean
@@ -7706,7 +7706,7 @@ IAMUser
       - .. fa:: times
       - 
       - 
-      - AIM IAM User Permissions
+      - Paco IAM User Permissions
       - IAMUser
     * - programmatic_access
       - IAMUserProgrammaticAccess_ Paco schema
