@@ -4,8 +4,19 @@ Changelog for paco
 3.3.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Fixed
 
+- Placeholder in the wordpress-single-tier template for AMI Id.
+
+- Assorted fixes created by the AIM to paco rename.
+
+- ALB AWS::ElasticLoadBalancingV2::ListenerCertificate are restored.
+
+- Fixed Zone reference lookups in Route53 stack group.
+
+### Docs
+
+- Overview page works on mobile.
 
 3.3.0 (2019-11-28)
 ------------------
