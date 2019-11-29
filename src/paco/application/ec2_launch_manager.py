@@ -1040,7 +1040,9 @@ statement:
 
         # TODO: Add ubuntu and other distro support
         launch_script = """#!/bin/bash
-. /opt/aim/EC2Manager/ec2lm_functions.bash
+. {}/EC2Manager/ec2lm_functions.bash
+""".format(self.paco_base_path)
+        launch_script += """
 
 function ec2lm_eip_is_associated() {
     EIP_IP=$1
