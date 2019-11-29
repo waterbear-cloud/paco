@@ -105,7 +105,7 @@ applications:
                 filesystem: ext4
             instance_iam_role:
               enabled: true
-            instance_ami: ami-088ff11f4bf97f53b # ToDo
+            instance_ami: # ToDo: Put the AMI ID for "WordPress Certified by Bitnami and Automattic" from the AWS Marketplace
             instance_ami_type: ubuntu
             instance_key_pair: paco.ref resource.ec2.keypairs.pacokeypair
             instance_monitoring: false
