@@ -1,23 +1,57 @@
 /* splash */
 
-.paco-body {
-  background-color: #ffffff;
+@media screen and (max-width: 600px){
+
+  .waterbear-header {
+    background-color: black;
+    padding: 8px 20px 8px 20px;
+  }
+
+  .paco-container {
+    text-align: left;
+    margin: 40px auto 40px 20px;
+    width: 450px;
+  }
+
 }
 
-.paco-container {
-  text-align: left;
-  margin: 40px auto 40px 300px;
-  width: 800px;
+@media screen and (min-width: 601px){
+
+  .waterbear-header {
+    background-color: black;
+    padding: 8px 20px 8px 80px;
+  }
+
+  .paco-container {
+    text-align: left;
+    margin: 40px auto 40px 80px;
+    width: 600px;
+  }
+
+}
+
+@media screen and (min-width: 880px){
+
+  .waterbear-header {
+    background-color: black;
+    padding: 8px 20px 8px 80px;
+  }
+
+  .paco-container {
+    text-align: left;
+    margin: 40px auto 40px 80px;
+    width: 800px;
+  }
+
+}
+
+.paco-body {
+  background-color: #ffffff;
 }
 
 .paco-splash {
   text-align: left;
   align: left;
-}
-
-.waterbear-header {
-  background-color: black;
-  padding: 8px 20px 8px 300px;
 }
 
 .paco-section {
