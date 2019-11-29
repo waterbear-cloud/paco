@@ -1,6 +1,6 @@
 /* splash */
 
-@media screen and (max-width: 600px){
+@media screen and (max-width: 500px){
 
   .waterbear-header {
     background-color: black;
@@ -10,12 +10,16 @@
   .paco-container {
     text-align: left;
     margin: 40px auto 40px 20px;
-    width: 450px;
+    width: 340px;
+  }
+
+  .gitfork {
+    visibility: hidden;
   }
 
 }
 
-@media screen and (min-width: 601px){
+@media screen and (min-width: 501px){
 
   .waterbear-header {
     background-color: black;
@@ -25,7 +29,7 @@
   .paco-container {
     text-align: left;
     margin: 40px auto 40px 80px;
-    width: 600px;
+    width: 500px;
   }
 
 }
