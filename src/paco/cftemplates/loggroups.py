@@ -105,7 +105,7 @@ class LogGroups(CFTemplate):
                         'MetricValue': transf.metric_value
                     }
                     if type(transf.default_value) == type(float):
-                        mts_dict['DefaultValue'] = trans.default_value
+                        mts_dict['DefaultValue'] = transf.default_value
                     mt_list.append(mts_dict)
                 mf_dict['MetricTransformations'] = mt_list
                 metric_filter_resource = troposphere.logs.MetricFilter.from_dict(

@@ -255,6 +255,7 @@ class ALB(CFTemplate):
             cfn_export_dict['LoadBalancerArn'] = troposphere.Ref(alb_resource)
 
             # Listener - SSL Certificates
+            ssl_cert_param_obj_list = []
             if len(listener.ssl_certificates) > 0 and alb_config.is_enabled():
                 cfn_export_dict['Certificates'] = []
                 for ssl_cert_idx in range(0, len(listener.ssl_certificates)):
@@ -266,15 +267,31 @@ class ALB(CFTemplate):
                         use_troposphere=True,
                         troposphere_template=self.template
                     )
-                    cfn_export_dict['Certificates'].append(
-                        {"CertificateArn" : troposphere.Ref(ssl_cert_param) }
+                    if ssl_cert_idx == 0:
+                        cfn_export_dict['Certificates'] = [ {
+                            'CertificateArn': troposphere.Ref(ssl_cert_param)
+                        } ]
+                    ssl_cert_param_obj_list.append(
+                        troposphere.elasticloadbalancingv2.Certificate(
+                            CertificateArn=troposphere.Ref(ssl_cert_param)
+                        )
                     )
+
 
             listener_resource = troposphere.elasticloadbalancingv2.Listener.from_dict(
                 logical_listener_name,
                 cfn_export_dict
             )
             self.template.add_resource(listener_resource)
+
+            # ListenerCertificates
+            if len(ssl_cert_param_obj_list) > 0:
+                troposphere.elasticloadbalancingv2.ListenerCertificate(
+                    title=logical_listener_name+'Certificate',
+                    template=self.template,
+                    Certificates=ssl_cert_param_obj_list,
+                    ListenerArn=troposphere.Ref(listener_resource)
+                )
 
             # Listener - Rules
             if listener.rules != None:
