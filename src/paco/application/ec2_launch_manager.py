@@ -387,7 +387,8 @@ function ec2lm_install_wget() {
             'paco_environment_ref': self.app_engine.env_ctx.config.paco_ref_parts,
             'aws_account_id': self.account_ctx.id,
             'launch_bundle_names': ' '.join(self.launch_bundle_names),
-            'paco_base_path': self.paco_base_path
+            'paco_base_path': self.paco_base_path,
+            'tool_name_legacy_flag': 'AIM' if self.paco_ctx.legacy_flag('aim_name_2019_11_28') == True else 'PACO'
         }
 
         script_template = """
@@ -398,9 +399,9 @@ export AWS_DEFAULT_REGION=$REGION
 EC2LM_AWS_ACCOUNT_ID="{0[aws_account_id]:s}"
 EC2LM_STACK_NAME=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=aws:cloudformation:stack-name" --query 'Tags[0].Value' |tr -d '"')
 EC2LM_FOLDER='{0[paco_base_path]:s}/EC2Manager/'
-EC2LM_PACO_NETWORK_ENVIRONMENT="{0[paco_network_environment]:s}"
-EC2LM_PACO_ENVIRONMENT="{0[paco_environment]:s}"
-EC2LM_PACO_ENVIRONMENT_REF={0[paco_environment_ref]:s}
+EC2LM_{0[tool_name_legacy_flag]:s}_NETWORK_ENVIRONMENT="{0[paco_network_environment]:s}"
+EC2LM_{0[tool_name_legacy_flag]:s}_ENVIRONMENT="{0[paco_environment]:s}"
+EC2LM_{0[tool_name_legacy_flag]:s}_ENVIRONMENT_REF={0[paco_environment_ref]:s}
 
 # Escape a string for sed replacements
 function sed_escape() {{
