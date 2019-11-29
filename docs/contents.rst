@@ -26,7 +26,7 @@ Paco project configuration
 
    paco-config
 
-Paco cloud supoprt
+Paco cloud support
 ------------------
 
 .. toctree::

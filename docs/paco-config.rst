@@ -3714,6 +3714,191 @@ AWSCertificateManager
       - AWSCertificateManager
 
 
+
+CodeDeployApplication
+----------------------
+
+
+CodeDeploy Application
+
+.. code-block:: yaml
+    :caption: Example CodeDeployApplication resource YAML
+
+    type: CodeDeployApplication
+    order: 40
+    compute_platform: "Server"
+    deployment_groups:
+      deployment:
+        title: "My Deployment Group description"
+        ignore_application_stop_failures: true
+        revision_location_s3: paco.ref netenv.mynet.applications.app.groups.deploybucket
+        autoscalinggroups:
+          - paco.ref netenv.mynet.applications.app.groups.web
+
+
+
+.. _CodeDeployApplication:
+
+.. list-table:: :guilabel:`CodeDeployApplication`
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - dns_enabled
+      - Boolean
+      - .. fa:: times
+      - True
+      - 
+      - Boolean indicating whether DNS record sets will be created.
+      - DNSEnablable
+    * - enabled
+      - Boolean
+      - .. fa:: times
+      - False
+      - Could be deployed to AWS
+      - Enabled
+      - Deployable
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Title
+    * - type
+      - String
+      - .. fa:: times
+      - 
+      - A valid AWS Resource type: ASG, LBApplication, etc.
+      - Type of Resources
+      - Type
+    * - compute_platform
+      - String
+      - .. fa:: check
+      - 
+      - Must be one of Lambda, Server or ECS
+      - Compute Platform
+      - CodeDeployApplication
+    * - deployment_groups
+      - Container of CodeDeployDeploymentGroups_ Paco schemas
+      - .. fa:: check
+      - 
+      - 
+      - CodeDeploy Deployment Groups
+      - CodeDeployApplication
+
+
+
+CodeDeployDeploymentGroups
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CodeDeployDeploymentGroups:
+
+.. list-table:: :guilabel:`CodeDeployDeploymentGroups` |bars| Container where the keys are the ``name`` field.
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Title
+
+
+
+CodeDeployDeploymentGroup
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CodeDeployDeploymentGroup:
+
+.. list-table:: :guilabel:`CodeDeployDeploymentGroup`
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - enabled
+      - Boolean
+      - .. fa:: times
+      - False
+      - Could be deployed to AWS
+      - Enabled
+      - Deployable
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Title
+    * - autoscalinggroups
+      - List of Strings
+      - .. fa:: times
+      - 
+      - 
+      - A list of refs to  Auto Scaling groups that CodeDeploy automatically deploys revisions to when new instances are created
+      - CodeDeployDeploymentGroup
+    * - ignore_application_stop_failures
+      - Boolean
+      - .. fa:: times
+      - 
+      - 
+      - Ignore Application Stop Failures
+      - CodeDeployDeploymentGroup
+    * - revision_location_s3
+      - DeploymentGroupS3Location_ Paco schema
+      - .. fa:: times
+      - 
+      - 
+      - S3 Bucket revision location
+      - CodeDeployDeploymentGroup
+    * - role_policies
+      - List of Policy_ Paco schemas
+      - .. fa:: times
+      - 
+      - 
+      - Policies to grant the deployment group role
+      - CodeDeployDeploymentGroup
+
+
 RDS
 ---
 

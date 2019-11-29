@@ -685,6 +685,12 @@ applications.
 
 {IAWSCertificateManager}
 
+{ICodeDeployApplication}
+
+{ICodeDeployDeploymentGroups}
+
+{ICodeDeployDeploymentGroup}
+
 RDS
 ---
 
@@ -1150,6 +1156,8 @@ MINOR_SCHEMAS = {
     'IDeploymentPipelineConfiguration': None,
     'IRDSMysql': None,
     'IRDSAurora': None,
+    'ICodeDeployDeploymentGroups': None,
+    'ICodeDeployDeploymentGroup': None,
 }
 
 def create_tables_from_schema():

@@ -5,12 +5,79 @@
 
   <p>These are the cloud resources currently support by Paco.</p>
 
+
 <table class="docutils align-default">
   <colgroup>
   <col style="width: 33%" />
   <col style="width: 34%" />
   <col style="width: 33%" />
   </colgroup>
+  <thead>
+      <tr><th class="head" colspan="3">Global Resources</th></tr>
+  </thead>
+  <thead>
+      <tr class="row-odd">
+      <th class="head"><p>AWS Service</p></th>
+      <th class="head"><p>AWS Resources</p></th>
+      <th class="head"><p>Paco Resource Filename</p></th>
+      </tr>
+  </thead>
+
+  <tr>
+      <td><p>CloudTrail</p></td>
+      <td><p>AWS::CloudTrail::Trail<br />
+        AWS::Logs::LogGroup</p></td>
+      <td><p>resource/cloudtrail.yaml</p></td>
+  </tr>
+  <tr>
+      <td><p>CodeCommit</p></td>
+      <td><p>AWS::CodeCommit::Repository
+      </p></td>
+      <td><p>resource/codecommit.yaml</p></td>
+  </tr>
+  <tr>
+      <td><p>EC2</p></td>
+      <td><p>SSH Keypairs (boto3)</p></td>
+      <td><p>resource/ec2.yaml</p></td>
+  </tr>
+  <tr>
+      <td><p>IAM</p></td>
+      <td><p>
+        AWS::IAM::Role<br />
+        AWS::IAM::ManagedPolicy<br />
+        AWS::IAM::User<br />
+      </p></td>
+      <td><p>resource/iam.yaml</p></td>
+  </tr>
+  <tr>
+      <td><p>Route 53</p></td>
+      <td><p>AWS::Route53::RecordSet</p></td>
+      <td><p>resource/route53.yaml</p></td>
+  </tr>
+  <tr>
+      <td><p>S3</p></td>
+      <td><p>
+        AWS::S3::Bucket<br />
+        AWS::S3::BucketPolicy<br /></p></td>
+      <td><p>resource/s3.yaml</p></td>
+  </tr>
+  <tr>
+      <td><p>Simple Notification Service</p></td>
+      <td><p>
+        AWS::SNS::Topic<br />
+        AWS::SNS::Subscription<br />
+        AWS::SNS::TopicPolicy</p></td>
+      <td><p>resource/notificationgroups.yaml</p></td>
+  </tr>
+</tbody>
+</table>
+
+<table class="docutils align-default">
+    <colgroup>
+      <col style="width: 33%" />
+      <col style="width: 34%" />
+      <col style="width: 33%" />
+      </colgroup>
   <thead>
     <tr><th class="head" colspan="3">Application Resources</th></tr>
   </thead>
@@ -32,13 +99,12 @@
         AWS::ApiGateway::Deployment<br />
         AWS::ApiGateway::Stage
       </p></td>
-      <td><p>ApiGateway</p></td>
+      <td><p></p></td>
     </tr>
-
     <tr>
         <td><p>Certificate Manager</p></td>
         <td><p></p></td>
-        <td><p>ACM</p></td>
+        <td><p><a href="{{ pathto("paco-config") }}#awscertificatemanager">ACM</a></p></td>
     </tr>
     <tr>
         <td><p>CloudFront</p></td>
@@ -46,15 +112,14 @@
           AWS::CloudFront::CloudFrontOriginAccessIdentity<br />
           AWS::Route53::RecordSet<br />
         </p></td>
-        <td><p>CloudFront</p></td>
+        <td><p><a href="{{ pathto("paco-config") }}#cloudfront">CloudFront</a></p></td>
     </tr>
-
     <tr>
         <td><p>Code Deploy</p></td>
         <td><p>AWS::CodeDeploy::Application<br />
           AWS::CodeDeploy::DeploymentGroup<br />
         </p></td>
-        <td><p>CodeDeployApplication</p></td>
+        <td><p><a href="{{ pathto("paco-config") }}#codedeployapplication">CodeDeployApplication</a></p></td>
     </tr>
 
     <tr>
@@ -169,7 +234,6 @@
             </p></td>
         <td><p>SNSTopic</p></td>
     </tr>
-
 
   </tbody>
 </table>
