@@ -50,7 +50,7 @@ class Route53StackGroup(StackGroup):
 
         route53_stack = route53_template.stack
         route53_stack.set_termination_protection(True)
-        self.zone_stack_map[zone_id] = route53_stack
+        self.zone_stack_map['legacy'] = route53_stack
 
     def has_zone_id(self, zone_id):
         if self.config.account_has_zone(self.account_ctx.get_name(), zone_id):
@@ -58,7 +58,9 @@ class Route53StackGroup(StackGroup):
         return False
 
     def get_stack(self, zone_id):
-        if zone_id in self.zone_stack_map.keys():
+        if self.paco_ctx.legacy_flag('route53_hosted_zone_2019_10_12') == True:
+            return self.zone_stack_map['legacy']
+        elif zone_id in self.zone_stack_map.keys():
             return self.zone_stack_map[zone_id]
         return None
 
