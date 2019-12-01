@@ -1,6 +1,6 @@
 # Paco: Prescribed automation for cloud orchestration
 
- [![PyPi version](https://img.shields.io/pypi/v/paco-cloud.svg)](https://pypi.python.org/pypi/paco-cloud/) [![](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/release/python-375/) ![t](https://img.shields.io/badge/status-stable-green.svg) [![](https://img.shields.io/github/license/waterbear-cloud/paco.svg)](https://github.com/waterbear-cloud/paco/blob/master/LICENSE.md)
+ [![PyPi version](https://img.shields.io/pypi/v/paco-cloud.svg)](https://pypi.python.org/pypi/paco-cloud/) [![](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/) ![t](https://img.shields.io/badge/status-stable-green.svg) [![](https://img.shields.io/github/license/waterbear-cloud/paco.svg)](https://github.com/waterbear-cloud/paco/blob/master/LICENSE.md)
 
 
 Paco is a cloud orchestration tool for AWS. It enables you to automate the creation and management of your cloud resources. It is a declarative YAML driven tool, that does not require you to write an code. More information is available on the [Paco web site](https://paco.waterbear.cloud).
