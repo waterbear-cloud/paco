@@ -3,7 +3,7 @@
 Installation
 ============
 
-Paco requires Python 3.7 or higher. As Paco requires newer release of Python, you may need to
+Paco requires Python 3.6 or higher. As Paco requires newer release of Python, you may need to
 download and install a Python_ interpreter.
 
 Ideally you will want to install Paco in a self-contained Python environment. For some guidance
