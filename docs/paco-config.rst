@@ -7480,6 +7480,20 @@ Route53 Health Check
       - A valid AWS Resource type: ASG, LBApplication, etc.
       - Type of Resources
       - Type
+    * - domain_name
+      - String
+      - .. fa:: times
+      - 
+      - Either this or the load_balancer field can be set but not both.
+      - Fully Qualified Domain Name
+      - Route53HealthCheck
+    * - enable_sni
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Enable SNI
+      - Route53HealthCheck
     * - failure_threshold
       - Int
       - .. fa:: times

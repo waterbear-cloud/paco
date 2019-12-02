@@ -1,7 +1,7 @@
 Changelog for paco
 ==================
 
-3.3.2 (unreleased)
+3.4.0 (unreleased)
 ------------------
 
 ### Added
