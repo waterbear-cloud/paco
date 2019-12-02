@@ -4,8 +4,17 @@ Changelog for paco
 3.3.2 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Added
 
+- Route53 Health Check supports domain_name or load_balancer fields.
+
+### Fixed
+
+- Route53 Health Check alarm gets Namespace again.
+
+### Changed
+
+- Final AIM --> Paco rename: Log metric namespace changed from `AIM/` to `Paco/`
 
 3.3.1 (2019-11-29)
 ------------------

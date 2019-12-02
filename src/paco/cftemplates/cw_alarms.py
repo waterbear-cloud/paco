@@ -216,7 +216,7 @@ HINT: Ensure that the monitoring.log_sets for the resource is enabled and that t
 
 """.format(alarm.log_set_name, alarm.log_group_name, resource.name, resource.type, resource.paco_ref)
                         )
-                    alarm_export_dict['Namespace'] = "AIM/" + prefixed_name(
+                    alarm_export_dict['Namespace'] = "Paco/" + prefixed_name(
                         resource, log_group.get_full_log_group_name(), self.paco_ctx.legacy_flag
                     )
                 else:

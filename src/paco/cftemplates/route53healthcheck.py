@@ -49,11 +49,15 @@ class Route53HealthCheck(CFBaseAlarm):
             health_check_logical_id = self.create_cfn_logical_id('Route53HealthCheck' + self.health_check.name)
             cfn_export_dict = {}
             cfn_export_dict['HealthCheckConfig'] = self.health_check.cfn_export_dict
+            if self.health_check.domain_name != None:
+                fqdn_value = self.health_check.domain_name
+            else:
+                fqdn_value = self.health_check.load_balancer + '.dnsname'
             fqdn_param = self.create_cfn_parameter(
                 param_type = 'String',
                 name = 'FQDNEndpoint',
                 description = 'Fully-qualified domain name of the endpoint to monitor.',
-                value = self.health_check.load_balancer + '.dnsname',
+                value = fqdn_value,
                 use_troposphere = True
             )
             self.template.add_parameter(fqdn_param)
@@ -87,6 +91,7 @@ class Route53HealthCheck(CFBaseAlarm):
                 'Name': 'HealthCheckId',
                 'Value': troposphere.Ref(health_check_resource),
             }]
+            cfn_export_dict['Namespace'] = "AWS/Route53"
             notification_cfn_refs = self.create_notification_params(alarm)
             cfn_export_dict['AlarmDescription'] = alarm.get_alarm_description(notification_cfn_refs)
             self.set_alarm_actions_to_cfn_export(alarm, cfn_export_dict)
