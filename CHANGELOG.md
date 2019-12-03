@@ -6,6 +6,8 @@ Changelog for paco
 
 ### Added
 
+- New CloudWatch Dashboard resource.
+
 - Route53 Health Check supports domain_name or load_balancer fields.
 
 ### Fixed

@@ -39,3 +39,4 @@ from paco.cftemplates.secrets_manager import SecretsManager
 from paco.cftemplates.ebs import EBS
 from paco.cftemplates.codedeployapplication import CodeDeployApplication
 from paco.cftemplates.backup import BackupVault
+from paco.cftemplates.dashboard import CloudWatchDashboard
