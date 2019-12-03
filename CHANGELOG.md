@@ -12,6 +12,8 @@ Changelog for paco
 
 ### Fixed
 
+- include paco.stack_grps package!
+
 - Route53 Health Check alarm gets Namespace again.
 
 ### Changed
