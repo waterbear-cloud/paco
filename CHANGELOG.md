@@ -1,6 +1,12 @@
 Changelog for paco
 ==================
 
+3.4.2 (unreleased)
+------------------
+
+- Nothing changed yet.
+
+
 3.4.1 (2019-12-04)
 ------------------
 
