@@ -55,11 +55,13 @@ class StackOutputParam():
         for entry in self.entry_list:
             if entry['stack'] == stack:
                 entry['output_keys'].append(stack_output_key)
+                return
 
-        if len(self.entry_list) == 0:
-            entry = {'stack': stack,
-                     'output_keys': [stack_output_key]}
-            self.entry_list.append(entry)
+        entry = {
+            'stack': stack,
+            'output_keys': [stack_output_key]
+        }
+        self.entry_list.append(entry)
 
     def gen_parameter_value(self):
         param_value = ""

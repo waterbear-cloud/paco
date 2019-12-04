@@ -2,7 +2,10 @@ from paco.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackTags
 from paco.models import schemas
 from pprint import pprint
 import paco.cftemplates
-
+import paco.models.networks
+import paco.models.loader
+from paco.models.locations import get_parent_by_interface
+from paco import utils
 
 class NetworkStackGroup(StackGroup):
     def __init__(self, paco_ctx, account_ctx, env_ctx, stack_tags):
@@ -26,6 +29,7 @@ class NetworkStackGroup(StackGroup):
         # Network Stack Templates
         # VPC Stack
         vpc_config = self.env_ctx.vpc_config()
+        network_config = get_parent_by_interface(vpc_config, schemas.INetworkEnvironment)
         self.log_init_status('VPC', '', vpc_config.is_enabled())
         vpc_config_ref = '.'.join([self.config_ref_prefix, "network.vpc"])
         vpc_config.resolve_ref_obj = self
@@ -65,6 +69,45 @@ class NetworkStackGroup(StackGroup):
         sg_config = self.env_ctx.security_groups()
         self.sg_list = []
         self.sg_dict = {}
+        # EC2 NATGateway Groups
+        # Creates a security group for each Availability Zone in the segment
+        sg_nat_id = 'bastion_nat_'+utils.md5sum(str_data='gateway')[:8]
+        sg_nat_config_ref = '.'.join([self.config_ref_prefix, 'network.vpc.security_groups', sg_nat_id])
+        for nat_id in vpc_config.nat_gateway.keys():
+            nat_config = vpc_config.nat_gateway[nat_id]
+            if nat_config.is_enabled() == False:
+                continue
+            if nat_config.type == 'EC2':
+                sg_nat_config_dict = {}
+                if sg_nat_id not in sg_config.keys():
+                    sg_config[sg_nat_id] = {}
+                for az_idx in range(1,network_config.availability_zones+1):
+                    sg_nat_config_dict['enabled'] = True
+                    sg_nat_config_dict['ingress'] = []
+                    for route_segment in nat_config.default_route_segments:
+                        route_segment_id = route_segment.split('.')[-1]
+                        az_cidr = getattr(vpc_config.segments[route_segment_id], 'az'+str(az_idx)+'_cidr')
+                        sg_nat_config_dict['ingress'].append(
+                            {
+                                'name': 'SubnetAZ',
+                                'cidr_ip': az_cidr,
+                                'protocol': '-1'
+                            }
+                        )
+
+                    sg_nat_config_dict['egress'] = [
+                        {
+                            'name': 'ANY',
+                            'cidr_ip': '0.0.0.0/0',
+                            'protocol': '-1'
+                        }
+                    ]
+
+                    sg_nat_rule_id = nat_id +'_az'+ str(az_idx)
+                    sg_config[sg_nat_id][sg_nat_rule_id] = paco.models.networks.SecurityGroup(sg_nat_rule_id, vpc_config)
+                    paco.models.loader.apply_attributes_from_config(
+                        sg_config[sg_nat_id][sg_nat_rule_id],
+                        sg_nat_config_dict)
         # The Groups Only
         for sg_id in sg_config:
             # Set resolve_ref_obj
@@ -144,15 +187,22 @@ class NetworkStackGroup(StackGroup):
         for nat_id in vpc_config.nat_gateway.keys():
             nat_config = vpc_config.nat_gateway[nat_id]
             self.log_init_status('NAT Gateway', '{}'.format(nat_id), nat_config.is_enabled())
+            if sg_nat_id in sg_config.keys():
+                nat_sg_config = sg_config[sg_nat_id]
+            else:
+                nat_sg_config = None
             # We now disable the NAT Gatewy in the template so that we can delete it and recreate
             # it when disabled.
             nat_template = paco.cftemplates.NATGateway( paco_ctx=self.paco_ctx,
-                                                       account_ctx=self.account_ctx,
-                                                       aws_region=self.region,
-                                                       stack_group=self,
-                                                       stack_tags=StackTags(self.stack_tags),
-                                                       stack_order=[StackOrder.PROVISION],
-                                                       nat_config=nat_config)
+                                                    account_ctx=self.account_ctx,
+                                                    aws_region=self.region,
+                                                    stack_group=self,
+                                                    stack_tags=StackTags(self.stack_tags),
+                                                    stack_order=[StackOrder.PROVISION],
+                                                    network_config=network_config,
+                                                    nat_sg_config=nat_sg_config,
+                                                    nat_sg_config_ref=sg_nat_config_ref,
+                                                    nat_config=nat_config)
             nat_stack = nat_template.stack
             self.nat_list.append(nat_stack)
 
