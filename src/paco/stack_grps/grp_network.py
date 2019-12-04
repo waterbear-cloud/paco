@@ -187,6 +187,10 @@ class NetworkStackGroup(StackGroup):
         for nat_id in vpc_config.nat_gateway.keys():
             nat_config = vpc_config.nat_gateway[nat_id]
             self.log_init_status('NAT Gateway', '{}'.format(nat_id), nat_config.is_enabled())
+            if sg_nat_id in sg_config.keys():
+                nat_sg_config = sg_config[sg_nat_id]
+            else:
+                nat_sg_config = None
             # We now disable the NAT Gatewy in the template so that we can delete it and recreate
             # it when disabled.
             nat_template = paco.cftemplates.NATGateway( paco_ctx=self.paco_ctx,
@@ -196,7 +200,7 @@ class NetworkStackGroup(StackGroup):
                                                     stack_tags=StackTags(self.stack_tags),
                                                     stack_order=[StackOrder.PROVISION],
                                                     network_config=network_config,
-                                                    nat_sg_config=sg_config[sg_nat_id],
+                                                    nat_sg_config=nat_sg_config,
                                                     nat_sg_config_ref=sg_nat_config_ref,
                                                     nat_config=nat_config)
             nat_stack = nat_template.stack
