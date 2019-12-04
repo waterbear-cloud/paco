@@ -1,14 +1,24 @@
 Changelog for paco
 ==================
 
-3.4.0 (unreleased)
+3.4.1 (unreleased)
+------------------
+
+- Nothing changed yet.
+
+
+3.4.0 (2019-12-03)
 ------------------
 
 ### Added
 
+- New CloudWatch Dashboard resource.
+
 - Route53 Health Check supports domain_name or load_balancer fields.
 
 ### Fixed
+
+- include paco.stack_grps package!
 
 - Route53 Health Check alarm gets Namespace again.
 

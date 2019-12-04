@@ -53,6 +53,7 @@ setup(
         'paco.controllers',
         'paco.core',
         'paco.stack_group',
+        'paco.stack_grps',
         'paco.tests',
         'paco.doc',
         'paco.application',
