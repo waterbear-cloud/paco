@@ -1,12 +1,14 @@
 import os
-from paco.cftemplates.cftemplates import CFTemplate
+import troposphere
+import troposphere.ec2
 
+from enum import Enum
+from io import StringIO
+from paco.cftemplates.cftemplates import CFTemplate
 from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
 from paco.models.references import Reference
-from io import StringIO
-from enum import Enum
-
+from paco import utils
 
 class NATGateway(CFTemplate):
     def __init__(self,
@@ -16,6 +18,9 @@ class NATGateway(CFTemplate):
                  stack_group,
                  stack_tags,
                  stack_order,
+                 network_config,
+                 nat_sg_config,
+                 nat_sg_config_ref,
                  nat_config):
 
         super().__init__(
@@ -31,7 +36,120 @@ class NATGateway(CFTemplate):
         )
         self.set_aws_name('NGW', nat_config.name)
 
-        network_config = get_parent_by_interface(nat_config, schemas.INetworkEnvironment)
+        if nat_config.type == 'Managed':
+            self.managed_nat_gateway(network_config, nat_config)
+        else:
+            self.ec2_nat_gateway(network_config, nat_sg_config, nat_sg_config_ref, nat_config)
+
+    def ec2_nat_gateway(self, network_config, nat_sg_config, nat_sg_config_ref, nat_config):
+        self.init_template('EC2 NAT Gateway')
+
+        nat_az = nat_config.availability_zone
+        nat_segment = nat_config.segment.split('.')[-1]
+        ec2_resource = {}
+        for az_idx in range(1, network_config.availability_zones+1):
+            # Add security groups created for NAT Bastions
+            nat_security_groups = []
+            nat_security_groups.extend(nat_config.security_groups)
+            if nat_az == 'all':
+                nat_sg_id = nat_config.name + "_az" + str(az_idx)
+                nat_security_groups.append('paco.ref ' + nat_sg_config_ref + '.' + nat_sg_id)
+            elif az_idx == int(nat_config.availability_zone):
+                for nat_sg_id in nat_sg_config.keys():
+                    nat_security_groups.append('paco.ref ' + nat_sg_config_ref + '.' + nat_sg_id)
+
+            if nat_az == 'all' or nat_az == str(az_idx):
+                security_group_list_param = self.create_cfn_ref_list_param(
+                    param_type='List<AWS::EC2::SecurityGroup::Id>',
+                    name='NATSecurityGroupListAZ'+str(az_idx),
+                    description='List of security group ids to attach to the instances.',
+                    value=nat_security_groups,
+                    ref_attribute='id',
+                    use_troposphere=True,
+                    troposphere_template=self.template
+                )
+
+                subnet_id_param = self.create_cfn_parameter(
+                    name=self.create_cfn_logical_id_join(
+                        str_list=['SubnetIdAZ', str(az_idx), nat_segment],
+                        camel_case=True),
+                    param_type='String',
+                    description='SubnetId to launch an EC2 NAT instance',
+                    value=nat_config.segment + '.az' + str(az_idx) + '.subnet_id',
+                    use_troposphere=True,
+                    troposphere_template=self.template,
+                )
+                ref_parts = nat_config.paco_ref_parts.split('.')
+                instance_name = utils.big_join(
+                    str_list=[ref_parts[1], ref_parts[2], 'NGW', nat_config.name, 'AZ'+str(az_idx)],
+                    separator_ch='-',
+                    camel_case=True
+                )
+
+                ec2_resource[az_idx] = troposphere.ec2.Instance(
+                    title = self.create_cfn_logical_id_join(
+                        str_list = ['EC2NATInstance', str(az_idx)],
+                        camel_case=True),
+                    template = self.template,
+                    SubnetId = troposphere.Ref(subnet_id_param),
+                    ImageId = self.paco_ctx.get_ref('paco.ref function.aws.ec2.ami.latest.amazon-linux-nat', self.account_ctx),
+                    InstanceType = 't2.nano',
+                    KeyName = self.paco_ctx.get_ref(nat_config.ec2_key_pair+'.keypair_name'),
+                    SecurityGroupIds = troposphere.Ref(security_group_list_param),
+                    SourceDestCheck=False,
+                    Tags=troposphere.ec2.Tags(Name=instance_name)
+                )
+
+                ec2_instance_id_output = troposphere.Output(
+                    title=ec2_resource[az_idx].title+'Id',
+
+                    Description="EC2 NAT Instance Id",
+                    Value=troposphere.Ref(ec2_resource[az_idx])
+                )
+                self.template.add_output( ec2_instance_id_output )
+
+                troposphere.ec2.EIP(
+                    title=self.create_cfn_logical_id_join(
+                        str_list = ['ElasticIP', str(az_idx)],
+                        camel_case=True),
+                    template=self.template,
+                    Domain='vpc',
+                    InstanceId=troposphere.Ref(ec2_resource[az_idx])
+                )
+
+                self.register_stack_output_config(nat_config.paco_ref_parts + ".ec2.az" + str(az_idx), ec2_instance_id_output.title)
+
+        # Add DefaultRoute to the route tables in each AZ
+        for segment_ref in nat_config.default_route_segments:
+            segment_id = segment_ref.split('.')[-1]
+            # Routes
+            for az_idx in range(1, network_config.availability_zones+1):
+                if nat_config.availability_zone == 'all':
+                    instance_id_ref = troposphere.Ref(ec2_resource[az_idx])
+                else:
+                    instance_id_ref = troposphere.Ref(ec2_resource[int(nat_az)])
+
+                route_table_id_param = self.create_cfn_parameter(
+                    name=self.create_cfn_logical_id_join(
+                        str_list=['RouteTable', segment_id, 'AZ', str(az_idx)],
+                        camel_case=True),
+                    param_type='String',
+                    description='RouteTable ID for '+segment_id+' AZ'+str(az_idx),
+                    value=segment_ref+".az{}.route_table.id".format(az_idx),
+                    use_troposphere=True,
+                    troposphere_template=self.template)
+
+                troposphere.ec2.Route(
+                    title="EC2NATRouteAZ"+str(az_idx),
+                    template=self.template,
+                    DestinationCidrBlock="0.0.0.0/0",
+                    InstanceId=instance_id_ref,
+                    RouteTableId=troposphere.Ref(route_table_id_param)
+                )
+        # Generate the Template
+        self.set_template(self.template.to_yaml())
+
+    def managed_nat_gateway(self, network_config, nat_config):
 
         self.set_parameter('NATGatewayEnabled', nat_config.is_enabled())
 

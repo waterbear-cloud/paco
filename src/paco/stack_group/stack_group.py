@@ -238,7 +238,9 @@ class Stack():
         if hasattr(self, '_cfn_client') == True:
             delattr(self, '_cfn_client')
         self._cfn_client_expired = True
-        self.log_action("Token", "Retry_"+location, "Expired")
+        if location != None:
+            location = '_'+location
+        self.log_action("Token", "Retry"+location, "Expired")
 
     def set_template(self, template):
         self.template = template
@@ -368,9 +370,11 @@ class Stack():
 
         if 'Outputs' not in stack_metadata['Stacks'][0].keys():
             message = self.get_stack_error_message()
-            message += '\nHints:'
-            message += '1. register_stack_output_config() calls are missing in the cftemplate.'
-            message += '3. The stack has not yet been provisioned.'
+            message += '\nKey: '+key+'\n'
+            message += '\nHints:\n'
+            message += '1. register_stack_output_config() calls are missing in the cftemplate.\n'
+            message += '2. The CloudFormation template does not have the corresponding Outputs entry.\n'
+            message += '3. The stack has not been provisioned yet.\n'
             raise StackException(PacoErrorCode.StackOutputMissing, message=message)
 
         for output in stack_metadata['Stacks'][0]['Outputs']:
@@ -557,7 +561,7 @@ class Stack():
                         message += "ValidationError: {}\n".format(e.response['Error']['Message'])
                         raise StackException(PacoErrorCode.Unknown, message = message)
                 elif e.response['Error']['Code'] == 'ExpiredToken':
-                    self.handle_token_expired('3')
+                    self.handle_token_expired()
                     continue
                 else:
                     #message = "Stack: {}\nError: {}\n".format(self.get_name(), e.response['Error']['Message'])
