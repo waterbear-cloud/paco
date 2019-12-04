@@ -4,7 +4,9 @@ Changelog for paco
 3.4.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Fixed
+
+- Include paco.cookiecutters data files in paco-cloud distribution.
 
 
 3.4.0 (2019-12-03)
