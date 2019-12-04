@@ -4,8 +4,10 @@ Changelog for paco
 3.4.2 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Changed
 
+- Removed Parameter.ending format for cfn-init parameters and Dashboard variables.
+  Instead simply including the ending in the paco.ref
 
 3.4.1 (2019-12-04)
 ------------------
