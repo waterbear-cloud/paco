@@ -23,11 +23,14 @@ warnings.simplefilter("ignore")
 
 
 class AccountContext(object):
+    "Manages the credentials and connection to an AWS Account"
 
-    def __init__(self,
-                 paco_ctx,
-                 name,
-                 mfa_account = None):
+    def __init__(
+        self,
+        paco_ctx,
+        name,
+        mfa_account=None
+    ):
         self.name = name
         self.client_cache = {}
         self.resource_cache = {}
@@ -36,26 +39,21 @@ class AccountContext(object):
         self.mfa_account = mfa_account
         self.aws_session = None
         self.temp_aws_session = None
-        role_cache_filename = '-'.join(['paco', paco_ctx.project.name, self.name])+'.role'
-        self.role_cache_path = os.path.join(
-            os.path.expanduser('~'),
-            '.aws/cli/cache',
-            role_cache_filename)
-        session_cache_filename = '-'.join(['paco', paco_ctx.project.name])+'.session'
-        self.session_cache_path = os.path.join(
-            os.path.expanduser('~'),
-            '.aws/cli/cache',
-            session_cache_filename)
-
+        role_cache_filename = '-'.join(['paco', paco_ctx.project.name, self.name]) + '.role'
+        cache_dir = pathlib.Path.home() / '.aws' / 'cli' / 'cache'
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        self.role_cache_path = cache_dir / role_cache_filename
+        session_cache_filename = '-'.join(['paco', paco_ctx.project.name]) + '.session'
+        self.session_cache_path = cache_dir /session_cache_filename
         self.admin_creds = self.paco_ctx.project['credentials']
         self.admin_iam_role_arn = 'arn:aws:iam::{}:role/{}'.format(
-                self.config.account_id,
-                self.admin_creds.admin_iam_role_name
-            )
+            self.config.account_id,
+            self.admin_creds.admin_iam_role_name
+        )
         self.org_admin_iam_role_arn = 'arn:aws:iam::{}:role/{}'.format(
-                self.config.account_id,
-                self.config.admin_delegate_role_name
-            )
+            self.config.account_id,
+            self.config.admin_delegate_role_name
+        )
         self.mfa_session_expiry_secs = self.admin_creds.mfa_session_expiry_secs
         self.assume_role_session_expiry_secs = self.admin_creds.assume_role_session_expiry_secs
         if name == "master":
@@ -83,7 +81,6 @@ class AccountContext(object):
                 mfa_session_expiry_secs=self.mfa_session_expiry_secs,
                 assume_role_session_expiry_secs=self.assume_role_session_expiry_secs
             )
-
         return self.aws_session.get_temporary_session()
 
     def get_session(self, force=False):
@@ -99,7 +96,6 @@ class AccountContext(object):
                     mfa_session_expiry_secs=self.mfa_session_expiry_secs,
                     assume_role_session_expiry_secs=self.assume_role_session_expiry_secs
             )
-
         if self.temp_aws_session == None or force == True:
             self.temp_aws_session = self.aws_session.get_temporary_session()
 

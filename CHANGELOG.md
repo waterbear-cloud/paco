@@ -9,6 +9,10 @@ Changelog for paco
 - Removed Parameter.ending format for cfn-init parameters and Dashboard variables.
   Instead simply including the ending in the paco.ref
 
+### Fixed
+
+- Create ~/.aws/cli/cache directory if it doesn't already exist.
+
 3.4.1 (2019-12-04)
 ------------------
 
