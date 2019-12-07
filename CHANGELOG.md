@@ -13,6 +13,8 @@ Changelog for paco
 
 - Create ~/.aws/cli/cache directory if it doesn't already exist.
 
+- LogAlarms were incorrectly getting a Resource Dimension added to them.
+
 3.4.1 (2019-12-04)
 ------------------
 
