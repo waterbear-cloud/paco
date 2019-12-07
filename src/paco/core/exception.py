@@ -45,9 +45,6 @@ class PacoBucketExists(Exception):
 class UnsupportedCloudFormationParameterType(Exception):
     "Unsupported Parameter Type"
 
-class CloudFormationParameterPacoRefMissingDotExtension(Exception):
-    "Parameters with paco.ref values need to match <Name>.<OutputName> format."
-
 class InvalidLogSetConfiguration(Exception):
     "Invalid Log Set configuration"
 

@@ -232,7 +232,7 @@ HINT: Ensure that the monitoring.log_sets for the resource is enabled and that t
             # This only happens for Resource-level Alarms
             # MetricFilter LogGroup Alarms must have no dimensions
             dimensions = []
-            if alarm_export_dict['Namespace'].startswith('Logs/') == False:
+            if not schemas.ICloudWatchLogAlarm.providedBy(alarm):
                 if schemas.IResource.providedBy(resource) and len(alarm.dimensions) < 1:
                     dimensions.append(
                         {'Name': vocabulary.cloudwatch[resource.type]['dimension'],

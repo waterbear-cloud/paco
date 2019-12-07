@@ -5,7 +5,7 @@ import troposphere.autoscaling
 import troposphere.policies
 from paco import utils
 from paco.cftemplates.cftemplates import CFTemplate
-from paco.core.exception import UnsupportedCloudFormationParameterType, CloudFormationParameterPacoRefMissingDotExtension
+from paco.core.exception import UnsupportedCloudFormationParameterType
 from paco.models import references
 from paco.models.references import Reference
 from io import StringIO
@@ -131,16 +131,6 @@ class ASG(CFTemplate):
                             value, type(value)
                         )
                     )
-                if references.is_ref(value):
-                    if key.find('.') == -1:
-                        raise CloudFormationParameterPacoRefMissingDotExtension(
-                            "Parameter {} for ASG {} with an paco.ref value needs to match <Name>.<OutputName> format.".format(
-                                key, asg_config.name
-                            )
-                        )
-                    name, extension = key.split('.', 1)
-                    value = value + '.' + extension
-                    key = key.replace('.', '')
                 cfn_init_param = self.create_cfn_parameter(
                     param_type=param_type,
                     name=key,

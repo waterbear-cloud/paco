@@ -46,16 +46,6 @@ class CloudWatchDashboard(CFTemplate):
                             value, type(value)
                         )
                     )
-                if references.is_ref(value):
-                    if key.find('.') == -1:
-                        raise CloudFormationParameterPacoRefMissingDotExtension(
-                            "Parameter {} for {} with a paco.ref value needs to match <Name>.<OutputName> format.".format(
-                                key, dashboard.name
-                            )
-                        )
-                    name, extension = key.split('.', 1)
-                    value = value + '.' + extension
-                    key = key.replace('.', '')
                 variable_param = self.create_cfn_parameter(
                     param_type=param_type,
                     name=key,

@@ -40,7 +40,7 @@ network:
 
 backup_vaults:
   {{cookiecutter.application_name}}:
-    enabled: true
+    enabled: false
     plans:
       ebs:
         title: EBS Backups
@@ -155,7 +155,7 @@ environments:
       enabled: true
       backup_vaults:
         {{cookiecutter.application_name}}:
-          enabled: true
+          enabled: false # backups are off
       applications:
         {{cookiecutter.application_name}}:
           enabled: true
@@ -176,6 +176,4 @@ environments:
               internet_access: true
     {{cookiecutter.aws_default_region}}:
       enabled: false
-      backup_vaults:
-        {{cookiecutter.application_name}}:
-          enabled: false
+

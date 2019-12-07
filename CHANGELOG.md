@@ -1,10 +1,26 @@
 Changelog for paco
 ==================
 
-3.4.1 (unreleased)
+3.4.2 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Changed
+
+- Removed Parameter.ending format for cfn-init parameters and Dashboard variables.
+  Instead simply including the ending in the paco.ref
+
+### Fixed
+
+- Create ~/.aws/cli/cache directory if it doesn't already exist.
+
+- LogAlarms were incorrectly getting a Resource Dimension added to them.
+
+3.4.1 (2019-12-04)
+------------------
+
+### Fixed
+
+- Include paco.cookiecutters data files in paco-cloud distribution.
 
 
 3.4.0 (2019-12-03)
