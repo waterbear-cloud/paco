@@ -39,10 +39,13 @@ class NATGateway(CFTemplate):
         if nat_config.type == 'Managed':
             self.managed_nat_gateway(network_config, nat_config)
         else:
-            self.ec2_nat_gateway(network_config, nat_sg_config, nat_sg_config_ref, nat_config)
+            self.init_template('EC2 NAT Gateway')
+            if nat_config.is_enabled() == True:
+                self.ec2_nat_gateway(network_config, nat_sg_config, nat_sg_config_ref, nat_config)
+            # Generate the Template
+            self.set_template(self.template.to_yaml())
 
     def ec2_nat_gateway(self, network_config, nat_sg_config, nat_sg_config_ref, nat_config):
-        self.init_template('EC2 NAT Gateway')
 
         nat_az = nat_config.availability_zone
         nat_segment = nat_config.segment.split('.')[-1]
@@ -93,7 +96,7 @@ class NATGateway(CFTemplate):
                     template = self.template,
                     SubnetId = troposphere.Ref(subnet_id_param),
                     ImageId = self.paco_ctx.get_ref('paco.ref function.aws.ec2.ami.latest.amazon-linux-nat', self.account_ctx),
-                    InstanceType = 't2.nano',
+                    InstanceType = nat_config.ec2_instance_type,
                     KeyName = self.paco_ctx.get_ref(nat_config.ec2_key_pair+'.keypair_name'),
                     SecurityGroupIds = troposphere.Ref(security_group_list_param),
                     SourceDestCheck=False,
@@ -146,8 +149,6 @@ class NATGateway(CFTemplate):
                     InstanceId=instance_id_ref,
                     RouteTableId=troposphere.Ref(route_table_id_param)
                 )
-        # Generate the Template
-        self.set_template(self.template.to_yaml())
 
     def managed_nat_gateway(self, network_config, nat_config):
 

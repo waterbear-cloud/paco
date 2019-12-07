@@ -234,11 +234,14 @@ class Stack():
 
 
     #--------------------------------------------------------
-    def handle_token_expired(self, location=None):
+    # Resets the client handler to force a session reload.
+    # location is used for debugging to help identify the
+    # places where token expiry was failing.
+    def handle_token_expired(self, location=''):
         if hasattr(self, '_cfn_client') == True:
             delattr(self, '_cfn_client')
         self._cfn_client_expired = True
-        if location != None:
+        if location != '':
             location = '_'+location
         self.log_action("Token", "Retry"+location, "Expired")
 
@@ -301,7 +304,7 @@ class Stack():
                     time.sleep(1)
                     continue
                 elif e.response['Error']['Code'] == 'ExpiredToken':
-                    self.handle_token_expired('1')
+                    self.handle_token_expired()
                     continue
                 else:
                     message = self.get_stack_error_message(
@@ -362,7 +365,7 @@ class Stack():
                     message += 'Account: ' + self.account_ctx.get_name()
                     raise StackException(PacoErrorCode.StackDoesNotExist, message = message)
                 elif e.response['Error']['Code'] == 'ExpiredToken':
-                    self.handle_token_expired('2')
+                    self.handle_token_expired()
                     continue
                 else:
                     raise StackException(PacoErrorCode.Unknown, message=e.response['Error']['Message'])
@@ -787,7 +790,7 @@ class Stack():
                     waiter.wait(StackName=self.get_name())
                 except WaiterError as waiter_exception:
                     if str(waiter_exception).find('The security token included in the request is expired') != -1:
-                        self.handle_token_expired('5')
+                        self.handle_token_expired()
                         continue
                     self.log_action(action_name, "Error")
                     message = "Waiter Error:  {}\n".format(waiter_exception)

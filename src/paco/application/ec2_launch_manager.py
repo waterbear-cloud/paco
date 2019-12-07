@@ -537,8 +537,11 @@ echo "EC2LM: CacheId: {0[cache_id]}"
 
 EC2LM_FOLDER='{0[paco_base_path]}/EC2Manager/'
 EC2LM_FUNCTIONS=ec2lm_functions.bash
+if [ -d $EC2LM_FOLDER ]; then
+    mkdir -p /tmp/ec2lm_backups/
+    mv $EC2LM_FOLDER /tmp/ec2lm_backups/
+fi
 mkdir -p $EC2LM_FOLDER
-
 aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
 
 . $EC2LM_FOLDER/$EC2LM_FUNCTIONS
