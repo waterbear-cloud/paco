@@ -27,6 +27,9 @@ class BackupVault(CFTemplate):
         self.init_template('Backup Vault')
         self.paco_ctx.log_action_col("Init", "Backup", "Vault")
         is_enabled = vault.is_enabled()
+        if not is_enabled:
+            self.set_template(self.template.to_yaml())
+            return
 
         # Service Role ARN parameter
         if role != None:
