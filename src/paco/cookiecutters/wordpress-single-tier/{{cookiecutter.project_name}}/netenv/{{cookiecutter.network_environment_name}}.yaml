@@ -64,6 +64,23 @@ applications:
     title: {{cookiecutter.application_title}}
     enabled: true
     managed_updates: true
+    notifications:
+      app:
+        groups:
+          - admin
+    monitoring:
+      enabled: false
+      health_checks:
+        external_ping:
+          type: Route53HealthCheck
+          enabled: false
+          title: HTTP Monitor
+          ip_address: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.eip
+          health_check_type: 'HTTP'
+          port: 80
+          resource_path: /
+          match_string: "Powered by WordPress"
+          failure_threshold: 3
     groups:
       site:
         enabled: true
@@ -77,10 +94,10 @@ applications:
             enabled: true
             # dns:
             #   - domain_name: example.com
-            #     hosted_zone: paco.ref resource.route53.speechteach_club
+            #     hosted_zone: paco.ref resource.route53.{{cookiecutter.application_name}}
             #     ttl: 60
             #   - domain_name: www.example.com
-            #     hosted_zone: paco.ref resource.route53.speechteach_club
+            #     hosted_zone: paco.ref resource.route53.{{cookiecutter.application_name}}
             #     ttl: 60
           wp_volume:
             type: EBS
@@ -159,6 +176,11 @@ environments:
       applications:
         {{cookiecutter.application_name}}:
           enabled: true
+          monitoring:
+            enabled: true
+            health_checks:
+              external_ping:
+                enabled: true
   dev:
     title: "Development Environment"
     default:

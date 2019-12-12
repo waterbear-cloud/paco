@@ -55,7 +55,8 @@ class CFBaseAlarm(CFTemplate):
     def set_alarm_actions_to_cfn_export(self, alarm, cfn_export_dict):
         "Sets the AlarmActions, OKActions and InsufficientDataActions for a Troposphere dict"
         alarm_action_list = []
-        for alarm_action in alarm.get_alarm_actions_paco_refs():
+        notification_groups = self.paco_ctx.project['resource']['notificationgroups'][alarm.region_name]
+        for alarm_action in alarm.get_alarm_actions_paco_refs(notification_groups):
             # Create parameter
             param_name = 'AlarmAction{}'.format(utils.md5sum(str_data=alarm_action))
             if param_name in self.alarm_action_param_map.keys():

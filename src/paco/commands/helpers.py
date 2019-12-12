@@ -72,6 +72,11 @@ def init_cloud_command(
         print('Paco configuration directory needs to be specified with either --home or PACO_HOME environment variable.')
         sys.exit()
     paco_ctx.load_project()
+
+    # resource.snstopics is an alias for resource.notificationgroups
+    if config_scope.startswith('resource.snstopics'):
+        config_scope = 'resource.notificationgroups' + config_scope[len('resource.snstopics'):]
+
     scope_parts = config_scope.split('.')
     if scope_parts[0] == 'resource':
         controller_type = scope_parts[1]

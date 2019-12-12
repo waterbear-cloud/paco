@@ -4,12 +4,20 @@ Changelog for paco
 3.4.2 (unreleased)
 ------------------
 
+### Added
+
+ - Route 53 Health Checks support ip_address field.
+
 ### Changed
 
 - Removed Parameter.ending format for cfn-init parameters and Dashboard variables.
   Instead simply including the ending in the paco.ref
 
 ### Fixed
+
+- Alarm notifications that do not come from plug-in work again.
+
+- Clean-up for wordpress-single-tier starting template.
 
 - Create ~/.aws/cli/cache directory if it doesn't already exist.
 
