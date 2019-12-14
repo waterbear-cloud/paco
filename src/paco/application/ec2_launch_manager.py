@@ -698,11 +698,13 @@ statement:
 . %s/EC2Manager/ec2lm_functions.bash
 %s
 %s/bin/cfn-init --stack=$EC2LM_STACK_NAME --resource=LaunchConfiguration --region=$REGION --configsets=%s
+%s/bin/cfn-signal -e $? --stack $EC2LM_STACK_NAME --resource=LaunchConfiguration --region=$REGION
 """ % (
     self.paco_base_path,
     vocabulary.user_data_script['install_cfn_init'][resource.instance_ami_type],
     self.paco_base_path,
-    ','.join(resource.launch_options.cfn_init_config_sets)
+    ','.join(resource.launch_options.cfn_init_config_sets),
+    self.paco_base_path
 )
 
 
