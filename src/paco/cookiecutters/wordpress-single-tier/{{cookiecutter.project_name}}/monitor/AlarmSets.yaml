@@ -1,0 +1,58 @@
+ASG:
+  core:
+    StatusCheck:
+      classification: health
+      severity: critical
+      metric_name: "StatusCheckFailed"
+      namespace: AWS/EC2
+      period: 60
+      evaluation_periods: 5
+      statistic: Maximum
+      threshold: 0
+      comparison_operator: GreaterThanThreshold
+      treat_missing_data: breaching
+    CPUTotal:
+      classification: performance
+      severity: critical
+      metric_name: "CPUUtilization"
+      namespace: AWS/EC2
+      period: 60
+      evaluation_periods: 30
+      threshold: 90
+      statistic: Average
+      treat_missing_data: breaching
+      comparison_operator: GreaterThanThreshold
+  cwagent:
+    SwapPercentLow:
+      classification: performance
+      severity: low
+      metric_name: "swap_used_percent"
+      namespace: "CWAgent"
+      period: 60
+      evaluation_periods: 5
+      statistic: Maximum
+      threshold: 80
+      comparison_operator: GreaterThanThreshold
+      treat_missing_data: breaching
+    DiskSpaceLow:
+      classification: health
+      severity: low
+      metric_name: "disk_used_percent"
+      namespace: "CWAgent"
+      period: 300
+      evaluation_periods: 1
+      statistic: Minimum
+      threshold: 60
+      comparison_operator: GreaterThanThreshold
+      treat_missing_data: breaching
+    DiskSpaceCritical:
+      classification: health
+      severity: low
+      metric_name: "disk_used_percent"
+      namespace: "CWAgent"
+      period: 300
+      evaluation_periods: 1
+      statistic: Minimum
+      threshold: 80
+      comparison_operator: GreaterThanThreshold
+      treat_missing_data: breaching

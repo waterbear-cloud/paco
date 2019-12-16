@@ -1,6 +1,7 @@
 account: paco.ref accounts.master
 regions:
   - '{{cookiecutter.aws_default_region}}'
+{% if cookiecutter.aws_default_region != "us-east-1" %}  - 'us-east-1'{% endif %}
 groups:
   admin:
     title: "Administrator Group"

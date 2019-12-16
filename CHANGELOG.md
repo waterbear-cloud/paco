@@ -13,6 +13,8 @@ Changelog for paco
 - Removed Parameter.ending format for cfn-init parameters and Dashboard variables.
   Instead simply including the ending in the paco.ref
 
+- cfn-init launch bundle sends cfn-signal after cfn-init finishes.
+
 ### Fixed
 
 - Alarm notifications that do not come from plug-in work again.
