@@ -2,7 +2,8 @@ import click
 import os
 import os.path
 import sys
-from paco.commands.helpers import pass_paco_context, paco_home_option, init_paco_home_option
+import paco.commands.helpers
+from paco.commands.helpers import pass_paco_context, paco_home_option, init_paco_home_option, handle_exceptions
 from cookiecutter.main import cookiecutter
 from jinja2.ext import Extension
 
@@ -49,6 +50,7 @@ def init_project(ctx, project_name):
 
 @init_group.command(name="credentials")
 @paco_home_option
+@handle_exceptions
 @click.pass_context
 def init_credentials(ctx, home='.'):
     """
@@ -60,12 +62,14 @@ def init_credentials(ctx, home='.'):
     if paco_ctx.home == None:
         print("PACO_HOME or --home must be set.")
         sys.exit()
+    paco.commands.helpers.PACO_HOME = paco_ctx.home
     paco_ctx.load_project(project_init=True)
     ctl_project = paco_ctx.get_controller('project')
     ctl_project.init_credentials()
 
 @init_group.command(name="accounts")
 @paco_home_option
+@handle_exceptions
 @click.pass_context
 def init_accounts(ctx, home='.'):
     """
@@ -74,6 +78,7 @@ def init_accounts(ctx, home='.'):
     paco_ctx = ctx.obj
     paco_ctx.command = 'init accounts'
     init_paco_home_option(paco_ctx, home)
+    paco.commands.helpers.PACO_HOME = paco_ctx.home
     paco_ctx.load_project()
     ctl_project = paco_ctx.get_controller('project')
     ctl_project.init_accounts()

@@ -8,6 +8,8 @@ Changelog for paco
 
  - Route 53 Health Checks support ip_address field.
 
+ - Duplicate key errors in the YAML have a proper error message.
+
 ### Changed
 
 - Removed Parameter.ending format for cfn-init parameters and Dashboard variables.
