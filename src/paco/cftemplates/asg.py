@@ -217,7 +217,7 @@ class ASG(CFTemplate):
         ]
 
         # EIP
-        if asg_config.eip != None:
+        if asg_config.eip != None and asg_config.is_enabled():
             if references.is_ref(asg_config.eip) == True:
                 eip_value = asg_config.eip + '.allocation_id'
             else:

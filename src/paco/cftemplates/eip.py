@@ -102,7 +102,7 @@ class EIP(CFTemplate):
 
         if self.paco_ctx.legacy_flag('route53_record_set_2019_10_16') == False:
             route53_ctl = self.paco_ctx.get_controller('route53')
-            if eip_config.is_dns_enabled() == True:
+            if eip_config.is_dns_enabled() == True and eip_config.is_enabled() == True:
                 for dns_config in eip_config.dns:
                     route53_ctl.add_record_set(
                         self.account_ctx,
