@@ -18,7 +18,8 @@ klass = {
     'route53': Route53Controller,
     'acm': ACMController,
     'iam': IAMController,
-    'account': AccountController,
+    'account': AccountController, # deprecated
+    'accounts': AccountController, # required to support `paco provision acocunts` command
     'project': ProjectController,
     'ec2': EC2Controller,
     'cloudwatch': CloudWatchController,

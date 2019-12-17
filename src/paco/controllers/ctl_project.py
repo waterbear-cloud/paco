@@ -175,9 +175,16 @@ class ProjectController(Controller):
             with open(master_account_file, 'w') as stream:
                 yaml.dump(master_account_config, stream)
 
-        self.paco_ctx.load_project()
         # Loading the account controller will initialize the account yamls
         account_ctl = self.paco_ctx.get_controller('account')
         account_ctl.init_accounts_yaml()
 
+    def provision(self):
+        account_ctl = self.aim_ctx.get_controller('account')
+        account_ctl.provision()
+        print("\nProject Provisioning Complete")
+
+    def validate(self):
+        account_ctl = self.aim_ctx.get_controller('account')
+        account_ctl.validate()
 

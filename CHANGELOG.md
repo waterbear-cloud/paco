@@ -10,12 +10,16 @@ Changelog for paco
 
  - Duplicate key errors in the YAML have a proper error message.
 
+ - Docs have multi-account set-up page.
+
 ### Changed
 
 - Removed Parameter.ending format for cfn-init parameters and Dashboard variables.
   Instead simply including the ending in the paco.ref
 
 - cfn-init launch bundle sends cfn-signal after cfn-init finishes.
+
+- `paco provision account` provisions the accounts.
 
 ### Fixed
 
@@ -26,6 +30,7 @@ Changelog for paco
 - Create ~/.aws/cli/cache directory if it doesn't already exist.
 
 - LogAlarms were incorrectly getting a Resource Dimension added to them.
+
 
 3.4.1 (2019-12-04)
 ------------------

@@ -79,7 +79,7 @@ def init_accounts(ctx, home='.'):
     paco_ctx.command = 'init accounts'
     init_paco_home_option(paco_ctx, home)
     paco.commands.helpers.PACO_HOME = paco_ctx.home
-    paco_ctx.load_project()
+    paco_ctx.load_project(master_only=True)
     ctl_project = paco_ctx.get_controller('project')
     ctl_project.init_accounts()
 
