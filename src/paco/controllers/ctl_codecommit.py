@@ -100,6 +100,10 @@ policies:
 
         return role_list_config
 
+    def delete(self):
+        for stack_grp in self.stack_grps:
+            stack_grp.delete()
+
     def validate(self):
         for stack_grp in self.stack_grps:
             stack_grp.validate()

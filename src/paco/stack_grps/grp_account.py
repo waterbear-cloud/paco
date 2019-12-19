@@ -29,11 +29,9 @@ class AccountStackGroup(StackGroup):
                     org_account_ctx.get_id(), self.account_config.admin_delegate_role_name
                 )
             user_list = "  - {}".format(self.paco_ctx.project['credentials'].master_admin_iam_username)
-
-            # user_list = ""
-            # if self.account_config.admin_iam_users != None:
-            #     for iam_user in self.account_config.admin_iam_users.keys():
-            #         user_list += "\n  - {}".format(self.account_config.admin_iam_users[iam_user].username)
+            if self.account_config.admin_iam_users != None:
+                for iam_user in self.account_config.admin_iam_users.keys():
+                    user_list += "\n  - {}".format(self.account_config.admin_iam_users[iam_user].username)
 
             # Build Policy
             policy_config_yaml = """

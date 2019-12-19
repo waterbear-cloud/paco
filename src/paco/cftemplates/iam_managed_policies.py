@@ -130,8 +130,7 @@ Resources:
             # Users
             policy_table['users'] = ""
             if policy_config.users and len(policy_config.users) > 0:
-                policy_table['users'] = """      Users:
-    """
+                policy_table['users'] = "      Users:\n"
                 for user in policy_config.users:
                     policy_table['users'] += user_fmt % (user)
 
