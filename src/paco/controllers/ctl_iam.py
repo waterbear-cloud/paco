@@ -610,6 +610,7 @@ class IAMController(Controller):
             return
         self.init_done = True
         if model_obj.paco_ref_list[2] == 'users':
+            self.stack_group_filter = model_obj.paco_ref_parts
             self.init_users()
 
     def create_managed_policy(
@@ -703,9 +704,9 @@ class IAMController(Controller):
             self.iam_user_stack_groups[account_name].provision()
 
     def delete(self):
-        print("Not doing anything because this deletes all of the users.")
-        print("TODO: Implement a per user delete!")
-        return
+        #print("Not doing anything because this deletes all of the users.")
+        #print("TODO: Implement a per user delete!")
+        #return
         for account_name in self.iam_user_stack_groups.keys():
             if account_name == 'master':
                 continue
