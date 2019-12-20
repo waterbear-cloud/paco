@@ -1,23 +1,21 @@
 import os
 from paco.cftemplates.cftemplates import CFTemplate
-
 from io import StringIO
 from enum import Enum
 
 
 class CodeCommit(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 stack_hooks,
-                 codecommit_config,
-                 repo_list):
-        #paco_ctx.log("CodeCommit CF Template init")
-
-
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
+        stack_hooks,
+        codecommit_config,
+        repo_list
+    ):
         super().__init__(
             paco_ctx,
             account_ctx,
@@ -29,7 +27,6 @@ class CodeCommit(CFTemplate):
             stack_hooks=stack_hooks
         )
         self.set_aws_name('Repositories')
-
 
         # Define the Template
         template_fmt = """

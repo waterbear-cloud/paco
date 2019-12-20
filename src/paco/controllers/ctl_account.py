@@ -59,76 +59,70 @@ class AccountController(Controller):
     def init(self, command=None, model_obj=None):
         if self.master_account_config == None:
             raise StackException(PacoErrorCode.Unknown)
-        self.init_accounts_yaml()
 
     def init_master_stack_group(self):
-        # Master account goes first
-        self.master_stack_group = AccountStackGroup(self.paco_ctx,
-                                                    self.master_account_ctx,
-                                                    'master',
-                                                    self.master_account_config,
-                                                    None,
-                                                    self)
+        "Master account is first"
+        self.master_stack_group = AccountStackGroup(
+            self.paco_ctx,
+            self.master_account_ctx,
+            'master',
+            self.master_account_config,
+            None,
+            self
+        )
         self.master_stack_group.init(do_not_cache=True)
-
         self.init_organization_stack_groups()
 
     def get_account_default(self, key, arg_1=None):
         account_defaults = {
-                    'name': {
-                        'prod': 'Production',
-                        'dev': 'Development',
-                        'security': 'Security',
-                        'data': 'Data',
-                        'tools': 'Tools'
-                    },
-                    'title': {
-                        'prod': 'Production AWS Account',
-                        'dev': 'Development AWS Account',
-                        'security': 'Security AWS Account',
-                        'data': 'Data AWS Account',
-                        'tools': 'Tools AWS Account'
-                    },
-                    'region': self.master_account_config.region,
-                    'root_email': None,
-                }
+            'name': {
+                'prod': 'Production',
+                'dev': 'Development',
+                'security': 'Security',
+                'data': 'Data',
+                'tools': 'Tools'
+            },
+            'title': {
+                'prod': 'Production AWS Account',
+                'dev': 'Development AWS Account',
+                'security': 'Security AWS Account',
+                'data': 'Data AWS Account',
+                'tools': 'Tools AWS Account'
+            },
+            'region': self.master_account_config.region,
+            'root_email': None,
+        }
         if key == 'name' or key == 'title':
             if arg_1 in account_defaults[key].keys():
                 return account_defaults[key][arg_1]
         else:
             return account_defaults[key]
 
-
     def init_accounts_yaml(self):
-        # Next we process the Master account's organization accounts
+        """Process master account file and and create child account YAML files for the organization_account_ids
+        field, if the child account YAML does not alerady exist."""
         for org_account_id in self.master_account_config.organization_account_ids:
-            # Check if things already exist
-            # Config Check
-            account_config = None
+            # If account YAML already exists then skip it
             if org_account_id in self.paco_ctx.project['accounts'].keys():
                 continue
 
             # Account Check
             print("\nInitializing Account Configuration: %s\n" % (org_account_id))
+            account_config = None
             correct_value = False
             while correct_value == False:
                 # Ask for Each Account Input
                 account_config = {
                     'account_type': 'AWS',
-                    'admin_delegate_role_name': 'WaterbearCloud-Paco-Administrator-Access-Role',
+                    'admin_delegate_role_name': 'Paco-Admin-Delegate-Role',
                     'region': None,
-                    'name': None,
                     'title': None,
                     'root_email': None,
                 }
-
                 name_defaults = {
                     'prod': 'Production',
                     'dev': 'Development',
                 }
-
-
-                account_config['name'] = self.paco_ctx.input("  Friendly name", self.get_account_default('name', org_account_id))
                 account_config['title'] = self.paco_ctx.input("  Title", self.get_account_default('title', org_account_id))
                 account_config['region'] = self.paco_ctx.input("  Region", self.get_account_default('region'))
                 account_config['root_email'] = self.paco_ctx.input("  Root email address")
@@ -138,14 +132,13 @@ class AccountController(Controller):
                 yaml.dump(account_config, sys.stdout)
                 print("---\n")
                 correct_value = self.paco_ctx.input_confirm_action(
-                    "Is this the correct configuration for: %s ?" % (org_account_id)
+                    "Is this the correct configuration for %s ?" % (org_account_id)
                 )
 
                 # Save account config to yaml
-                account_yaml_path = os.path.join(self.paco_ctx.home, 'Accounts', org_account_id+".yaml")
+                account_yaml_path = os.path.join(self.paco_ctx.home, 'Accounts', org_account_id + ".yaml")
                 with open(account_yaml_path, "w") as stream:
-                    yaml.dump(data=account_config,
-                                stream=stream)
+                    yaml.dump(data=account_config, stream=stream)
 
     def init_organization_stack_groups(self):
         # Next we process the Master account's organization accounts
@@ -201,8 +194,8 @@ class AccountController(Controller):
                 "Is this the correct configuration for '%s'?" % (org_account_id)
             )
             if correct_value == False:
-                print("Configuration is not correct, skipping...\n")
-                continue
+                print("Configuration is not correct, aborted.\n")
+                sys.exit()
 
             # Create the account unter the Organization
             print("Creating account: %s" % (org_account_id))

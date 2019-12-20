@@ -39,11 +39,11 @@ class PolicyContext():
         stack_group,
         template_params,
         stack_tags,
-        change_protected = False):
+        change_protected = False
+    ):
         self.paco_ctx = paco_ctx
         self.account_ctx = account_ctx
         self.region = region
-
         self.group_id = group_id
         self.name = None
         self.arn = None
@@ -57,13 +57,9 @@ class PolicyContext():
         self.template_params = template_params
         self.change_protected = change_protected
         self.policy_context = {}
-
-        self.policy_context = {}
-
         policy_config_dict = yaml.load(self.policy_config_yaml)
         self.policy_config = paco.models.iam.ManagedPolicy(policy_id, parent_config)
         paco.models.loader.apply_attributes_from_config(self.policy_config, policy_config_dict)
-
         self.init_policy()
 
     def init_policy(self):
@@ -74,34 +70,44 @@ class PolicyContext():
             'ref': self.policy_ref,
             'template_params': self.template_params
         }
-
         policy_stack_tags = StackTags(self.stack_tags)
         policy_stack_tags.add_tag('Paco-IAM-Resource-Type', 'ManagedPolicy')
-        policy_context['template'] = IAMManagedPolicies(self.paco_ctx,
-                                                        self.account_ctx,
-                                                        self.region,
-                                                        self.stack_group,
-                                                        policy_stack_tags,
-                                                        policy_context,
-                                                        self.group_id,
-                                                        self.policy_id,
-                                                        change_protected=self.change_protected)
-
+        policy_context['template'] = IAMManagedPolicies(
+            self.paco_ctx,
+            self.account_ctx,
+            self.region,
+            self.stack_group,
+            policy_stack_tags,
+            policy_context,
+            self.group_id,
+            self.policy_id,
+            change_protected=self.change_protected
+        )
         policy_context['stack'] = policy_context['template'].stack
-
         self.name = policy_context['template'].gen_policy_name(self.policy_id)
         self.arn = "arn:aws:iam::{0}:policy/{1}".format(self.account_ctx.get_id(), self.name)
-
         self.policy_context[self.policy_ref] = policy_context
         self.stack_group.add_stack_order(policy_context['stack'])
 
 
 class RoleContext():
-    def __init__(self, paco_ctx, account_ctx, region, group_id, role_id, role_ref, role_config, stack_group, template_params, stack_tags, change_protected=False):
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        region,
+        group_id,
+        role_id,
+        role_ref,
+        role_config,
+        stack_group,
+        template_params,
+        stack_tags,
+        change_protected=False
+    ):
         self.paco_ctx = paco_ctx
         self.account_ctx = account_ctx
         self.region = region
-
         self.group_id = group_id
         self.role_name = None
         self.role_id = role_id
@@ -113,9 +119,7 @@ class RoleContext():
         self.role_stack = None
         self.template_params = template_params
         self.change_protected = change_protected
-
         self.policy_context = {}
-
         self.init_role()
 
     def aws_name(self):
@@ -147,15 +151,16 @@ class RoleContext():
 
         return role_by_ref
 
-    def add_managed_policy(self,
-                           parent_config,
-                           group_id,
-                           policy_id,
-                           policy_ref,
-                           policy_config_yaml=None,
-                           template_params=None,
-                           change_protected=False):
-
+    def add_managed_policy(
+        self,
+        parent_config,
+        group_id,
+        policy_id,
+        policy_ref,
+        policy_config_yaml=None,
+        template_params=None,
+        change_protected=False
+    ):
         if policy_ref in self.policy_context.keys():
             print("Managed policy already exists: %s" % (policy_ref) )
             raise StackException(PacoErrorCode.Unknown)
@@ -171,24 +176,22 @@ class RoleContext():
             'ref': policy_ref,
             'template_params': template_params
         }
-
         policy_stack_tags = StackTags(self.stack_tags)
         policy_stack_tags.add_tag('Paco-IAM-Resource-Type', 'ManagedPolicy')
-        policy_context['template'] = IAMManagedPolicies(self.paco_ctx,
-                                                        self.account_ctx,
-                                                        self.region,
-                                                        self.stack_group,
-                                                        policy_stack_tags,
-                                                        policy_context,
-                                                        self.group_id,
-                                                        policy_id,
-                                                        change_protected)
-
+        policy_context['template'] = IAMManagedPolicies(
+            self.paco_ctx,
+            self.account_ctx,
+            self.region,
+            self.stack_group,
+            policy_stack_tags,
+            policy_context,
+            self.group_id,
+            policy_id,
+            change_protected
+        )
         policy_context['stack'] = policy_context['template'].stack
-
         self.policy_context['name'] = policy_context['template'].gen_policy_name(policy_id)
         self.policy_context['arn'] = "arn:aws:iam::{0}:policy/{1}".format(self.account_ctx.get_id(), self.policy_context['name'])
-
         self.policy_context[policy_ref] = policy_context
         self.stack_group.add_stack_order(policy_context['stack'])
 
@@ -196,18 +199,19 @@ class RoleContext():
         role_stack_tags = StackTags(self.stack_tags)
         role_stack_tags.add_tag('Paco-IAM-Resource-Type', 'Role')
         self.role_config.resolve_ref_obj = self
-        self.role_template = IAMRoles(self.paco_ctx,
-                                      self.account_ctx,
-                                      self.region,
-                                      self.stack_group,
-                                      role_stack_tags,
-                                      self.role_ref,
-                                      self.group_id,
-                                      self.role_id,
-                                      self.role_config,
-                                      self.template_params,
-                                      self.change_protected)
-
+        self.role_template = IAMRoles(
+            self.paco_ctx,
+            self.account_ctx,
+            self.region,
+            self.stack_group,
+            role_stack_tags,
+            self.role_ref,
+            self.group_id,
+            self.role_id,
+            self.role_config,
+            self.template_params,
+            self.change_protected
+        )
         self.role_stack = self.role_template.stack
         self.role_name = self.role_template.gen_iam_role_name("Role", self.role_id)
         self.role_arn = "arn:aws:iam::{0}:role/{1}".format(self.account_ctx.get_id(), self.role_name)
@@ -382,7 +386,6 @@ class IAMController(Controller):
             UserName=username,
             AccessKeyId=access_key_id,
         )
-
         version_attribute = [access_key_id+'Version', key_config['version']]
         key_num_attribute = [access_key_id+'KeyNum', key_config['key_num']]
 
@@ -620,20 +623,23 @@ class IAMController(Controller):
         stack_group,
         template_params,
         stack_tags,
-        change_protected=False):
+        change_protected=False
+    ):
         if policy_ref not in self.policy_context.keys():
-            self.policy_context[policy_ref] = PolicyContext(paco_ctx=self.paco_ctx,
-                                                            account_ctx=account_ctx,
-                                                            region=region,
-                                                            group_id=group_id,
-                                                            policy_id=policy_id,
-                                                            policy_ref=policy_ref,
-                                                            policy_config_yaml=policy_config_yaml,
-                                                            parent_config=parent_config,
-                                                            stack_group=stack_group,
-                                                            template_params=template_params,
-                                                            stack_tags=stack_tags,
-                                                            change_protected=change_protected)
+            self.policy_context[policy_ref] = PolicyContext(
+                paco_ctx=self.paco_ctx,
+                account_ctx=account_ctx,
+                region=region,
+                group_id=group_id,
+                policy_id=policy_id,
+                policy_ref=policy_ref,
+                policy_config_yaml=policy_config_yaml,
+                parent_config=parent_config,
+                stack_group=stack_group,
+                template_params=template_params,
+                stack_tags=stack_tags,
+                change_protected=change_protected
+            )
         else:
             print("Managed Policy already exists: %s" % (policy_ref))
             raise StackException(PacoErrorCode.Unknown)
@@ -641,20 +647,34 @@ class IAMController(Controller):
     def add_managed_policy(self, role_ref, *args, **kwargs):
         return self.role_context[role_ref].add_managed_policy(*args, **kwargs)
 
-    def add_role(self, paco_ctx, account_ctx, region, group_id, role_id, role_ref, role_config, stack_group, template_params, stack_tags, change_protected=False):
+    def add_role(
+        self,
+        paco_ctx,
+        account_ctx,
+        region,
+        group_id,
+        role_id,
+        role_ref,
+        role_config,
+        stack_group,
+        template_params,
+        stack_tags,
+        change_protected=False
+    ):
         if role_ref not in self.role_context.keys():
-            self.role_context[role_ref] = RoleContext(paco_ctx=self.paco_ctx,
-                                                      account_ctx=account_ctx,
-                                                      region=region,
-                                                      group_id=group_id,
-                                                      role_id=role_id,
-                                                      role_ref=role_ref,
-                                                      role_config=role_config,
-                                                      stack_group=stack_group,
-                                                      template_params=template_params,
-                                                      stack_tags=stack_tags,
-                                                      change_protected=change_protected)
-
+            self.role_context[role_ref] = RoleContext(
+                paco_ctx=self.paco_ctx,
+                account_ctx=account_ctx,
+                region=region,
+                group_id=group_id,
+                role_id=role_id,
+                role_ref=role_ref,
+                role_config=role_config,
+                stack_group=stack_group,
+                template_params=template_params,
+                stack_tags=stack_tags,
+                change_protected=change_protected
+            )
         else:
             print("Role already exists: %s" % (role_ref))
             raise StackException(PacoErrorCode.Unknown)
@@ -692,5 +712,3 @@ class IAMController(Controller):
                 continue
             self.iam_user_stack_groups[account_name].delete()
         self.iam_user_stack_groups['master'].delete()
-
-

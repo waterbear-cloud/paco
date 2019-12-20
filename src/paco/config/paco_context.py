@@ -251,7 +251,7 @@ class PacoContext(object):
             return None
         return region
 
-    def load_project(self, project_init=False):
+    def load_project(self, project_init=False, master_only=False):
         "Load a Paco Project from YAML, initialize settings and controllers, and load Service plug-ins."
         self.project_folder = self.home
         if project_init == True:
@@ -269,6 +269,8 @@ class PacoContext(object):
             mfa_account=None
         )
         os.environ['AWS_DEFAULT_REGION'] = self.project['credentials'].aws_default_region
+        if master_only:
+            return
 
         # Initialize Controllers so they can initialize their
         # resolve_ref_obj's to allow reference lookups

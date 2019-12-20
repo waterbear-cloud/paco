@@ -7,6 +7,7 @@ Get Started with Paco
 
    install
    started
+   multiaccount
 
 Paco CLI
 ----------

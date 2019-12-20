@@ -7,13 +7,13 @@ import paco.cftemplates
 
 class AccountStackGroup(StackGroup):
     def __init__(self, paco_ctx, account_ctx, account_id, account_config, stack_hooks, controller):
-
-        super().__init__(paco_ctx,
-                         account_ctx,
-                         account_id,
-                         "Configuration",
-                         controller)
-
+        super().__init__(
+            paco_ctx,
+            account_ctx,
+            account_id,
+            "Configuration",
+            controller
+        )
         self.account_id = account_id
         self.account_config = account_config
         self.account_config_ref = 'paco.ref accounts.%s' % (account_id)
@@ -25,10 +25,10 @@ class AccountStackGroup(StackGroup):
             resource_list = ""
             for org_account_name in self.account_config.organization_account_ids:
                 org_account_ctx = self.paco_ctx.get_account_context(account_name=org_account_name)
-                resource_list += "\n      - arn:aws:iam::{}:role/{}".format(org_account_ctx.get_id(), self.account_config.admin_delegate_role_name)
-            #user_list = "\n  - {}".format(self.paco_ctx.project['credentials'].master_admin_iam_username)
-
-            user_list = ""
+                resource_list += "\n      - arn:aws:iam::{}:role/{}".format(
+                    org_account_ctx.get_id(), self.account_config.admin_delegate_role_name
+                )
+            user_list = "  - {}".format(self.paco_ctx.project['credentials'].master_admin_iam_username)
             if self.account_config.admin_iam_users != None:
                 for iam_user in self.account_config.admin_iam_users.keys():
                     user_list += "\n  - {}".format(self.account_config.admin_iam_users[iam_user].username)
@@ -43,21 +43,23 @@ statement:
       - sts:AssumeRole
     resource:{}
 users:
-  - paco-project-init
-    """.format(org_account_name, resource_list)
+{}
+    """.format(org_account_name, resource_list, user_list)
             ctl_iam = self.paco_ctx.get_controller('iam')
-            ctl_iam.create_managed_policy(  self.paco_ctx,
-                                            self.account_ctx,
-                                            self.account_config.region,
-                                            'organization',
-                                            'iam-delegate',
-                                            'config.ref account.master.organization_account_ids.policy',
-                                            policy_config_yaml,
-                                            parent_config=self.account_config,
-                                            stack_group=self,
-                                            template_params=None,
-                                            stack_tags=None,
-                                            change_protected=False)
+            ctl_iam.create_managed_policy(
+                self.paco_ctx,
+                self.account_ctx,
+                self.account_config.region,
+                'organization',
+                'iam-delegate',
+                'config.ref account.master.organization_account_ids.policy',
+                policy_config_yaml,
+                parent_config=self.account_config,
+                stack_group=self,
+                template_params=None,
+                stack_tags=None,
+                change_protected=False
+            )
 
             # Account Stack
             #
@@ -84,8 +86,6 @@ users:
         raise StackException(PacoErrorCode.Unknown)
 
     def validate(self):
-        # Generate Stacks
-        # VPC Stack
         super().validate()
 
     def provision(self):

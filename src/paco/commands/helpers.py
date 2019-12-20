@@ -1,6 +1,7 @@
 import click
 import os
 import sys
+import ruamel.yaml.constructor
 from paco.config.paco_context import PacoContext, AccountContext
 from paco.core.exception import PacoException, StackException
 from paco.models.exceptions import InvalidPacoProjectFile, UnusedPacoProjectField, InvalidPacoReference
@@ -71,6 +72,9 @@ def init_cloud_command(
     if not paco_ctx.home:
         print('Paco configuration directory needs to be specified with either --home or PACO_HOME environment variable.')
         sys.exit()
+
+    import warnings
+    warnings.simplefilter("ignore")
     paco_ctx.load_project()
 
     # resource.snstopics is an alias for resource.notificationgroups
@@ -171,7 +175,12 @@ def handle_exceptions(func):
             click.echo("\nERROR!\n")
             error_name = error.__class__.__name__
             if error_name in ('InvalidPacoProjectFile', 'UnusedPacoProjectField', 'InvalidPacoReference'):
-                click.echo("Invalid Paco project configuration files at {}".format(args[0].home))
+                # Click fixme: in paco init commands args[0] doesn't get set so home is stashed in a global var
+                if len(args) == 0:
+                    home = PACO_HOME
+                else:
+                    home = args[0].home
+                click.echo("Invalid Paco project configuration files at {}".format(home))
                 if hasattr(error, 'args'):
                     if len(error.args) > 0:
                         click.echo(error.args[0])

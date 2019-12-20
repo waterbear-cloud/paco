@@ -587,8 +587,8 @@ class Stack():
         if self.is_exists() == True:
             # Delete Stack
             if self.termination_protection == True:
-                print("\n!! This Stack has 'Termination Protection' enabled.")
-                print("\n!! Stack Name: {}\n".format(self.get_name()))
+                print("\nThis Stack has Termination Protection enabled!")
+                print("Stack Name: {}\n".format(self.get_name()))
                 answer = self.paco_ctx.input_confirm_action("Destroy this stack forever?")
                 if answer == False:
                     print("Destruction aborted. Allowing stack to exist.")
