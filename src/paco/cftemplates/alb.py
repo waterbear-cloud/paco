@@ -397,8 +397,10 @@ class ALB(CFTemplate):
                     if alb_config.is_dns_enabled() == True:
                         alias_dns_ref = alb_config.paco_ref + '.dnsname'
                         alias_hosted_zone_ref = alb_config.paco_ref + '.canonicalhostedzoneid'
+                        hosted_zone = get_model_obj_from_ref(alb_dns.hosted_zone, self.paco_ctx.project)
+                        account_ctx = self.paco_ctx.get_account_context(account_ref=hosted_zone.account)
                         route53_ctl.add_record_set(
-                            self.account_ctx,
+                            account_ctx,
                             self.aws_region,
                             enabled=alb_config.is_enabled(),
                             dns=alb_dns,

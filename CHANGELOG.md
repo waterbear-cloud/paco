@@ -23,6 +23,11 @@ Changelog for paco
 
 ### Fixed
 
+- Route 53 Record Set stack for an ALB is provisioned in the same account that Route53 is in.
+
+- DeploymentPipeline no longer hard-codes to a 'data' account for CodeCommit principle,
+  and instead uses the actual account(s) that CodeCommit repo's use.
+
 - Alarm notifications that do not come from plug-in work again.
 
 - Clean-up for wordpress-single-tier starting template.
