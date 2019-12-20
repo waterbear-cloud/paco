@@ -165,6 +165,7 @@ class ALB(CFTemplate):
                 lb_attributes.append(
                     {'Key': 'access_logs.s3.prefix', 'Value': alb_config.access_logs_prefix}
                 )
+
         cfn_export_dict['LoadBalancerAttributes'] = lb_attributes
 
         alb_resource = troposphere.elasticloadbalancingv2.LoadBalancer.from_dict(
