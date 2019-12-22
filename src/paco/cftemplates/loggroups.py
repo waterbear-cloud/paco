@@ -71,9 +71,9 @@ class LogGroups(CFTemplate):
             # 2. log_set.expire_events_after_days <- applies to an entire log set
             # 3. cw_logging.expire_events_after_days <- global default
             log_set = get_parent_by_interface(log_group, schemas.ICloudWatchLogSet)
-            if log_group.expire_events_after_days:
+            if hasattr(log_set, 'expire_events_after_days') and log_group.expire_events_after_days:
                 retention = log_group.expire_events_after_days
-            elif log_set.expire_events_after_days:
+            elif hasattr(log_set, 'expire_events_after_days') and log_set.expire_events_after_days:
                 retention = log_set.expire_events_after_days
             else:
                 retention = default_retention

@@ -693,7 +693,14 @@ statement:
             self.remove_bundle(cfn_init_lb)
             return
 
-        # TODO: Add ubuntu and other distro support
+        # cfn-init base path
+        if resource.instance_ami_type == 'amazon':
+            # Amazon Linux has cfn-init pre-installed at /opt/aws/
+            cfn_base_path = '/opt/aws'
+        else:
+            # other OS types will install cfn-init into the Paco directory
+            cfn_base_path = self.paco_base_path
+
         launch_script = """#!/bin/bash
 . %s/EC2Manager/ec2lm_functions.bash
 %s
@@ -702,11 +709,10 @@ statement:
 """ % (
     self.paco_base_path,
     vocabulary.user_data_script['install_cfn_init'][resource.instance_ami_type],
-    self.paco_base_path,
+    cfn_base_path,
     ','.join(resource.launch_options.cfn_init_config_sets),
-    self.paco_base_path
+    cfn_base_path
 )
-
 
         cfn_init_lb.set_launch_script(launch_script)
 

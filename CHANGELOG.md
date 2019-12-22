@@ -23,6 +23,10 @@ Changelog for paco
 
 ### Fixed
 
+- cfn-init uses proper base path for Amazon Linux which has cfn-init pre-installed in /opt/aws.
+
+- log group expire_events_after_days can be left blank for log_set and log_group without throwing error.
+
 - Route 53 Record Set stack for an ALB is provisioned in the same account that Route53 is in.
 
 - DeploymentPipeline no longer hard-codes to a 'data' account for CodeCommit principle,
