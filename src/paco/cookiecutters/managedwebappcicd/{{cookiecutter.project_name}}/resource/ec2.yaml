@@ -10,4 +10,4 @@ keypairs:
   {{cookiecutter.application_name}}_prod:
     keypair_name: "{{cookiecutter.application_name}}-prod-{{cookiecutter.aws_default_region}}"
     region: "{{cookiecutter.aws_default_region}}"
-    account: paco.ref {{cookiecutter.prod_account}}
+    account: paco.ref accounts.{{cookiecutter.prod_account}}

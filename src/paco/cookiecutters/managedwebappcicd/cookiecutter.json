@@ -9,6 +9,7 @@
     "staging_account": "",
     "prod_account": "",
     "tools_account": "",
+    "accounts": "",
     "network_environment_name": "",
     "network_environment_title": "",
     "application_name": "",

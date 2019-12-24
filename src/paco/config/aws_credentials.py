@@ -2,14 +2,11 @@ import json
 import boto3
 import paco
 import os
+import sys
 from paco.core.exception import StackException
 from paco.core.exception import PacoException, PacoErrorCode
 from botocore.exceptions import ClientError, WaiterError
 
-
-from botocore.exceptions import ClientError
-#import logging
-#logging.basicConfig(level=logging.DEBUG)
 
 class PacoSTS(object):
     """
@@ -20,19 +17,20 @@ class PacoSTS(object):
     a new MFA token.
     """
 
-    def __init__(   self,
-                    account_ctx=None,
-                    temp_creds_path=None,
-                    session_creds_path=None,
-                    role_creds_path=None,
-                    mfa_arn=None,
-                    admin_creds=None,
-                    admin_iam_role_arn=None,
-                    org_admin_iam_role_arn=None,
-                    mfa_account=None,
-                    mfa_session_expiry_secs=None,
-                    assume_role_session_expiry_secs=None,
-                ):
+    def __init__(
+        self,
+        account_ctx=None,
+        temp_creds_path=None,
+        session_creds_path=None,
+        role_creds_path=None,
+        mfa_arn=None,
+        admin_creds=None,
+        admin_iam_role_arn=None,
+        org_admin_iam_role_arn=None,
+        mfa_account=None,
+        mfa_session_expiry_secs=None,
+        assume_role_session_expiry_secs=None,
+    ):
         # mfa_session_expiry provides long term expiry
         self.mfa_session_expiry_secs = mfa_session_expiry_secs
         # assume_role_session_expiry is restricted to 1 hour due to role chaining.
@@ -87,6 +85,16 @@ class PacoSTS(object):
             aws_access_key_id=self.admin_creds.aws_access_key_id,
             aws_secret_access_key=self.admin_creds.aws_secret_access_key,
         )
+        # check that .credentials has properly loaded
+        # it's possible to load the model without creds for commands such as `paco init`
+        # but once you are asked for MFA you must have a credentials file
+        if self.admin_creds.aws_default_region == 'no-region-set':
+            print("""
+You must have a properly formatted .credentials file to connect to AWS.
+
+Try running `paco init credentials` to create one.
+""")
+            sys.exit()
         token_code = input('MFA Token: {0}: '.format(self.account_ctx.get_name()))
         session_creds = sts_client.get_session_token(
             DurationSeconds=self.mfa_session_expiry_secs,

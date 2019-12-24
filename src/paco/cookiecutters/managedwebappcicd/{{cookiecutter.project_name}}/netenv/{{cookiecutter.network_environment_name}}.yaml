@@ -377,7 +377,7 @@ applications:
               log_sets:
                 rpm_linux:
                 cloud:
-                {{cookiecutter.application_name}}_app:
+                {{cookiecutter.application_name}}:
               metrics:
                 - name: swap
                   measurements:

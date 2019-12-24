@@ -119,6 +119,14 @@ class ProjectController(Controller):
             # Remove the allowed key so we do not save it to the context file
             for key in allowed_key_list:
                 del project_context[key]
+            # Massage account names into a de-duplicated list
+            accounts = {}
+            for key, value in project_context.items():
+                if key.endswith('_account'):
+                    accounts[value] = None
+            project_context['accounts'] = ''
+            for key in accounts.keys():
+                project_context['accounts'] += '  - ' + key + '\n'
             cookiecutter(
                 os.path.join(os.path.dirname(__file__), '..', 'cookiecutters', packagename),
                 no_input=True,

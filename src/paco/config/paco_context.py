@@ -237,9 +237,11 @@ class PacoContext(object):
         if account_name in self.accounts:
             return self.accounts[account_name]
 
-        account_ctx = AccountContext(paco_ctx=self,
-                                     name=account_name,
-                                     mfa_account=self.master_account)
+        account_ctx = AccountContext(
+            paco_ctx=self,
+            name=account_name,
+            mfa_account=self.master_account
+        )
         self.accounts[account_name] = account_ctx
 
         return account_ctx

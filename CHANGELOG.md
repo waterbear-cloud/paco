@@ -23,6 +23,8 @@ Changelog for paco
 
 ### Fixed
 
+- Warn if .credentials file is missing before asking for MFA.
+
 - cfn-init uses proper base path for Amazon Linux which has cfn-init pre-installed in /opt/aws.
 
 - log group expire_events_after_days can be left blank for log_set and log_group without throwing error.

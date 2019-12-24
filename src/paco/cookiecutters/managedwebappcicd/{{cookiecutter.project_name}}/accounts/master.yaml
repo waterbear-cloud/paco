@@ -7,7 +7,4 @@ root_email: '{{cookiecutter.master_root_email}}'
 admin_delegate_role_name: 'Paco-Admin-Delegate-Role'
 organization_account_ids:
   - master
-  - {{cookiecutter.tools_account}}
-  - {{cookiecutter.prod_account}}
-  - {{cookiecutter.staging_account}}
-  - {{cookiecutter.dev_account}}
+{{cookiecutter.accounts}}
