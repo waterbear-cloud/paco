@@ -46,6 +46,17 @@ class AccountContext(object):
         session_cache_filename = '-'.join(['paco', paco_ctx.project.name]) + '.session'
         self.session_cache_path = cache_dir /session_cache_filename
         self.admin_creds = self.paco_ctx.project['credentials']
+
+        # check that account_id has been set
+        # account YAML files are created without an account_id until they are provisioned
+        if self.config.account_id == None:
+            print("""
+The account '{}' is missing an account_id field.
+Add this manually or run `paco provision accounts` for this project.
+""".format(self.config.name)
+            )
+            sys.exit()
+
         self.admin_iam_role_arn = 'arn:aws:iam::{}:role/{}'.format(
             self.config.account_id,
             self.admin_creds.admin_iam_role_name

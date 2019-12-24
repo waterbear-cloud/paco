@@ -23,7 +23,9 @@ Changelog for paco
 
 ### Fixed
 
-- Warn if .credentials file is missing before asking for MFA.
+- Throw error if an account is missing an account_id.
+
+- Throw error if .credentials file is missing before asking for MFA.
 
 - cfn-init uses proper base path for Amazon Linux which has cfn-init pre-installed in /opt/aws.
 
