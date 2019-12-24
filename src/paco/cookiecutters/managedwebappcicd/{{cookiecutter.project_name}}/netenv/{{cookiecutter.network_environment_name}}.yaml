@@ -1,0 +1,611 @@
+network:
+  title: "{{cookiecutter.network_environment_title}}"
+  availability_zones: 3
+  enabled: true
+  vpc:
+    enabled: true
+    enable_dns_hostnames: true
+    enable_dns_support: true
+    enable_internet_gateway: true
+    nat_gateway:
+      ec2:
+        enabled: false
+        type: EC2
+        availability_zone: 1
+        segment: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.segments.public
+        default_route_segments:
+          - paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.segments.private
+        security_groups:
+          - paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.bastion.instance
+        ec2_key_pair: paco.ref resource.ec2.keypairs.{{cookiecutter.application_name}}_dev
+      managed:
+        enabled: false
+        type: Managed
+        availability_zone: 1
+        segment: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.segments.public
+        default_route_segments:
+          - paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.segments.private
+    private_hosted_zone:
+      enabled: false
+    security_groups:
+      {{cookiecutter.application_name}}:
+        database:
+          enabled: true
+          ingress:
+            - name: RDSMysql
+              protocol: "6"
+              from_port: 3306
+              to_port: 3306
+              source_security_group: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.web
+          egress:
+            - name: ANY
+              cidr_ip: 0.0.0.0/0
+              protocol: "-1"
+        alb:
+          enabled: true
+          egress:
+            - cidr_ip: 0.0.0.0/0
+              name: ANY
+              protocol: "-1"
+          ingress:
+            - cidr_ip: 0.0.0.0/0
+              name: HTTPS
+              protocol: tcp
+              port: 443
+            - cidr_ip: 0.0.0.0/0
+              name: HTTP
+              protocol: tcp
+              port: 80
+        web:
+          enabled: true
+          egress:
+            - cidr_ip: 0.0.0.0/0
+              name: ANY
+              protocol: "-1"
+          ingress:
+            - port: 80
+              name: HTTP
+              protocol: tcp
+              source_security_group: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.alb
+            - port: 22
+              name: SSH
+              protocol: tcp
+              source_security_group: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.bastion.instance
+      bastion:
+        instance:
+          enabled: true
+          egress:
+            - cidr_ip: 0.0.0.0/0
+              name: ANY
+              protocol: "-1"
+          ingress:
+            - from_port: 22
+              name: SSH
+              protocol: tcp
+              cidr_ip: 0.0.0.0/0
+              to_port: 22
+    segments:
+      public:
+        enabled: true
+        internet_access: true
+      private:
+        enabled: true
+      database:
+        enabled: true
+
+
+backup_vaults:
+  {{cookiecutter.application_name}}:
+    enabled: false
+    plans:
+      ebs:
+        title: RDS Backups
+        enabled: true
+        plan_rules:
+          - title: Daily RDS backups
+            schedule_expression: cron(0 7 ? * * *)
+            lifecycle_delete_after_days: 30
+        selections:
+          - title: RDS Daily Backups Selection
+            tags:
+              # ToDo adjust tags
+              - condition_type: STRINGEQUALS
+                condition_key: Paco-Application-Resource-Name
+                condition_value: wp_volume
+              - condition_type: STRINGEQUALS
+                condition_key: paco.env.name
+                condition_value: prod
+
+secrets_manager:
+  {{cookiecutter.application_name}}:
+    site:
+      database:
+        enabled: true
+        generate_secret_string:
+          enabled: true
+          secret_string_template: '{"username": "root"}'
+          generate_string_key: "password"
+          password_length: 16
+          exclude_characters: '"@/\'
+
+applications:
+  {{cookiecutter.application_name}}:
+    title: "{{cookiecutter.application_title}}"
+    enabled: true
+    managed_updates: true
+    notifications:
+      app:
+        groups:
+          - admin
+    monitoring:
+      enabled: false
+      health_checks:
+        external_ping:
+          type: Route53HealthCheck
+          enabled: false
+          title: HTTP Monitor
+          load_balancer: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.alb
+          health_check_type: 'HTTPS'
+          port: 443
+          resource_path: /
+          match_string: "App"
+          failure_threshold: 3
+    groups:
+      bastion:
+        type: Application
+        order: 20
+        enabled: true
+        resources:
+          eip:
+            type: EIP
+            order: 5
+            enabled: true
+          instance:
+            type: ASG
+            enabled: true
+            order: 10
+            associate_public_ip_address: true
+            cooldown_secs: 300
+            eip: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.bastion.resources.eip
+            ebs_optimized: false
+            health_check_grace_period_secs: 300
+            health_check_type: EC2
+            instance_iam_role:
+              enabled: true
+            instance_ami: paco.ref function.aws.ec2.ami.latest.amazon-linux-2
+            instance_ami_type: amazon
+            instance_key_pair: paco.ref resource.ec2.keypairs.{{cookiecutter.application_name}}_prod
+            instance_monitoring: false
+            instance_type: t2.micro
+            desired_capacity: 1
+            max_instances: 1
+            min_instances: 1
+            segment: public
+            termination_policies:
+              - Default
+            update_policy_max_batch_size: 1
+            update_policy_min_instances_in_service: 0
+            security_groups:
+              - paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.bastion.instance
+            monitoring:
+              enabled: false
+            user_data_script: |
+              #!/bin/bash
+              yum update -y
+
+      {{cookiecutter.application_name}}_deploy:
+        type: Deployment
+        title: 'CI/CD'
+        order: 50
+        enabled: true
+        resources:
+          pipeline_s3:
+            type: S3Bucket
+            enabled: true
+            order: 0
+            bucket_name: "artifacts"
+            deletion_policy: "delete"
+            account: paco.ref accounts.{{cookiecutter.tools_account}}
+            policy:
+              - aws:
+                  - paco.sub '${paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.web.instance_iam_role.arn}'
+                effect: 'Allow'
+                action:
+                  - 's3:Get*'
+                  - 's3:List*'
+                resource_suffix:
+                  - '/*'
+                  - ''
+
+          pipeline:
+            type: DeploymentPipeline
+            order: 2
+            enabled: true
+            configuration:
+              artifacts_bucket: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.{{cookiecutter.application_name}}_deploy.resources.pipeline_s3
+              account: paco.ref accounts.{{cookiecutter.tools_account}}
+            source:
+              codecommit:
+                type: CodeCommit.Source
+                enabled: true
+                codecommit_repository: paco.ref resource.codecommit.{{cookiecutter.application_name}}.site
+                deployment_branch_name: "dev" # Override in sub-environments
+            build:
+              codebuild:
+                type: CodeBuild.Build
+                enabled: true
+                deployment_environment: "dev" # Override in sub-environment
+                codebuild_image: 'aws/codebuild/amazonlinux2-x86_64-standard:1.0'
+                codebuild_compute_type: BUILD_GENERAL1_SMALL
+            deploy:
+              manualapproval:
+                type: ManualApproval.Deploy
+                enabled: false
+                run_order: 1
+                manual_approval_notification_email: "{{cookiecutter.admin_email}}"
+              codedeploy:
+                type: CodeDeploy.Deploy
+                enabled: true
+                run_order: 2
+                alb_target_group: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.alb.target_groups.{{cookiecutter.application_name}}
+                auto_scaling_group: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.web
+                auto_rollback_enabled: true
+                minimum_healthy_hosts:
+                  type: HOST_COUNT  # HOST_COUNT | FLEET_PERCENT
+                  value: 0
+                deploy_style_option: WITHOUT_TRAFFIC_CONTROL
+
+      site:
+        enabled: true
+        type: Application
+        order: 1
+        resources:
+          cloud_cert:
+            type: ACM
+            order: 1
+            enabled: true
+            domain_name: {{cookiecutter.domain_name}}
+            subject_alternative_names:
+              - '*.{{cookiecutter.domain_name}}'
+          alb:
+            type: LBApplication
+            order: 20
+            enabled: true
+            dns:
+              - hosted_zone: paco.ref resource.route53.{{cookiecutter.application_name}}
+                domain_name: {{cookiecutter.domain_name}}
+                ssl_certificate: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.cloud_cert
+            scheme: internet-facing
+            security_groups:
+              - paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.alb
+            segment: public
+            target_groups:
+              {{cookiecutter.application_name}}:
+                health_check_interval: 30
+                health_check_timeout: 10
+                healthy_threshold: 2
+                unhealthy_threshold: 4
+                port: 80
+                protocol: HTTP
+                health_check_http_code: 200
+                health_check_path: /
+                connection_drain_timeout: 10
+            listeners:
+              http:
+                port: 80
+                protocol: HTTP
+                redirect:
+                  port: 443
+                  protocol: HTTPS
+              https:
+                port: 443
+                protocol: HTTPS
+                ssl_certificates:
+                  - paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.cloud_cert
+                target_group: {{cookiecutter.application_name}}
+                rules:
+                  {{cookiecutter.application_name}}_forward:
+                    enabled: true
+                    rule_type: forward
+                    host: '{{cookiecutter.domain_name}}'
+                    target_group: {{cookiecutter.application_name}}
+                    priority: 1
+                  {{cookiecutter.application_name}}_redirect:
+                    enabled: true
+                    rule_type: redirect
+                    host: '*.{{cookiecutter.domain_name}}'
+                    redirect_host: '{{cookiecutter.domain_name}}'
+                    priority: 2
+          database:
+            type: RDSMysql
+            order: 10
+            enabled: true
+            engine_version: 5.7.26
+            db_instance_type: db.t3.micro
+            port: 3306
+            storage_type: gp2
+            storage_size_gb: 20
+            storage_encrypted: true
+            multi_az: true
+            allow_major_version_upgrade: false
+            auto_minor_version_upgrade: true
+            publically_accessible: false
+            master_username: root
+            secrets_password: paco.ref netenv.{{cookiecutter.network_environment_name}}.secrets_manager.{{cookiecutter.application_name}}.site.database
+            backup_preferred_window: 08:00-08:30
+            backup_retention_period: 7
+            maintenance_preferred_window: 'sun:11:00-sun:12:00'
+            license_model: "general-public-license"
+            security_groups:
+              - paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.database
+            segment: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.segments.database
+            primary_domain_name: database.an.internal
+            primary_hosted_zone: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.private_hosted_zone
+
+          web:
+            title: Web Server AutoScalingGroup
+            type: ASG
+            enabled: true
+            order: 30
+            associate_public_ip_address: false
+            availability_zone: 1
+            instance_iam_role:
+              enabled: true
+            secrets:
+              - paco.ref netenv.{{cookiecutter.network_environment_name}}.secrets_manager.{{cookiecutter.application_name}}.site.database
+            instance_ami: paco.ref function.aws.ec2.ami.latest.amazon-linux-2
+            instance_ami_type: amazon
+            instance_key_pair: paco.ref resource.ec2.keypairs.{{cookiecutter.application_name}}_prod
+            instance_monitoring: false
+            instance_type: t3.small
+            update_policy_max_batch_size: 1
+            update_policy_min_instances_in_service: 0
+            max_instances: 1
+            min_instances: 0
+            desired_capacity: 1
+            target_groups:
+              - paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.alb.target_groups.{{cookiecutter.application_name}}
+            security_groups:
+              - paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.web
+            segment: private
+            monitoring:
+              enabled: false
+              alarm_sets:
+                core:
+                cwagent:
+                log-alarms:
+              log_sets:
+                rpm_linux:
+                cloud:
+                {{cookiecutter.application_name}}_app:
+              metrics:
+                - name: swap
+                  measurements:
+                    - used_percent
+                - name: disk
+                  measurements:
+                    - used_percent
+                  collection_interval: 300
+            launch_options:
+              cfn_init_config_sets:
+                - "Install"
+            cfn_init:
+              parameters:
+                DatabasePasswordarn: paco.ref netenv.{{cookiecutter.network_environment_name}}.secrets_manager.{{cookiecutter.application_name}}.site.database.arn
+              config_sets:
+                Install:
+                  - "Install"
+              configurations:
+                Install:
+                  packages:
+                    yum:
+                      jq: []
+                      httpd: []
+                      python3: []
+                      gcc: []
+                      httpd-devel: []
+                      python3-devel: []
+                      ruby: []
+                      mariadb: []
+                  files:
+                    "/tmp/get_rds_dsn.sh":
+                      content_cfn_file: ./webapp/get_rds_dsn.sh
+                      mode: '000700'
+                      owner: root
+                      group: root
+                    "/etc/httpd/conf.d/saas_wsgi.conf":
+                      content_file: ./webapp/saas_wsgi.conf
+                      mode: '000600'
+                      owner: root
+                      group: root
+                    "/etc/httpd/conf.d/wsgi.conf":
+                      content: "LoadModule wsgi_module modules/mod_wsgi.so"
+                      mode: '000600'
+                      owner: root
+                      group: root
+                    "/tmp/install_codedeploy.sh":
+                      source: https://aws-codedeploy-us-west-2.s3.us-west-2.amazonaws.com/latest/install
+                      mode: '000700'
+                      owner: root
+                      group: root
+
+                  commands:
+                    10_install_mod_wsgi:
+                      command: "/bin/pip3 install mod_wsgi > /var/log/cfn-init-mod_wsgi.log 2>&1"
+                    11_symlink_mod_wsgi:
+                      command: "/bin/ln -s /usr/local/lib64/python3.7/site-packages/mod_wsgi/server/mod_wsgi-py37.cpython-37m-x86_64-linux-gnu.so /usr/lib64/httpd/modules/mod_wsgi.so > /var/log/cfn-init-mod_wsgi_symlink.log 2>&1"
+                    20_install_codedeploy:
+                      command: "/tmp/install_codedeploy.sh auto > /var/log/cfn-init-codedeploy.log 2>&1"
+
+                  services:
+                    sysvinit:
+                      httpd:
+                        enabled: true
+                        ensure_running: true
+                        commands:
+                          - 11_symlink_mod_wsgi
+                      codedeploy-agent:
+                        enabled: true
+                        ensure_running: true
+
+environments:
+  prod:
+    title: "Production Environment"
+    us-west-2:
+      enabled: false
+    default:
+      secrets_manager:
+        {{cookiecutter.application_name}}:
+          site:
+            database:
+              enabled: true
+      backup_vaults:
+        {{cookiecutter.application_name}}:
+          enabled: true
+      applications:
+        {{cookiecutter.application_name}}:
+          enabled: true
+          monitoring:
+            enabled: true
+            health_checks:
+              external_ping:
+                enabled: true
+          groups:
+            bastion:
+              resources:
+                instance:
+                  instance_key_pair: paco.ref resource.ec2.keypairs.{{cookiecutter.application_name}}_prod
+            site:
+              resources:
+                web:
+                  instance_key_pair: paco.ref resource.ec2.keypairs.{{cookiecutter.application_name}}_prod
+                  monitoring:
+                    enabled: true
+                database:
+                  multi_az: true
+
+      network:
+        aws_account: paco.ref accounts.{{cookiecutter.prod_account}}
+        availability_zones: 3
+        vpc:
+          cidr: 10.4.0.0/16
+          nat_gateway:
+            managed:
+              enabled: true
+          segments:
+            public:
+              az1_cidr: 10.4.1.0/24
+              az2_cidr: 10.4.2.0/24
+              az3_cidr: 10.4.3.0/24
+              internet_access: true
+            private:
+              az1_cidr: 10.4.1.0/24
+              az2_cidr: 10.4.2.0/24
+              az3_cidr: 10.4.3.0/24
+              internet_access: false
+            database:
+              az1_cidr: 10.4.1.0/24
+              az2_cidr: 10.4.2.0/24
+              az3_cidr: 10.4.3.0/24
+              internet_access: false
+
+  staging:
+    title: "Staging Environment"
+    us-west-2:
+      enabled: false
+    default:
+      secrets_manager:
+        {{cookiecutter.application_name}}:
+          site:
+            database:
+              enabled: true
+      applications:
+        {{cookiecutter.application_name}}:
+          enabled: true
+          groups:
+            bastion:
+              resources:
+                instance:
+                  instance_key_pair: paco.ref resource.ec2.keypairs.{{cookiecutter.application_name}}_staging
+            site:
+              resources:
+                web:
+                  instance_key_pair: paco.ref resource.ec2.keypairs.{{cookiecutter.application_name}}_staging
+                  monitoring:
+                    enabled: false
+                database:
+                  multi_az: false
+
+      network:
+        aws_account: paco.ref accounts.{{cookiecutter.staging_account}}
+        vpc:
+          cidr: 10.3.0.0/16
+          nat_gateway:
+            ec2:
+              enabled: true
+          segments:
+            public:
+              az1_cidr: 10.3.1.0/24
+              az2_cidr: 10.3.2.0/24
+              az3_cidr: 10.3.3.0/24
+              internet_access: true
+            private:
+              az1_cidr: 10.3.4.0/24
+              az2_cidr: 10.3.5.0/24
+              az3_cidr: 10.3.6.0/24
+              internet_access: false
+            database:
+              az1_cidr: 10.3.7.0/24
+              az2_cidr: 10.3.8.0/24
+              az3_cidr: 10.3.9.0/24
+              internet_access: false
+  dev:
+    title: "Development Environment"
+    us-west-2:
+      enabled: true
+    default:
+      secrets_manager:
+        {{cookiecutter.application_name}}:
+          site:
+            database:
+              enabled: true
+      applications:
+        {{cookiecutter.application_name}}:
+          enabled: true
+          groups:
+            bastion:
+              resources:
+                instance:
+                  instance_key_pair: paco.ref resource.ec2.keypairs.{{cookiecutter.application_name}}_dev
+            site:
+              resources:
+                web:
+                  instance_key_pair: paco.ref resource.ec2.keypairs.{{cookiecutter.application_name}}_dev
+                  monitoring:
+                    enabled: false
+                database:
+                  multi_az: false
+
+      network:
+        aws_account: paco.ref accounts.{{cookiecutter.dev_account}}
+        vpc:
+          cidr: 10.2.0.0/16
+          nat_gateway:
+            ec2:
+              enabled: true
+          segments:
+            public:
+              az1_cidr: 10.2.1.0/24
+              az2_cidr: 10.2.2.0/24
+              az3_cidr: 10.2.3.0/24
+              internet_access: true
+            private:
+              az1_cidr: 10.2.4.0/24
+              az2_cidr: 10.2.5.0/24
+              az3_cidr: 10.2.6.0/24
+              internet_access: false
+            database:
+              az1_cidr: 10.2.7.0/24
+              az2_cidr: 10.2.8.0/24
+              az3_cidr: 10.2.9.0/24
+              internet_access: false

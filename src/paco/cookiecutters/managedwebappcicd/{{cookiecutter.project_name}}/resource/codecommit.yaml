@@ -1,0 +1,11 @@
+{{cookiecutter.application_name}}:
+  site:
+    enabled: true
+    account: paco.ref accounts.{{cookiecutter.tools_account}}
+    region: '{{cookiecutter.aws_default_region}}'
+    description: "{{cookiecutter.application_title}} repo"
+    repository_name: "{{cookiecutter.application_name}}-app"
+    users:
+      {{cookiecutter.admin_username}}:
+        username: {{cookiecutter.admin_email}}
+        public_ssh_key: 'ssh-rsa {{cookiecutter.admin_ssh_public_key}}'

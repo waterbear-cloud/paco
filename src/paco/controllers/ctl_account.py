@@ -8,6 +8,7 @@ from paco.stack_grps.grp_account import AccountStackGroup
 from paco.models import loader
 from botocore.exceptions import ClientError
 from paco.core.yaml import YAML
+from paco.utils import enhanced_input
 
 yaml=YAML()
 yaml.default_flow_sytle = False
@@ -123,9 +124,9 @@ class AccountController(Controller):
                     'prod': 'Production',
                     'dev': 'Development',
                 }
-                account_config['title'] = self.paco_ctx.input("  Title", self.get_account_default('title', org_account_id))
-                account_config['region'] = self.paco_ctx.input("  Region", self.get_account_default('region'))
-                account_config['root_email'] = self.paco_ctx.input("  Root email address")
+                account_config['title'] = enhanced_input("  Title", self.get_account_default('title', org_account_id))
+                account_config['region'] = enhanced_input("  Region", self.get_account_default('region'))
+                account_config['root_email'] = enhanced_input("  Root email address")
 
                 # Verify the information collected
                 print("\n--- %s Configuration ---" % org_account_id)

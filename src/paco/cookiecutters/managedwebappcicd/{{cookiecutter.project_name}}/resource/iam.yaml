@@ -1,0 +1,16 @@
+users:
+  {{cookiecutter.admin_username}}:
+    enabled: true
+    account: paco.ref accounts.master
+    username: {{cookiecutter.admin_username}}
+    description: '{{cookiecutter.admin_username}} Administrator'
+    console_access_enabled: true
+    programmatic_access:
+      enabled: true
+      access_key_1_version: 1
+      access_key_2_version: 0
+    account_whitelist: all
+    permissions:
+      administrator:
+        type: Administrator
+        accounts: all

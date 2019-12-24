@@ -251,7 +251,7 @@ class PacoContext(object):
             return None
         return region
 
-    def load_project(self, project_init=False, master_only=False):
+    def load_project(self, project_init=False, project_only=False, master_only=False):
         "Load a Paco Project from YAML, initialize settings and controllers, and load Service plug-ins."
         self.project_folder = self.home
         if project_init == True:
@@ -260,6 +260,8 @@ class PacoContext(object):
         # Load the model from YAML
         print("Loading Paco project: %s" % (self.home))
         self.project = load_project_from_yaml(self.project_folder, None)
+        if project_only == True:
+            return
 
         # Settings
         self.build_folder = os.path.join(self.home, "build", self.project.name)
@@ -428,39 +430,6 @@ class PacoContext(object):
                 return valid[answer]
             else:
                 print("Please respond with 'y' or 'n' (or 'yes' or 'no').\n")
-
-    def input(
-        self,
-        prompt,
-        default=None,
-        allowed_values=None,
-        return_bool_on_allowed_value=False,
-        case_sensitive=True
-    ):
-        try_again = True
-        while try_again:
-            suffix = ": "
-            if default != None:
-                suffix += "[%s]: " % str(default)
-            value = input(prompt+suffix) or default
-            if allowed_values != None:
-                for allowed_value in allowed_values:
-                    value_match = False
-                    if isinstance(value, str) and case_sensitive == False:
-                        if allowed_value.lower() == value.lower():
-                            value_match = True
-                    elif allowed_value == value:
-                        value_match = True
-                    if value_match == True:
-                        if return_bool_on_allowed_value == True:
-                            return True
-                        else:
-                            return value
-                print("Invalid value: %s" % (value))
-                print("Allowed values: %s\n" % ', '.join(allowed_values))
-                continue
-            try_again = False
-        return value
 
     def legacy_flag(self, flag):
         if flag in self.project.legacy_flags:

@@ -19,6 +19,41 @@ from functools import partial
 from hashlib import blake2b
 
 
+def enhanced_input(
+    prompt,
+    default=None,
+    allowed_values=None,
+    return_bool_on_allowed_value=False,
+    case_sensitive=True
+):
+    "Prompt for user input and check for valid values and allow retries."
+    try_again = True
+    while try_again:
+        suffix = ": "
+        if default != None:
+            suffix += "[{}]: ".format(default)
+        value = input(prompt + suffix)
+        if value == '':
+            value = default
+        if allowed_values != None:
+            for allowed_value in allowed_values:
+                value_match = False
+                if isinstance(value, str) and case_sensitive == False:
+                    if allowed_value.lower() == value.lower():
+                        value_match = True
+                elif allowed_value == value:
+                    value_match = True
+                if value_match == True:
+                    if return_bool_on_allowed_value == True:
+                        return True
+                    else:
+                        return value
+            print("Invalid value: %s" % (value))
+            print("Allowed values: %s\n" % ', '.join(allowed_values))
+            continue
+        try_again = False
+    return value
+
 def hash_smaller(text, max_len=99):
     "Return a string that is shorter than 100 chars by hashing the start"
     if len(text) <= max_len:
