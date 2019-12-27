@@ -1,6 +1,7 @@
 import paco.cftemplates
 from paco.application.res_engine import ResourceEngine
 from paco.core.yaml import YAML
+import paco.models
 
 yaml=YAML()
 yaml.default_flow_sytle = False
@@ -17,7 +18,7 @@ instance_profile: false
 path: /
 role_name: %s""" % ("ASGInstance")
             role_config_dict = yaml.load(role_config_yaml)
-            role_config = models.iam.Role('instance_iam_role', self.resource)
+            role_config = paco.models.iam.Role('instance_iam_role', self.resource)
             role_config.apply_config(role_config_dict)
         else:
             role_config = self.resource.instance_iam_role
