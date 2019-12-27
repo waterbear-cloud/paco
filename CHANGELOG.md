@@ -23,6 +23,10 @@ Changelog for paco
 
 ### Fixed
 
+- If entire VPC is disabled for an ASG, the disabled ASG is removed.
+
+- DeploymentPipeline can be enabled/disabled without throwing errors.
+
 - Throw error if an account is missing an account_id.
 
 - Throw error if .credentials file is missing before asking for MFA.
