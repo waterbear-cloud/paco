@@ -7,7 +7,9 @@ Get Started with Paco
 
    install
    started
+   paco-home
    multiaccount
+   paco-users
 
 Paco CLI
 ----------
@@ -18,6 +20,15 @@ Paco CLI
 
    cli
 
+Paco Starting Templates
+-----------------------
+
+.. toctree::
+   :caption: Starting Templates
+   :maxdepth: 3
+
+   start-managed-webapp-cicd
+
 Paco project configuration
 --------------------------
 
@@ -26,15 +37,6 @@ Paco project configuration
    :maxdepth: 3
 
    paco-config
-
-Paco cloud support
-------------------
-
-.. toctree::
-   :caption: Paco cloud support
-   :maxdepth: 3
-
-   resourcesupport
 
 Copyright, Trademarks, and Attributions
 ---------------------------------------

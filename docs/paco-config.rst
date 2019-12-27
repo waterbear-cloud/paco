@@ -925,12 +925,40 @@ NATGateway
       - 
       - Default Route Segments
       - NATGateway
+    * - ec2_instance_type
+      - String
+      - .. fa:: times
+      - t2.nano
+      - 
+      - EC2 Instance Type
+      - NATGateway
+    * - ec2_key_pair
+      - TextReference
+      - .. fa:: times
+      - 
+      - 
+      - EC2 key pair reference
+      - NATGateway
+    * - security_groups
+      - List of Strings
+      - .. fa:: times
+      - 
+      - 
+      - Security Groups
+      - NATGateway
     * - segment
       - TextReference
       - .. fa:: times
       - 
       - 
       - Segment
+      - NATGateway
+    * - type
+      - String
+      - .. fa:: times
+      - Managed
+      - 
+      - NAT Gateway type
       - NATGateway
 
 
@@ -2327,7 +2355,7 @@ to a target group, use the ``target_groups`` field on an ASG resource.
       - Idle timeout in seconds
       - LBApplication
     * - listeners
-      - Container of Listener_ Paco schemas
+      - Container of Listeners_ Paco schemas
       - .. fa:: times
       - 
       - 
@@ -2355,7 +2383,7 @@ to a target group, use the ``target_groups`` field on an ASG resource.
       - Id of the segment stack
       - LBApplication
     * - target_groups
-      - Container of TargetGroup_ Paco schemas
+      - Container of TargetGroups_ Paco schemas
       - .. fa:: times
       - 
       - 
@@ -7515,6 +7543,13 @@ Route53 Health Check
       - List of AWS Region names (e.g. us-west-2) from which to make health checks.
       - Health checker regions
       - Route53HealthCheck
+    * - ip_address
+      - TextReference
+      - .. fa:: times
+      - 
+      - 
+      - IP Address
+      - Route53HealthCheck
     * - latency_graphs
       - Boolean
       - .. fa:: times
@@ -7766,15 +7801,51 @@ Secrets Manager
 Global Resources
 ================
 
+CloudTrail
+----------
+
+The ``resources/iam.yaml`` file contains CloudTrails.
+
+.. code-block:: bash
+
+    provision resource.cloudtrail
+
+
+.. code-block:: yaml
+    :caption: Example resources/cloudtrail.yaml file
+
+    trails:
+      cloudtrail:
+        region: ''
+        enabled: true
+        cloudwatchlogs_log_group:
+          expire_events_after_days: '14'
+          log_group_name: 'CloudTrail'
+        enable_log_file_validation: true
+        include_global_service_events: true
+        is_multi_region_trail: true
+        enable_kms_encryption: true
+        s3_bucket_account: 'paco.ref accounts.security'
+        s3_key_prefix: 'cloudtrails'
+
+
 IAM
 ---
 
-The ``Resources/IAM.yaml`` file contains IAM Users. Each user account can be given
-different levels of access a set of AWS accounts.
+The ``resources/iam.yaml`` file contains IAM Users. Each user account can be given
+different levels of access a set of AWS accounts. For more information on how
+IAM Users can be managed, see `Managing IAM Users with Paco`_.
+
+.. code-block:: bash
+
+    provision resource.iam.users
+
+
+.. _Managing IAM Users with Paco: ./paco-users.html
 
 
 IAMResource
-------------
+^^^^^^^^^^^^
 
 
 IAM Resource contains IAM Users who can login and have different levels of access to the AWS Console and API.
@@ -7811,7 +7882,7 @@ IAM Resource contains IAM Users who can login and have different levels of acces
 
 
 IAMUsers
----------
+^^^^^^^^^
 
 
 
@@ -7999,7 +8070,7 @@ IAMUserPermissions
 
 
 Role
------
+^^^^^
 
 
 
@@ -8220,6 +8291,63 @@ Statement
       - Resrource(s)
       - Statement
 
+
+SNS Topics
+----------
+
+The ``resources/snstopics.yaml`` file manages AWS Simple Notification Service (SNS) resources.
+SNS has only two resources: SNS Topics and SNS Subscriptions.
+
+.. code-block:: bash
+
+    provision resource.snstopics
+
+.. code-block:: yaml
+    :caption: Example resources/snstopics.yaml file
+
+    account: paco.ref accounts.prod
+    regions:
+      - 'us-west-2'
+      - 'us-east-1'
+    groups:
+      admin:
+        title: "Administrator Group"
+        enabled: true
+        cross_account_access: true
+        subscriptions:
+          - endpoint: http://example.com/yes
+            protocol: http
+          - endpoint: https://example.com/orno
+            protocol: https
+          - endpoint: bob@example.com
+            protocol: email
+          - endpoint: bob@example.com
+            protocol: email-json
+          - endpoint: '555-555-5555'
+            protocol: sms
+          - endpoint: arn:aws:sqs:us-east-2:444455556666:queue1
+            protocol: sqs
+          - endpoint: arn:aws:sqs:us-east-2:444455556666:queue1
+            protocol: application
+          - endpoint: arn:aws:lambda:us-east-1:123456789012:function:my-function
+            protocol: lambda
+
+.. sidebar:: Prescribed Automation
+
+    ``cross_account_access``: Creates an SNS Topic Policy which will grant all of the AWS Accounts in this
+    Paco Project access to the ``sns.Publish`` permission for this SNS Topic.
+
+    You will need this if you want to send CloudWatch Alarms from multiple accounts to the same
+    SNS Topic(s) in one account.
+
+EC2 Keypairs
+------------
+
+The ``resources/ec2.yaml`` file manages AWS EC2 Keypairs.
+
+.. code-block:: bash
+
+    provision resource.ec2.keypairs
 
 
 MonitorConfig
@@ -8490,7 +8618,7 @@ CloudWatchLogSource
       - CloudWatchLogSource
     * - log_stream_name
       - String
-      - .. fa:: times
+      - .. fa:: check
       - 
       - CloudWatch Log Stream name
       - Log stream name

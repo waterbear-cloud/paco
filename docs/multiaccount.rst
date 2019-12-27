@@ -152,7 +152,8 @@ Next you simply need to create an file in your Paco project's ``accounts`` direc
 After you do this, run ``paco provision accounts`` in your Paco directory to update the IAM Role to allow it to delegate
 access into your newly imported account.
 
-.. _AWS Organization: https://aws.amazon.com/organizations/
+
+.. _AWS Organizations: https://aws.amazon.com/organizations/
 
 .. _Why use a multi-account architecture on AWS?: https://medium.com/waterbearcloud/why-use-a-multi-account-architecture-on-aws-bd63c871384
 

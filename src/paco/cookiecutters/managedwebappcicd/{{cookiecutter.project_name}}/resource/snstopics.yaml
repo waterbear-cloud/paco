@@ -1,4 +1,4 @@
-account: paco.ref accounts.master
+account: paco.ref accounts.{{cookiecutter.prod_account}}
 regions:
   - '{{cookiecutter.aws_default_region}}'
 {% if cookiecutter.aws_default_region != "us-east-1" %}  - 'us-east-1'{% endif %}
@@ -6,6 +6,7 @@ groups:
   admin:
     title: "Administrator Group"
     enabled: true
+    cross_account_access: true
     subscriptions:
       - endpoint: {{cookiecutter.admin_email}}
         protocol: email

@@ -1,0 +1,13 @@
+trails:
+  cloudtrail:
+    region: ''
+    enabled: true
+    cloudwatchlogs_log_group:
+      expire_events_after_days: '14'
+      log_group_name: 'CloudTrail'
+    enable_log_file_validation: true
+    include_global_service_events: true
+    is_multi_region_trail: true
+    enable_kms_encryption: true
+    s3_bucket_account: 'paco.ref accounts.{{cookiecutter.tools_account}}'
+    s3_key_prefix: 'cloudtrails'

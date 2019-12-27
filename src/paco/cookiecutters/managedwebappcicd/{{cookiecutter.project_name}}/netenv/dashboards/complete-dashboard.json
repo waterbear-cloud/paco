@@ -1,0 +1,348 @@
+{
+    "widgets": [
+        {
+            "type": "metric",
+            "x": 0,
+            "y": 1,
+            "width": 12,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "AWS/ApplicationELB", "RequestCount", "TargetGroup", "${ApplicationTargetGroup}", "LoadBalancer", "${LoadBalancerName}", { "color": "#7f7f7f" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": true,
+                "region": "${AwsRegion}",
+                "title": "Requests per minute",
+                "stat": "Sum",
+                "period": 60,
+                "yAxis": {
+                    "left": {
+                        "min": 0
+                    }
+                }
+            }
+        },
+        {
+            "type": "metric",
+            "x": 12,
+            "y": 1,
+            "width": 12,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "AWS/ApplicationELB", "TargetResponseTime", "TargetGroup", "${ApplicationTargetGroup}", "LoadBalancer", "${LoadBalancerName}" ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AwsRegion}",
+                "title": "Average Response Time",
+                "stat": "Average",
+                "period": 60,
+                "yAxis": {
+                    "left": {
+                        "min": 0
+                    }
+                },
+                "annotations": {
+                    "horizontal": [
+                        {
+                            "color": "#ff9896",
+                            "label": "Sluggish",
+                            "value": 0.8
+                        },
+                        {
+                            "color": "#d62728",
+                            "label": "Slow",
+                            "value": 2
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "text",
+            "x": 0,
+            "y": 20,
+            "width": 24,
+            "height": 1,
+            "properties": {
+                "markdown": "\n## Database\n"
+            }
+        },
+        {
+            "type": "text",
+            "x": 0,
+            "y": 0,
+            "width": 24,
+            "height": 1,
+            "properties": {
+                "markdown": "\n## Load Balancer\n"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 0,
+            "y": 8,
+            "width": 12,
+            "height": 6,
+            "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                    [ "AWS/EC2", "CPUUtilization", "AutoScalingGroupName", "${WebAsg}" ]
+                ],
+                "region": "${AwsRegion}",
+                "title": "CPUUtilization",
+                "yAxis": {
+                    "left": {
+                        "min": 0,
+                        "max": 100
+                    }
+                }
+            }
+        },
+        {
+            "type": "metric",
+            "x": 12,
+            "y": 8,
+            "width": 12,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "AWS/EC2", "NetworkIn", "AutoScalingGroupName", "${WebAsg}", { "color": "#bcbd22" } ],
+                    [ ".", "NetworkOut", ".", ".", { "color": "#aec7e8", "yAxis": "right" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AwsRegion}",
+                "yAxis": {
+                    "left": {
+                        "min": 0
+                    },
+                    "right": {
+                        "min": 0
+                    }
+                },
+                "stat": "Average",
+                "period": 60,
+                "title": "NetworkIn / NetworkOut"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 0,
+            "y": 21,
+            "width": 12,
+            "height": 6,
+            "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                    [ "AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "${DBInstance}" ]
+                ],
+                "region": "${AwsRegion}",
+                "title": "CPUUtilization",
+                "yAxis": {
+                    "left": {
+                        "min": 0,
+                        "max": 100
+                    }
+                }
+            }
+        },
+        {
+            "type": "text",
+            "x": 0,
+            "y": 7,
+            "width": 24,
+            "height": 1,
+            "properties": {
+                "markdown": "\n## AutoScalingGroup: Web Server(s)\n"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 12,
+            "y": 21,
+            "width": 12,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "AWS/RDS", "ReadIOPS", "DBInstanceIdentifier", "${DBInstance}", { "color": "#bcbd22" } ],
+                    [ ".", "WriteIOPS", ".", ".", { "yAxis": "right", "color": "#9edae5" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AwsRegion}",
+                "stat": "Average",
+                "period": 60,
+                "yAxis": {
+                    "left": {
+                        "min": 0
+                    },
+                    "right": {
+                        "min": 0
+                    }
+                },
+                "title": "ReadIOPS / WriteIOPS"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 12,
+            "y": 33,
+            "width": 12,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "AWS/RDS", "FreeStorageSpace", "DBInstanceIdentifier", "${DBInstance}", { "color": "#e377c2" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": true,
+                "region": "${AwsRegion}",
+                "title": "Free Storage Space",
+                "period": 300,
+                "stat": "Average",
+                "yAxis": {
+                    "left": {
+                        "min": 0
+                    }
+                }
+            }
+        },
+        {
+            "type": "metric",
+            "x": 0,
+            "y": 27,
+            "width": 12,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", "${DBInstance}" ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AwsRegion}",
+                "title": "Connections",
+                "yAxis": {
+                    "left": {
+                        "min": 0
+                    }
+                },
+                "stat": "Average",
+                "period": 60
+            }
+        },
+        {
+            "type": "metric",
+            "x": 0,
+            "y": 33,
+            "width": 12,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "AWS/RDS", "FreeableMemory", "DBInstanceIdentifier", "${DBInstance}", { "color": "#bcbd22" } ],
+                    [ ".", "SwapUsage", ".", ".", { "yAxis": "right", "color": "#9edae5" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AwsRegion}",
+                "stat": "Average",
+                "period": 60,
+                "yAxis": {
+                    "left": {
+                        "min": 0
+                    },
+                    "right": {
+                        "min": 0
+                    }
+                },
+                "title": "Free Memory / Swap Usage"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 12,
+            "y": 27,
+            "width": 12,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "AWS/RDS", "ReadLatency", "DBInstanceIdentifier", "${DBInstance}", { "color": "#bcbd22" } ],
+                    [ ".", "WriteLatency", ".", ".", { "color": "#9edae5", "yAxis": "right" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AwsRegion}",
+                "stat": "Average",
+                "period": 60,
+                "yAxis": {
+                    "left": {
+                        "min": 0
+                    },
+                    "right": {
+                        "min": 0
+                    }
+                },
+                "title": "Read Latency / Write Latency"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 0,
+            "y": 14,
+            "width": 12,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "CWAgent", "disk_used_percent", "AutoScalingGroupName", "${WebAsg}", { "color": "#bcbd22" } ],
+                    [ ".", "swap_used_percent", ".", ".", { "yAxis": "right", "color": "#9edae5" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AwsRegion}",
+                "title": "Disk Used / Swap Used",
+                "stat": "Average",
+                "period": 60,
+                "yAxis": {
+                    "left": {
+                        "min": 0,
+                        "max": 100
+                    },
+                    "right": {
+                        "min": 0,
+                        "max": 100
+                    }
+                }
+            }
+        },
+        {
+            "type": "metric",
+            "x": 12,
+            "y": 14,
+            "width": 12,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "AWS/EC2", "NetworkPacketsIn", "AutoScalingGroupName", "${WebAsg}", { "color": "#bcbd22" } ],
+                    [ ".", "NetworkPacketsOut", ".", ".", { "yAxis": "right", "color": "#9edae5" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AwsRegion}",
+                "stat": "Average",
+                "period": 60,
+                "yAxis": {
+                    "left": {
+                        "min": 0
+                    },
+                    "right": {
+                        "min": 0
+                    }
+                },
+                "title": "NetworkPacketsIn / NetworkPacketsOut"
+            }
+        }
+    ]
+}

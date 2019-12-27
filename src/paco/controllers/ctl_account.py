@@ -101,7 +101,7 @@ class AccountController(Controller):
 
     def init_accounts_yaml(self):
         """Process master account file and and create child account YAML files for the organization_account_ids
-        field, if the child account YAML does not alerady exist."""
+        field, if the child account YAML does not already exist."""
         for org_account_id in self.master_account_config.organization_account_ids:
             # If account YAML already exists then skip it
             if org_account_id in self.paco_ctx.project['accounts'].keys():

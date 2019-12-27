@@ -229,12 +229,12 @@ applications:
                 type: CodeCommit.Source
                 enabled: true
                 codecommit_repository: paco.ref resource.codecommit.{{cookiecutter.application_name}}.site
-                deployment_branch_name: "dev" # Override in sub-environments
+                deployment_branch_name: "prod"
             build:
               codebuild:
                 type: CodeBuild.Build
                 enabled: true
-                deployment_environment: "dev" # Override in sub-environment
+                deployment_environment: "prod"
                 codebuild_image: 'aws/codebuild/amazonlinux2-x86_64-standard:1.0'
                 codebuild_compute_type: BUILD_GENERAL1_SMALL
             deploy:
@@ -341,6 +341,10 @@ applications:
             segment: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.segments.database
             primary_domain_name: database.an.internal
             primary_hosted_zone: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.private_hosted_zone
+            monitoring:
+              enabled: true
+              alarm_sets:
+                basic-database:
 
           web:
             title: Web Server AutoScalingGroup
@@ -369,7 +373,7 @@ applications:
               - paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.{{cookiecutter.application_name}}.web
             segment: private
             monitoring:
-              enabled: false
+              enabled: true
               alarm_sets:
                 core:
                 cwagent:
@@ -448,6 +452,18 @@ applications:
                         enabled: true
                         ensure_running: true
 
+          dashboard:
+            type: Dashboard
+            enabled: true
+            order: 200
+            title: MainDashboard
+            dashboard_file: ./dashboards/complete-dashboard.json
+            variables:
+              ApplicationTargetGroup: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.alb.target_groups.ap.fullname
+              LoadBalancerName: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.alb.fullname
+              WebAsg: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.web.name
+              DBInstance: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.database.name
+
 environments:
   prod:
     title: "Production Environment"
@@ -512,7 +528,7 @@ environments:
   staging:
     title: "Staging Environment"
     us-west-2:
-      enabled: false
+      enabled: true
     default:
       secrets_manager:
         {{cookiecutter.application_name}}:
@@ -522,19 +538,42 @@ environments:
       applications:
         {{cookiecutter.application_name}}:
           enabled: true
+          monitoring:
+            enabled: false
           groups:
             bastion:
               resources:
                 instance:
                   instance_key_pair: paco.ref resource.ec2.keypairs.{{cookiecutter.application_name}}_staging
+            {{cookiecutter.application_name}}_deploy:
+              resources:
+                pipeline:
+                  source:
+                    codecommit:
+                      deployment_branch_name: "staging"
+                  build:
+                    codebuild:
+                      deployment_environment: "staging"
             site:
               resources:
+                alb:
+                  dns:
+                    - domain_name: staging.pacosaas.net
+                  listeners:
+                    https:
+                      rules:
+                        {{cookiecutter.application_name}}_forward:
+                          host: 'staging.pacosaas.net'
+                        {{cookiecutter.application_name}}_redirect:
+                          enabled: false
                 web:
                   instance_key_pair: paco.ref resource.ec2.keypairs.{{cookiecutter.application_name}}_staging
                   monitoring:
                     enabled: false
                 database:
                   multi_az: false
+                dashboard:
+                  enabled: false
 
       network:
         aws_account: paco.ref accounts.{{cookiecutter.staging_account}}
@@ -572,19 +611,42 @@ environments:
       applications:
         {{cookiecutter.application_name}}:
           enabled: true
+          monitoring:
+            enabled: false
           groups:
             bastion:
               resources:
                 instance:
                   instance_key_pair: paco.ref resource.ec2.keypairs.{{cookiecutter.application_name}}_dev
+            {{cookiecutter.application_name}}_deploy:
+              resources:
+                pipeline:
+                  source:
+                    codecommit:
+                      deployment_branch_name: "master"
+                  build:
+                    codebuild:
+                      deployment_environment: "master"
             site:
               resources:
+                alb:
+                  dns:
+                    - domain_name: dev.pacosaas.net
+                  listeners:
+                    https:
+                      rules:
+                        {{cookiecutter.application_name}}_forward:
+                          host: 'dev.pacosaas.net'
+                        {{cookiecutter.application_name}}_redirect:
+                          enabled: false
                 web:
                   instance_key_pair: paco.ref resource.ec2.keypairs.{{cookiecutter.application_name}}_dev
                   monitoring:
                     enabled: false
                 database:
                   multi_az: false
+                dashboard:
+                  enabled: false
 
       network:
         aws_account: paco.ref accounts.{{cookiecutter.dev_account}}
