@@ -1,27 +1,26 @@
 import os
-from paco.cftemplates.cftemplates import CFTemplate
-
 from enum import Enum
 from io import StringIO
+from paco.cftemplates.cftemplates import CFTemplate
 
 
 class CodeDeploy(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 env_ctx,
-                 app_id,
-                 grp_id,
-                 res_id,
-                 pipeline_config,
-                 action_config,
-                 artifacts_bucket_name,
-                 cpbd_config_ref):
-
-        #paco_ctx.log("S3 CF Template init")
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
+        env_ctx,
+        app_id,
+        grp_id,
+        res_id,
+        pipeline_config,
+        action_config,
+        artifacts_bucket_name,
+        cpbd_config_ref
+    ):
         self.env_ctx = env_ctx
         super().__init__(
             paco_ctx,
@@ -34,16 +33,18 @@ class CodeDeploy(CFTemplate):
             stack_tags=stack_tags
         )
         self.set_aws_name('CodeDeploy', grp_id, res_id)
-
         self.res_name_prefix = self.create_resource_name_join(
             name_list=[self.env_ctx.get_aws_name(), app_id, grp_id, res_id],
             separator='-',
             camel_case=True
-          )
+        )
+        if not action_config.is_enabled():
+            self.init_template('Code Deploy')
+            self.set_template(self.template.to_yaml())
+            return
 
         self.codedeploy_tools_delegate_role_name = self.get_tools_delegate_role_name()
         self.codedeploy_service_role_name = self.get_role_name()
-
         self.application_name = self.res_name_prefix
 
         # Initialize Parameters
@@ -187,6 +188,7 @@ Resources:
                   - 's3:PutObjectAcl'
                 Resource:
                   - !Sub 'arn:aws:s3:::${ArtifactsBucketName}/*'
+                  - !Sub 'arn:aws:s3:::${ArtifactsBucketName}'
 
   CodeDeployServiceRole:
     Type: AWS::IAM::Role

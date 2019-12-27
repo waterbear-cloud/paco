@@ -10,45 +10,46 @@ from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Actio
 from awacs.sts import AssumeRole
 
 class CodeBuild(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 env_ctx,
-                 app_id,
-                 grp_id,
-                 res_id,
-                 pipeline_config,
-                 action_config,
-                 artifacts_bucket_name,
-                 config_ref):
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
+        env_ctx,
+        app_id,
+        grp_id,
+        res_id,
+        pipeline_config,
+        action_config,
+        artifacts_bucket_name,
+        config_ref
+    ):
         self.env_ctx = env_ctx
-
-        super().__init__(paco_ctx,
-                         account_ctx,
-                         aws_region,
-                         enabled=action_config.is_enabled(),
-                         config_ref=config_ref,
-                         iam_capabilities=["CAPABILITY_NAMED_IAM"],
-                         stack_group=stack_group,
-                         stack_tags=stack_tags)
+        super().__init__(
+            paco_ctx,
+            account_ctx,
+            aws_region,
+            enabled=action_config.is_enabled(),
+            config_ref=config_ref,
+            iam_capabilities=["CAPABILITY_NAMED_IAM"],
+            stack_group=stack_group,
+            stack_tags=stack_tags
+        )
         self.set_aws_name('CodeBuild', grp_id, res_id)
 
         # Troposphere Template Initialization
-        template = troposphere.Template()
-        template.add_version('2010-09-09')
-        template.add_description('Deployment: CodeBuild')
-        #template.add_resource(
-        #    troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
-        #)
+        self.init_template('Deployment: CodeBuild')
+        template = self.template
+        if not action_config.is_enabled():
+            return
 
         self.res_name_prefix = self.create_resource_name_join(
             name_list=[env_ctx.get_aws_name(), app_id, grp_id, res_id],
             separator='-',
-            camel_case=True)
-
+            camel_case=True
+        )
         self.resource_name_prefix_param = self.create_cfn_parameter(
             param_type='String',
             name='ResourceNamePrefix',
@@ -57,7 +58,6 @@ class CodeBuild(CFTemplate):
             use_troposphere=True,
             troposphere_template=template,
         )
-
         self.cmk_arn_param = self.create_cfn_parameter(
             param_type='String',
             name='CMKArn',
@@ -74,17 +74,13 @@ class CodeBuild(CFTemplate):
             use_troposphere=True,
             troposphere_template=template,
         )
-
         self.codebuild_project_res = self.create_codebuild_cfn(
             template,
             pipeline_config,
             action_config,
             config_ref
         )
-
         self.set_template(template.to_yaml())
-
-        return
 
     def create_codebuild_cfn(
         self,
@@ -118,7 +114,6 @@ class CodeBuild(CFTemplate):
             use_troposphere=True,
             troposphere_template=template,
         )
-
         self.project_role_name = self.create_iam_resource_name(
             name_list=[self.res_name_prefix, 'CodeBuild-Project'],
             filter_id='IAM.Role.RoleName'

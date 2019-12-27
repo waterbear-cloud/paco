@@ -9,53 +9,58 @@ from paco.controllers.controllers import Controller
 
 class ACMController(Controller):
     def __init__(self, paco_ctx):
-        super().__init__(paco_ctx,
-                         "Resource",
-                         "ACM")
-
+        super().__init__(
+            paco_ctx,
+            "Resource",
+            "ACM"
+        )
         self.cert_config_map = {}
         self.cert_config_list = []
-
-        #self.paco_ctx.log("ACM Service: Configuration: %s" % (name))
 
     def init(self, command=None, model_obj=None):
         pass
 
     def validate(self):
-        #if self.config.enabled() == False:
-        #    print("ACM Service: validate: disabled")
-        #    return
         pass
 
     def provision(self):
         """
         Creates a certificate if one does not exists, then adds DNS validation records
-        the its Route53 hosted zone.
+        to the Route53 Hosted Zone.
         """
         for acm_config in self.cert_config_list:
             cert_config = acm_config['config']
             if cert_config.is_enabled() == False:
                 continue
-            if cert_config.external_resource == True: # or cert_config.is_dns_enabled() == False:
+            if cert_config.external_resource == True:
                 return
             if 'cert_arn_cache' in acm_config.keys():
                 continue
             cert_domain = cert_config.domain_name
             acm_client = DNSValidatedACMCertClient(acm_config['account_ctx'], cert_domain, acm_config['region'])
-            # Creates the certificate if it does not exists here.
+
+            # Create the certificate if it does not exists
             self.paco_ctx.log_action_col(
-                'Provision', acm_config['account_ctx'].get_name(),
-                'ACM', acm_config['region']+': '+cert_config.domain_name+': alt-names: {}'.format(cert_config.subject_alternative_names))
+                'Provision',
+                acm_config['account_ctx'].get_name(),
+                'ACM',
+                acm_config['region'] + ': ' + cert_config.domain_name + ': alt-names: {}'.format(
+                    cert_config.subject_alternative_names
+                )
+            )
             cert_arn = acm_client.request_certificate(cert_config.subject_alternative_names)
             acm_config['cert_arn_cache'] = cert_arn
             validation_records = None
             while validation_records == None:
                 validation_records = acm_client.get_domain_validation_records(cert_arn)
                 if len(validation_records) == 0 or 'ResourceRecord' not in validation_records[0]:
-                    print("Waiting for DNS Validation records...")
+                    print("Waiting for DNS Validation records ...")
                     self.paco_ctx.log_action_col(
-                        'Waiting', acm_config['account_ctx'].get_name(),
-                        'ACM', acm_config['region']+': '+cert_config.domain_name)
+                        'Waiting',
+                        acm_config['account_ctx'].get_name(),
+                        'ACM',
+                        acm_config['region'] + ': ' + cert_config.domain_name
+                    )
                     time.sleep(1)
                     validation_records = None
 
@@ -63,7 +68,6 @@ class ACMController(Controller):
 
 
     def get_cert_config(self, group_id, cert_id):
-        #print("Get Certificate Config: " + group_id + " " + cert_id)
         for config in self.cert_config_map[group_id]:
             if config['id'] == cert_id:
                 return config
@@ -83,15 +87,13 @@ class ACMController(Controller):
                     self.provision()
                     cert_arn = acm_client.get_certificate_arn()
                 if res_config['config'].external_resource == False:
-                    acm_client.wait_for_certificate_validation( cert_arn )
-                # print("Certificate ARN: " + cert_domain + ": " + cert_arn)
+                    acm_client.wait_for_certificate_validation(cert_arn)
                 return cert_arn
             else:
                 raise StackException(PacoErrorCode.Unknown)
         raise StackException(PacoErrorCode.Unknown)
 
     def add_certificate_config(self, account_ctx, region, group_id, cert_id, cert_config):
-        # print("Add Certificate Config: " + group_id + " " + cert_id)
         if group_id not in self.cert_config_map.keys():
             self.cert_config_map[group_id] = []
 

@@ -1,0 +1,80 @@
+cw_logging:
+  expire_events_after_days: '90'
+  log_sets:
+    rpm_linux:
+      # standard linux OS logs
+      expire_events_after_days: '90'
+      log_groups:
+        audit:
+          sources:
+            audit:
+              path: "/var/log/audit/audit.log"
+              log_stream_name: "{instance_id}"
+        secure:
+          sources:
+            secure:
+              path: "/var/log/secure"
+              log_stream_name: "{instance_id}"
+        messages:
+          sources:
+            messages:
+              path: "/var/log/messages"
+              log_stream_name: "{instance_id}"
+        yum:
+          sources:
+            yum:
+              path: "/var/log/yum.log"
+              log_stream_name: "{instance_id}"
+
+    cloud:
+      # cloud logs specific to configuration and operation in AWS
+      log_groups:
+        cfn_init:
+          sources:
+            cfn_init:
+              path: /var/log/cfn-init.log
+              log_stream_name: "{instance_id}"
+          metric_filters:
+            CfnInitErrors:
+              filter_pattern: '"[ERROR]"'
+              metric_transformations:
+                - metric_name: 'CfnInitErrorMetric'
+                  metric_value: '1'
+        codedeploy:
+          sources:
+            codedeploy:
+              path: /var/log/aws/codedeploy-agent/codedeploy-agent.log
+              log_stream_name: "{instance_id}"
+          metric_filters:
+            CodeDeployErrors:
+              filter_pattern: '" ERROR "'
+              metric_transformations:
+                - metric_name: 'CodeDeployErrorMetric'
+                  metric_value: '1'
+
+    {{cookiecutter.application_name}}:
+      # application specific logs
+      expire_events_after_days: '30'
+      log_groups:
+        httpd_error:
+          sources:
+            httpd_error:
+              path: "/var/log/httpd/error_log"
+              log_stream_name: "{instance_id}"
+          metric_filters:
+            WsgiErrors:
+              filter_pattern: '"[wsgi:error]"'
+              metric_transformations:
+                - metric_name: WsgiErrorMetric
+                  metric_value: '1'
+        httpd_access:
+          sources:
+            httpd_access:
+              path: "/var/log/httpd/access_log"
+              log_stream_name: "{instance_id}"
+          metric_filters:
+            HttpdLogCount:
+              filter_pattern: '-"ELB-HealthChecker"'
+              metric_transformations:
+                - metric_name: HttpdLogCountMetric
+                  metric_value: '1'

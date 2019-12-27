@@ -1,0 +1,10 @@
+name: Master
+title: Master AWS Account
+is_master: true
+account_id: '{{cookiecutter.master_account_id}}'
+region: '{{cookiecutter.aws_default_region}}'
+root_email: '{{cookiecutter.master_root_email}}'
+admin_delegate_role_name: 'Paco-Admin-Delegate-Role'
+organization_account_ids:
+  - master
+{{cookiecutter.accounts}}

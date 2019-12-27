@@ -1,15 +1,17 @@
 import click
+import importlib
 import os
-import time
-import stat
 import pathlib
+import stat
 import sys
+import time
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
 from paco.controllers.controllers import Controller
 from paco.stack_grps.grp_account import AccountStackGroup
 from paco.models import loader, vocabulary
 from paco.core.yaml import YAML
+from paco.utils import enhanced_input
 from cookiecutter.main import cookiecutter
 from jinja2.ext import Extension
 
@@ -17,6 +19,27 @@ from jinja2.ext import Extension
 yaml=YAML()
 yaml.default_flow_sytle = False
 
+prompt_help_mapping = {
+    'project_title': "Project title - Long description for this Paco project",
+    'network_environment_name': "NetworkEnvironment name - short alphanumeric string used to name cloud resources",
+    'network_environment_title': "NetworkEnvironment title - Long description for a NetworkEnvironment",
+    'application_name': "Application name - short alphanumeric string used to name cloud resources",
+    'application_title': "Application title = Long description for this application",
+    'aws_default_region': "AWS Region name - e.g. us-west-2, us-east-1 or ca-central-1",
+    'aws_default_region_allowed_values': vocabulary.aws_regions.keys(),
+    'master_account_id': "AWS account id this project will connect to",
+    'master_root_email': "Root email for the AWS account to connect to",
+
+    # multi-account prompts
+    'dev_account': "Development account name - e.g. dev or devstage",
+    'staging_account': "Staging account name - e.g. staging or devstage",
+    'prod_account': "Production account name - e.g. prod",
+    'tools_account': "Tools account name - e.g. tools",
+    'admin_username': "Administrator name - access to AWS and CodeCommit repo",
+    'admin_email': "Administrator email",
+    'admin_ssh_public_key': "Administrator SSH Public key",
+    'domain_name': "Domain Name",
+}
 
 class ProjectController(Controller):
     def __init__(self, paco_ctx):
@@ -34,30 +57,6 @@ class ProjectController(Controller):
             'master_account_id': None,
             'master_admin_iam_username': None
         }
-        self.project_context_path = pathlib.Path(os.path.join(self.paco_ctx.home, '.project_context.yaml'))
-
-        self.project_context = {
-            'project_name': os.path.basename(os.path.normpath(self.paco_ctx.home)),
-            'project_title': None,
-            'network_environment_name': None,
-            'network_environment_title': None,
-            'application_name': None,
-            'application_title': None,
-            'aws_default_region': None,
-            'aws_default_region_allowed_values': vocabulary.aws_regions.keys(),
-            'master_account_id': None,
-            'master_root_email': None,
-        }
-        if self.project_context_path.exists():
-            self.load_project_context()
-
-    def load_project_context(self):
-        with self.project_context_path.open('r') as stream:
-            context = yaml.load(stream)
-
-        for key in self.project_context.keys():
-            if key in context.keys():
-                self.project_context[key] = context[key]
 
     def init(self, command=None, model_obj=None):
         if self.init_done == True:
@@ -65,10 +64,12 @@ class ProjectController(Controller):
         self.init_done = True
 
     def choose_template(self, starting_templates):
+        "Ask user to choose a Paco project template"
         print("Choose a starting project template:\n")
         index = 1
         index_dict = {}
-        for name, description in starting_templates.items():
+        for name, info in starting_templates.items():
+            description = info[1]
             print(f"{index}: {name}\n   {description}")
             index_dict[str(index)] = name
             index += 1
@@ -81,67 +82,75 @@ class ProjectController(Controller):
                 return index_dict[answer]
             print("Not a valid selection.")
 
-
     def init_project(self):
+        "Create a Paco project skeleton from a template"
         starting_templates = {
-            'simple-web-app': "A minimal skeleton with a simple web application.",
-            'wordpress-single-tier': "A single-tier WordPress application.",
+            'simple-web-app': ("simplewebapp", "A minimal skeleton with a simple web application."),
+            'wordpress-single-tier': ("wordpresssingletier", "A single-tier WordPress application."),
+            'managed-webapp-cicd': ("managedwebappcicd", "A managed web application with CI/CD and dev/staging/prod environments."),
         }
         print("\nPaco project initialization")
         print("---------------------------\n")
-        if self.project_context_path.exists() == True:
-            print("Paco project has already been initialized.\n")
+        if pathlib.Path(self.paco_ctx.home).exists():
+            print("Directory at {} already exists.\n".format(self.paco_ctx.home))
         else:
             print("About to create a new Paco project directory at %s\n" % self.paco_ctx.home)
-            cookiecutter_project = self.choose_template(starting_templates)
+            name = self.choose_template(starting_templates)
+            packagename = starting_templates[name][0]
             allowed_key_list = []
-            for key in self.project_context.keys():
+            project_context = importlib.import_module('paco.cookiecutters.{}'.format(packagename)).get_project_context(self.paco_ctx)
+            for key in project_context.keys():
                 if key.startswith('_computed_'): continue
-                if self.project_context[key] == None:
-                    allowed_key = key + "_allowed_values"
-                    allowed_values = None
-                    if allowed_key in self.project_context.keys():
-                        allowed_values = self.project_context[allowed_key]
-                        allowed_key_list.append(allowed_key)
-                    self.project_context[key] = self.paco_ctx.input("%s" % key, allowed_values=allowed_values)
-
-            self.project_context['_computed_paco_home_path'] = self.paco_ctx.home
-            self.project_context['master_admin_iam_username'] = 'paco-project-init'
-            # Remove the allowed key so we do not save it to the context file
-            for key in allowed_key_list:
-                del self.project_context[key]
-            cookiecutter(
-                os.path.join(os.path.dirname(__file__), '..', 'cookiecutters', cookiecutter_project),
-                no_input=True,
-                extra_context=self.project_context
-            )
-
-            # Save the project context
-            with self.project_context_path.open(mode="w") as stream:
-                yaml.dump(
-                    data=self.project_context,
-                    stream=stream
+                if key.endswith('_allowed_values'): continue
+                if key == 'project_name': continue
+                allowed_key = key + "_allowed_values"
+                allowed_values = None
+                if allowed_key in project_context.keys():
+                    allowed_values = project_context[allowed_key]
+                    allowed_key_list.append(allowed_key)
+                project_context[key] = enhanced_input(
+                    prompt_help_mapping[key],
+                    default=project_context[key],
+                    allowed_values=allowed_values
                 )
 
+            project_context['_computed_paco_home_path'] = self.paco_ctx.home
+            project_context['master_admin_iam_username'] = 'paco-project-init'
+            # Remove the allowed key so we do not save it to the context file
+            for key in allowed_key_list:
+                del project_context[key]
+            # Massage account names into a de-duplicated list
+            accounts = {}
+            for key, value in project_context.items():
+                if key.endswith('_account'):
+                    accounts[value] = None
+            project_context['accounts'] = ''
+            for key in accounts.keys():
+                project_context['accounts'] += '  - ' + key + '\n'
+            cookiecutter(
+                os.path.join(os.path.dirname(__file__), '..', 'cookiecutters', packagename),
+                no_input=True,
+                extra_context=project_context
+            )
+
     def init_credentials(self, force=False):
+        "Create a .credentials file for a Paco project"
         print("\nPaco project credentials initialization")
         print("---------------------------------------\n")
-        if self.project_context_path.exists() == False:
-            print("Project does not exist: {}".format(self.project_context_path))
-            print("Run this command to initialize a project:\n\npaco init project")
-            sys.exit(1)
 
         if self.credentials_path.exists() and force == False:
-            print("Credentials already exist, run this command to reinitialize:\n")
-            print("paco init project credentials\n")
-            return
+            print("A .credentials file already exists at:\n{}.credentials\n".format(
+                self.paco_ctx.home + os.sep
+            ))
+            sys.exit()
 
-        self.credentials['aws_default_region'] = self.project_context['aws_default_region']
-        self.credentials['master_account_id'] = self.project_context['master_account_id']
-        self.credentials['master_admin_iam_username'] = self.paco_ctx.input("master_admin_iam_username")
-        self.credentials['admin_iam_role_name'] = self.paco_ctx.input("admin_iam_role_name")
-        self.credentials['aws_access_key_id'] = self.paco_ctx.input("aws_access_key_id")
-        self.credentials['aws_secret_access_key']  = self.paco_ctx.input("aws_secret_access_key")
+        master = self.paco_ctx.project['accounts']['master']
+        self.credentials['aws_default_region'] = master.region
+        self.credentials['master_account_id'] = master.account_id
+        self.credentials['master_admin_iam_username'] = enhanced_input("master_admin_iam_username")
+        self.credentials['admin_iam_role_name'] = enhanced_input("admin_iam_role_name")
+        self.credentials['aws_access_key_id'] = enhanced_input("aws_access_key_id")
+        self.credentials['aws_secret_access_key']  = enhanced_input("aws_secret_access_key")
         self.credentials['mfa_session_expiry_secs'] = 43200
         self.credentials['assume_role_session_expiry_secs'] = 3600
 
@@ -158,7 +167,7 @@ class ProjectController(Controller):
         os.chmod(self.credentials_path, stat.S_IRUSR)
 
     def init_accounts(self):
-        # Initialize Accounts
+        "Initialize Accounts"
         accounts_dir = os.path.join(self.paco_ctx.home, 'Accounts')
         master_account_file = loader.gen_yaml_filename(accounts_dir, 'master')
         with open(master_account_file, 'r') as stream:
@@ -170,7 +179,7 @@ class ProjectController(Controller):
             print("AWS Organization account names have already been defined: {}".format(','.join(master_account_config['organization_account_ids'])))
         else:
             print("Enter a comma delimited list of account names to add to this project:")
-            account_ids = self.paco_ctx.input("Account Names: ", 'prod,tools,security,data,dev')
+            account_ids = enhanced_input("Account Names: ", 'prod,tools,security,data,dev')
             master_account_config['organization_account_ids'] = account_ids.split(',')
             with open(master_account_file, 'w') as stream:
                 yaml.dump(master_account_config, stream)

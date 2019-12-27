@@ -2,6 +2,7 @@ import os
 from paco.core.exception import StackException, PacoBucketExists
 from paco.core.exception import PacoErrorCode
 from paco.models import schemas
+from paco.models import references
 from paco.models.locations import get_parent_by_interface
 from paco.stack_group import StackGroup
 from paco.controllers.controllers import Controller
@@ -300,6 +301,9 @@ class S3Controller(Controller):
         return self.contexts[resource_ref].add_stack_hooks(*args, **kwargs)
 
     def get_bucket_arn(self, resource_ref, *args, **kwargs):
+        if not resource_ref.startswith('paco.ref '):
+            resource_ref = 'paco.ref ' + resource_ref
+        references.resolve_ref(resource_ref, self.paco_ctx.project)
         return self.contexts[resource_ref].get_bucket_arn(*args, **kwargs)
 
     def get_bucket_name(self, resource_ref, *args, **kwargs):

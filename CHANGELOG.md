@@ -23,6 +23,23 @@ Changelog for paco
 
 ### Fixed
 
+- If entire VPC is disabled for an ASG, the disabled ASG is removed.
+
+- DeploymentPipeline can be enabled/disabled without throwing errors.
+
+- Throw error if an account is missing an account_id.
+
+- Throw error if .credentials file is missing before asking for MFA.
+
+- cfn-init uses proper base path for Amazon Linux which has cfn-init pre-installed in /opt/aws.
+
+- log group expire_events_after_days can be left blank for log_set and log_group without throwing error.
+
+- Route 53 Record Set stack for an ALB is provisioned in the same account that Route53 is in.
+
+- DeploymentPipeline no longer hard-codes to a 'data' account for CodeCommit principle,
+  and instead uses the actual account(s) that CodeCommit repo's use.
+
 - Alarm notifications that do not come from plug-in work again.
 
 - Clean-up for wordpress-single-tier starting template.

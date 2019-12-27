@@ -31,32 +31,37 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             action_config = stage_config[action_name]
             action_config.resolve_ref_obj = self
             method_name = 'init_stage_action_' + action_config.type.replace('.', '_').lower()
-            #print("Loading DeploymentPipeline Stage: "+action_name+": {}".format(type(action_config)))
             method = getattr(self, method_name)
             method(action_config)
 
     def init_resource(self):
         self.pipeline_config.resolve_ref_obj = self
         self.pipeline_config.configuration.resolve_ref_obj = self
-
         self.pipeline_account_ctx = self.paco_ctx.get_account_context(self.pipeline_config.configuration.account)
-        #data_account_ctx = self.paco_ctx.get_account_context("paco.ref accounts.data")
 
-        # -----------------
         # S3 Artifacts Bucket:
         s3_ctl = self.paco_ctx.get_controller('S3')
         self.artifacts_bucket_meta['ref'] = self.pipeline_config.configuration.artifacts_bucket
         self.artifacts_bucket_meta['arn'] = s3_ctl.get_bucket_arn(self.artifacts_bucket_meta['ref'])
         self.artifacts_bucket_meta['name'] = s3_ctl.get_bucket_name(self.artifacts_bucket_meta['ref'])
 
-        # ----------------
         # KMS Key
-        #
-        aws_account_ref = 'paco.ref ' + self.parent_config_ref + '.network.aws_account'
+        kms_refs = {}
         # Application Account
-        self.kms_crypto_principle_list.append("paco.sub 'arn:aws:iam::${%s}:root'" % (self.paco_ctx.get_ref(aws_account_ref)))
-        # CodeCommit Account
-        self.kms_crypto_principle_list.append("paco.sub 'arn:aws:iam::${paco.ref accounts.data}:root'")
+        aws_account_ref = 'paco.ref ' + self.parent_config_ref + '.network.aws_account'
+        app_account = self.paco_ctx.get_ref(aws_account_ref)
+        kms_refs[app_account] = None
+
+        # CodeCommit Account(s)
+        # ToDo: allows ALL CodeCommit accounts access, filter out non-CI/CD CodeCommit repos?
+        for subdict in self.paco_ctx.project['resource']['codecommit'].repository_groups.values():
+            for repo in subdict.values():
+                kms_refs[repo.account] = None
+        for key in kms_refs.keys():
+            self.kms_crypto_principle_list.append(
+                "paco.sub 'arn:aws:iam::${%s}:root'" % (key)
+            )
+
         kms_config_dict = {
             'admin_principal': {
                 'aws': [ "!Sub 'arn:aws:iam::${{AWS::AccountId}}:root'" ]
@@ -101,7 +106,6 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             codepipeline_config_ref
         )
 
-
         # Add CodeBuild Role ARN to KMS Key principal now that the role is created
         kms_config_dict['crypto_principal']['aws'] = self.kms_crypto_principle_list
         kms_template = cftemplates.KMS(
@@ -122,20 +126,13 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         kms_template.set_dependency(self.kms_template, 'post-pipeline')
 
         # Get the ASG Instance Role ARN
-        #asg_instance_role_ref = self.pipeline_config.asg+'.instance_iam_role.arn'
-        #codebuild_role_ref = self.pipeline_config.paco_ref_parts + '.codebuild_role.arn'
-        #codedeploy_tools_delegate_role_ref = self.pipeline_config.paco_ref_parts + '.codedeploy_tools_delegate_role.arn'
-        #codecommit_role_ref = self.pipeline_config.paco_ref_parts + '.codecommit_role.arn'
-        self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (self.pipeline_config.paco_ref + '.codepipeline_role.arn'))
+        if not self.pipeline_config.is_enabled():
+            return
+        self.artifacts_bucket_policy_resource_arns.append(
+            "paco.sub '${%s}'" % (self.pipeline_config.paco_ref + '.codepipeline_role.arn')
+        )
         cpbd_s3_bucket_policy = {
             'aws': self.artifacts_bucket_policy_resource_arns,
-            #[
-            #    "paco.sub '${{paco.ref {0}}}'".format(codebuild_role_ref),
-            #    "paco.sub '${{paco.ref {0}}}'".format(codepipeline_role_ref),
-            #    "paco.sub '${{paco.ref {0}}}'".format(codedeploy_tools_delegate_role_ref),
-            #    "paco.sub '${{paco.ref {0}}}'".format(codecommit_role_ref),
-            #    "paco.sub '${{{0}}}'".format(asg_instance_role_ref)
-            #],
             'action': [ 's3:*' ],
             'effect': 'Allow',
             'resource_suffix': [ '/*', '' ]
@@ -143,6 +140,9 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         s3_ctl.add_bucket_policy(self.artifacts_bucket_meta['ref'], cpbd_s3_bucket_policy)
 
     def init_stage_action_codecommit_source(self, action_config):
+        if not action_config.is_enabled():
+            return
+
         # -------------------------------------------
         # CodeCommit Delegate Role
         role_yaml = """
@@ -296,6 +296,9 @@ policies:
 
     # Code Deploy
     def init_stage_action_codedeploy_deploy(self, action_config):
+        if not action_config.is_enabled():
+            return
+
         self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (action_config.paco_ref + '.codedeploy_tools_delegate_role.arn'))
         self.artifacts_bucket_policy_resource_arns.append(self.paco_ctx.get_ref(action_config.auto_scaling_group+'.instance_iam_role.arn'))
         codedeploy_config_ref = action_config.paco_ref_parts
@@ -316,6 +319,9 @@ policies:
         )
 
     def init_stage_action_codebuild_build(self, action_config):
+        if not action_config.is_enabled():
+            return
+
         self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (action_config.paco_ref + '.project_role.arn'))
         self.kms_crypto_principle_list.append("paco.sub '${%s}'" % (action_config.paco_ref+'.project_role.arn'))
         codebuild_config_ref = action_config.paco_ref_parts

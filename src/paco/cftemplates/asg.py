@@ -3,13 +3,15 @@ import os
 import troposphere
 import troposphere.autoscaling
 import troposphere.policies
-from paco import utils
-from paco.cftemplates.cftemplates import CFTemplate
-from paco.core.exception import UnsupportedCloudFormationParameterType
-from paco.models import references
-from paco.models.references import Reference
 from io import StringIO
 from enum import Enum
+from paco import utils
+from paco.models import references, schemas
+from paco.cftemplates.cftemplates import CFTemplate
+from paco.core.exception import UnsupportedCloudFormationParameterType
+from paco.models.locations import get_parent_by_interface
+from paco.models.references import Reference
+
 
 class ASG(CFTemplate):
     def __init__(
@@ -19,7 +21,6 @@ class ASG(CFTemplate):
         aws_region,
         stack_group,
         stack_tags,
-
         env_ctx,
         app_id,
         grp_id,
@@ -30,28 +31,33 @@ class ASG(CFTemplate):
         ec2_manager_user_data_script,
         ec2_manager_cache_id
     ):
-
-        #paco_ctx.log("ASG CF Template init")
         self.env_ctx = env_ctx
         self.ec2_manager_cache_id = ec2_manager_cache_id
         segment_stack = self.env_ctx.get_segment_stack(asg_config.segment)
 
         # Super Init:
-        super().__init__(paco_ctx,
-                         account_ctx,
-                         aws_region,
-                         enabled=asg_config.is_enabled(),
-                         config_ref=asg_config_ref,
-                         stack_group=stack_group,
-                         stack_tags=stack_tags,
-                         change_protected=asg_config.change_protected)
+        super().__init__(
+            paco_ctx,
+            account_ctx,
+            aws_region,
+            enabled=asg_config.is_enabled(),
+            config_ref=asg_config_ref,
+            stack_group=stack_group,
+            stack_tags=stack_tags,
+            change_protected=asg_config.change_protected
+        )
         self.set_aws_name('ASG', grp_id, asg_id)
         self.asg_config = asg_config
-
 
         # Troposphere
         self.init_template('AutoScalingGroup: ' + self.ec2_manager_cache_id)
         template = self.template
+
+        # if the network for the ASG is disabled, only use an empty placeholder
+        env_region = get_parent_by_interface(asg_config, schemas.IEnvironmentRegion)
+        if not env_region.network.is_enabled():
+            return
+
         security_group_list_param = self.create_cfn_ref_list_param(
             param_type='List<AWS::EC2::SecurityGroup::Id>',
             name='SecurityGroupList',
@@ -152,6 +158,7 @@ class ASG(CFTemplate):
             subnet_list_ref += '.subnet_id_list'
         else:
             subnet_list_ref += '.az{}.subnet_id'.format(asg_config.availability_zone)
+
 
         asg_subnet_list_param = self.create_cfn_parameter(
             param_type='List<AWS::EC2::Subnet::Id>',

@@ -10,40 +10,42 @@ from enum import Enum
 from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action
 from awacs.sts import AssumeRole
 
+
 class CodePipeline(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 env_ctx,
-                 app_id,
-                 grp_id,
-                 res_id,
-                 res_config,
-                 artifacts_bucket_name,
-                 cpbd_config_ref):
-
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
+        env_ctx,
+        app_id,
+        grp_id,
+        res_id,
+        res_config,
+        artifacts_bucket_name,
+        cpbd_config_ref
+    ):
         self.env_ctx = env_ctx
-        #paco_ctx.log("S3 CF Template init")
-        super().__init__(paco_ctx,
-                         account_ctx,
-                         aws_region,
-                         enabled=res_config.is_enabled(),
-                         config_ref=cpbd_config_ref,
-                         iam_capabilities=["CAPABILITY_NAMED_IAM"],
-                         stack_group=stack_group,
-                         stack_tags=stack_tags)
-
+        super().__init__(
+            paco_ctx,
+            account_ctx,
+            aws_region,
+            enabled=res_config.is_enabled(),
+            config_ref=cpbd_config_ref,
+            iam_capabilities=["CAPABILITY_NAMED_IAM"],
+            stack_group=stack_group,
+            stack_tags=stack_tags
+        )
         self.set_aws_name('CodePipeline', grp_id, res_id)
+
         # Troposphere Template Initialization
-        template = troposphere.Template()
-        template.add_version('2010-09-09')
-        template.add_description('Deployment: CodePipeline')
-        #template.add_resource(
-        #    troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
-        #)
+        self.init_template('Deployment: CodePipeline')
+        template = self.template
+
+        if not res_config.is_enabled():
+            return
 
         self.res_name_prefix = self.create_resource_name_join(
             name_list=[env_ctx.get_aws_name(), app_id, grp_id, res_id],
@@ -58,7 +60,6 @@ class CodePipeline(CFTemplate):
             use_troposphere=True,
             troposphere_template=template,
         )
-
         self.cmk_arn_param = self.create_cfn_parameter(
             param_type='String',
             name='CMKArn',
@@ -75,16 +76,12 @@ class CodePipeline(CFTemplate):
             use_troposphere=True,
             troposphere_template=template,
         )
-
         self.manual_approval_is_enabled = False
         self.create_codepipeline_cfn(
             template,
             res_config,
         )
-
         self.set_template(template.to_yaml())
-
-        return
 
     def create_codepipeline_cfn(
         self,
@@ -209,7 +206,6 @@ class CodePipeline(CFTemplate):
             Actions = build_stage_actions
         )
         # Deploy Action
-
         [ deploy_stage,
           s3_deploy_assume_role_statement,
           codedeploy_deploy_assume_role_statement ] = self.init_deploy_stage(res_config, template)
@@ -223,7 +219,6 @@ class CodePipeline(CFTemplate):
             use_troposphere=True,
             troposphere_template=template,
         )
-
         template.add_condition(
             'ManualApprovalIsEnabled',
             troposphere.Equals(troposphere.Ref(manual_approval_enabled_param), 'true')
@@ -495,7 +490,6 @@ class CodePipeline(CFTemplate):
                     use_troposphere=True,
                     troposphere_template=template
                 )
-
                 codedeploy_application_name_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeDeployApplicationName',

@@ -1,0 +1,5 @@
+hosted_zones:
+  {{cookiecutter.application_name}}:
+    enabled: true
+    domain_name: {{cookiecutter.domain_name}}
+    account: paco.ref accounts.{{cookiecutter.prod_account}}

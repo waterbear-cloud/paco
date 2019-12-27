@@ -1,0 +1,13 @@
+keypairs:
+  {{cookiecutter.application_name}}_dev:
+    keypair_name: "{{cookiecutter.application_name}}-dev-{{cookiecutter.aws_default_region}}"
+    region: "{{cookiecutter.aws_default_region}}"
+    account: paco.ref accounts.{{cookiecutter.dev_account}}
+  {{cookiecutter.application_name}}_staging:
+    keypair_name: "{{cookiecutter.application_name}}-staging-{{cookiecutter.aws_default_region}}"
+    region: "{{cookiecutter.aws_default_region}}"
+    account: paco.ref accounts.{{cookiecutter.staging_account}}
+  {{cookiecutter.application_name}}_prod:
+    keypair_name: "{{cookiecutter.application_name}}-prod-{{cookiecutter.aws_default_region}}"
+    region: "{{cookiecutter.aws_default_region}}"
+    account: paco.ref accounts.{{cookiecutter.prod_account}}

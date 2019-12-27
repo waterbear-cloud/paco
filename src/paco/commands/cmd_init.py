@@ -63,7 +63,7 @@ def init_credentials(ctx, home='.'):
         print("PACO_HOME or --home must be set.")
         sys.exit()
     paco.commands.helpers.PACO_HOME = paco_ctx.home
-    paco_ctx.load_project(project_init=True)
+    paco_ctx.load_project(project_only=True)
     ctl_project = paco_ctx.get_controller('project')
     ctl_project.init_credentials()
 

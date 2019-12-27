@@ -1,0 +1,25 @@
+{
+    "project_name": "",
+    "project_title": "",
+    "domain_name": "",
+    "admin_username": "",
+    "admin_email": "",
+    "admin_ssh_public_key": "",
+    "dev_account": "",
+    "staging_account": "",
+    "prod_account": "",
+    "tools_account": "",
+    "accounts": "",
+    "network_environment_name": "",
+    "network_environment_title": "",
+    "application_name": "",
+    "application_title": "",
+    "aws_default_region": "",
+    "master_account_id": "",
+    "master_admin_iam_username": "",
+    "master_root_email": "root@example.com",
+    "_computed_paco_home_path": "",
+    "_extensions": [
+        "paco.commands.cmd_init.EnvOverrideExtension"
+    ]
+}
