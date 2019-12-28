@@ -20,8 +20,8 @@ Paco CLI
 
    cli
 
-Paco Starting Templates
------------------------
+Paco Starter Projects
+---------------------
 
 .. toctree::
    :caption: Starting Templates

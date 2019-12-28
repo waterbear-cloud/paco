@@ -491,6 +491,15 @@ environments:
               resources:
                 instance:
                   instance_key_pair: paco.ref resource.ec2.keypairs.{{cookiecutter.application_name}}_prod
+            {{cookiecutter.application_name}}_deploy:
+              resources:
+                pipeline:
+                  source:
+                    codecommit:
+                      deployment_branch_name: "prod"
+                  build:
+                    codebuild:
+                      deployment_environment: "prod"
             site:
               resources:
                 web:

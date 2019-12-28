@@ -285,7 +285,7 @@ In the example below, the ``hosted_zone`` of a Route53 record is looked up.
 
 .. code-block:: yaml
 
-    # NetworkEnvironments/my-paco-example.yaml
+    # netenv/my-paco-example.yaml
 
     applications:
         app:
@@ -295,7 +295,7 @@ In the example below, the ``hosted_zone`` of a Route53 record is looked up.
                         dns:
                         - hosted_zone: paco.ref resource.route53.example
 
-    # Resources/Route53.yaml
+    # resource/Route53.yaml
 
     hosted_zones:
     example:
@@ -879,15 +879,15 @@ Global Resources
 CloudTrail
 ----------
 
-The ``resources/iam.yaml`` file contains CloudTrails.
+The ``resource/iam.yaml`` file contains CloudTrails.
 
 .. code-block:: bash
 
-    provision resource.cloudtrail
+    paco provision resource.cloudtrail
 
 
 .. code-block:: yaml
-    :caption: Example resources/cloudtrail.yaml file
+    :caption: Example resource/cloudtrail.yaml file
 
     trails:
       cloudtrail:
@@ -907,13 +907,13 @@ The ``resources/iam.yaml`` file contains CloudTrails.
 IAM
 ---
 
-The ``resources/iam.yaml`` file contains IAM Users. Each user account can be given
+The ``resource/iam.yaml`` file contains IAM Users. Each user account can be given
 different levels of access a set of AWS accounts. For more information on how
 IAM Users can be managed, see `Managing IAM Users with Paco`_.
 
 .. code-block:: bash
 
-    provision resource.iam.users
+    paco provision resource.iam.users
 
 
 .. _Managing IAM Users with Paco: ./paco-users.html
@@ -939,15 +939,15 @@ IAM Users can be managed, see `Managing IAM Users with Paco`_.
 SNS Topics
 ----------
 
-The ``resources/snstopics.yaml`` file manages AWS Simple Notification Service (SNS) resources.
+The ``resource/snstopics.yaml`` file manages AWS Simple Notification Service (SNS) resources.
 SNS has only two resources: SNS Topics and SNS Subscriptions.
 
 .. code-block:: bash
 
-    provision resource.snstopics
+    paco provision resource.snstopics
 
 .. code-block:: yaml
-    :caption: Example resources/snstopics.yaml file
+    :caption: Example resource/snstopics.yaml file
 
     account: paco.ref accounts.prod
     regions:
@@ -987,11 +987,60 @@ SNS has only two resources: SNS Topics and SNS Subscriptions.
 EC2 Keypairs
 ------------
 
-The ``resources/ec2.yaml`` file manages AWS EC2 Keypairs.
+The ``resource/ec2.yaml`` file manages AWS EC2 Keypairs.
 
 .. code-block:: bash
 
-    provision resource.ec2.keypairs
+    paco provision resource.ec2.keypairs # all keypairs
+    paco provision resource.ec2.keypairs.devnet_usw2 # single keypair
+
+.. code-block:: yaml
+    :caption: Example resource/ec2.yaml file
+
+    keypairs:
+      devnet_usw2:
+        keypair_name: "dev-us-west-2"
+        region: "us-west-2"
+        account: paco.ref accounts.dev
+      staging_cac1:
+        keypair_name: "staging-us-west-2"
+        region: "ca-central-1"
+        account: paco.ref accounts.stage
+      prod_usw2:
+        keypair_name: "prod-us-west-2"
+        region: "us-west-2"
+        account: paco.ref accounts.prod
+
+CodeCommit
+----------
+
+The ``resource/codecommit.yaml`` file manages CodeCommit repositories and users.
+
+.. code-block:: bash
+
+    paco provision resource.codecommit
+
+.. code-block:: yaml
+    :caption: Example resource/codecommit.yaml file
+
+    app:
+      site:
+        enabled: true
+        account: paco.ref accounts.tools
+        region: 'us-west-2'
+        description: "Application repo"
+        repository_name: "saas-app"
+        users:
+          kevin_teague:
+            username: kevin.t@waterbear.cloud
+            public_ssh_key: 'ssh-rsa AAAAB3Nza.........6OzEFxCbJ'
+
+
+{ICodeCommit}
+
+{ICodeCommitRepository}
+
+{ICodeCommitUser}
 
 
 MonitorConfig
@@ -1259,7 +1308,10 @@ MINOR_SCHEMAS = {
     'IRole': None,
     'IAssumeRolePolicy': None,
     'IPolicy': None,
-    'IStatement': None
+    'IStatement': None,
+    'ICodeCommit': None,
+    'ICodeCommitRepository': None,
+    'ICodeCommitUser': None
 }
 
 
