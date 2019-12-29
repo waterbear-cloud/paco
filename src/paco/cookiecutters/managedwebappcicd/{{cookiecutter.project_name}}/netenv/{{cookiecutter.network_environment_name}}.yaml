@@ -468,7 +468,7 @@ environments:
   prod:
     title: "Production Environment"
     us-west-2:
-      enabled: false
+      enabled: true
     default:
       secrets_manager:
         {{cookiecutter.application_name}}:

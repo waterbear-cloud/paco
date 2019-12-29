@@ -179,6 +179,11 @@ Your application will need two files at in the top level directory:
 
 .. _appspec.yaml: https://docs.aws.amazon.com/codedeploy/latest/userguide/reference-appspec-file.html
 
+If you want to see the example web application in action, after you provision an environment,
+you will need to follow the README.txt for that application to create a MySQL database named
+``saas`` and run the database initialization scripts in ``/var/www/saas-app/`` to pre-populate
+the database.
+
 
 Customize and Provision Environments
 ------------------------------------
@@ -307,6 +312,100 @@ CodeBuild and CodeDeploy. Each environment will watch a different branch of the 
 These branch names are arbitrary. You might want to designate master as production, or even not have master deploy
 to any environents. These can be customized to suit whatever branching system you want to use in your version
 control workflow.
+
+SSH to a Web Server and connect to MySQL
+----------------------------------------
+
+In your ``netenv/mynet.yaml`` you will have Security Groups defined in your ``network:`` configuration.
+The SSH port for your bastion is open to all IP addresses. You may wish to restrict this to only specific
+IP addresses to improve your security.
+
+You can change the ``ingress:`` to be only your IP address:
+
+.. code-block:: yaml
+
+    bastion:
+      instance:
+        enabled: true
+        egress:
+          - cidr_ip: 0.0.0.0/0
+            name: ANY
+            protocol: "-1"
+        ingress:
+          - from_port: 22
+            name: SSH
+            protocol: tcp
+            cidr_ip: 128.255.255.128/32
+            #cidr_ip: 0.0.0.0/0
+            to_port: 22
+
+
+Then update your security groups. If you have already provisioned all three environments, you will need to update them all:
+
+.. code-block:: bash
+
+    paco provision netenv.mynet.dev
+    paco provision netenv.mynet.staging
+    paco provision netenv.mynet.prod
+
+If you don't want to run your bastion host 24/7, you can disable it to save on your AWS costs. If you only want to disable it
+for certain environments, customize the ``enabled:`` field in the environment section:
+
+.. code-block:: yaml
+
+    environments:
+      dev:
+        default:
+          applications:
+            app:
+              enabled: true
+              groups:
+                bastion:
+                  enabled: false # add this line below the bastion: line
+
+And run ``paco provision`` after changing this.
+
+Also notice that your bastion has an EIP resource and an ``eip:`` field. This will provision an Elastic IP and attach
+it to the bastion. If you start/stop the bastion, it will keep the same fixed IP address. If you don't want to use this
+feature, you can disable the EIP resource and remove the ``eip:`` field.
+
+Once you are connected to your bastion, you can then connect to your web servers in your private subnets.
+You will need to go to the EC2 service in the AWS Console to see what the private IP address of a web server is.
+In order to avoid having to copy your SSH private key to the bastion server, you can use the SSH ProxyCommand
+to connect directly to the web server from your own computer. Edit your ``~/.ssh/config`` file and add:
+
+.. code-block:: bash
+
+    Host myweb-dev
+      Hostname 10.0.0.100 # <-- private IP of a web server
+      User ec2-user
+      IdentityFile ~/.ssh/myweb-dev-us-west-2.pem # <-- path to your private SSH key
+      # replace the path to your private SSH key and your bastion public EIP (or dynamic public IP)
+      ProxyCommand ssh -i ~/.ssh/myweb-dev-us-west-2.pem ec2-user@128.255.255.128 -W %h:%p
+
+Now you can simply run:
+
+.. code-block:: bash
+
+    $ ssh myweb-dev
+
+Note that the web servers are in an AutoScalingGroup. This means instances will be replaced if they become unhealthy,
+and new web servers will have different private IP addresses. You will need to change your Hostname IP after this happens.
+
+Once you are on the web server, try connecting to your MySQL database. You will need the endpoint of the RDS database
+and the password from Secrets Manager. You can find these in the console, or if have the ``get_rds_dsn.sh`` script
+installed, you can run it too see this from the server:
+
+.. code-block:: bash
+
+    $ ssh myweb-dev
+    $ sudo su
+    # /tmp/get_rds_dsn.sh
+    # mysql -h ne-wa-staging-app-ap-site-database-rds.c1aqauvngpug.us-west-2.rds.amazonaws.com -u root -p
+    Enter password:
+    Welcome to the MariaDB monitor.  Commands end with ; or \g.
+    ...
+    MySQL [(none)]>
 
 Customize your Web Server to support your web application
 ---------------------------------------------------------
