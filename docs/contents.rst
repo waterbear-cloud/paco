@@ -24,7 +24,7 @@ Paco Starter Projects
 ---------------------
 
 .. toctree::
-   :caption: Starting Templates
+   :caption: Starter Projects
    :maxdepth: 3
 
    start-managed-webapp-cicd
