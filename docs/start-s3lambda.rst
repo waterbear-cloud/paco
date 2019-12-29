@@ -184,6 +184,46 @@ Lambda it is unlikely that you will ever see this alarm be triggered, but such a
 generally useful for any Lambdas that you deploy. AWS will suddenly stop an Lambda which
 reaaches it's maximum duration, so it's good to be notified before this happens.
 
+Apply an S3 Bucket Policy
+-------------------------
+
+If you were to use this for a real-world solution, you would also need to determine
+what kind of S3 Bucket Policy should protect your buckets. This project starts with
+a simple policy that allows only the root account access to s3:GetObject API calls
+on the replica buckets. Adjust this policy to suit your needs:
+
+.. code-block:: yaml
+
+      replica:
+        type: Application
+        title: "Replica S3 Bucket"
+        order: 1
+        enabled: false
+        resources:
+          s3:
+            type: S3Bucket
+            enabled: true
+            order: 1
+            bucket_name: 'replica'
+            deletion_policy: 'delete'
+            policy:
+              - aws:
+                  - 'arn:aws:iam::123456789012:root'
+                effect: 'Allow'
+                action:
+                  - 's3:GetObject'
+                resource_suffix:
+                  - '/*'
+                  - ''
+
+After updating the policy YAML, you can run:
+
+.. code-block:: bash
+
+    paco provision -y netenv.mynet.dev
+    paco provision -y netenv.mynet.prod
+
+And watch Paco update the S3 Bucket policy for ALL of your replica buckets. Enjoy!
 
 .. _Install: ./install.html
 
