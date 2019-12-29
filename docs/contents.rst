@@ -28,6 +28,7 @@ Paco Starter Projects
    :maxdepth: 3
 
    start-managed-webapp-cicd
+   start-s3lambda
 
 Paco project configuration
 --------------------------

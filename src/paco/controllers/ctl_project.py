@@ -39,6 +39,11 @@ prompt_help_mapping = {
     'admin_email': "Administrator email",
     'admin_ssh_public_key': "Administrator SSH Public key",
     'domain_name': "Domain Name",
+
+    # multi-region prompts
+    'aws_second_region': "Second AWS Region name - e.g. us-west-2, us-east-1 or ca-central-1",
+    'aws_second_region_allowed_values': vocabulary.aws_regions.keys(),
+
 }
 
 class ProjectController(Controller):
@@ -88,6 +93,7 @@ class ProjectController(Controller):
             'simple-web-app': ("simplewebapp", "A minimal skeleton with a simple web application."),
             'wordpress-single-tier': ("wordpresssingletier", "A single-tier WordPress application."),
             'managed-webapp-cicd': ("managedwebappcicd", "A managed web application with CI/CD and dev/staging/prod environments."),
+            's3lambda': ("s3lambda", "An S3 Bucket that notifies a Lambda which replicates additions/deletions to S3 Bucket(s) in other regions."),
         }
         print("\nPaco project initialization")
         print("---------------------------\n")
@@ -119,6 +125,7 @@ class ProjectController(Controller):
             # Remove the allowed key so we do not save it to the context file
             for key in allowed_key_list:
                 del project_context[key]
+
             # Massage account names into a de-duplicated list
             accounts = {}
             for key, value in project_context.items():
@@ -127,11 +134,18 @@ class ProjectController(Controller):
             project_context['accounts'] = ''
             for key in accounts.keys():
                 project_context['accounts'] += '  - ' + key + '\n'
+
+            # short region name for second region  (s3lambda)
+            project_context['short_region_list'] = vocabulary.aws_regions[
+                project_context['aws_second_region']
+            ]['short_name']
+
             cookiecutter(
                 os.path.join(os.path.dirname(__file__), '..', 'cookiecutters', packagename),
                 no_input=True,
                 extra_context=project_context
             )
+
 
     def init_credentials(self, force=False):
         "Create a .credentials file for a Paco project"

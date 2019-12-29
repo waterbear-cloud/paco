@@ -1,0 +1,140 @@
+network:
+  title: "{{cookiecutter.network_environment_title}}"
+  enabled: true
+
+applications:
+  {{cookiecutter.application_name}}:
+    title: "{{cookiecutter.application_title}}"
+    enabled: true
+    groups:
+      original:
+        type: Application
+        order: 2
+        enabled: false
+        title: "Primary S3 Bucket and Lambda that replicates additions and deletions to all replica buckets"
+        resources:
+          replicator:
+            type: Lambda
+            enabled: true
+            order: 1
+            description: "Replicates the S3 Bucket objects to other S3 Buckets"
+            code:
+              zipfile: lambda_code/s3_replicator.py
+            iam_role:
+              enabled: true
+              managed_policy_arns:
+                - arn:aws:iam::aws:policy/AmazonS3FullAccess
+            handler: 'index.lambda_handler'
+            runtime: 'python3.7'
+            memory_size: 256
+            timeout: 900
+            environment:
+              variables:
+                - key: 'ENV'
+                  value: 'dev'
+                - key: 'REGIONS'
+                  value: 'euc1'
+          source:
+            type: S3Bucket
+            enabled: true
+            order: 2
+            bucket_name: 'original'
+            notifications:
+              lambdas:
+                - event: 's3:ObjectCreated:*'
+                  function: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.original.resources.replicator
+                - event: 's3:ObjectRemoved:*'
+                  function: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.original.resources.replicator
+            deletion_policy: 'delete'
+
+      replica:
+        type: Application
+        title: "Replica S3 Bucket"
+        order: 1
+        enabled: false
+        resources:
+          s3:
+            type: S3Bucket
+            enabled: true
+            order: 1
+            bucket_name: 'replica'
+            deletion_policy: 'delete'
+            policy:
+              - aws:
+                  - 'arn:aws:iam::{{cookiecutter.master_account_id}}:root'
+                effect: 'Allow'
+                action:
+                  - 's3:GetObject'
+                resource_suffix:
+                  - '/*'
+                  - ''
+
+environments:
+  dev:
+    title: "Development Environment"
+    default:
+      network:
+        aws_account: paco.ref accounts.master
+    {{cookiecutter.aws_default_region}}:
+      enabled: true
+      applications:
+        {{cookiecutter.application_name}}:
+          groups:
+            original:
+              enabled: true
+              resources:
+                replicator:
+                  memory_size: 128
+                  environment:
+                    variables:
+                      - key: 'ENV'
+                        value: 'dev'
+                      - key: 'REGIONS'
+                        value: '{{cookiecutter.short_region_list}}'
+
+    {{cookiecutter.aws_second_region}}:
+      enabled: true
+      applications:
+        {{cookiecutter.application_name}}:
+          groups:
+            replica:
+              enabled: true
+
+  prod:
+    title: "Production Environment"
+    default:
+      network:
+        aws_account: paco.ref accounts.master
+    {{cookiecutter.aws_default_region}}:
+      enabled: true
+      applications:
+        {{cookiecutter.application_name}}:
+          notifications:
+            admin:
+              groups:
+               - admin
+          groups:
+            original:
+              enabled: true
+              resources:
+                replicator:
+                  environment:
+                    variables:
+                      - key: 'ENV'
+                        value: 'prod'
+                      - key: 'REGIONS'
+                        value: '{{cookiecutter.short_region_list}}'
+                  monitoring:
+                    enabled: true
+                    alarm_sets:
+                      error-duration:
+            replica:
+              enabled: true
+
+    {{cookiecutter.aws_second_region}}:
+      enabled: true
+      applications:
+        {{cookiecutter.application_name}}:
+          groups:
+            replica:
+              enabled: true

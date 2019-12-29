@@ -3,7 +3,7 @@
 Managed WebApp with CI/CD
 =========================
 
-The **Managed WebApp with CI/CD** starting template will provision a standard web application:
+The **Managed WebApp with CI/CD** starting project will provision a standard web application:
 ALB load balancer, AutoScalingGroup of web server(s) and an RDS MySQL database. This application
 has dev, staging and prod environments with a multi-account set-up. A CodePipeline deployment
 pipeline will build and deploy code to different environments based on your application's git repo branch names.

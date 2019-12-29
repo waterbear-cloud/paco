@@ -1,0 +1,26 @@
+Lambda:
+  error-duration:
+    # Alert if Lambda dumps any tracebacks
+    ErrorSum:
+      classification: health
+      severity: critical
+      metric_name: Errors
+      period: 60
+      evaluation_periods: 1
+      threshold: 1
+      comparison_operator: GreaterThanOrEqualToThreshold
+      statistic: Sum
+      treat_missing_data: notBreaching
+      runbook_url: https://waterbear.cloud
+    # Lambda duration greater than 80%
+    # base threshold is 12 minutes and assumes 15 minute timeout
+    Duration:
+      classification: health
+      severity: critical
+      metric_name: Duration
+      period: 60
+      evaluation_periods: 1
+      threshold: 720000
+      comparison_operator: GreaterThanOrEqualToThreshold
+      statistic: Maximum
+      treat_missing_data: notBreaching
