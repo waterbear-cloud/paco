@@ -3353,6 +3353,115 @@ CloudFormationInit
 ^^^^^^^^^^^^^^^^^^^
 
 
+`CloudFormation Init`_ is a method to configure an EC2 instance after it is launched.
+CloudFormation Init is a much more complete and robust method to install configuration files and
+pakcages than using a UserData script.
+
+It stores information about packages, files, commands and more in CloudFormation metadata. It is accompanied
+by a ``cfn-init`` script which will run on the instance to fetch this configuration metadata and apply
+it. The whole system is often referred to simply as cfn-init after this script.
+
+The ``cfn_init`` field of for an ASG contains all of the cfn-init configuration. After an instance
+is launched, it needs to run a local cfn-init script to pull the configuration from the CloudFromation
+stack and apply it. After cfn-init has applied configuration, you will run cfn-signal to tell CloudFormation
+the configuration was successfully applied. Use the ``launch_options`` field for an ASG to let Paco take care of all this
+for you.
+
+.. sidebar:: Prescribed Automation
+
+    ``launch_options``: The ``cfn_init_config_sets:`` field is a list of cfn-init configurations to
+    apply at launch. This list will be applied in order. On Amazon Linux the cfn-init script is pre-installed
+    in /opt/aws/bin. If you enable a cfn-init launch option, Paco will install cfn-init in /opt/paco/bin for you.
+
+Refer to the `CloudFormation Init`_ docs for a complete description of all the configuration options
+available.
+
+.. code-block:: yaml
+    :caption: cfn_init with launch_options
+
+    launch_options:
+        cfn_init_config_sets:
+        - "Install"
+    cfn_init:
+      parameters:
+        BasicKey: static-string
+        DatabasePasswordarn: paco.ref netenv.mynet.secrets_manager.app.site.database.arn
+      config_sets:
+        Install:
+          - "Install"
+      configurations:
+        Install:
+          packages:
+            rpm:
+              epel: "http://download.fedoraproject.org/pub/epel/5/i386/epel-release-5-4.noarch.rpm"
+            yum:
+              jq: []
+              python3: []
+          files:
+            "/tmp/get_rds_dsn.sh":
+              content_cfn_file: ./webapp/get_rds_dsn.sh
+              mode: '000700'
+              owner: root
+              group: root
+            "/etc/httpd/conf.d/saas_wsgi.conf":
+              content_file: ./webapp/saas_wsgi.conf
+              mode: '000600'
+              owner: root
+              group: root
+            "/etc/httpd/conf.d/wsgi.conf":
+              content: "LoadModule wsgi_module modules/mod_wsgi.so"
+              mode: '000600'
+              owner: root
+              group: root
+            "/tmp/install_codedeploy.sh":
+              source: https://aws-codedeploy-us-west-2.s3.us-west-2.amazonaws.com/latest/install
+              mode: '000700'
+              owner: root
+              group: root
+          commands:
+            10_install_codedeploy:
+              command: "/tmp/install_codedeploy.sh auto > /var/log/cfn-init-codedeploy.log 2>&1"
+          services:
+            sysvinit:
+              codedeploy-agent:
+                enabled: true
+                ensure_running: true
+
+The ``parameters`` field is a set of Parameters that will be passed to the CloudFormation stack. This
+can be static strings or ``paco.ref`` that are looked up from already provisioned cloud resources.
+
+CloudFormation Init can be organized into Configsets. With raw cfn-init using Configsets is optional,
+but is required with Paco.
+
+In a Configset, the ``files`` field has four fields for specifying the file contents.
+
+ * ``content_file:`` A path to a file on the local filesystem. A convenient practice is to make a
+   sub-directory in the ``netenv`` directory for keeping cfn-init files.
+
+ * ``content_cfn_file:`` A path to a file on the local filesystem. This file will have FnSub and FnJoin
+   CloudFormation applied to it.
+
+ * ``content:`` For small files, the content can be in-lined directly in this field.
+
+ * ``source:`` Fetches the file from a URL.
+
+If you are using ``content_cfn_file`` to interpolate Parameters, the file might look like:
+
+.. code-block:: bash
+
+    !Sub |
+        #!/bin/bash
+
+        echo "Database ARN is " ${DatabasePasswordarn}
+        echo "AWS Region is " ${AWS::Region}
+
+If you want to include a raw ``${SomeValue}`` string in your file, use the ! character to escape it like this:
+``${!SomeValue}``. cfn-init also supports interpolation with Mustache templates, but Paco support for this is
+not yet implemented.
+
+.. _CloudFormation Init: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-init.html
+
+    
 
 .. _CloudFormationInit:
 

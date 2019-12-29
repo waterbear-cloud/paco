@@ -93,6 +93,28 @@ to your servers. If you prefer to use your own key pairs, you can create them in
 edit the ``resource/ec2.yaml`` file and change the ``keypair_name`` field to match the name you gave your
 own keypair in AWS.
 
+Customize and Provision Route 53
+--------------------------------
+
+You were asked to supply a domain name when creating this project. This domain name is in the
+``resource/route53.yaml`` file.
+
+If you register a domain with the Route 53 service, it will create a Hosted Zone for you.
+When you provision the Route 53 file, it will create a new Hosted Zone:
+
+.. code-block:: bash
+
+    paco provision resource.route53
+
+After this runs, you will need to manually update the new Hosted Zone with the SOA (Start of Authority)
+and NS (nameservers) that are registered with your domain by AWS. Then you can remove the original Hosted Zone.
+
+When you provision environments, the load balancers will add A Records to your HostedZone to automically
+enable your domain to be directed to the laod balancer.
+
+You can also use a domain with another registrar. You will need to manually manage the A Records yourself
+in this case.
+
 Customize and Provision CodeCommit
 ----------------------------------
 
@@ -289,8 +311,8 @@ control workflow.
 Customize your Web Server to support your web application
 ---------------------------------------------------------
 
-`CloudFormation Init`_ is a helper tool that configures an EC2 instance after it is launched. It's a much more
-complete and robust method to install configuration files and pakcages than using a UserData script.
+`CloudFormation Init`_ is is a method to configure an EC2 instance after it is launched. It's a much more
+complete and robust method to install configuration files and pakcages than with a UserData script.
 
 If you look at your project's ``netenv/mynet.yaml`` file in the ``applications:`` section you will see
 a ``web:`` resource that defines your web server AutoScalingGroup. There is a ``cfn_init:`` field for
@@ -388,7 +410,7 @@ Finally the ``services:`` section is used to ensure that services are started an
 you might want to replace Apache (httpd) with another web server, but will want to leave CodeDeploy as-is.
 
 
-.. _CloudFormation Init: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-init.html
+.. _CloudFormation Init: ./paco-config.html#cloudformationinit
 
 
 Working with Regions
