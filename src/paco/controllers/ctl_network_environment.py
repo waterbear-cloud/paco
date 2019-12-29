@@ -32,21 +32,24 @@ class EnvironmentContext():
         self.stack_grps = []
         env_account_ref = self.config.network.aws_account
         self.account_ctx = paco_ctx.get_account_context(account_ref=env_account_ref)
-        self.config_ref_prefix = '.'.join(
-            [   self.netenv_ctl.config_ref_prefix,
-                self.netenv_id,
-                self.env_id,
-                self.region
-            ])
-
+        self.config_ref_prefix = '.'.join([
+            self.netenv_ctl.config_ref_prefix,
+            self.netenv_id,
+            self.env_id,
+            self.region
+        ])
         # Network Stack Group
         self.init_done = False
-        self.resource_yaml_filename = "{}-{}-{}.yaml".format(self.netenv_id,
-                                                             self.env_id,
-                                                             self.region)
-        self.resource_yaml_path = os.path.join(self.paco_ctx.project_folder,
-                                               'Outputs',
-                                               'NetworkEnvironments')
+        self.resource_yaml_filename = "{}-{}-{}.yaml".format(
+            self.netenv_id,
+            self.env_id,
+            self.region
+        )
+        self.resource_yaml_path = os.path.join(
+            self.paco_ctx.project_folder,
+            'Outputs',
+            'NetworkEnvironments'
+        )
         self.resource_yaml = os.path.join(self.resource_yaml_path, self.resource_yaml_filename)
         self.stack_tags = StackTags()
         self.stack_tags.add_tag('paco.netenv.name', self.netenv_id)
@@ -57,21 +60,23 @@ class EnvironmentContext():
             return
         self.init_done = True
         self.paco_ctx.log_action_col('Init', 'Environment', self.env_id+' '+self.region)
-
         self.secrets_stack_grp = SecretsManagerStackGroup(
             self.paco_ctx,
             self.account_ctx,
             self,
             self.config.secrets_manager,
-            StackTags(self.stack_tags) )
+            StackTags(self.stack_tags)
+        )
         self.secrets_stack_grp.init()
         self.stack_grps.append(self.secrets_stack_grp)
 
         # Network Stack: VPC, Subnets, Etc
-        self.network_stack_grp = NetworkStackGroup(self.paco_ctx,
-                                                   self.account_ctx,
-                                                   self,
-                                                   StackTags(self.stack_tags))
+        self.network_stack_grp = NetworkStackGroup(
+            self.paco_ctx,
+            self.account_ctx,
+            self,
+            StackTags(self.stack_tags)
+        )
         self.stack_grps.append(self.network_stack_grp)
         self.network_stack_grp.init()
 
@@ -92,11 +97,13 @@ class EnvironmentContext():
 
         # Application Engine Stacks
         for app_id in self.application_ids():
-            application_stack_grp = ApplicationStackGroup(self.paco_ctx,
-                                                          self.account_ctx,
-                                                          self,
-                                                          app_id,
-                                                          StackTags(self.stack_tags))
+            application_stack_grp = ApplicationStackGroup(
+                self.paco_ctx,
+                self.account_ctx,
+                self,
+                app_id,
+                StackTags(self.stack_tags)
+            )
             self.application_stack_grps[app_id] = application_stack_grp
             self.stack_grps.append(application_stack_grp)
             application_stack_grp.init()
@@ -268,15 +275,17 @@ class EnvironmentContext():
 
 
 
-    def env_ref_prefix(self,
-                app_id=None,
-                grp_id=None,
-                res_id=None,
-                iam_id=None,
-                role_id=None,
-                segment_id=None,
-                attribute=None,
-                seperator='.'):
+    def env_ref_prefix(
+        self,
+        app_id=None,
+        grp_id=None,
+        res_id=None,
+        iam_id=None,
+        role_id=None,
+        segment_id=None,
+        attribute=None,
+        seperator='.'
+    ):
         netenv_ref = 'paco.ref netenv.{0}.{1}.{2}'.format(self.netenv_id, self.env_id, self.region)
         if app_id != None:
             netenv_ref = seperator.join([netenv_ref, 'applications', app_id])

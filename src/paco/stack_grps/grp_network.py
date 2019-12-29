@@ -29,18 +29,23 @@ class NetworkStackGroup(StackGroup):
         # Network Stack Templates
         # VPC Stack
         vpc_config = self.env_ctx.vpc_config()
+        if vpc_config == None:
+            # NetworkEnvironment with no network - serverless
+            return
         network_config = get_parent_by_interface(vpc_config, schemas.INetworkEnvironment)
         self.log_init_status('VPC', '', vpc_config.is_enabled())
         vpc_config_ref = '.'.join([self.config_ref_prefix, "network.vpc"])
         vpc_config.resolve_ref_obj = self
         vpc_config.private_hosted_zone.resolve_ref_obj = self
-        vpc_template = paco.cftemplates.VPC(self.paco_ctx,
-                                           self.account_ctx,
-                                           self.region,
-                                           self, # stack_group
-                                           StackTags(self.stack_tags),
-                                           vpc_config,
-                                           vpc_config_ref)
+        vpc_template = paco.cftemplates.VPC(
+            self.paco_ctx,
+            self.account_ctx,
+            self.region,
+            self, # stack_group
+            StackTags(self.stack_tags),
+            vpc_config,
+            vpc_config_ref
+        )
         self.vpc_stack = vpc_template.stack
 
         # Segments
@@ -51,16 +56,18 @@ class NetworkStackGroup(StackGroup):
             self.log_init_status('Segment', '{}'.format(segment_id), segment_config.is_enabled())
             segment_config.resolve_ref_obj = self
             segment_config_ref = '.'.join([self.config_ref_prefix, "network.vpc.segments", segment_id])
-            segment_template = paco.cftemplates.Segment(self.paco_ctx,
-                                                       self.account_ctx,
-                                                       self.region,
-                                                       self, # stack_group
-                                                       StackTags(self.stack_tags),
-                                                       [StackOrder.PROVISION], # stack_order
-                                                       self.env_ctx,
-                                                       segment_id,
-                                                       segment_config,
-                                                       segment_config_ref)
+            segment_template = paco.cftemplates.Segment(
+                self.paco_ctx,
+                self.account_ctx,
+                self.region,
+                self, # stack_group
+                StackTags(self.stack_tags),
+                [StackOrder.PROVISION], # stack_order
+                self.env_ctx,
+                segment_id,
+                segment_config,
+                segment_config_ref
+            )
             segment_stack = segment_template.stack
             self.segment_dict[segment_id] = segment_stack
             self.segment_list.append(segment_stack)
@@ -193,16 +200,18 @@ class NetworkStackGroup(StackGroup):
                 nat_sg_config = None
             # We now disable the NAT Gatewy in the template so that we can delete it and recreate
             # it when disabled.
-            nat_template = paco.cftemplates.NATGateway( paco_ctx=self.paco_ctx,
-                                                    account_ctx=self.account_ctx,
-                                                    aws_region=self.region,
-                                                    stack_group=self,
-                                                    stack_tags=StackTags(self.stack_tags),
-                                                    stack_order=[StackOrder.PROVISION],
-                                                    network_config=network_config,
-                                                    nat_sg_config=nat_sg_config,
-                                                    nat_sg_config_ref=sg_nat_config_ref,
-                                                    nat_config=nat_config)
+            nat_template = paco.cftemplates.NATGateway(
+                paco_ctx=self.paco_ctx,
+                account_ctx=self.account_ctx,
+                aws_region=self.region,
+                stack_group=self,
+                stack_tags=StackTags(self.stack_tags),
+                stack_order=[StackOrder.PROVISION],
+                network_config=network_config,
+                nat_sg_config=nat_sg_config,
+                nat_sg_config_ref=sg_nat_config_ref,
+                nat_config=nat_config
+            )
             nat_stack = nat_template.stack
             self.nat_list.append(nat_stack)
 
@@ -233,7 +242,6 @@ class NetworkStackGroup(StackGroup):
             if ref.resource_ref == 'id':
                 sg_id = ref.parts[-3]
                 return self.get_security_group_stack(sg_id)
-
 
     def validate(self):
         # Generate Stacks

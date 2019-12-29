@@ -11,18 +11,19 @@ from enum import Enum
 
 
 class S3(CFTemplate):
-    def __init__(self,
-                paco_ctx,
-                account_ctx,
-                aws_region,
-                stack_group,
-                stack_tags,
-                stack_hooks,
-                bucket_context,
-                bucket_policy_only,
-                config_ref,
-                change_protected):
-
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
+        stack_hooks,
+        bucket_context,
+        bucket_policy_only,
+        config_ref,
+        change_protected
+    ):
         bucket = bucket_context['config']
 
         # Application Group
@@ -41,7 +42,6 @@ class S3(CFTemplate):
         # Policy
         if bucket_policy_only == True:
             aws_name_list.append('policy')
-            #aws_name += '-policy'
 
         super().__init__(
             paco_ctx,
@@ -56,24 +56,15 @@ class S3(CFTemplate):
             change_protected=change_protected
         )
         self.set_aws_name('S3', aws_name_list)
-
         self.s3_context_id = config_ref
         self.bucket_context = bucket_context
-
         s3_ctl = self.paco_ctx.get_controller('S3')
         bucket_name = s3_ctl.get_bucket_name(self.s3_context_id)
 
-        # ---------------------------------------------------------------------------
-        # Troposphere Template Initialization
-        template = troposphere.Template(
-            Description=bucket.title_or_name
-        )
-        template.set_version()
-        template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
-        )
+        # Init Troposphere template
+        self.init_template('bucket.title_or_name')
+        template = self.template
 
-        # ---------------------------------------------------------------------------
         # Resources
         if bucket_policy_only == False:
             s3_logical_id = cfn_logical_id_prefix + 'Bucket'
@@ -87,7 +78,7 @@ class S3(CFTemplate):
                     lambda_notifs = []
                     params = {}
                     for lambda_notif in bucket.notifications.lambdas:
-                        param_name = self.create_cfn_logical_id('LambdaNotif' + lambda_notif.function[6:])
+                        param_name = self.create_cfn_logical_id('LambdaNotif' + lambda_notif.function[9:])
                         if param_name not in params:
                             lambda_arn_param = self.create_cfn_parameter(
                                 name = param_name,

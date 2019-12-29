@@ -23,7 +23,6 @@ class Lambda(CFTemplate):
         lambda_config,
         lambda_config_ref
     ):
-
         super().__init__(
             paco_ctx,
             account_ctx,

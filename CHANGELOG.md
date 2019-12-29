@@ -14,6 +14,10 @@ Changelog for paco
 
 ### Changed
 
+- NetworkEnvironment networks can now be (almost) empty. This can be used for serverless environments
+  that do not need a network. The ``network:`` configuration still needs to exist, but only has to contain
+  the ``aws_account`` and ``enabled`` fields.
+
 - Removed Parameter.ending format for cfn-init parameters and Dashboard variables.
   Instead simply including the ending in the paco.ref
 
