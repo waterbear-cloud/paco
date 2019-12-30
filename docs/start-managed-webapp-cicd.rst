@@ -266,10 +266,10 @@ Let's see what starting overrides have been applied to the dev environment:
 
 First, you will have different ``instance_key_pair`` values for your EC2 instances. If you wanted
 to share keypairs between your dev and staging environments, you could copy the values from your
-staging environment into your dev enviornment.
+staging environment into your dev environment.
 
 Next, you have an Application Load Balancer (ALB) which is configured to redirect ``*.yourdomain.com`` to
-``yourdomain.com`` in your default prod configuration. In the dev enviornment this redirect is disabled
+``yourdomain.com`` in your default prod configuration. In the dev environment this redirect is disabled
 and the listener to forward to the TargetGroup that has your web servers has the host ``dev.yourdomain.com``.
 
 This exposes your dev environment at ``dev.yourdomain.com``. You may not want to do this, however. Instead
@@ -516,7 +516,7 @@ you might want to replace Apache (httpd) with another web server, but will want 
 Working with Regions
 ---------------------
 
-When you provision an enviornment, you can also specify the region:
+When you provision an environment, you can also specify the region:
 
 .. code-block:: bash
 
@@ -574,7 +574,7 @@ Now when you run provision on the environment, it would apply changes to both re
 
     paco provision netenv.mynet.dev # <-- applies to both us-west-2 and eu-central-1
 
-Monitoring an enviornment
+Monitoring an environment
 -------------------------
 
 To start, monitoring is only enabled for the prod environment. You may wish to enable your monitoring
