@@ -573,6 +573,173 @@ Now when you run provision on the environment, it would apply changes to both re
 
     paco provision netenv.mynet.dev # <-- applies to both us-west-2 and eu-central-1
 
+Monitoring an enviornment
+-------------------------
+
+To start, monitoring is only enabled for the prod environment. You may wish to enable your monitoring
+for your other environments, but this will add a small amount to your AWS bill from CloudWatch.
+Monitoring is enabled/disabled with the ``enabled:`` field under the ``monitoring:`` configuration.
+
+.. code-block:: yaml
+
+    site:
+      resources:
+        alb:
+          monitoring:
+            enabled: true # changed from false
+          dns:
+            - domain_name: staging.example.com
+          listeners:
+            https:
+              rules:
+                app_forward:
+                  host: 'staging.example.com'
+                app_redirect:
+                  enabled: false
+        web:
+          instance_key_pair: paco.ref resource.ec2.keypairs.app_staging
+          monitoring:
+            enabled: true # changed from false
+        database:
+          multi_az: false
+          monitoring:
+            enabled: true # changed from false
+        dashboard:
+          enabled: true # changed from false
+
+With monitoring enabled you will have:
+
+ * CloudWatch Alarms for your Application Load Balancer, web server AutoScalingGroup and RDS MySQL.
+
+ * CloudWatch Agent which runs on your web servers to collect logs and in-host metrics.
+
+ * CloudWatch Log Groups to collect os, ci/cd and application logs.
+
+ * Cloudwatch Log Group metric filters to gather metrics on errors in logs.
+
+ * CloudWatch Alarms to alert you when your logs have errors.
+
+Note that when you enable/disable monitoring, this will change the CloudWatch agent installation configuration
+for your web servers. This will cause AWS to terminate your existing web servers and launch new instances.
+
+From the AWS Console you can visit the CloudWatch service to see your Alarms:
+
+.. image:: _static/images/start_alarms.png
+
+The alarms are all contained in the ``monitor/AlarmSets.yaml`` file. You also may wish to remove certain alarms
+or add new ones - customizing alarms and the thresholds is very specific to the application you are
+running and it's traffic.
+
+If you want to see how your application's resources are performing overall, take a look at the CloudWatch Dashboard
+that was provisioned when you enabled monitoring:
+
+.. image:: _static/images/start_dashboard.png
+
+Here you can see graphs of some metrics for your Load Balancer, web server AutoScalingGroup and RDS MySQL database.
+Again, this is only a basic selection of some of the metrics available - it is common to customize this to be
+specific to your application.
+
+You can change this Dashboard directly in the AWS Console, but these Dashboard settings are
+controlled by a configuration file at ``netenv/dashboards/complete-dashboard.json`` and can be restored to
+the original settings with subsequent paco provision commands. Instead, when viewing the Dashboard choose
+"Actions --> Save dashbaord as ..." and create a copy of this Dashboard, then make manual customizations.
+
+It's also possible to choose "Actions --> View/edit source" and put the JSON configuration for a Dashboard
+into your project's configuration. Note that you will need to replace the hard-coded region and resource ids
+with placeholders to be dynamically interpolated when the Dashboard is created.
+
+The configuration for your starting Dashboard looks like this:
+
+.. code-block:: yaml
+
+      dashboard:
+        type: Dashboard
+        enabled: true
+        order: 200
+        title: AppNameDashboard
+        dashboard_file: ./dashboards/complete-dashboard.json
+        variables:
+          ApplicationTargetGroup: paco.ref netenv.mynet.applications.app.groups.site.resources.alb.target_groups.app.fullname
+          LoadBalancerName: paco.ref netenv.mynet.applications.app.groups.site.resources.alb.fullname
+          WebAsg: paco.ref netenv.mynet.applications.app.groups.site.resources.web.name
+          DBInstance: paco.ref netenv.mynet.applications.app.groups.site.resources.database.name
+
+Feel free to change the ``title:`` field - but remember that CloudWatch Dashboards can only contain alphanumeric characters.
+
+Finally, take a look at your ``monitor/Logging.yaml`` file. Here you will see the log files that are collected.
+You will most likely want to keep the ``rpm_linux`` and ``cloud`` logs as-is. Take a look at the Metric Filters
+for the ``cloud`` logs:
+
+.. code-block:: yaml
+
+    cloud:
+      # cloud logs specific to configuration and operation in AWS
+      log_groups:
+        cfn_init:
+          sources:
+            cfn_init:
+              path: /var/log/cfn-init.log
+              log_stream_name: "{instance_id}"
+          metric_filters:
+            CfnInitErrors:
+              filter_pattern: '"[ERROR]"'
+              metric_transformations:
+                - metric_name: 'CfnInitErrorMetric'
+                  metric_value: '1'
+        codedeploy:
+          sources:
+            codedeploy:
+              path: /var/log/aws/codedeploy-agent/codedeploy-agent.log
+              log_stream_name: "{instance_id}"
+          metric_filters:
+            CodeDeployErrors:
+              filter_pattern: '" ERROR "'
+              metric_transformations:
+                - metric_name: 'CodeDeployErrorMetric'
+                  metric_value: '1'
+
+These Metric Filters apply a filter pattern to every log line ingested. If they match the pattern, they will send a metric value
+to CloudWatch. There are special LogAlarms in your AlarmSets.yaml file to watch for these metrics and notify on them:
+
+.. code-block:: yaml
+
+  # CloudWatch Log Alarms
+  log-alarms:
+    CfnInitError:
+      type: LogAlarm
+      description: "CloudFormation Init Errors"
+      classification: health
+      severity: critical
+      log_set_name: 'cloud'
+      log_group_name: 'cfn_init'
+      metric_name: "CfnInitErrorMetric"
+      period: 300
+      evaluation_periods: 1
+      threshold: 1.0
+      treat_missing_data: notBreaching
+      comparison_operator: GreaterThanOrEqualToThreshold
+      statistic: Sum
+    CodeDeployError:
+      type: LogAlarm
+      description: "CodeDeploy Errors"
+      classification: health
+      severity: critical
+      log_set_name: 'cloud'
+      log_group_name: 'codedeploy'
+      metric_name: "CodeDeployErrorMetric"
+      period: 300
+      evaluation_periods: 1
+      threshold: 1.0
+      treat_missing_data: notBreaching
+      comparison_operator: GreaterThanOrEqualToThreshold
+      statistic: Sum
+
+These alarms will alert you if your instance has errors during the CloudFormation Init launch configuration, or if the CodeDeploy agent
+has errors during a new application deployment. These can be very helpful at letting you know your CI/CD set-up has gone off the rails.
+
+There are similar alarms for the example Python Pyramid application. These are under the "# application specific logs" comment
+in Logging.yaml and in AlarmSets.yaml for the alarms named WsgiError and HighHTTPTraffic. You will want to customize these
+logs and alarms to whatever web server and application-specific logs you have in your web server set-up.
 
 
 .. _Install: ./install.html

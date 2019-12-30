@@ -1,3 +1,61 @@
+LBApplication:
+  core:
+    HealthyHostCount:
+      classification: health
+      severity: critical
+      description: "Alert if fewer than X number of backend hosts are passing health checks"
+      metric_name: "HealthyHostCount"
+      dimensions:
+        - name: LoadBalancer
+          value: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.alb.fullname
+        - name: TargetGroup
+          value: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.alb.target_groups.{{cookiecutter.application_name}}.fullname
+      period: 60
+      evaluation_periods: 5
+      statistic: Minimum
+      threshold: 1
+      comparison_operator: LessThanThreshold
+      treat_missing_data: breaching
+  performance:
+    SlowTargetResponseTime:
+      severity: low
+      classification: performance
+      description: "Average HTTP response time is unusually slow"
+      metric_name: "TargetResponseTime"
+      period: 60
+      evaluation_periods: 5
+      statistic: Average
+      threshold: 1.5
+      comparison_operator: GreaterThanOrEqualToThreshold
+      treat_missing_data: missing
+      dimensions:
+        - name: LoadBalancer
+          value: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.alb.fullname
+        - name: TargetGroup
+          value: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.site.resources.alb.target_groups.{{cookiecutter.application_name}}.fullname
+    HTTPCode4XXCount:
+      classification: performance
+      severity: low
+      description: "Large number of 4xx HTTP error codes"
+      metric_name: "HTTPCode_Target_4XX_Count"
+      period: 60
+      evaluation_periods: 5
+      statistic: Sum
+      threshold: 100
+      comparison_operator: GreaterThanOrEqualToThreshold
+      treat_missing_data: notBreaching
+    HTTPCode5XXCount:
+      classification: performance
+      severity: low
+      description: "Large number of 5xx HTTP error codes"
+      metric_name: "HTTPCode_Target_5XX_Count"
+      period: 60
+      evaluation_periods: 5
+      statistic: Sum
+      threshold: 100
+      comparison_operator: GreaterThanOrEqualToThreshold
+      treat_missing_data: notBreaching
+
 ASG:
   core:
     StatusCheck:
