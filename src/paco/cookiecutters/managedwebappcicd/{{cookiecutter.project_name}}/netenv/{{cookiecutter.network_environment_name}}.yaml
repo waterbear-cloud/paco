@@ -98,7 +98,7 @@ backup_vaults:
   {{cookiecutter.application_name}}:
     enabled: false
     plans:
-      ebs:
+      database:
         title: RDS Backups
         enabled: true
         plan_rules:
@@ -108,10 +108,15 @@ backup_vaults:
         selections:
           - title: RDS Daily Backups Selection
             tags:
-              # ToDo adjust tags
+              - condition_type: STRINGEQUALS
+                condition_key: Paco-Application-Name
+                condition_value: {{cookiecutter.application_name}}
+              - condition_type: STRINGEQUALS
+                condition_key: Paco-Application-Group-Name
+                condition_value: site
               - condition_type: STRINGEQUALS
                 condition_key: Paco-Application-Resource-Name
-                condition_value: wp_volume
+                condition_value: database
               - condition_type: STRINGEQUALS
                 condition_key: paco.env.name
                 condition_value: prod

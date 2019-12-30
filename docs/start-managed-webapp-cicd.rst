@@ -741,6 +741,90 @@ There are similar alarms for the example Python Pyramid application. These are u
 in Logging.yaml and in AlarmSets.yaml for the alarms named WsgiError and HighHTTPTraffic. You will want to customize these
 logs and alarms to whatever web server and application-specific logs you have in your web server set-up.
 
+Backup and Restore
+------------------
+
+This project also has a BackupVault that will make daily database backups on the prod database.
+
+You can already take advantage of RDS's built-in automatic backups to create snapshots. However,
+AWS also provides `AWS Backup`_ as a centralized location to do backups. The advantage of using
+this service to back-up your database is you can retain backups longer than 35 days, you can transition
+older back-ups to S3 Glacier and if you can have several backup schedules (e.g. daily, weekly and monthly)
+with different lifecycle policies.
+
+The ``netenv/mynet.yaml`` has a ``backup_vaults:`` section that looks like:
+
+.. code-block:: yaml
+
+    backup_vaults:
+      app:
+        enabled: false
+        plans:
+          database:
+            title: RDS Backups
+            enabled: true
+            plan_rules:
+              - title: Daily RDS backups
+                schedule_expression: cron(0 7 ? * * *)
+                lifecycle_delete_after_days: 30
+            selections:
+              - title: RDS Daily Backups Selection
+                tags:
+                  - condition_type: STRINGEQUALS
+                    condition_key: Paco-Application-Name
+                    condition_value: {{cookiecutter.application_name}}
+                  - condition_type: STRINGEQUALS
+                    condition_key: Paco-Application-Group-Name
+                    condition_value: site
+                  - condition_type: STRINGEQUALS
+                    condition_key: Paco-Application-Resource-Name
+                    condition_value: database
+                  - condition_type: STRINGEQUALS
+                    condition_key: paco.env.name
+                    condition_value: prod
+
+This will be overridden only in the prod environment to turn on ``enabled: true``. The backup selection is
+configured to use tags to select resources to backup. This can be helpful if you want to have a whole
+group of things backed up without needing to remember to adjust your backup selections. For example, if
+you had multiple databases, you could put them all into the same Resource Group named ``persistence`` and
+select that group. If you added a new database, it would automatically be included in the backup selection.
+
+Paco automatically applies a standard set of Tags to all resources it creates. Every Paco resource is
+located in a hierarchical tree in this order:
+
+ * NetworkEnvironment: A shared collection of environments
+
+ * Environment: A complete set of working resources, e.g. dev, staging and prod
+
+ * Application: An application within an environment, e.g. wordpress or saas-app
+
+ * Resource Group: A group of resources to support an environment. Helpful to seperate CI/CD resources from app resources, for example.
+
+ * Resource: A specific conceptual resource. Sometimes this can be more than one actual AWS Resource, such as a Lambda and a Lambda Permission.
+
+Your prod RDS database will have these Tags:
+
+.. code-block:: yaml
+
+    paco.netenv.name: mynet
+    paco.env.name: prod
+    Paco-Application-Name: app
+    Paco-Application-Group-Name: site
+    Paco-Application-Resource-Name: database
+
+Alternatively there is a ``resource:`` field for selections that can be used to specify a specific resource
+with a Paco reference. Using this field will ensure that you have correctly chosen a real resource - if there
+is a typo, Paco will warn you when it loads your Paco project configuration. Otherwise if you are using tag-based
+selections, you are recommended to review your BackupVault in the AWS Console and ensure it's working correctly.
+
+.. code-block:: yaml
+
+    selections:
+      - title: RDS Daily Backups Selection
+        resource: paco.ref netenv.mynet.applications.app.groups.site.resources.database.name
+
+
+.. _AWS Backup: https://aws.amazon.com/backup/
 
 .. _Install: ./install.html
 
