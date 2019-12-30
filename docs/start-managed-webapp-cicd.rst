@@ -51,6 +51,10 @@ CloudTrail for every account into an S3 Bucket in the tools account. If you're c
 security conscious set-up, you will want to create a dedicated security account and change the
 ``s3_bucket_account`` field to direct CloudTrail there.
 
+.. code-block:: bash
+
+    s3_bucket_account: paco.ref accounts.security
+
 Also the CloudTrail will also be temporarily stored in a CloudWatch LogGroup for 14 days.
 You may want to disable that or make it longer. CloudWatch LogGroups are an easier way to
 search through your CloudTrail logs and you can also configure MetricFiters to alert you
@@ -59,9 +63,6 @@ when events happen that can effect your AWS account security profile.
 .. code-block:: bash
 
     paco provision resource.cloudtrail
-
-s3_bucket_account: 'paco.ref accounts.{{cookiecutter.tools_account}}'
-
 
 Customize and Provision SNS Topics
 ----------------------------------
