@@ -4,8 +4,7 @@ import sys, os, datetime
 
 html_theme = "sphinx_rtd_theme"
 html_theme_options = {
-    'canonical_url': '',
-    'analytics_id': 'UA-XXXXXXX-1',  #  Provided by Google in your dashboard
+    'canonical_url': 'https://www.paco-cloud.io',
     'logo_only': False,
     'display_version': True,
     'prev_next_buttons_location': 'bottom',
@@ -44,9 +43,9 @@ templates_path = ['_templates']
 source_suffix = '.rst'
 
 # The master toctree document.
-master_doc = 'contents'
+master_doc = 'index'
 html_additional_pages = {
-    'index': 'index.html',
+#    'index': 'index.html',
     'resourcesupport': 'resourcesupport.html'
 }
 
