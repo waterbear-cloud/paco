@@ -1,7 +1,5 @@
-.. image:: _static/images/paco-logo.png
-
-Use Paco to provision and manage AWS
-====================================
+Paco for AWS cloud orchestration
+================================
 
 .. image:: _static/images/paco-provision.png
    :class: paco-right
@@ -131,6 +129,7 @@ PACO is developed by Waterbear Cloud. Contact us about our `support and consulti
    :caption: Paco project configuration
    :maxdepth: 3
 
+   paco-config-basics
    paco-config
 
 .. toctree::

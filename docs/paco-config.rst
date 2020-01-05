@@ -1,359 +1,14 @@
 
 .. _paco-config:
 
-********************
-Configuration Basics
-********************
+*****************
+YAML File Schemas
+*****************
 
-Paco configuration overview
-===========================
+Accounts: accounts/*.yaml
+=========================
 
-Paco configuration is a complete declarative description of a cloud project.
-These files semantically describe cloud resources and logical groupings of those
-resources. The contents of these files describe accounts, networks, environments, applications,
-resources, services, and monitoring configuration.
-
-The Paco configuration files are parsed into a Python object model by the library
-``paco.models``. This object model is used by Paco to provision
-AWS resources using CloudFormation. However, the object model is a standalone
-Python package and can be used to work with cloud infrastructure semantically
-with other tooling.
-
-
-File format overview
---------------------
-
-Paco configuration is a directory of files and sub-directories that
-make up an Paco project. All of the files are in YAML_ format.
-
-In the top-level directory are sub-directories that contain YAML
-files each with a different format. This directories are:
-
-  * ``accounts/``: Each file in this directory is an AWS account.
-
-  * ``netenv/``: Each file in this directory defines a complete set of networks, applications and environments.
-    Environments are provisioned into your accounts.
-
-  * ``monitor/``: These contain alarm and logging configuration.
-
-  * ``resource/``: For global resources, such as S3 Buckets, IAM Users, EC2 Keypairs.
-
-  * ``service/``: For extension plug-ins.
-
-Also at the top level are ``project.yaml`` and ``paco-project-version.txt`` files.
-
-The ``paco-project-version.txt`` is a simple one line file with the version of the Paco project
-file format, e.g. ``2.1``. The Paco project file format version contains a major and a medium
-version. The major version indicates backwards incompatable changes, while the medium
-version indicates additions of new object types and fields.
-
-The ``project.yaml`` contains gloabl information about the Paco project. It also contains
-an ``paco_project_version`` field that is loaded from ``paco-project-version.txt``.
-
-The YAML files are organized as nested key-value dictionaries. In each sub-directory,
-key names map to relevant Paco schemas. An Paco schema is a set of fields that describe
-the field name, type and constraints.
-
-An example of how this hierarchy looks, in a NetworksEnvironent file, a key name ``network:``
-must have attributes that match the Network schema. Within the Network schema there must be
-an attribute named ``vpc:`` which contains attributes for the VPC schema. That looks like this:
-
-.. code-block:: yaml
-
-    network:
-        enabled: true
-        region: us-west-2
-        availability_zones: 2
-        vpc:
-            enable_dns_hostnames: true
-            enable_dns_support: true
-            enable_internet_gateway: true
-
-Some key names map to Paco schemas that are containers. For containers, every key must contain
-a set of key/value pairs that map to the Paco schema that container is for.
-Every Paco schema in a container has a special ``name`` attribute, this attribute is derived
-from the key name used in the container.
-
-For example, the NetworkEnvironments has a key name ``environments:`` that maps
-to an Environments container object. Environments containers contain Environment objects.
-
-.. code-block:: yaml
-
-    environments:
-        dev:
-            title: Development
-        staging:
-            title: Staging
-        prod:
-            title: Production
-
-When this is parsed, there would be three Environment objects:
-
-.. code-block:: text
-
-    Environment:
-        name: dev
-        title: Development
-    Environment:
-        name: staging
-        title: Staging
-    Environment:
-        name: prod
-        title: Production
-
-.. Attention:: Key naming warning: As the key names you choose will be used in the names of
-    resources provisioned in AWS, they should be as short and simple as possible. If you wanted
-    rename keys, you need to first delete all of your AWS resources under their old key names,
-    then recreate them with their new name. Try to give everything short, reasonable names.
-
-Key names have the following restrictions:
-
-  * Can contain only letters, numbers, hyphens and underscores.
-
-  * First character must be a letter.
-
-  * Cannot end with a hyphen or contain two consecutive hyphens.
-
-Certain AWS resources have additional naming limitations, namely S3 bucket names
-can not contain uppercase letters and certain resources have a name length of 64 characters.
-
-The ``title`` field is available in almost all Paco schemas. This is intended to be
-a human readable name. This field can contain any character except newline.
-The ``title`` field can also be added as a Tag to resources, so any characters
-beyond 255 characters would be truncated.
-
-.. _YAML: https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html
-
-Enabled/Disabled
-================
-
-Many Paco schemas have an ``enabled:`` field. If an Environment, Application or Resource field
-have ``enabled: True``, that indicates it should be provisioned. If ``enabled: False`` is set,
-then the resource won't be provisioned.
-
-To determine if a resource should be provisioned or not, if **any** field higher in the tree
-is set to ``enabled: False`` the resource will not be provisioned.
-
-In the following example, the network is enabled by default. The dev environment is enabled,
-and there are two applications, but only one of them is enabled. The production environment
-has two applications enabled, but they will not be provisioned as enabled is off for the
-entire environment.
-
-.. code-block:: yaml
-
-    network:
-        enabled: true
-
-    environments:
-        dev:
-            enabled: true
-            default:
-                applications:
-                    my-paco-example:
-                        enabled: false
-                    reporting-app:
-                        enabled: true
-        prod:
-            enabled: false
-            default:
-                applications:
-                    my-paco-example:
-                        enabled: true
-                    reporting-app:
-                        enabled: true
-
-.. Attention:: Note that currently, this field is only applied during the ``paco provision`` command.
-    If you want delete an environment or application, you need to do so explicitly with the ``paco delete`` command.
-
-References and Substitutions
-============================
-
-Some values can be special references. These will allow you to reference other values in
-your Paco Configuration.
-
- * ``paco.ref netenv``: NetworkEnvironment reference
-
- * ``paco.ref resource``: Resource reference
-
- * ``paco.ref accounts``: Account reference
-
- * ``paco.ref function``: Function reference
-
- * ``paco.ref service``: Service reference
-
-References are in the format:
-
-``type.ref name.seperated.by.dots``
-
-In addition, the ``paco.sub`` string indicates a substitution.
-
-paco.ref netenv
----------------
-
-To refer to a value in a NetworkEnvironment use an ``paco.ref netenv`` reference. For example:
-
-``paco.ref netenv.my-paco-example.network.vpc.security_groups.app.lb``
-
-After ``paco.ref netenv`` should be a part which matches the filename of a file (without the .yaml or .yml extension)
-in the NetworkEnvironments directory.
-
-The next part will start to walk down the YAML tree in the specified file. You can
-either refer to a part in the ``applications`` or ``network`` section.
-
-Keep walking down the tree, until you reach the name of a field. This final part is sometimes
-a field name that you don't supply in your configuration, and is instead can be generated
-by the Paco Engine after it has provisioned the resource in AWS.
-
-An example where a ``paco.ref netenv`` refers to the id of a SecurityGroup:
-
-.. code-block:: yaml
-
-    network:
-        vpc:
-            security_groups:
-                app:
-                    lb:
-                        egress
-                    webapp:
-                        ingress:
-                            - from_port: 80
-                            name: HTTP
-                            protocol: tcp
-                            source_security_group: paco.ref netenv.my-paco-example.network.vpc.security_groups.app.lb
-
-You can refer to an S3 Bucket and it will return the ARN of the bucket:
-
-.. code-block:: yaml
-
-    artifacts_bucket: paco.ref netenv.my-paco-example.applications.app.groups.cicd.resources.cpbd_s3
-
-SSL Certificates can be added to a load balancer. If a reference needs to look-up the name or id of an AWS
-Resource, it needs to first be provisioned, the ``order`` field controls the order in which resources
-are created. In the example below, the ACM cert is first created, then an Applicatin Load Balancer is provisioned
-and configured with the ACM cert:
-
-.. code-block:: yaml
-
-    applications:
-        app:
-            groups:
-                site:
-                    cert:
-                        type: ACM
-                        order: 1
-                        domain_name: example.com
-                        subject_alternative_names:
-                        - '*.example.com'
-                    alb:
-                        type: LBApplication
-                        order: 2
-                        listeners:
-                            - port: 80
-                                protocol: HTTP
-                                redirect:
-                                port: 443
-                                protocol: HTTPS
-                            - port: 443
-                                protocol: HTTPS
-                                ssl_certificates:
-                                - paco.ref netenv.my-paco-example.applications.app.groups.site.resources.cert
-
-
-paco.ref resource
------------------
-
-To refer to a global resource created in the Resources directory, use an ``paco.ref resource``. For example:
-
-``paco.ref resource.route53.example``
-
-After the ``paco.ref resource`` the next part should matche the filename of a file
-(without the .yaml or .yml extension)  in the Resources directory.
-Subsequent parts will walk down the YAML in that file.
-
-In the example below, the ``hosted_zone`` of a Route53 record is looked up.
-
-.. code-block:: yaml
-
-    # netenv/my-paco-example.yaml
-
-    applications:
-        app:
-            groups:
-                site:
-                    alb:
-                        dns:
-                        - hosted_zone: paco.ref resource.route53.example
-
-    # resource/Route53.yaml
-
-    hosted_zones:
-    example:
-        enabled: true
-        domain_name: example.com
-        account: paco.ref accounts.prod
-
-
-paco.ref accounts
------------------
-
-To refer to an AWS Account in the Accounts directory, use ``paco.ref``. For example:
-
-``paco.ref accounts.dev``
-
-Account references should matches the filename of a file (without the .yaml or .yml extension)
-in the Accounts directory.
-
-These are useful to override in the environments section in a NetworkEnvironment file
-to control which account an environment should be deployed to:
-
-.. code-block:: yaml
-
-    environments:
-        dev:
-            network:
-                aws_account: paco.ref accounts.dev
-
-paco.ref function
------------------
-
-A reference dynamically resolved at runtime. For example:
-
-``paco.ref function.aws.ec2.ami.latest.amazon-linux-2``
-
-Currently can only look-up AMI IDs. Can be either ``aws.ec2.ami.latest.amazon-linux-2``
-or ``aws.ec2.ami.latest.amazon-linux``.
-
-.. code-block:: yaml
-
-    web:
-        type: ASG
-        instance_ami: paco.ref function.aws.ec2.ami.latest.amazon-linux-2
-
-paco.ref service
-----------------
-
-To refer to a service created in the Services directory, use an ``paco.ref service``. For example:
-
-``paco.ref service.notification.<account>.<region>.applications.notification.groups.lambda.resources.snstopic``
-
-Services are plug-ins that extend Paco with additional functionality. For example, custom notification, patching, back-ups
-and cost optimization services could be developed and installed into an Paco application to provide custom business
-functionality.
-
-paco.sub
---------
-
-Can be used to look-up a value and substitute the results into a templated string.
-
-
-***********************
-YAML Schemas and Fields
-***********************
-
-Accounts
-========
-
-AWS account information is kept in the ``Accounts/`` directory.
+AWS account information is kept in the ``accounts/`` directory.
 Each file in this directory will define one AWS account, the filename
 will be the ``name`` of the account, with a .yml or .yaml extension.
 
@@ -483,21 +138,753 @@ An AWS Account Administerator IAM User
       - AdminIAMUser
 
 
-NetworkEnvironments
-===================
+Global Resources: resource/*.yaml
+=================================
 
-NetworkEnvironments are the center of the show. Each file in the
-``NetworkEnvironments`` directory can contain information about
-networks, applications and environments. These files define how
-applications are deployed into networks, what kind of monitoring
-and logging the applications have, and which environments they are in.
+CloudTrail: resource/cloudtrail.yaml
+------------------------------------
 
-These files are hierarchical. They can nest many levels deep. At each
-node in the hierarchy a different config type is required. At the top level
-there must be three key names, ``network:``, ``applications:`` and ``environments:``.
-The ``network:`` must contain a key/value pairs that match a NetworkEnvironment Paco schema.
+The ``resource/cloudtrail.yaml`` file contains CloudTrails.
+
+.. code-block:: bash
+
+    paco provision resource.cloudtrail
+
+
+.. code-block:: yaml
+    :caption: Example resource/cloudtrail.yaml file
+
+    trails:
+      cloudtrail:
+        region: ''
+        enabled: true
+        cloudwatchlogs_log_group:
+          expire_events_after_days: '14'
+          log_group_name: 'CloudTrail'
+        enable_log_file_validation: true
+        include_global_service_events: true
+        is_multi_region_trail: true
+        enable_kms_encryption: true
+        s3_bucket_account: 'paco.ref accounts.security'
+        s3_key_prefix: 'cloudtrails'
+
+
+IAM: resource/iam.yaml
+----------------------
+
+The ``resource/iam.yaml`` file contains IAM Users. Each user account can be given
+different levels of access a set of AWS accounts. For more information on how
+IAM Users can be managed, see `Managing IAM Users with Paco`_.
+
+.. code-block:: bash
+
+    paco provision resource.iam.users
+
+
+.. _Managing IAM Users with Paco: ./paco-users.html
+
+
+IAMResource
+^^^^^^^^^^^^
+
+
+IAM Resource contains IAM Users who can login and have different levels of access to the AWS Console and API.
+    
+
+.. _IAMResource:
+
+.. list-table:: :guilabel:`IAMResource`
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Title
+    * - users
+      - Container of IAMUsers_ Paco schemas
+      - .. fa:: times
+      - 
+      - 
+      - IAM Users
+      - IAMResource
+
+
+
+IAMUsers
+^^^^^^^^^
+
+
+
+.. _IAMUsers:
+
+.. list-table:: :guilabel:`IAMUsers` |bars| Container where the keys are the ``name`` field.
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Title
+
+
+
+IAMUser
+^^^^^^^^
+
+
+    IAM User
+    
+
+.. _IAMUser:
+
+.. list-table:: :guilabel:`IAMUser`
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - enabled
+      - Boolean
+      - .. fa:: times
+      - False
+      - Could be deployed to AWS
+      - Enabled
+      - Deployable
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Title
+    * - account
+      - TextReference
+      - .. fa:: check
+      - 
+      - 
+      - Paco account reference to install this user
+      - IAMUser
+    * - account_whitelist
+      - CommaList
+      - .. fa:: times
+      - 
+      - 
+      - Comma separated list of Paco AWS account names this user has access to
+      - IAMUser
+    * - console_access_enabled
+      - Boolean
+      - .. fa:: check
+      - 
+      - 
+      - Console Access Boolean
+      - IAMUser
+    * - description
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - IAM User Description
+      - IAMUser
+    * - permissions
+      - Container of IAMUserPermissions_ Paco schemas
+      - .. fa:: times
+      - 
+      - 
+      - Paco IAM User Permissions
+      - IAMUser
+    * - programmatic_access
+      - IAMUserProgrammaticAccess_ Paco schema
+      - .. fa:: times
+      - 
+      - 
+      - Programmatic Access
+      - IAMUser
+    * - username
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - IAM Username
+      - IAMUser
+
+
+
+IAMUserProgrammaticAccess
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+    IAM User Programmatic Access Configuration
+    
+
+.. _IAMUserProgrammaticAccess:
+
+.. list-table:: :guilabel:`IAMUserProgrammaticAccess`
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - enabled
+      - Boolean
+      - .. fa:: times
+      - False
+      - Could be deployed to AWS
+      - Enabled
+      - Deployable
+    * - access_key_1_version
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - Access key version id
+      - IAMUserProgrammaticAccess
+    * - access_key_2_version
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - Access key version id
+      - IAMUserProgrammaticAccess
+
+
+
+IAMUserPermissions
+^^^^^^^^^^^^^^^^^^^
+
+
+    Group of IAM User Permissions
+    
+
+.. _IAMUserPermissions:
+
+.. list-table:: :guilabel:`IAMUserPermissions` |bars| Container where the keys are the ``name`` field.
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Title
+
+
+
+Role
+^^^^^
+
+
+
+.. _Role:
+
+.. list-table:: :guilabel:`Role`
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - enabled
+      - Boolean
+      - .. fa:: times
+      - False
+      - Could be deployed to AWS
+      - Enabled
+      - Deployable
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Title
+    * - assume_role_policy
+      - AssumeRolePolicy_ Paco schema
+      - .. fa:: times
+      - 
+      - 
+      - Assume role policy
+      - Role
+    * - global_role_name
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Role name is globally unique and will not be hashed
+      - Role
+    * - instance_profile
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Instance profile
+      - Role
+    * - managed_policy_arns
+      - List of Strings
+      - .. fa:: times
+      - 
+      - 
+      - Managed policy ARNs
+      - Role
+    * - max_session_duration
+      - Int
+      - .. fa:: times
+      - 3600
+      - The maximum session duration (in seconds)
+      - Maximum session duration
+      - Role
+    * - path
+      - String
+      - .. fa:: times
+      - /
+      - 
+      - Path
+      - Role
+    * - permissions_boundary
+      - String
+      - .. fa:: times
+      - 
+      - Must be valid ARN
+      - Permissions boundary ARN
+      - Role
+    * - policies
+      - List of Policy_ Paco schemas
+      - .. fa:: times
+      - 
+      - 
+      - Policies
+      - Role
+    * - role_name
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Role name
+      - Role
+
+
+
+AssumeRolePolicy
+^^^^^^^^^^^^^^^^^
+
+
+
+.. _AssumeRolePolicy:
+
+.. list-table:: :guilabel:`AssumeRolePolicy`
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - aws
+      - List of Strings
+      - .. fa:: times
+      - 
+      - 
+      - List of AWS Principles
+      - AssumeRolePolicy
+    * - effect
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Effect
+      - AssumeRolePolicy
+    * - service
+      - List of Strings
+      - .. fa:: times
+      - 
+      - 
+      - Service
+      - AssumeRolePolicy
+
+
+
+Policy
+^^^^^^^
+
+
+
+.. _Policy:
+
+.. list-table:: :guilabel:`Policy`
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - name
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Policy name
+      - Policy
+    * - statement
+      - List of Statement_ Paco schemas
+      - .. fa:: times
+      - 
+      - 
+      - Statements
+      - Policy
+
+
+
+Statement
+^^^^^^^^^^
+
+
+
+.. _Statement:
+
+.. list-table:: :guilabel:`Statement`
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Title
+    * - action
+      - List of Strings
+      - .. fa:: times
+      - 
+      - 
+      - Action(s)
+      - Statement
+    * - effect
+      - String
+      - .. fa:: times
+      - 
+      - Must be one of: 'Allow', 'Deny'
+      - Effect
+      - Statement
+    * - resource
+      - List of Strings
+      - .. fa:: times
+      - 
+      - 
+      - Resrource(s)
+      - Statement
+
+
+SNS Topics: resource/snstopics.yaml
+-----------------------------------
+
+The ``resource/snstopics.yaml`` file manages AWS Simple Notification Service (SNS) resources.
+SNS has only two resources: SNS Topics and SNS Subscriptions.
+
+.. code-block:: bash
+
+    paco provision resource.snstopics
+
+.. code-block:: yaml
+    :caption: Example resource/snstopics.yaml file
+
+    account: paco.ref accounts.prod
+    regions:
+      - 'us-west-2'
+      - 'us-east-1'
+    groups:
+      admin:
+        title: "Administrator Group"
+        enabled: true
+        cross_account_access: true
+        subscriptions:
+          - endpoint: http://example.com/yes
+            protocol: http
+          - endpoint: https://example.com/orno
+            protocol: https
+          - endpoint: bob@example.com
+            protocol: email
+          - endpoint: bob@example.com
+            protocol: email-json
+          - endpoint: '555-555-5555'
+            protocol: sms
+          - endpoint: arn:aws:sqs:us-east-2:444455556666:queue1
+            protocol: sqs
+          - endpoint: arn:aws:sqs:us-east-2:444455556666:queue1
+            protocol: application
+          - endpoint: arn:aws:lambda:us-east-1:123456789012:function:my-function
+            protocol: lambda
+
+.. sidebar:: Prescribed Automation
+
+    ``cross_account_access``: Creates an SNS Topic Policy which will grant all of the AWS Accounts in this
+    Paco Project access to the ``sns.Publish`` permission for this SNS Topic.
+
+    You will need this if you want to send CloudWatch Alarms from multiple accounts to the same
+    SNS Topic(s) in one account.
+
+EC2 Keypairs: resource/ec2.yaml
+--------------------------------
+
+The ``resource/ec2.yaml`` file manages AWS EC2 Keypairs.
+
+.. code-block:: bash
+
+    paco provision resource.ec2.keypairs # all keypairs
+    paco provision resource.ec2.keypairs.devnet_usw2 # single keypair
+
+.. code-block:: yaml
+    :caption: Example resource/ec2.yaml file
+
+    keypairs:
+      devnet_usw2:
+        keypair_name: "dev-us-west-2"
+        region: "us-west-2"
+        account: paco.ref accounts.dev
+      staging_cac1:
+        keypair_name: "staging-us-west-2"
+        region: "ca-central-1"
+        account: paco.ref accounts.stage
+      prod_usw2:
+        keypair_name: "prod-us-west-2"
+        region: "us-west-2"
+        account: paco.ref accounts.prod
+
+CodeCommit: resource/codecommit.yaml
+-------------------------------------
+
+The ``resource/codecommit.yaml`` file manages CodeCommit repositories and users.
+
+.. code-block:: bash
+
+    paco provision resource.codecommit
+
+.. code-block:: yaml
+    :caption: Example resource/codecommit.yaml file
+
+    app:
+      site:
+        enabled: true
+        account: paco.ref accounts.tools
+        region: 'us-west-2'
+        description: "Application repo"
+        repository_name: "saas-app"
+        users:
+          kevin_teague:
+            username: kevin.t@waterbear.cloud
+            public_ssh_key: 'ssh-rsa AAAAB3Nza.........6OzEFxCbJ'
+
+
+
+CodeCommit
+^^^^^^^^^^^
+
+
+    CodeCommit Service Configuration
+    
+
+.. _CodeCommit:
+
+.. list-table:: :guilabel:`CodeCommit`
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - repository_groups
+      - Dict
+      - .. fa:: times
+      - 
+      - 
+      - Group of Repositories
+      - CodeCommit
+
+
+
+CodeCommitRepository
+^^^^^^^^^^^^^^^^^^^^^
+
+
+    CodeCommit Repository Configuration
+    
+
+.. _CodeCommitRepository:
+
+.. list-table:: :guilabel:`CodeCommitRepository` |bars| Container where the keys are the ``name`` field.
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - enabled
+      - Boolean
+      - .. fa:: times
+      - False
+      - Could be deployed to AWS
+      - Enabled
+      - Deployable
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Title
+    * - account
+      - TextReference
+      - .. fa:: check
+      - 
+      - 
+      - AWS Account Reference
+      - CodeCommitRepository
+    * - description
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Repository Description
+      - CodeCommitRepository
+    * - region
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - AWS Region
+      - CodeCommitRepository
+    * - repository_name
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Repository Name
+      - CodeCommitRepository
+    * - users
+      - Container of CodeCommitUser_ Paco schemas
+      - .. fa:: times
+      - 
+      - 
+      - CodeCommit Users
+      - CodeCommitRepository
+
+
+
+CodeCommitUser
+^^^^^^^^^^^^^^^
+
+
+    CodeCommit User
+    
+
+.. _CodeCommitUser:
+
+.. list-table:: :guilabel:`CodeCommitUser`
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - public_ssh_key
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - CodeCommit User Public SSH Key
+      - CodeCommitUser
+    * - username
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - CodeCommit Username
+      - CodeCommitUser
+
+
+NetworkEnvironments: netenv/*.yaml
+===================================
+
+NetworkEnvironments are the core of any Paco project. Every .yaml file in the
+``netenv`` directory contains information about networks, applications and environments.
+These files define how environments are provisioned and which networks and applications
+will be provisioned in each one.
+
+NetworkEnvironment files are hierarchical. They are nested many levels deep. At each
+node in the hierarchy a different field schema is used. The top level has several key names:
+``network:``, ``secrets_manager:``, ``backups:``, ``applications:`` and ``environments:``.
+The ``network:`` must contain a key/value pairs that matches a NetworkEnvironment schema.
 The ``applications:`` and ``environments:`` are containers that hold Application
-and Environment Paco schemas.
+and Environment schemas.
 
 .. code-block:: yaml
 
@@ -523,18 +910,19 @@ and Environment Paco schemas.
             title: Production Environment
             # more environment YAML here ...
 
-The network and applications configuration is intended to describe a complete default configuration - this configuration
-does not get direclty provisioned to the cloud though - think of it as templated configuration. Environments are where
-cloud resources are declared to be provisioned. Environments stamp the default network configuration and declare it should
-be provisioned into specific account. Applications are then named in Environments, to indicate that the default application
-configuration should be copied into that environment's network.
+The network, applications, backups and secrets_manager configuration sections hold logical configuration - this configuration
+does not get direclty provisioned to the cloud - it doesn't reference any environments or regions.
+Think of it as default configuration.
 
-In environments, any of the default configuration can be overridden. This could be used for running a smaller instance size
-in the dev environment than the production environment, applying detailed monitoring metrics to a production environment,
+Environments are where actual cloud resources are declared to be provisioned. Environments reference the default
+configuration from networks, applications, backups and secrets and declare which account(s) and region(s) to provision them in.
+
+In environments, any field from the default configuration being referenced can be overridden.
+This could be used for running a smaller instance size in the dev environment, enabling monitoring only in a production environment,
 or specifying a different git branch name for a CI/CD for each environment.
 
-Network
-=======
+NetEnv - network:
+=================
 
 The network config type defines a complete logical network: VPCs, Subnets, Route Tables, Network Gateways. The applications
 defined later in this file will be deployed into networks that are built from this network template.
@@ -1355,213 +1743,8 @@ Security group ingress
       - IngressRule
 
 
-Environments
-============
-
-Environments define how actual AWS resources should be provisioned.
-As Environments copy all of the defaults from ``network`` and ``applications`` config,
-they can define complex cloud deployments very succinctly.
-
-The top level environments are simply a name and a title. They are logical
-groups of actual environments.
-
-.. code-block:: yaml
-
-    environments:
-
-        dev:
-            title: Development
-
-        staging:
-            title: Staging and QA
-
-        prod:
-            title: Production
-
-
-Environments contain EnvironmentRegions. The name of an EnvironmentRegion must match
-a valid AWS region name. The special ``default`` name is also available, which can be used to
-override config for a whole environment, regardless of region.
-
-The following example enables the applications named ``marketing-app`` and
-``sales-app`` into all dev environments by default. In ``us-west-2`` this is
-overridden and only the ``sales-app`` would be deployed there.
-
-.. code-block:: yaml
-
-    environments:
-
-        dev:
-            title: Development
-            default:
-                applications:
-                    marketing-app:
-                        enabled: true
-                    sales-app:
-                        enabled: true
-            us-west-2:
-                applications:
-                    marketing-app:
-                        enabled: false
-            ca-central-1:
-                enabled: true
-
-
-Environment
-------------
-
-
-    Environment
-    
-
-.. _Environment:
-
-.. list-table:: :guilabel:`Environment` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Req?
-      - Default
-      - Constraints
-      - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-
-
-
-EnvironmentDefault
--------------------
-
-
-    Default values for an Environment's configuration
-    
-
-.. _EnvironmentDefault:
-
-.. list-table:: :guilabel:`EnvironmentDefault` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Req?
-      - Default
-      - Constraints
-      - Purpose
-      - Base Schema
-    * - alarm_sets
-      - Container of AlarmSets_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - Alarm Sets
-      - RegionContainer
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - applications
-      - Container of ApplicationEngines_ Paco schemas
-      - .. fa:: check
-      - 
-      - 
-      - Application container
-      - EnvironmentDefault
-    * - network
-      - Container of Network_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - Network
-      - EnvironmentDefault
-    * - secrets_manager
-      - Container of SecretsManager_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - Secrets Manager
-      - EnvironmentDefault
-
-
-
-EnvironmentRegion
-------------------
-
-
-    An actual provisioned Environment in a specific region.
-    May contains overrides of the IEnvironmentDefault where needed.
-    
-
-.. _EnvironmentRegion:
-
-.. list-table:: :guilabel:`EnvironmentRegion` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Req?
-      - Default
-      - Constraints
-      - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - applications
-      - Container of ApplicationEngines_ Paco schemas
-      - .. fa:: check
-      - 
-      - 
-      - Application container
-      - EnvironmentDefault
-    * - network
-      - Container of Network_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - Network
-      - EnvironmentDefault
-    * - secrets_manager
-      - Container of SecretsManager_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - Secrets Manager
-      - EnvironmentDefault
-    * - alarm_sets
-      - Container of AlarmSets_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - Alarm Sets
-      - RegionContainer
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-
-
-Applications
-============
+NetEnv - applications:
+======================
 
 Applications define a collection of AWS resources that work together to support a workload.
 
@@ -1898,8 +2081,8 @@ Resource
       - Resource
 
 
-Application Resources
-=====================
+NetEnv - resources:
+===================
 
 At it's heart, an Application is a collection of Resources. These are the Resources available for
 applications.
@@ -7876,8 +8059,8 @@ EBS
 
 
 
-Secrets
-=======
+NetEnv - secrets_manager:
+=========================
 
 
 SecretsManager
@@ -7907,611 +8090,96 @@ Secrets Manager
       - Title
 
 
-Global Resources
-================
+NetEnv - backup_vaults:
+=======================
 
-CloudTrail
-----------
-
-The ``resource/iam.yaml`` file contains CloudTrails.
-
-.. code-block:: bash
-
-    paco provision resource.cloudtrail
-
+`AWS Backup`_ can be provisioned with the ``backup_vaults:``. This is a container of BackupVaults.
+Each BackupVault can contain BackupPlans which are further composed of a BackupRules and BackupSelections.
 
 .. code-block:: yaml
-    :caption: Example resource/cloudtrail.yaml file
 
-    trails:
-      cloudtrail:
-        region: ''
-        enabled: true
-        cloudwatchlogs_log_group:
-          expire_events_after_days: '14'
-          log_group_name: 'CloudTrail'
-        enable_log_file_validation: true
-        include_global_service_events: true
-        is_multi_region_trail: true
-        enable_kms_encryption: true
-        s3_bucket_account: 'paco.ref accounts.security'
-        s3_key_prefix: 'cloudtrails'
-
-
-IAM
----
-
-The ``resource/iam.yaml`` file contains IAM Users. Each user account can be given
-different levels of access a set of AWS accounts. For more information on how
-IAM Users can be managed, see `Managing IAM Users with Paco`_.
-
-.. code-block:: bash
-
-    paco provision resource.iam.users
-
-
-.. _Managing IAM Users with Paco: ./paco-users.html
-
-
-IAMResource
-^^^^^^^^^^^^
-
-
-IAM Resource contains IAM Users who can login and have different levels of access to the AWS Console and API.
-    
-
-.. _IAMResource:
-
-.. list-table:: :guilabel:`IAMResource`
-    :widths: 15 8 4 12 15 30 10
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Req?
-      - Default
-      - Constraints
-      - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - users
-      - Container of IAMUsers_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - IAM Users
-      - IAMResource
-
-
-
-IAMUsers
-^^^^^^^^^
-
-
-
-.. _IAMUsers:
-
-.. list-table:: :guilabel:`IAMUsers` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Req?
-      - Default
-      - Constraints
-      - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-
-
-
-IAMUser
-^^^^^^^^
-
-
-    IAM User
-    
-
-.. _IAMUser:
-
-.. list-table:: :guilabel:`IAMUser`
-    :widths: 15 8 4 12 15 30 10
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Req?
-      - Default
-      - Constraints
-      - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - account
-      - TextReference
-      - .. fa:: check
-      - 
-      - 
-      - Paco account reference to install this user
-      - IAMUser
-    * - account_whitelist
-      - CommaList
-      - .. fa:: times
-      - 
-      - 
-      - Comma separated list of Paco AWS account names this user has access to
-      - IAMUser
-    * - console_access_enabled
-      - Boolean
-      - .. fa:: check
-      - 
-      - 
-      - Console Access Boolean
-      - IAMUser
-    * - description
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - IAM User Description
-      - IAMUser
-    * - permissions
-      - Container of IAMUserPermissions_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - Paco IAM User Permissions
-      - IAMUser
-    * - programmatic_access
-      - IAMUserProgrammaticAccess_ Paco schema
-      - .. fa:: times
-      - 
-      - 
-      - Programmatic Access
-      - IAMUser
-    * - username
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - IAM Username
-      - IAMUser
-
-
-
-IAMUserProgrammaticAccess
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-
-    IAM User Programmatic Access Configuration
-    
-
-.. _IAMUserProgrammaticAccess:
-
-.. list-table:: :guilabel:`IAMUserProgrammaticAccess`
-    :widths: 15 8 4 12 15 30 10
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Req?
-      - Default
-      - Constraints
-      - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - access_key_1_version
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - Access key version id
-      - IAMUserProgrammaticAccess
-    * - access_key_2_version
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - Access key version id
-      - IAMUserProgrammaticAccess
-
-
-
-IAMUserPermissions
-^^^^^^^^^^^^^^^^^^^
-
-
-    Group of IAM User Permissions
-    
-
-.. _IAMUserPermissions:
-
-.. list-table:: :guilabel:`IAMUserPermissions` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Req?
-      - Default
-      - Constraints
-      - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-
-
-
-Role
-^^^^^
-
-
-
-.. _Role:
-
-.. list-table:: :guilabel:`Role`
-    :widths: 15 8 4 12 15 30 10
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Req?
-      - Default
-      - Constraints
-      - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - assume_role_policy
-      - AssumeRolePolicy_ Paco schema
-      - .. fa:: times
-      - 
-      - 
-      - Assume role policy
-      - Role
-    * - global_role_name
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Role name is globally unique and will not be hashed
-      - Role
-    * - instance_profile
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Instance profile
-      - Role
-    * - managed_policy_arns
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
-      - Managed policy ARNs
-      - Role
-    * - max_session_duration
-      - Int
-      - .. fa:: times
-      - 3600
-      - The maximum session duration (in seconds)
-      - Maximum session duration
-      - Role
-    * - path
-      - String
-      - .. fa:: times
-      - /
-      - 
-      - Path
-      - Role
-    * - permissions_boundary
-      - String
-      - .. fa:: times
-      - 
-      - Must be valid ARN
-      - Permissions boundary ARN
-      - Role
-    * - policies
-      - List of Policy_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - Policies
-      - Role
-    * - role_name
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Role name
-      - Role
-
-
-
-AssumeRolePolicy
-^^^^^^^^^^^^^^^^^
-
-
-
-.. _AssumeRolePolicy:
-
-.. list-table:: :guilabel:`AssumeRolePolicy`
-    :widths: 15 8 4 12 15 30 10
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Req?
-      - Default
-      - Constraints
-      - Purpose
-      - Base Schema
-    * - aws
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
-      - List of AWS Principles
-      - AssumeRolePolicy
-    * - effect
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Effect
-      - AssumeRolePolicy
-    * - service
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
-      - Service
-      - AssumeRolePolicy
-
-
-
-Policy
-^^^^^^^
-
-
-
-.. _Policy:
-
-.. list-table:: :guilabel:`Policy`
-    :widths: 15 8 4 12 15 30 10
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Req?
-      - Default
-      - Constraints
-      - Purpose
-      - Base Schema
-    * - name
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Policy name
-      - Policy
-    * - statement
-      - List of Statement_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - Statements
-      - Policy
-
-
-
-Statement
-^^^^^^^^^^
-
-
-
-.. _Statement:
-
-.. list-table:: :guilabel:`Statement`
-    :widths: 15 8 4 12 15 30 10
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Req?
-      - Default
-      - Constraints
-      - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - action
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
-      - Action(s)
-      - Statement
-    * - effect
-      - String
-      - .. fa:: times
-      - 
-      - Must be one of: 'Allow', 'Deny'
-      - Effect
-      - Statement
-    * - resource
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
-      - Resrource(s)
-      - Statement
-
-
-SNS Topics
-----------
-
-The ``resource/snstopics.yaml`` file manages AWS Simple Notification Service (SNS) resources.
-SNS has only two resources: SNS Topics and SNS Subscriptions.
-
-.. code-block:: bash
-
-    paco provision resource.snstopics
+    backup_vaults:
+      accounting:
+        enabled: false
+        plans:
+          ebs_daily:
+            title: EBS Daily Backups
+            enabled: true
+            plan_rules:
+              - title: Backup EBS volumes once a day
+                schedule_expression: cron(0 8 ? * * *)
+                lifecycle_delete_after_days: 14
+            selections:
+              - title: EBS volumes tagged with "backup-accounting: daily"
+                tags:
+                  - condition_type: STRINGEQUALS
+                    condition_key: backup-accounting
+                    condition_value: daily
+          database_weekly:
+            title: Weekly MySQL Backups
+            enabled: true
+            plan_rules:
+              - title: Rule for Weekly MySQL Backups
+                schedule_expression: cron(0 10 ? * 1 *)
+                lifecycle_delete_after_days: 150
+            selections:
+              - title: Database resource selection
+                resources:
+                  - paco.ref netenv.mynet.applications.accounting.groups.app.resources.database
+
+BackupVaults must be explicity referenced in an environment for them to be provisioned.
 
 .. code-block:: yaml
-    :caption: Example resource/snstopics.yaml file
 
-    account: paco.ref accounts.prod
-    regions:
-      - 'us-west-2'
-      - 'us-east-1'
-    groups:
-      admin:
-        title: "Administrator Group"
-        enabled: true
-        cross_account_access: true
-        subscriptions:
-          - endpoint: http://example.com/yes
-            protocol: http
-          - endpoint: https://example.com/orno
-            protocol: https
-          - endpoint: bob@example.com
-            protocol: email
-          - endpoint: bob@example.com
-            protocol: email-json
-          - endpoint: '555-555-5555'
-            protocol: sms
-          - endpoint: arn:aws:sqs:us-east-2:444455556666:queue1
-            protocol: sqs
-          - endpoint: arn:aws:sqs:us-east-2:444455556666:queue1
-            protocol: application
-          - endpoint: arn:aws:lambda:us-east-1:123456789012:function:my-function
-            protocol: lambda
+    environmnets:
+      prod:
+        ca-central-1:
+          backup_vaults:
+            accounting:
+              enabled: true
 
-.. sidebar:: Prescribed Automation
 
-    ``cross_account_access``: Creates an SNS Topic Policy which will grant all of the AWS Accounts in this
-    Paco Project access to the ``sns.Publish`` permission for this SNS Topic.
+.. _AWS Backup: https://aws.amazon.com/backup/
 
-    You will need this if you want to send CloudWatch Alarms from multiple accounts to the same
-    SNS Topic(s) in one account.
 
-EC2 Keypairs
+BackupVaults
+-------------
+
+
+
+.. _BackupVaults:
+
+.. list-table:: :guilabel:`BackupVaults` |bars| Container where the keys are the ``name`` field.
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Title
+
+
+
+BackupVault
 ------------
 
-The ``resource/ec2.yaml`` file manages AWS EC2 Keypairs.
 
-.. code-block:: bash
-
-    paco provision resource.ec2.keypairs # all keypairs
-    paco provision resource.ec2.keypairs.devnet_usw2 # single keypair
-
-.. code-block:: yaml
-    :caption: Example resource/ec2.yaml file
-
-    keypairs:
-      devnet_usw2:
-        keypair_name: "dev-us-west-2"
-        region: "us-west-2"
-        account: paco.ref accounts.dev
-      staging_cac1:
-        keypair_name: "staging-us-west-2"
-        region: "ca-central-1"
-        account: paco.ref accounts.stage
-      prod_usw2:
-        keypair_name: "prod-us-west-2"
-        region: "us-west-2"
-        account: paco.ref accounts.prod
-
-CodeCommit
-----------
-
-The ``resource/codecommit.yaml`` file manages CodeCommit repositories and users.
-
-.. code-block:: bash
-
-    paco provision resource.codecommit
-
-.. code-block:: yaml
-    :caption: Example resource/codecommit.yaml file
-
-    app:
-      site:
-        enabled: true
-        account: paco.ref accounts.tools
-        region: 'us-west-2'
-        description: "Application repo"
-        repository_name: "saas-app"
-        users:
-          kevin_teague:
-            username: kevin.t@waterbear.cloud
-            public_ssh_key: 'ssh-rsa AAAAB3Nza.........6OzEFxCbJ'
-
-
-
-CodeCommit
-^^^^^^^^^^^
-
-
-    CodeCommit Service Configuration
+AWS Backup Vault
     
 
-.. _CodeCommit:
+.. _BackupVault:
 
-.. list-table:: :guilabel:`CodeCommit`
+.. list-table:: :guilabel:`BackupVault`
     :widths: 15 8 4 12 15 30 10
     :header-rows: 1
 
@@ -8522,26 +8190,420 @@ CodeCommit
       - Constraints
       - Purpose
       - Base Schema
-    * - repository_groups
-      - Dict
+    * - dns_enabled
+      - Boolean
+      - .. fa:: times
+      - True
+      - 
+      - Boolean indicating whether DNS record sets will be created.
+      - DNSEnablable
+    * - enabled
+      - Boolean
+      - .. fa:: times
+      - False
+      - Could be deployed to AWS
+      - Enabled
+      - Deployable
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
+    * - title
+      - String
       - .. fa:: times
       - 
       - 
-      - Group of Repositories
-      - CodeCommit
+      - Title
+      - Title
+    * - type
+      - String
+      - .. fa:: times
+      - 
+      - A valid AWS Resource type: ASG, LBApplication, etc.
+      - Type of Resources
+      - Type
+    * - notification_events
+      - List of Strings
+      - .. fa:: times
+      - 
+      - Each notification event must be one of BACKUP_JOB_STARTED, BACKUP_JOB_COMPLETED, RESTORE_JOB_STARTED, RESTORE_JOB_COMPLETED, RECOVERY_POINT_MODIFIED
+      - Notification Events
+      - BackupVault
+    * - notification_group
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Notification Group
+      - BackupVault
+    * - plans
+      - Container of BackupPlans_ Paco schemas
+      - .. fa:: times
+      - 
+      - 
+      - Backup Plans
+      - BackupVault
 
 
 
-CodeCommitRepository
-^^^^^^^^^^^^^^^^^^^^^
+BackupPlans
+------------
 
 
-    CodeCommit Repository Configuration
+
+.. _BackupPlans:
+
+.. list-table:: :guilabel:`BackupPlans` |bars| Container where the keys are the ``name`` field.
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Title
+
+
+
+BackupPlan
+-----------
+
+
+AWS Backup Plan
     
 
-.. _CodeCommitRepository:
+.. _BackupPlan:
 
-.. list-table:: :guilabel:`CodeCommitRepository` |bars| Container where the keys are the ``name`` field.
+.. list-table:: :guilabel:`BackupPlan`
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - dns_enabled
+      - Boolean
+      - .. fa:: times
+      - True
+      - 
+      - Boolean indicating whether DNS record sets will be created.
+      - DNSEnablable
+    * - enabled
+      - Boolean
+      - .. fa:: times
+      - False
+      - Could be deployed to AWS
+      - Enabled
+      - Deployable
+    * - change_protected
+      - Boolean
+      - .. fa:: times
+      - False
+      - 
+      - Boolean indicating whether this resource can be modified or not.
+      - Resource
+    * - order
+      - Int
+      - .. fa:: times
+      - 0
+      - 
+      - The order in which the resource will be deployed
+      - Resource
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Title
+    * - type
+      - String
+      - .. fa:: times
+      - 
+      - A valid AWS Resource type: ASG, LBApplication, etc.
+      - Type of Resources
+      - Type
+    * - plan_rules
+      - List of BackupPlanRule_ Paco schemas
+      - .. fa:: check
+      - 
+      - 
+      - Backup Plan Rules
+      - BackupPlan
+    * - selections
+      - List of BackupPlanSelection_ Paco schemas
+      - .. fa:: times
+      - 
+      - 
+      - Backup Plan Selections
+      - BackupPlan
+
+
+
+BackupPlanRule
+---------------
+
+
+
+.. _BackupPlanRule:
+
+.. list-table:: :guilabel:`BackupPlanRule`
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Title
+    * - lifecycle_delete_after_days
+      - Int
+      - .. fa:: times
+      - 
+      - 
+      - Delete after days
+      - BackupPlanRule
+    * - lifecycle_move_to_cold_storage_after_days
+      - Int
+      - .. fa:: times
+      - 
+      - If Delete after days value is set, this value must be smaller
+      - Move to cold storage after days
+      - BackupPlanRule
+    * - schedule_expression
+      - String
+      - .. fa:: times
+      - 
+      - Must be a valid Schedule Expression.
+      - Schedule Expression
+      - BackupPlanRule
+
+
+
+BackupPlanSelection
+--------------------
+
+
+
+.. _BackupPlanSelection:
+
+.. list-table:: :guilabel:`BackupPlanSelection`
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - resources
+      - List of Strings
+      - .. fa:: times
+      - 
+      - 
+      - Backup Plan Resources
+      - BackupPlanSelection
+    * - tags
+      - List of BackupSelectionConditionResourceType_ Paco schemas
+      - .. fa:: times
+      - 
+      - 
+      - List of condition resource types
+      - BackupPlanSelection
+    * - title
+      - String
+      - .. fa:: check
+      - 
+      - 
+      - Title
+      - BackupPlanSelection
+
+
+NetEnv - environments:
+======================
+
+Environments define where actual cloud resources are to be provisioned.
+As Environments copy all of the defaults from ``network``, ``applications``, ``backups`` and ``secrets_manager`` config
+in the same NetworkEnvironment file.
+
+The top level ``environments:`` container is simply a name and a title. This defines logical
+names for each environment.
+
+.. code-block:: yaml
+
+    environments:
+
+        dev:
+            title: Development
+
+        staging:
+            title: Staging and QA
+
+        prod:
+            title: Production
+
+
+Environments contain EnvironmentRegions. The name of an EnvironmentRegion must match
+a valid AWS region name. The special ``default`` name is also available, which can be used to
+override config for a whole environment, regardless of region.
+
+The following example enables the applications named ``marketing-app`` and
+``sales-app`` into all dev environments by default. In ``us-west-2`` this is
+overridden and only the ``sales-app`` would be deployed there.
+
+.. code-block:: yaml
+
+    environments:
+
+        dev:
+            title: Development
+            default:
+                applications:
+                    marketing-app:
+                        enabled: true
+                    sales-app:
+                        enabled: true
+            us-west-2:
+                applications:
+                    marketing-app:
+                        enabled: false
+            ca-central-1:
+                enabled: true
+
+
+Environment
+------------
+
+
+    Environment
+    
+
+.. _Environment:
+
+.. list-table:: :guilabel:`Environment` |bars| Container where the keys are the ``name`` field.
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Title
+
+
+
+EnvironmentDefault
+-------------------
+
+
+    Default values for an Environment's configuration
+    
+
+.. _EnvironmentDefault:
+
+.. list-table:: :guilabel:`EnvironmentDefault` |bars| Container where the keys are the ``name`` field.
+    :widths: 15 8 4 12 15 30 10
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Req?
+      - Default
+      - Constraints
+      - Purpose
+      - Base Schema
+    * - alarm_sets
+      - Container of AlarmSets_ Paco schemas
+      - .. fa:: times
+      - 
+      - 
+      - Alarm Sets
+      - RegionContainer
+    * - title
+      - String
+      - .. fa:: times
+      - 
+      - 
+      - Title
+      - Title
+    * - applications
+      - Container of ApplicationEngines_ Paco schemas
+      - .. fa:: check
+      - 
+      - 
+      - Application container
+      - EnvironmentDefault
+    * - network
+      - Container of Network_ Paco schemas
+      - .. fa:: times
+      - 
+      - 
+      - Network
+      - EnvironmentDefault
+    * - secrets_manager
+      - Container of SecretsManager_ Paco schemas
+      - .. fa:: times
+      - 
+      - 
+      - Secrets Manager
+      - EnvironmentDefault
+
+
+
+EnvironmentRegion
+------------------
+
+
+    An actual provisioned Environment in a specific region.
+    May contains overrides of the IEnvironmentDefault where needed.
+    
+
+.. _EnvironmentRegion:
+
+.. list-table:: :guilabel:`EnvironmentRegion` |bars| Container where the keys are the ``name`` field.
     :widths: 15 8 4 12 15 30 10
     :header-rows: 1
 
@@ -8559,6 +8621,34 @@ CodeCommitRepository
       - Could be deployed to AWS
       - Enabled
       - Deployable
+    * - applications
+      - Container of ApplicationEngines_ Paco schemas
+      - .. fa:: check
+      - 
+      - 
+      - Application container
+      - EnvironmentDefault
+    * - network
+      - Container of Network_ Paco schemas
+      - .. fa:: times
+      - 
+      - 
+      - Network
+      - EnvironmentDefault
+    * - secrets_manager
+      - Container of SecretsManager_ Paco schemas
+      - .. fa:: times
+      - 
+      - 
+      - Secrets Manager
+      - EnvironmentDefault
+    * - alarm_sets
+      - Container of AlarmSets_ Paco schemas
+      - .. fa:: times
+      - 
+      - 
+      - Alarm Sets
+      - RegionContainer
     * - title
       - String
       - .. fa:: times
@@ -8566,85 +8656,12 @@ CodeCommitRepository
       - 
       - Title
       - Title
-    * - account
-      - TextReference
-      - .. fa:: check
-      - 
-      - 
-      - AWS Account Reference
-      - CodeCommitRepository
-    * - description
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Repository Description
-      - CodeCommitRepository
-    * - region
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - AWS Region
-      - CodeCommitRepository
-    * - repository_name
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Repository Name
-      - CodeCommitRepository
-    * - users
-      - Container of CodeCommitUser_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - CodeCommit Users
-      - CodeCommitRepository
 
 
+Monitoring: monitor/*.yaml
+===========================
 
-CodeCommitUser
-^^^^^^^^^^^^^^^
-
-
-    CodeCommit User
-    
-
-.. _CodeCommitUser:
-
-.. list-table:: :guilabel:`CodeCommitUser`
-    :widths: 15 8 4 12 15 30 10
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Req?
-      - Default
-      - Constraints
-      - Purpose
-      - Base Schema
-    * - public_ssh_key
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - CodeCommit User Public SSH Key
-      - CodeCommitUser
-    * - username
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - CodeCommit Username
-      - CodeCommitUser
-
-
-
-MonitorConfig
-=============
-
-This directory can contain two files: ``alarmsets.yaml`` and ``logsets.yaml``. These files
+The ``monitor`` directory can contain two files: ``monitor/alarmsets.yaml`` and ``monitor/logging.yaml``. These files
 contain CloudWatch Alarm and CloudWatch Agent Log Source configuration. These alarms and log sources
 are grouped into named sets, and sets of alarms and logs can be applied to resources.
 
