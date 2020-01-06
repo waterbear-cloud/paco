@@ -994,7 +994,7 @@ def convert_schema_to_list_table(schema, level='-', header=True):
 .. _{}:
 
 .. list-table:: {}
-    :widths: 15 28 30 12 15
+    :widths: 15 28 30 16 11
     :header-rows: 1
 
     * - Field name
@@ -1008,8 +1008,8 @@ def convert_schema_to_list_table(schema, level='-', header=True):
             '    * - {name}\n' + \
             '      - {type}\n' + \
             '      - {purpose}\n' + \
-            '      - {default}\n' + \
-            '      - {constraints}\n'
+            '      - {constraints}\n' + \
+            '      - {default}\n'
 
     base_fields = []
     base_schemas = {}
