@@ -4,6 +4,7 @@ from the schema definition.
 """
 
 import os.path
+import re
 import zope.schema
 from paco.models import schemas
 from zope.interface.common.mapping import IMapping
@@ -16,8 +17,46 @@ paco_config_template = """
 YAML File Schemas
 *****************
 
-Accounts: accounts/*.yaml
-=========================
+Base Schemas
+============
+
+Base Schemas are never configured by themselves, they are schemas that are inherited by other schemas.
+
+Interface
+---------
+
+A generic placeholder for any schema.
+
+{INamed}
+
+{ITitle}
+
+{IName}
+
+{IResource}
+
+{IDeployable}
+
+{IType}
+
+{IDNSEnablable}
+
+{IMonitorable}
+
+{IMonitorConfig}
+
+{IRegionContainer}
+
+{INotifiable}
+
+{ISecurityGroupRule}
+
+{IApplicationEngine}
+
+
+
+Accounts: accounts/\*.yaml
+==========================
 
 AWS account information is kept in the ``accounts/`` directory.
 Each file in this directory will define one AWS account, the filename
@@ -27,8 +66,8 @@ will be the ``name`` of the account, with a .yml or .yaml extension.
 
 {IAdminIAMUser}
 
-Global Resources: resource/*.yaml
-=================================
+Global Resources: resource/\*.yaml
+==================================
 
 CloudTrail: resource/cloudtrail.yaml
 ------------------------------------
@@ -196,8 +235,8 @@ The ``resource/codecommit.yaml`` file manages CodeCommit repositories and users.
 
 {ICodeCommitUser}
 
-NetworkEnvironments: netenv/*.yaml
-===================================
+NetworkEnvironments: netenv/\*.yaml
+====================================
 
 NetworkEnvironments are the core of any Paco project. Every .yaml file in the
 ``netenv`` directory contains information about networks, applications and environments.
@@ -221,10 +260,8 @@ and Environment schemas.
 
     applications:
         my-paco-app:
-            managed_updates: true
             # more application YAML here ...
         reporting-app:
-            managed_updates: false
             # more application YAML here ...
 
     environments:
@@ -309,6 +346,8 @@ Networks have the following hierarchy:
                                   protocol: tcp
                                   source_security_group: paco.ref netenv.my-paco-example.network.vpc.security_groups.app.lb
                                   to_port: 80
+
+{INetworkEnvironment}
 
 {INetwork}
 
@@ -396,7 +435,6 @@ In turn, each ResourceGroup contains ``resources:`` with names such as ``cpbd``,
 
 {IResources}
 
-{IResource}
 
 NetEnv - resources:
 ===================
@@ -408,15 +446,33 @@ applications.
 
 {IApiGatewayMethods}
 
+{IApiGatewayMethod}
+
 {IApiGatewayModels}
+
+{IApiGatewayModel}
 
 {IApiGatewayResources}
 
+{IApiGatewayResource}
+
 {IApiGatewayStages}
+
+{IApiGatewayStage}
+
+{IApiGatewayMethodIntegration}
+
+{IApiGatewayMethodIntegrationResponse}
+
+{IApiGatewayMethodMethodResponse}
+
+{IApiGatewayMethodMethodResponseModel}
 
 {ILBApplication}
 
 {IDNS}
+
+{IListeners}
 
 {IListener}
 
@@ -424,13 +480,19 @@ applications.
 
 {IPortProtocol}
 
+{ITargetGroups}
+
 {ITargetGroup}
 
 {IASG}
 
 {IASGLifecycleHooks}
 
+{IASGLifecycleHook}
+
 {IASGScalingPolicies}
+
+{IASGScalingPolicy}
 
 {IBlockDeviceMapping}
 
@@ -447,6 +509,34 @@ applications.
 {ICloudFormationConfigSets}
 
 {ICloudFormationConfigurations}
+
+{ICloudFormationConfiguration}
+
+{ICloudFormationInitCommands}
+
+{ICloudFormationInitCommand}
+
+{ICloudFormationInitFiles}
+
+{ICloudFormationInitFile}
+
+{ICloudFormationInitGroups}
+
+{ICloudFormationInitPackages}
+
+{ICloudFormationInitVersionedPackageSet}
+
+{ICloudFormationInitPathOrUrlPackageSet}
+
+{ICloudFormationInitServiceCollection}
+
+{ICloudFormationInitServices}
+
+{ICloudFormationInitService}
+
+{ICloudFormationInitSources}
+
+{ICloudFormationInitUsers}
 
 {ICodePipeBuildDeploy}
 
@@ -598,6 +688,8 @@ Console to switch between performance and debug configuration quickl in an emerg
 
 {ICloudFrontCookies}
 
+{IElastiCache}
+
 {IElastiCacheRedis}
 
 {IDeploymentPipeline}
@@ -624,6 +716,8 @@ Console to switch between performance and debug configuration quickl in an emerg
 
 {IDeploymentPipelineConfiguration}
 
+{IDeploymentGroupS3Location}
+
 {IEFS}
 
 {IEIP}
@@ -639,6 +733,15 @@ NetEnv - secrets_manager:
 =========================
 
 {ISecretsManager}
+
+{ISecretsManagerApplication}
+
+{ISecretsManagerGroup}
+
+{ISecretsManagerSecret}
+
+{IGenerateSecretString}
+
 
 NetEnv - backup_vaults:
 =======================
@@ -703,6 +806,8 @@ BackupVaults must be explicity referenced in an environment for them to be provi
 
 {IBackupPlanSelection}
 
+{IBackupSelectionConditionResourceType}
+
 NetEnv - environments:
 ======================
 
@@ -760,8 +865,8 @@ overridden and only the ``sales-app`` would be deployed there.
 
 {IEnvironmentRegion}
 
-Monitoring: monitor/*.yaml
-===========================
+Monitoring: monitor/\*.yaml
+============================
 
 The ``monitor`` directory can contain two files: ``monitor/alarmsets.yaml`` and ``monitor/logging.yaml``. These files
 contain CloudWatch Alarm and CloudWatch Agent Log Source configuration. These alarms and log sources
@@ -802,24 +907,53 @@ an Alarm.
 
 {IDimension}
 
-{ICloudWatchLogSource}
-
 {IAlarmNotifications}
 
 {IAlarmNotification}
 
+{IHealthChecks}
+
+{ISimpleCloudWatchAlarm}
+
+{ICloudWatchLogRetention}
+
+{ICloudWatchLogSets}
+
+{ICloudWatchLogSet}
+
+{ICloudWatchLogGroups}
+
+{ICloudWatchLogGroup}
+
+{ICloudWatchLogSources}
+
+{ICloudWatchLogSource}
+
+{IMetricFilters}
+
+{IMetricFilter}
+
+{IMetricTransformation}
+
+{IMetric}
+
 """
+
+def strip_interface_char(name):
+    """
+    Takes an Interface name and strips the leading I character
+    """
+    if name != 'Interface':
+        return name[1:]
+    return name
 
 def convert_schema_to_list_table(schema, level='-', header=True):
     """
     Introspects a Schema-based Interface and returns
     a ReStructured Text representation of it.
     """
-    schema_name = schema.__name__[1:]
+    schema_name = strip_interface_char(schema.__name__)
     output = []
-
-    #if not header:
-    #    level = '='
 
     # Header
     output = [
@@ -842,7 +976,16 @@ def convert_schema_to_list_table(schema, level='-', header=True):
 
         # Indicate if object is a container
         if schema.extends(IMapping):
-            caption = """:guilabel:`{}` |bars| Container where the keys are the ``name`` field.""".format(schema_name)
+            try:
+                contained_schema = schema.getTaggedValue('contains')
+            except KeyError:
+                print('IMapping tagged value for contains not set for {}'.format(schema.__name__))
+                contained_schema = ' unknown'
+            caption = ":guilabel:`{}`".format(schema_name)
+            if contained_schema != 'mixed':
+                caption += " |bars| Container<`{}`_>".format(
+                    strip_interface_char(contained_schema)
+                )
         else:
             caption = ':guilabel:`{}`'.format(schema_name)
 
@@ -851,55 +994,72 @@ def convert_schema_to_list_table(schema, level='-', header=True):
 .. _{}:
 
 .. list-table:: {}
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
 """.format(schema_name, caption)
         )
         table_row_template = \
             '    * - {name}\n' + \
             '      - {type}\n' + \
-            '      - {required}\n' + \
-            '      - {default}\n' + \
-            '      - {constraints}\n'  + \
             '      - {purpose}\n' + \
-            '      - {baseschema}\n'
+            '      - {default}\n' + \
+            '      - {constraints}\n'
 
     base_fields = []
+    base_schemas = {}
     specific_fields = []
     for fieldname, field in sorted(zope.schema.getFields(schema).items()):
         if field.interface.__name__ != schema.__name__:
             base_fields.append(field)
+            if field.interface.__name__ not in base_schemas:
+                base_schemas[
+                    strip_interface_char(field.interface.__name__)
+                ] = None
         else:
             specific_fields.append(field)
 
-    base_fields = sorted(base_fields, key=lambda field: field.getName())
-    base_fields = sorted(base_fields, key=lambda field: field.interface.__name__)
+    #base_fields = sorted(base_fields, key=lambda field: field.getName())
+    #base_fields = sorted(base_fields, key=lambda field: field.interface.__name__)
 
-    for field in base_fields:
-        output.append(convert_field_to_table_row(schema, field, table_row_template))
+    #for field in base_fields:
+    #    output.append(convert_field_to_table_row(schema, field, table_row_template))
     for field in specific_fields:
         output.append(convert_field_to_table_row(schema, field, table_row_template))
+    if len(specific_fields) == 0:
+        output.append("""    * -
+      -
+      -
+      -
+      -
+""")
+
+    if len(base_schemas.keys()) > 0:
+        base_schema_str = '\n*Base Schemas* '
+        for base_schema in base_schemas.keys():
+            base_schema_str += "`{}`_, ".format(base_schema)
+        base_schema_str = base_schema_str[:-2]
+        output.append(base_schema_str)
 
     return ''.join(output)
 
+def indent_text(text):
+    "Replace newlines with indented lines that are formatted for a ReST table row"
+    return re.sub('\n(?<!$)', '\n        ', text)
+
 def convert_field_to_table_row(schema, field, table_row_template):
-    baseschema = schema.__name__[1:]
-    if field.interface.__name__ != schema.__name__:
-        baseschema = field.interface.__name__[1:]
-
+    """Schema field converted to string that represents a ReST table row"""
     if field.required:
-        req_icon = '.. fa:: check'
+        required = ' |star|'
     else:
-        req_icon = '.. fa:: times'
+        required = ''
 
+    # Type field
     data_type = field.__class__.__name__
     if data_type in ('TextLine', 'Text'):
         data_type = 'String'
@@ -907,19 +1067,28 @@ def convert_field_to_table_row(schema, field, table_row_template):
         data_type = 'Boolean'
     elif data_type == 'Object':
         if field.schema.extends(IMapping):
-            data_type = 'Container of {}_ Paco schemas'.format(field.schema.__name__[1:])
+            data_type = 'Container<{}_>'.format(
+                strip_interface_char(field.schema.__name__)
+            )
         else:
-            data_type = '{}_ Paco schema'.format(field.schema.__name__[1:])
+            data_type = 'Object<{}_>'.format(
+                strip_interface_char(field.schema.__name__)
+            )
     elif data_type == 'Dict':
         if field.value_type and hasattr(field.value_type, 'schema'):
-            data_type = 'Container of {}_ Paco schemas'.format(field.value_type.schema.__name__[1:])
+            data_type = 'Container<{}_>'.format(
+                strip_interface_char(field.value_type.schema.__name__)
+            )
         else:
             data_type = 'Dict'
     elif data_type == 'List':
         if field.value_type and not zope.schema.interfaces.IText.providedBy(field.value_type):
-            data_type = 'List of {}_ Paco schemas'.format(field.value_type.schema.__name__[1:])
+            data_type = 'List<{}_>'.format(
+                strip_interface_char(field.value_type.schema.__name__)
+            )
         else:
-            data_type = 'List of Strings'
+            data_type = 'List<string>'
+    data_type = data_type + required
 
     # don't display the name field, it is derived from the key
     name = field.getName()
@@ -935,11 +1104,9 @@ def convert_field_to_table_row(schema, field, table_row_template):
             **{
                 'name': name,
                 'type': data_type,
-                'required': req_icon,
                 'default': default,
                 'purpose': field.title,
-                'constraints': field.description,
-                'baseschema': baseschema
+                'constraints': indent_text(field.description)
             }
         )
     else:
@@ -955,13 +1122,24 @@ DOCLESS_SCHEMAS = {
 
 MINOR_SCHEMAS = {
     'IApiGatewayMethods': None,
-    'IApiGatewayMethods': None,
+    'IApiGatewayMethod': None,
     'IApiGatewayModels': None,
+    'IApiGatewayModel': None,
     'IApiGatewayResources': None,
+    'IApiGatewayResource': None,
     'IApiGatewayStages': None,
+    'IApiGatewayStage': None,
+    'IApiGatewayMethodMethodResponse'
+    'IApiGatewayMethodMethodResponseModel': None,
+    'IApiGatewayMethodIntegration': None,
+    'IApiGatewayMethodIntegrationResponse': None,
     'IDNS': None,
+    'IASGLifecycleHook': None,
+    'IASGScalingPolicy': None,
     'IListener': None,
     'ITargetGroup': None,
+    'IListeners': None,
+    'ITargetGroups': None,
     'IPortProtocol': None,
     'IListenerRule': None,
     'IBlockDeviceMapping': None,
@@ -970,7 +1148,6 @@ MINOR_SCHEMAS = {
     'IEC2LaunchOptions': None,
     'IASGLifecycleHooks': None,
     'IASGScalingPolicies': None,
-    'ICloudFormationInit': None,
     'ICloudFormationConfigSets': None,
     'ICloudFormationConfigurations': None,
     'IBlockDevice': None,
@@ -1013,8 +1190,10 @@ MINOR_SCHEMAS = {
     'IDeploymentPipelineSourceCodeCommit': None,
     'IDeploymentPipelineStageAction': None,
     'IDeploymentPipelineConfiguration': None,
+    'IDeploymentGroupS3Location': None,
     'IRDSMysql': None,
     'IRDSAurora': None,
+    'IElastiCacheRedis': None,
     'ICodeDeployDeploymentGroups': None,
     'ICodeDeployDeploymentGroup': None,
     'IIAMResource': None,
@@ -1028,10 +1207,42 @@ MINOR_SCHEMAS = {
     'IStatement': None,
     'ICodeCommit': None,
     'ICodeCommitRepository': None,
-    'ICodeCommitUser': None
+    'ICodeCommitUser': None,
+    'ICloudFormationConfiguration': None,
+    'ICloudFormationInitCommands': None,
+    'ICloudFormationInitCommand': None,
+    'ICloudFormationInitFiles': None,
+    'ICloudFormationInitFile': None,
+    'ICloudFormationInitGroups': None,
+    'ICloudFormationInitPackages': None,
+    'ICloudFormationInitServices': None,
+    'ICloudFormationInitService': None,
+    'ICloudFormationInitSources': None,
+    'ICloudFormationInitUsers': None,
+    'ICloudFormationInitVersionedPackageSet': None,
+    'ICloudFormationInitPathOrUrlPackageSet': None,
+    'ICloudFormationInitServiceCollection': None,
+    'ISimpleCloudWatchAlarm': None,
+    'ICloudWatchLogGroups': None,
+    'ICloudWatchLogGroup': None,
+    'ICloudWatchLogSources': None,
+    'ICloudWatchLogSource': None,
+    'ICloudWatchLogRetention': None,
+    'IMetricFilters': None,
+    'IMetricFilter': None,
+    'IMetricTransformation': None,
+    'ISecretsManagerApplication': None,
+    'ISecretsManagerGroup': None,
+    'ISecretsManagerSecret': None,
+    'IGenerateSecretString': None,
+    'IBackupVault': None,
+    'IBackupPlans': None,
+    'IBackupPlan': None,
+    'IBackupPlanRule': None,
+    'IBackupPlanSelection': None,
+    'IBackupSelectionConditionResourceType': None,
+    'IBackupSelectionConditionResourceType': None,
 }
-
-
 
 def create_tables_from_schema():
     result = {}

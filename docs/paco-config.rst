@@ -5,8 +5,423 @@
 YAML File Schemas
 *****************
 
-Accounts: accounts/*.yaml
-=========================
+Base Schemas
+============
+
+Base Schemas are never configured by themselves, they are schemas that are inherited by other schemas.
+
+Interface
+---------
+
+A generic placeholder for any schema.
+
+
+Named
+------
+
+
+A name given to a cloud resource. Names identify resources and changing them
+can break configuration.
+
+
+.. _Named:
+
+.. list-table:: :guilabel:`Named`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - name
+      - String
+      - Name
+      - 
+      - 
+
+*Base Schemas* `Title`_
+
+
+Title
+------
+
+
+A title is a human-readable name. It can be as long as you want, and can change without
+breaking any configuration.
+    
+
+.. _Title:
+
+.. list-table:: :guilabel:`Title`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - title
+      - String
+      - Title
+      - 
+      - 
+
+
+
+Name
+-----
+
+
+A name that can be changed or duplicated with other similar cloud resources without breaking anything.
+    
+
+.. _Name:
+
+.. list-table:: :guilabel:`Name`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - name
+      - String
+      - Name
+      - 
+      - 
+
+
+
+Resource
+---------
+
+
+AWS Resource to support an Application
+    
+
+.. _Resource:
+
+.. list-table:: :guilabel:`Resource`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - change_protected
+      - Boolean
+      - Boolean indicating whether this resource can be modified or not.
+      - False
+      - 
+    * - order
+      - Int
+      - The order in which the resource will be deployed
+      - 0
+      - 
+
+*Base Schemas* `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
+
+Deployable
+-----------
+
+
+Indicates if this configuration tree should be enabled or not.
+    
+
+.. _Deployable:
+
+.. list-table:: :guilabel:`Deployable`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - enabled
+      - Boolean
+      - Enabled
+      - False
+      - Could be deployed to AWS
+
+
+
+Type
+-----
+
+
+
+.. _Type:
+
+.. list-table:: :guilabel:`Type`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - type
+      - String
+      - Type of Resources
+      - 
+      - A valid AWS Resource type: ASG, LBApplication, etc.
+
+
+
+DNSEnablable
+-------------
+
+Provides a parent with an inheritable DNS enabled field
+
+.. _DNSEnablable:
+
+.. list-table:: :guilabel:`DNSEnablable`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - dns_enabled
+      - Boolean
+      - Boolean indicating whether DNS record sets will be created.
+      - True
+      - 
+
+
+
+Monitorable
+------------
+
+
+A monitorable resource
+    
+
+.. _Monitorable:
+
+.. list-table:: :guilabel:`Monitorable`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - monitoring
+      - Object<MonitorConfig_>
+      - 
+      - 
+      - 
+
+
+
+MonitorConfig
+--------------
+
+
+A set of metrics and a default collection interval
+    
+
+.. _MonitorConfig:
+
+.. list-table:: :guilabel:`MonitorConfig`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - alarm_sets
+      - Container<AlarmSets_>
+      - Sets of Alarm Sets
+      - 
+      - 
+    * - asg_metrics
+      - List<string>
+      - ASG Metrics
+      - 
+      - Must be one of: 'GroupMinSize', 'GroupMaxSize', 'GroupDesiredCapacity', 'GroupInServiceInstances', 'GroupPendingInstances', 'GroupStandbyInstances', 'GroupTerminatingInstances', 'GroupTotalInstances'
+    * - collection_interval
+      - Int
+      - Collection interval
+      - 60
+      - 
+    * - health_checks
+      - Container<HealthChecks_>
+      - Set of Health Checks
+      - 
+      - 
+    * - log_sets
+      - Container<CloudWatchLogSets_>
+      - Sets of Log Sets
+      - 
+      - 
+    * - metrics
+      - List<Metric_>
+      - Metrics
+      - 
+      - 
+
+*Base Schemas* `Deployable`_, `Named`_, `Notifiable`_, `Title`_
+
+
+RegionContainer
+----------------
+
+Container for objects which do not belong to a specific Environment.
+
+.. _RegionContainer:
+
+.. list-table:: :guilabel:`RegionContainer`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - alarm_sets
+      - Container<AlarmSets_>
+      - Alarm Sets
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+Notifiable
+-----------
+
+
+A notifiable object
+    
+
+.. _Notifiable:
+
+.. list-table:: :guilabel:`Notifiable`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - notifications
+      - Container<AlarmNotifications_>
+      - Alarm Notifications
+      - 
+      - 
+
+
+
+SecurityGroupRule
+------------------
+
+
+
+.. _SecurityGroupRule:
+
+.. list-table:: :guilabel:`SecurityGroupRule`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - cidr_ip
+      - String
+      - CIDR IP
+      - 
+      - A valid CIDR v4 block or an empty string
+    * - cidr_ip_v6
+      - String
+      - CIDR IP v6
+      - 
+      - A valid CIDR v6 block or an empty string
+    * - description
+      - String
+      - Description
+      - 
+      - Max 255 characters. Allowed characters are a-z, A-Z, 0-9, spaces, and ._-:/()#,@[]+=;{}!$*.
+    * - from_port
+      - Int
+      - From port
+      - -1
+      - A value of -1 indicates all ICMP/ICMPv6 types. If you specify all ICMP/ICMPv6 types, you must specify all codes.
+    * - port
+      - Int
+      - Port
+      - -1
+      - A value of -1 indicates all ICMP/ICMPv6 types. If you specify all ICMP/ICMPv6 types, you must specify all codes.
+    * - protocol
+      - String
+      - IP Protocol
+      - 
+      - The IP protocol name (tcp, udp, icmp, icmpv6) or number.
+    * - to_port
+      - Int
+      - To port
+      - -1
+      - A value of -1 indicates all ICMP/ICMPv6 types. If you specify all ICMP/ICMPv6 types, you must specify all codes.
+
+*Base Schemas* `Name`_
+
+
+ApplicationEngine
+------------------
+
+
+Application Engine : A template describing an application
+    
+
+.. _ApplicationEngine:
+
+.. list-table:: :guilabel:`ApplicationEngine`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - groups
+      - Container<ResourceGroups_> |star|
+      - 
+      - 
+      - 
+    * - order
+      - Int
+      - The order in which the application will be processed
+      - 0
+      - 
+
+*Base Schemas* `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Notifiable`_, `Title`_
+
+
+
+Accounts: accounts/\*.yaml
+==========================
 
 AWS account information is kept in the ``accounts/`` directory.
 Each file in this directory will define one AWS account, the filename
@@ -21,87 +436,56 @@ Cloud account information
 .. _Account:
 
 .. list-table:: :guilabel:`Account`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - account_id
       - String
-      - .. fa:: times
+      - Account ID
       - 
       - Can only contain digits.
-      - Account ID
-      - Account
     * - account_type
       - String
-      - .. fa:: times
+      - Account Type
       - AWS
       - Supported types: 'AWS'
-      - Account Type
-      - Account
     * - admin_delegate_role_name
       - String
-      - .. fa:: times
-      - 
-      - 
       - Administrator delegate IAM Role name for the account
-      - Account
+      - 
+      - 
     * - admin_iam_users
-      - Container of AdminIAMUser_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<AdminIAMUser_>
       - Admin IAM Users
-      - Account
+      - 
+      - 
     * - is_master
       - Boolean
-      - .. fa:: times
+      - Boolean indicating if this a Master account
       - False
       - 
-      - Boolean indicating if this a Master account
-      - Account
     * - organization_account_ids
-      - List of Strings
-      - .. fa:: times
+      - List<string>
+      - A list of account ids to add to the Master account's AWS Organization
       - 
       - Each string in the list must contain only digits.
-      - A list of account ids to add to the Master account's AWS Organization
-      - Account
     * - region
-      - String
-      - .. fa:: check
+      - String |star|
+      - Region to install AWS Account specific resources
       - no-region-set
       - Must be a valid AWS Region name
-      - Region to install AWS Account specific resources
-      - Account
     * - root_email
-      - String
-      - .. fa:: check
+      - String |star|
+      - The email address for the root user of this account
       - 
       - Must be a valid email address.
-      - The email address for the root user of this account
-      - Account
 
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
 AdminIAMUser
@@ -112,34 +496,24 @@ An AWS Account Administerator IAM User
 .. _AdminIAMUser:
 
 .. list-table:: :guilabel:`AdminIAMUser`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
+      - Constraints
+      - Default
     * - username
       - String
-      - .. fa:: times
-      - 
-      - 
       - IAM Username
-      - AdminIAMUser
+      - 
+      - 
 
+*Base Schemas* `Deployable`_
 
-Global Resources: resource/*.yaml
-=================================
+Global Resources: resource/\*.yaml
+==================================
 
 CloudTrail: resource/cloudtrail.yaml
 ------------------------------------
@@ -194,219 +568,164 @@ IAM Resource contains IAM Users who can login and have different levels of acces
 .. _IAMResource:
 
 .. list-table:: :guilabel:`IAMResource`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - users
-      - Container of IAMUsers_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<IAMUsers_>
       - IAM Users
-      - IAMResource
+      - 
+      - 
 
+*Base Schemas* `Named`_, `Title`_
 
 
 IAMUsers
 ^^^^^^^^^
 
 
+Container for `IAMUser`_ objects.
+    
 
 .. _IAMUsers:
 
-.. list-table:: :guilabel:`IAMUsers` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`IAMUsers` |bars| Container<`IAMUser`_>
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
 
 
 IAMUser
 ^^^^^^^^
 
 
-    IAM User
+IAM User
     
 
 .. _IAMUser:
 
 .. list-table:: :guilabel:`IAMUser`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - account
-      - TextReference
-      - .. fa:: check
-      - 
-      - 
+      - TextReference |star|
       - Paco account reference to install this user
-      - IAMUser
+      - 
+      - 
     * - account_whitelist
       - CommaList
-      - .. fa:: times
-      - 
-      - 
       - Comma separated list of Paco AWS account names this user has access to
-      - IAMUser
+      - 
+      - 
     * - console_access_enabled
-      - Boolean
-      - .. fa:: check
-      - 
-      - 
+      - Boolean |star|
       - Console Access Boolean
-      - IAMUser
+      - 
+      - 
     * - description
       - String
-      - .. fa:: times
-      - 
-      - 
       - IAM User Description
-      - IAMUser
+      - 
+      - 
     * - permissions
-      - Container of IAMUserPermissions_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<IAMUserPermissions_>
       - Paco IAM User Permissions
-      - IAMUser
+      - 
+      - 
     * - programmatic_access
-      - IAMUserProgrammaticAccess_ Paco schema
-      - .. fa:: times
-      - 
-      - 
+      - Object<IAMUserProgrammaticAccess_>
       - Programmatic Access
-      - IAMUser
+      - 
+      - 
     * - username
       - String
-      - .. fa:: times
-      - 
-      - 
       - IAM Username
-      - IAMUser
+      - 
+      - 
 
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
 IAMUserProgrammaticAccess
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-    IAM User Programmatic Access Configuration
+IAM User Programmatic Access Configuration
     
 
 .. _IAMUserProgrammaticAccess:
 
 .. list-table:: :guilabel:`IAMUserProgrammaticAccess`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
+      - Constraints
+      - Default
     * - access_key_1_version
       - Int
-      - .. fa:: times
+      - Access key version id
       - 0
       - 
-      - Access key version id
-      - IAMUserProgrammaticAccess
     * - access_key_2_version
       - Int
-      - .. fa:: times
+      - Access key version id
       - 0
       - 
-      - Access key version id
-      - IAMUserProgrammaticAccess
 
+*Base Schemas* `Deployable`_
 
 
 IAMUserPermissions
 ^^^^^^^^^^^^^^^^^^^
 
 
-    Group of IAM User Permissions
+Container for IAM User Permission objects.
     
 
 .. _IAMUserPermissions:
 
-.. list-table:: :guilabel:`IAMUserPermissions` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`IAMUserPermissions`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
 
 
 Role
@@ -417,94 +736,61 @@ Role
 .. _Role:
 
 .. list-table:: :guilabel:`Role`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - assume_role_policy
-      - AssumeRolePolicy_ Paco schema
-      - .. fa:: times
-      - 
-      - 
+      - Object<AssumeRolePolicy_>
       - Assume role policy
-      - Role
+      - 
+      - 
     * - global_role_name
       - Boolean
-      - .. fa:: times
+      - Role name is globally unique and will not be hashed
       - False
       - 
-      - Role name is globally unique and will not be hashed
-      - Role
     * - instance_profile
       - Boolean
-      - .. fa:: times
+      - Instance profile
       - False
       - 
-      - Instance profile
-      - Role
     * - managed_policy_arns
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - Managed policy ARNs
-      - Role
+      - 
+      - 
     * - max_session_duration
       - Int
-      - .. fa:: times
+      - Maximum session duration
       - 3600
       - The maximum session duration (in seconds)
-      - Maximum session duration
-      - Role
     * - path
       - String
-      - .. fa:: times
+      - Path
       - /
       - 
-      - Path
-      - Role
     * - permissions_boundary
       - String
-      - .. fa:: times
+      - Permissions boundary ARN
       - 
       - Must be valid ARN
-      - Permissions boundary ARN
-      - Role
     * - policies
-      - List of Policy_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<Policy_>
       - Policies
-      - Role
+      - 
+      - 
     * - role_name
       - String
-      - .. fa:: times
-      - 
-      - 
       - Role name
-      - Role
+      - 
+      - 
 
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
 AssumeRolePolicy
@@ -515,37 +801,29 @@ AssumeRolePolicy
 .. _AssumeRolePolicy:
 
 .. list-table:: :guilabel:`AssumeRolePolicy`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - aws
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - List of AWS Principles
-      - AssumeRolePolicy
+      - 
+      - 
     * - effect
       - String
-      - .. fa:: times
-      - 
-      - 
       - Effect
-      - AssumeRolePolicy
+      - 
+      - 
     * - service
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - Service
-      - AssumeRolePolicy
+      - 
+      - 
 
 
 
@@ -557,30 +835,24 @@ Policy
 .. _Policy:
 
 .. list-table:: :guilabel:`Policy`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - name
       - String
-      - .. fa:: times
-      - 
-      - 
       - Policy name
-      - Policy
+      - 
+      - 
     * - statement
-      - List of Statement_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<Statement_>
       - Statements
-      - Policy
+      - 
+      - 
 
 
 
@@ -592,45 +864,31 @@ Statement
 .. _Statement:
 
 .. list-table:: :guilabel:`Statement`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - action
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - Action(s)
-      - Statement
+      - 
+      - 
     * - effect
       - String
-      - .. fa:: times
+      - Effect
       - 
       - Must be one of: 'Allow', 'Deny'
-      - Effect
-      - Statement
     * - resource
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - Resrource(s)
-      - Statement
+      - 
+      - 
 
+*Base Schemas* `Named`_, `Title`_
 
 SNS Topics: resource/snstopics.yaml
 -----------------------------------
@@ -737,29 +995,25 @@ CodeCommit
 ^^^^^^^^^^^
 
 
-    CodeCommit Service Configuration
+CodeCommit Service Configuration
     
 
 .. _CodeCommit:
 
 .. list-table:: :guilabel:`CodeCommit`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - repository_groups
       - Dict
-      - .. fa:: times
-      - 
-      - 
       - Group of Repositories
-      - CodeCommit
+      - 
+      - 
 
 
 
@@ -767,112 +1021,81 @@ CodeCommitRepository
 ^^^^^^^^^^^^^^^^^^^^^
 
 
-    CodeCommit Repository Configuration
+CodeCommit Repository
     
 
 .. _CodeCommitRepository:
 
-.. list-table:: :guilabel:`CodeCommitRepository` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`CodeCommitRepository`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - account
-      - TextReference
-      - .. fa:: check
-      - 
-      - 
+      - TextReference |star|
       - AWS Account Reference
-      - CodeCommitRepository
+      - 
+      - 
     * - description
       - String
-      - .. fa:: times
-      - 
-      - 
       - Repository Description
-      - CodeCommitRepository
+      - 
+      - 
     * - region
       - String
-      - .. fa:: times
-      - 
-      - 
       - AWS Region
-      - CodeCommitRepository
+      - 
+      - 
     * - repository_name
       - String
-      - .. fa:: times
-      - 
-      - 
       - Repository Name
-      - CodeCommitRepository
+      - 
+      - 
     * - users
-      - Container of CodeCommitUser_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<CodeCommitUser_>
       - CodeCommit Users
-      - CodeCommitRepository
+      - 
+      - 
 
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
 CodeCommitUser
 ^^^^^^^^^^^^^^^
 
 
-    CodeCommit User
+CodeCommit User
     
 
 .. _CodeCommitUser:
 
 .. list-table:: :guilabel:`CodeCommitUser`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - public_ssh_key
       - String
-      - .. fa:: times
-      - 
-      - 
       - CodeCommit User Public SSH Key
-      - CodeCommitUser
+      - 
+      - 
     * - username
       - String
-      - .. fa:: times
-      - 
-      - 
       - CodeCommit Username
-      - CodeCommitUser
+      - 
+      - 
 
 
-NetworkEnvironments: netenv/*.yaml
-===================================
+NetworkEnvironments: netenv/\*.yaml
+====================================
 
 NetworkEnvironments are the core of any Paco project. Every .yaml file in the
 ``netenv`` directory contains information about networks, applications and environments.
@@ -881,7 +1104,7 @@ will be provisioned in each one.
 
 NetworkEnvironment files are hierarchical. They are nested many levels deep. At each
 node in the hierarchy a different field schema is used. The top level has several key names:
-``network:``, ``secrets_manager:``, ``backups:``, ``applications:`` and ``environments:``.
+``network:``, ``secrets_manager:``, ``backup_vaults:``, ``applications:`` and ``environments:``.
 The ``network:`` must contain a key/value pairs that matches a NetworkEnvironment schema.
 The ``applications:`` and ``environments:`` are containers that hold Application
 and Environment schemas.
@@ -896,10 +1119,8 @@ and Environment schemas.
 
     applications:
         my-paco-app:
-            managed_updates: true
             # more application YAML here ...
         reporting-app:
-            managed_updates: false
             # more application YAML here ...
 
     environments:
@@ -910,7 +1131,7 @@ and Environment schemas.
             title: Production Environment
             # more environment YAML here ...
 
-The network, applications, backups and secrets_manager configuration sections hold logical configuration - this configuration
+The network, applications, backup_vaults and secrets_manager configuration sections hold logical configuration - this configuration
 does not get direclty provisioned to the cloud - it doesn't reference any environments or regions.
 Think of it as default configuration.
 
@@ -986,6 +1207,38 @@ Networks have the following hierarchy:
                                   to_port: 80
 
 
+NetworkEnvironment
+-------------------
+
+
+NetworkEnvironment : A template for a network.
+    
+
+.. _NetworkEnvironment:
+
+.. list-table:: :guilabel:`NetworkEnvironment`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - availability_zones
+      - Int
+      - Availability Zones
+      - 0
+      - 
+    * - vpc
+      - Object<VPC_>
+      - VPC
+      - 
+      - 
+
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
+
+
 Network
 --------
 
@@ -993,275 +1246,176 @@ Network
 
 .. _Network:
 
-.. list-table:: :guilabel:`Network` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`Network`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - availability_zones
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - Availability Zones
-      - NetworkEnvironment
-    * - vpc
-      - VPC_ Paco schema
-      - .. fa:: times
-      - 
-      - 
-      - VPC
-      - NetworkEnvironment
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - aws_account
       - TextReference
-      - .. fa:: times
+      - Paco Reference to an AWS Account
       - 
       - 
-      - AWS Account Reference
-      - Network
 
+*Base Schemas* `NetworkEnvironment`_, `Deployable`_, `Named`_, `Title`_
 
 
 VPC
 ----
 
 
-    AWS Resource: VPC
+AWS Resource: VPC
     
 
 .. _VPC:
 
 .. list-table:: :guilabel:`VPC`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - cidr
       - String
-      - .. fa:: times
-      - 
-      - 
       - CIDR
-      - VPC
+      - 
+      - 
     * - enable_dns_hostnames
       - Boolean
-      - .. fa:: times
+      - Enable DNS Hostnames
       - False
       - 
-      - Enable DNS Hostnames
-      - VPC
     * - enable_dns_support
       - Boolean
-      - .. fa:: times
+      - Enable DNS Support
       - False
       - 
-      - Enable DNS Support
-      - VPC
     * - enable_internet_gateway
       - Boolean
-      - .. fa:: times
+      - Internet Gateway
       - False
       - 
-      - Internet Gateway
-      - VPC
     * - nat_gateway
-      - Container of NATGateway_ Paco schemas
-      - .. fa:: check
+      - Container<NATGateway_> |star|
+      - NAT Gateway
       - {}
       - 
-      - NAT Gateway
-      - VPC
     * - peering
-      - Container of VPCPeering_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<VPCPeering_>
       - VPC Peering
-      - VPC
+      - 
+      - 
     * - private_hosted_zone
-      - PrivateHostedZone_ Paco schema
-      - .. fa:: times
-      - 
-      - 
+      - Object<PrivateHostedZone_>
       - Private hosted zone
-      - VPC
+      - 
+      - 
     * - security_groups
       - Dict
-      - .. fa:: times
+      - Security groups
       - {}
       - Two level deep dictionary: first key is Application name, second key is Resource name.
-      - Security groups
-      - VPC
     * - segments
-      - Container of Segment_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<Segment_>
       - Segments
-      - VPC
+      - 
+      - 
     * - vpn_gateway
-      - Container of VPNGateway_ Paco schemas
-      - .. fa:: check
+      - Container<VPNGateway_> |star|
+      - VPN Gateway
       - {}
       - 
-      - VPN Gateway
-      - VPC
 
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
 VPCPeering
 -----------
 
 
-    VPC Peering
+VPC Peering
     
 
 .. _VPCPeering:
 
 .. list-table:: :guilabel:`VPCPeering`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - network_environment
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Network Environment Reference
-      - VPCPeering
+      - 
+      - 
     * - peer_account_id
       - String
-      - .. fa:: times
-      - 
-      - 
       - Remote peer AWS account Id
-      - VPCPeering
+      - 
+      - 
     * - peer_region
       - String
-      - .. fa:: times
-      - 
-      - 
       - Remote peer AWS region
-      - VPCPeering
+      - 
+      - 
     * - peer_role_name
       - String
-      - .. fa:: times
-      - 
-      - 
       - Remote peer role name
-      - VPCPeering
+      - 
+      - 
     * - peer_vpcid
       - String
-      - .. fa:: times
-      - 
-      - 
       - Remote peer VPC Id
-      - VPCPeering
+      - 
+      - 
     * - routing
-      - List of VPCPeeringRoute_ Paco schemas
-      - .. fa:: check
-      - 
-      - 
+      - List<VPCPeeringRoute_> |star|
       - Peering routes
-      - VPCPeering
+      - 
+      - 
 
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
 VPCPeeringRoute
 ----------------
 
 
-    VPC Peering Route
+VPC Peering Route
     
 
 .. _VPCPeeringRoute:
 
 .. list-table:: :guilabel:`VPCPeeringRoute`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - cidr
       - String
-      - .. fa:: times
+      - CIDR IP
       - 
       - A valid CIDR v4 block or an empty string
-      - CIDR IP
-      - VPCPeeringRoute
     * - segment
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Segment reference
-      - VPCPeeringRoute
+      - 
+      - 
 
 
 
@@ -1269,311 +1423,215 @@ NATGateway
 -----------
 
 
-    AWS Resource: NAT Gateway
+NAT Gateway
     
 
 .. _NATGateway:
 
-.. list-table:: :guilabel:`NATGateway` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`NATGateway`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - availability_zone
       - String
-      - .. fa:: times
-      - all
-      - 
       - Availability Zones to launch instances in.
-      - NATGateway
+      - all
+      - Can be 'all' or number of AZ: 1, 2, 3, 4 ...
     * - default_route_segments
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - Default Route Segments
-      - NATGateway
+      - 
+      - 
     * - ec2_instance_type
       - String
-      - .. fa:: times
+      - EC2 Instance Type
       - t2.nano
       - 
-      - EC2 Instance Type
-      - NATGateway
     * - ec2_key_pair
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - EC2 key pair reference
-      - NATGateway
+      - 
+      - 
     * - security_groups
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - Security Groups
-      - NATGateway
+      - 
+      - 
     * - segment
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Segment
-      - NATGateway
+      - 
+      - 
     * - type
       - String
-      - .. fa:: times
+      - NAT Gateway type
       - Managed
       - 
-      - NAT Gateway type
-      - NATGateway
 
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
 VPNGateway
 -----------
 
 
-    AWS Resource: VPN Gateway
+VPN Gateway
     
 
 .. _VPNGateway:
 
-.. list-table:: :guilabel:`VPNGateway` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`VPNGateway`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Deployable`_
 
 
 PrivateHostedZone
 ------------------
 
 
-    AWS Resource: Private Hosted Zone
+Private Hosted Zone
     
 
 .. _PrivateHostedZone:
 
 .. list-table:: :guilabel:`PrivateHostedZone`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
+      - Constraints
+      - Default
     * - name
       - String
-      - .. fa:: times
-      - 
-      - 
       - Hosted zone name
-      - PrivateHostedZone
+      - 
+      - 
     * - vpc_associations
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - List of VPC Ids
-      - PrivateHostedZone
+      - 
+      - 
 
+*Base Schemas* `Deployable`_
 
 
 Segment
 --------
 
 
-    AWS Resource: Segment
+Segment
     
 
 .. _Segment:
 
 .. list-table:: :guilabel:`Segment`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - az1_cidr
       - String
-      - .. fa:: times
-      - 
-      - 
       - Availability Zone 1 CIDR
-      - Segment
+      - 
+      - 
     * - az2_cidr
       - String
-      - .. fa:: times
-      - 
-      - 
       - Availability Zone 2 CIDR
-      - Segment
+      - 
+      - 
     * - az3_cidr
       - String
-      - .. fa:: times
-      - 
-      - 
       - Availability Zone 3 CIDR
-      - Segment
+      - 
+      - 
     * - az4_cidr
       - String
-      - .. fa:: times
-      - 
-      - 
       - Availability Zone 4 CIDR
-      - Segment
+      - 
+      - 
     * - az5_cidr
       - String
-      - .. fa:: times
-      - 
-      - 
       - Availability Zone 5 CIDR
-      - Segment
+      - 
+      - 
     * - az6_cidr
       - String
-      - .. fa:: times
-      - 
-      - 
       - Availability Zone 6 CIDR
-      - Segment
+      - 
+      - 
     * - internet_access
       - Boolean
-      - .. fa:: times
+      - Internet Access
       - False
       - 
-      - Internet Access
-      - Segment
 
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
 SecurityGroup
 --------------
 
 
-    AWS Resource: Security Group
+AWS Resource: Security Group
     
 
 .. _SecurityGroup:
 
 .. list-table:: :guilabel:`SecurityGroup`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - egress
-      - List of EgressRule_ Paco schemas
-      - .. fa:: times
+      - List<EgressRule_>
+      - Egress
       - 
       - Every list item must be an EgressRule
-      - Egress
-      - SecurityGroup
     * - group_description
       - String
-      - .. fa:: times
+      - Group description
       - 
       - Up to 255 characters in length
-      - Group description
-      - SecurityGroup
     * - group_name
       - String
-      - .. fa:: times
+      - Group name
       - 
       - Up to 255 characters in length. Cannot start with sg-.
-      - Group name
-      - SecurityGroup
     * - ingress
-      - List of IngressRule_ Paco schemas
-      - .. fa:: times
+      - List<IngressRule_>
+      - Ingress
       - 
       - Every list item must be an IngressRule
-      - Ingress
-      - SecurityGroup
 
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
 EgressRule
@@ -1584,80 +1642,21 @@ Security group egress
 .. _EgressRule:
 
 .. list-table:: :guilabel:`EgressRule`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - name
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Name
-      - Name
-    * - cidr_ip
-      - String
-      - .. fa:: times
-      - 
-      - A valid CIDR v4 block or an empty string
-      - CIDR IP
-      - SecurityGroupRule
-    * - cidr_ip_v6
-      - String
-      - .. fa:: times
-      - 
-      - A valid CIDR v6 block or an empty string
-      - CIDR IP v6
-      - SecurityGroupRule
-    * - description
-      - String
-      - .. fa:: times
-      - 
-      - Max 255 characters. Allowed characters are a-z, A-Z, 0-9, spaces, and ._-:/()#,@[]+=;{}!$*.
-      - Description
-      - SecurityGroupRule
-    * - from_port
-      - Int
-      - .. fa:: times
-      - -1
-      - A value of -1 indicates all ICMP/ICMPv6 types. If you specify all ICMP/ICMPv6 types, you must specify all codes.
-      - From port
-      - SecurityGroupRule
-    * - port
-      - Int
-      - .. fa:: times
-      - -1
-      - A value of -1 indicates all ICMP/ICMPv6 types. If you specify all ICMP/ICMPv6 types, you must specify all codes.
-      - Port
-      - SecurityGroupRule
-    * - protocol
-      - String
-      - .. fa:: times
-      - 
-      - The IP protocol name (tcp, udp, icmp, icmpv6) or number.
-      - IP Protocol
-      - SecurityGroupRule
-    * - to_port
-      - Int
-      - .. fa:: times
-      - -1
-      - A value of -1 indicates all ICMP/ICMPv6 types. If you specify all ICMP/ICMPv6 types, you must specify all codes.
-      - To port
-      - SecurityGroupRule
+      - Constraints
+      - Default
     * - destination_security_group
       - TextReference
-      - .. fa:: times
+      - Destination Security Group Reference
       - 
       - A Paco reference to a SecurityGroup
-      - Destination Security Group Reference
-      - EgressRule
 
+*Base Schemas* `SecurityGroupRule`_, `Name`_
 
 
 IngressRule
@@ -1668,80 +1667,21 @@ Security group ingress
 .. _IngressRule:
 
 .. list-table:: :guilabel:`IngressRule`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - name
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Name
-      - Name
-    * - cidr_ip
-      - String
-      - .. fa:: times
-      - 
-      - A valid CIDR v4 block or an empty string
-      - CIDR IP
-      - SecurityGroupRule
-    * - cidr_ip_v6
-      - String
-      - .. fa:: times
-      - 
-      - A valid CIDR v6 block or an empty string
-      - CIDR IP v6
-      - SecurityGroupRule
-    * - description
-      - String
-      - .. fa:: times
-      - 
-      - Max 255 characters. Allowed characters are a-z, A-Z, 0-9, spaces, and ._-:/()#,@[]+=;{}!$*.
-      - Description
-      - SecurityGroupRule
-    * - from_port
-      - Int
-      - .. fa:: times
-      - -1
-      - A value of -1 indicates all ICMP/ICMPv6 types. If you specify all ICMP/ICMPv6 types, you must specify all codes.
-      - From port
-      - SecurityGroupRule
-    * - port
-      - Int
-      - .. fa:: times
-      - -1
-      - A value of -1 indicates all ICMP/ICMPv6 types. If you specify all ICMP/ICMPv6 types, you must specify all codes.
-      - Port
-      - SecurityGroupRule
-    * - protocol
-      - String
-      - .. fa:: times
-      - 
-      - The IP protocol name (tcp, udp, icmp, icmpv6) or number.
-      - IP Protocol
-      - SecurityGroupRule
-    * - to_port
-      - Int
-      - .. fa:: times
-      - -1
-      - A value of -1 indicates all ICMP/ICMPv6 types. If you specify all ICMP/ICMPv6 types, you must specify all codes.
-      - To port
-      - SecurityGroupRule
+      - Constraints
+      - Default
     * - source_security_group
       - TextReference
-      - .. fa:: times
+      - Source Security Group Reference
       - 
       - An Paco reference to a SecurityGroup
-      - Source Security Group Reference
-      - IngressRule
 
+*Base Schemas* `SecurityGroupRule`_, `Name`_
 
 NetEnv - applications:
 ======================
@@ -1801,284 +1741,148 @@ In turn, each ResourceGroup contains ``resources:`` with names such as ``cpbd``,
 ApplicationEngines
 -------------------
 
-A collection of Application Engines
+A container for Application Engines
 
 .. _ApplicationEngines:
 
-.. list-table:: :guilabel:`ApplicationEngines` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`ApplicationEngines` |bars| Container<`ApplicationEngine`_>
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
 
 
 Application
 ------------
 
 
-    Application : An Application Engine configuration to run in a specific Environment
+An Application is groups of cloud resources to support a workload.
     
 
 .. _Application:
 
-.. list-table:: :guilabel:`Application` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`Application`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - groups
-      - Container of ResourceGroups_ Paco schemas
-      - .. fa:: check
-      - 
-      - 
-      - 
-      - ApplicationEngine
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the application will be processed
-      - ApplicationEngine
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - monitoring
-      - MonitorConfig_ Paco schema
-      - .. fa:: times
-      - 
-      - 
-      - 
-      - Monitorable
-    * - notifications
-      - Container of AlarmNotifications_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - Alarm Notifications
-      - Notifiable
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `DNSEnablable`_, `Deployable`_, `ApplicationEngine`_, `Monitorable`_, `Named`_, `Notifiable`_, `Title`_
 
 
 ResourceGroups
 ---------------
 
-A collection of Application Resource Groups
+A container of Application `ResourceGroup`_ objects.
 
 .. _ResourceGroups:
 
-.. list-table:: :guilabel:`ResourceGroups` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`ResourceGroups` |bars| Container<`ResourceGroup`_>
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
 
 
 ResourceGroup
 --------------
 
-A collection of Application Resources
+A group of `Resources`_ to support an `Application`_.
 
 .. _ResourceGroup:
 
-.. list-table:: :guilabel:`ResourceGroup` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`ResourceGroup`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
+      - Constraints
+      - Default
     * - dns_enabled
       - Boolean
-      - .. fa:: times
       - 
       - 
       - 
-      - ResourceGroup
     * - order
-      - Int
-      - .. fa:: check
-      - 
-      - 
+      - Int |star|
       - The order in which the group will be deployed
-      - ResourceGroup
+      - 
+      - 
     * - resources
-      - Container of Resources_ Paco schemas
-      - .. fa:: check
+      - Container<Resources_> |star|
       - 
       - 
       - 
-      - ResourceGroup
     * - title
       - String
-      - .. fa:: times
-      - 
-      - 
       - Title
-      - ResourceGroup
+      - 
+      - 
     * - type
-      - String
-      - .. fa:: check
-      - 
-      - 
+      - String |star|
       - Type
-      - ResourceGroup
+      - 
+      - 
 
+*Base Schemas* `Deployable`_, `Named`_
 
 
 Resources
 ----------
 
-A collection of Application Resources
+A container of Resources to support an `Application`_.
 
 .. _Resources:
 
-.. list-table:: :guilabel:`Resources` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`Resources`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-
-
-
-Resource
----------
-
-
-    AWS Resource to support an Application
-    
-
-.. _Resource:
-
-.. list-table:: :guilabel:`Resource`
-    :widths: 15 8 4 12 15 30 10
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Req?
-      - Default
       - Constraints
-      - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
 
 
 NetEnv - resources:
@@ -2096,282 +1900,521 @@ An Api Gateway Rest API resource
 .. _ApiGatewayRestApi:
 
 .. list-table:: :guilabel:`ApiGatewayRestApi`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - api_key_source_type
       - String
-      - .. fa:: times
+      - API Key Source Type
       - 
       - Must be one of 'HEADER' to read the API key from the X-API-Key header of a request or 'AUTHORIZER' to read the API key from the UsageIdentifierKey from a Lambda authorizer.
-      - API Key Source Type
-      - ApiGatewayRestApi
     * - binary_media_types
-      - List of Strings
-      - .. fa:: times
+      - List<string>
+      - Binary Media Types. The list of binary media types that are supported by the RestApi resource, such as image/png or application/octet-stream. By default, RestApi supports only UTF-8-encoded text payloads.
       - 
       - Duplicates are not allowed. Slashes must be escaped with ~1. For example, image/png would be image~1png in the BinaryMediaTypes list.
-      - Binary Media Types. The list of binary media types that are supported by the RestApi resource, such as image/png or application/octet-stream. By default, RestApi supports only UTF-8-encoded text payloads.
-      - ApiGatewayRestApi
     * - body
       - String
-      - .. fa:: times
+      - Body. An OpenAPI specification that defines a set of RESTful APIs in JSON or YAML format. For YAML templates, you can also provide the specification in YAML format.
       - 
       - Must be valid JSON.
-      - Body. An OpenAPI specification that defines a set of RESTful APIs in JSON or YAML format. For YAML templates, you can also provide the specification in YAML format.
-      - ApiGatewayRestApi
     * - body_file_location
       - StringFileReference
-      - .. fa:: times
+      - Path to a file containing the Body.
       - 
       - Must be valid path to a valid JSON document.
-      - Path to a file containing the Body.
-      - ApiGatewayRestApi
     * - body_s3_location
       - String
-      - .. fa:: times
+      - The Amazon Simple Storage Service (Amazon S3) location that points to an OpenAPI file, which defines a set of RESTful APIs in JSON or YAML format.
       - 
       - Valid S3Location string to a valid JSON or YAML document.
-      - The Amazon Simple Storage Service (Amazon S3) location that points to an OpenAPI file, which defines a set of RESTful APIs in JSON or YAML format.
-      - ApiGatewayRestApi
     * - clone_from
       - String
-      - .. fa:: times
-      - 
-      - 
       - CloneFrom. The ID of the RestApi resource that you want to clone.
-      - ApiGatewayRestApi
+      - 
+      - 
     * - description
       - String
-      - .. fa:: times
-      - 
-      - 
       - Description of the RestApi resource.
-      - ApiGatewayRestApi
+      - 
+      - 
     * - endpoint_configuration
-      - List of Strings
-      - .. fa:: times
+      - List<string>
+      - Endpoint configuration. A list of the endpoint types of the API. Use this field when creating an API. When importing an existing API, specify the endpoint configuration types using the `parameters` field.
       - 
       - List of strings, each must be one of 'EDGE', 'REGIONAL', 'PRIVATE'
-      - Endpoint configuration. A list of the endpoint types of the API. Use this field when creating an API. When importing an existing API, specify the endpoint configuration types using the `parameters` field.
-      - ApiGatewayRestApi
     * - fail_on_warnings
       - Boolean
-      - .. fa:: times
+      - Indicates whether to roll back the resource if a warning occurs while API Gateway is creating the RestApi resource.
       - False
       - 
-      - Indicates whether to roll back the resource if a warning occurs while API Gateway is creating the RestApi resource.
-      - ApiGatewayRestApi
     * - methods
-      - Container of ApiGatewayMethods_ Paco schemas
-      - .. fa:: times
+      - Container<ApiGatewayMethods_>
       - 
       - 
       - 
-      - ApiGatewayRestApi
     * - minimum_compression_size
       - Int
-      - .. fa:: times
+      - An integer that is used to enable compression on an API. When compression is enabled, compression or decompression is not applied on the payload if the payload size is smaller than this value. Setting it to zero allows compression for any payload size.
       - 
       - A non-negative integer between 0 and 10485760 (10M) bytes, inclusive.
-      - An integer that is used to enable compression on an API. When compression is enabled, compression or decompression is not applied on the payload if the payload size is smaller than this value. Setting it to zero allows compression for any payload size.
-      - ApiGatewayRestApi
     * - models
-      - Container of ApiGatewayModels_ Paco schemas
-      - .. fa:: times
+      - Container<ApiGatewayModels_>
       - 
       - 
       - 
-      - ApiGatewayRestApi
     * - parameters
       - Dict
-      - .. fa:: times
+      - Parameters. Custom header parameters for the request.
       - {}
       - Dictionary of key/value pairs that are strings.
-      - Parameters. Custom header parameters for the request.
-      - ApiGatewayRestApi
     * - policy
       - String
-      - .. fa:: times
+      - A policy document that contains the permissions for the RestApi resource, in JSON format. To set the ARN for the policy, use the !Join intrinsic function with "" as delimiter and values of "execute-api:/" and "*".
       - 
       - Valid JSON document
-      - A policy document that contains the permissions for the RestApi resource, in JSON format. To set the ARN for the policy, use the !Join intrinsic function with "" as delimiter and values of "execute-api:/" and "*".
-      - ApiGatewayRestApi
     * - resources
-      - Container of ApiGatewayResources_ Paco schemas
-      - .. fa:: times
+      - Container<ApiGatewayResources_>
       - 
       - 
       - 
-      - ApiGatewayRestApi
     * - stages
-      - Container of ApiGatewayStages_ Paco schemas
-      - .. fa:: times
+      - Container<ApiGatewayStages_>
       - 
       - 
       - 
-      - ApiGatewayRestApi
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 ApiGatewayMethods
 ^^^^^^^^^^^^^^^^^^
 
-Container for API Gateway Method objects
+Container for `ApiGatewayMethod`_ objects.
 
 .. _ApiGatewayMethods:
 
-.. list-table:: :guilabel:`ApiGatewayMethods` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`ApiGatewayMethods` |bars| Container<`ApiGatewayMethod`_>
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
+
+
+ApiGatewayMethod
+^^^^^^^^^^^^^^^^^
+
+API Gateway Method
+
+.. _ApiGatewayMethod:
+
+.. list-table:: :guilabel:`ApiGatewayMethod`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - authorization_type
+      - String |star|
+      - Authorization Type
+      - 
+      - Must be one of NONE, AWS_IAM, CUSTOM or COGNITO_USER_POOLS
+    * - http_method
+      - String
+      - HTTP Method
+      - 
+      - Must be one of ANY, DELETE, GET, HEAD, OPTIONS, PATCH, POST or PUT.
+    * - integration
+      - Object<ApiGatewayMethodIntegration_>
+      - Integration
+      - 
+      - 
+    * - method_responses
+      - List<ApiGatewayMethodMethodResponse_>
+      - Method Responses
+      - 
+      - List of ApiGatewayMethod MethodResponses
+    * - request_parameters
+      - Dict
+      - Request Parameters
+      - {}
+      - Specify request parameters as key-value pairs (string-to-Boolean mapping),
+                with a source as the key and a Boolean as the value. The Boolean specifies whether
+                a parameter is required. A source must match the format method.request.location.name,
+                where the location is query string, path, or header, and name is a valid, unique parameter name.
+    * - resource_id
+      - String
+      - Resource Id
+      - 
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 ApiGatewayModels
 ^^^^^^^^^^^^^^^^^
 
-Container for API Gateway Model objects
+Container for `ApiGatewayModel`_ objects.
 
 .. _ApiGatewayModels:
 
-.. list-table:: :guilabel:`ApiGatewayModels` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`ApiGatewayModels` |bars| Container<`ApiGatewayModel`_>
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
+
+
+ApiGatewayModel
+^^^^^^^^^^^^^^^^
+
+
+
+.. _ApiGatewayModel:
+
+.. list-table:: :guilabel:`ApiGatewayModel`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - content_type
+      - String
+      - Content Type
+      - 
+      - 
+    * - description
+      - String
+      - Description
+      - 
+      - 
+    * - schema
+      - Dict
+      - Schema
+      - {}
+      - JSON format. Will use null({}) if left empty.
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 ApiGatewayResources
 ^^^^^^^^^^^^^^^^^^^^
 
-Container for API Gateway Resource objects
+Container for `ApiGatewayResource`_ objects.
 
 .. _ApiGatewayResources:
 
-.. list-table:: :guilabel:`ApiGatewayResources` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`ApiGatewayResources` |bars| Container<`ApiGatewayResource`_>
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
+
+
+ApiGatewayResource
+^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _ApiGatewayResource:
+
+.. list-table:: :guilabel:`ApiGatewayResource`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - parent_id
+      - String
+      - Id of the parent resource. Default is 'RootResourceId' for a resource without a parent.
+      - RootResourceId
+      - 
+    * - path_part
+      - String |star|
+      - Path Part
+      - 
+      - 
+    * - rest_api_id
+      - String |star|
+      - Name of the API Gateway REST API this resource belongs to.
+      - 
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 ApiGatewayStages
 ^^^^^^^^^^^^^^^^^
 
-Container for API Gateway Stage objects
+Container for `ApiGatewayStage`_ objects
 
 .. _ApiGatewayStages:
 
-.. list-table:: :guilabel:`ApiGatewayStages` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`ApiGatewayStages` |bars| Container<`ApiGatewayStages`_>
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+ApiGatewayStage
+^^^^^^^^^^^^^^^^
+
+API Gateway Stage
+
+.. _ApiGatewayStage:
+
+.. list-table:: :guilabel:`ApiGatewayStage`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - deployment_id
       - String
-      - .. fa:: times
+      - Deployment ID
       - 
       - 
-      - Title
-      - Title
+    * - description
+      - String
+      - Description
+      - 
+      - 
+    * - stage_name
+      - String
+      - Stage name
+      - 
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
+
+ApiGatewayMethodIntegration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _ApiGatewayMethodIntegration:
+
+.. list-table:: :guilabel:`ApiGatewayMethodIntegration`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - integration_http_method
+      - String
+      - Integration HTTP Method
+      - POST
+      - Must be one of ANY, DELETE, GET, HEAD, OPTIONS, PATCH, POST or PUT.
+    * - integration_lambda
+      - TextReference
+      - Integration Lambda
+      - 
+      - 
+    * - integration_responses
+      - List<ApiGatewayMethodIntegrationResponse_>
+      - Integration Responses
+      - 
+      - 
+    * - integration_type
+      - String |star|
+      - Integration Type
+      - AWS
+      - Must be one of AWS, AWS_PROXY, HTTP, HTTP_PROXY or MOCK.
+    * - request_parameters
+      - Dict
+      - The request parameters that API Gateway sends with the backend request.
+      - {}
+      - Specify request parameters as key-value pairs (string-to-string mappings),
+        with a destination as the key and a source as the value. Specify the destination by using the
+        following pattern `integration.request.location.name`, where `location` is query string, path,
+        or header, and `name` is a valid, unique parameter name.
+        
+        The source must be an existing method request parameter or a static value. You must
+        enclose static values in single quotation marks and pre-encode these values based on
+        their destination in the request.
+                
+    * - uri
+      - String
+      - Integration URI
+      - 
+      - 
+
+
+
+ApiGatewayMethodIntegrationResponse
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _ApiGatewayMethodIntegrationResponse:
+
+.. list-table:: :guilabel:`ApiGatewayMethodIntegrationResponse`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - content_handling
+      - String
+      - Specifies how to handle request payload content type conversions.
+      - 
+      - Valid values are:
+        
+        CONVERT_TO_BINARY: Converts a request payload from a base64-encoded string to a binary blob.
+        
+        CONVERT_TO_TEXT: Converts a request payload from a binary blob to a base64-encoded string.
+        
+        If this property isn't defined, the request payload is passed through from the method request
+        to the integration request without modification.
+
+    * - response_parameters
+      - Dict
+      - Response Parameters
+      - {}
+      - 
+    * - response_templates
+      - Dict
+      - Response Templates
+      - {}
+      - 
+    * - selection_pattern
+      - String
+      - A regular expression that specifies which error strings or status codes from the backend map to the integration response.
+      - 
+      - 
+    * - status_code
+      - String |star|
+      - The status code that API Gateway uses to map the integration response to a MethodResponse status code.
+      - 
+      - Must match a status code in the method_respones for this API Gateway REST API.
+
+
+
+ApiGatewayMethodMethodResponse
+-------------------------------
+
+
+
+.. _ApiGatewayMethodMethodResponse:
+
+.. list-table:: :guilabel:`ApiGatewayMethodMethodResponse`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - response_models
+      - List<ApiGatewayMethodMethodResponseModel_>
+      - The resources used for the response's content type.
+      - 
+      - Specify response models as key-value pairs (string-to-string maps),
+        with a content type as the key and a Model Paco name as the value.
+    * - status_code
+      - String |star|
+      - HTTP Status code
+      - 
+      - 
+
+
+
+ApiGatewayMethodMethodResponseModel
+------------------------------------
+
+
+
+.. _ApiGatewayMethodMethodResponseModel:
+
+.. list-table:: :guilabel:`ApiGatewayMethodMethodResponseModel`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - content_type
+      - String
+      - Content Type
+      - 
+      - 
+    * - model_name
+      - String
+      - Model name
+      - 
+      - 
 
 
 
@@ -2442,137 +2485,67 @@ to a target group, use the ``target_groups`` field on an ASG resource.
 
 .. _LBApplication:
 
-.. list-table:: :guilabel:`LBApplication` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`LBApplication`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - monitoring
-      - MonitorConfig_ Paco schema
-      - .. fa:: times
-      - 
-      - 
-      - 
-      - Monitorable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - access_logs_bucket
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Bucket to store access logs in
-      - LBApplication
+      - 
+      - 
     * - access_logs_prefix
       - String
-      - .. fa:: times
-      - 
-      - 
       - Access Logs S3 Bucket prefix
-      - LBApplication
+      - 
+      - 
     * - dns
-      - List of DNS_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<DNS_>
       - List of DNS for the ALB
-      - LBApplication
+      - 
+      - 
     * - enable_access_logs
       - Boolean
-      - .. fa:: times
-      - 
-      - 
       - Write access logs to an S3 Bucket
-      - LBApplication
+      - 
+      - 
     * - idle_timeout_secs
       - Int
-      - .. fa:: times
+      - Idle timeout in seconds
       - 60
       - The idle timeout value, in seconds.
-      - Idle timeout in seconds
-      - LBApplication
     * - listeners
-      - Container of Listeners_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<Listeners_>
       - Listeners
-      - LBApplication
+      - 
+      - 
     * - scheme
       - Choice
-      - .. fa:: times
-      - 
-      - 
       - Scheme
-      - LBApplication
+      - 
+      - 
     * - security_groups
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - Security Groups
-      - LBApplication
+      - 
+      - 
     * - segment
       - String
-      - .. fa:: times
-      - 
-      - 
       - Id of the segment stack
-      - LBApplication
+      - 
+      - 
     * - target_groups
-      - Container of TargetGroups_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<TargetGroups_>
       - Target Groups
-      - LBApplication
+      - 
+      - 
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
 
 
 DNS
@@ -2583,45 +2556,62 @@ DNS
 .. _DNS:
 
 .. list-table:: :guilabel:`DNS`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - domain_name
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Domain name
-      - DNS
+      - 
+      - 
     * - hosted_zone
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Hosted Zone Id
-      - DNS
+      - 
+      - 
     * - ssl_certificate
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - SSL certificate Reference
-      - DNS
+      - 
+      - 
     * - ttl
       - Int
-      - .. fa:: times
+      - TTL
       - 300
       - 
-      - TTL
-      - DNS
 
+
+
+Listeners
+^^^^^^^^^^
+
+
+Container for `Listener`_ objects.
+    
+
+.. _Listeners:
+
+.. list-table:: :guilabel:`Listeners` |bars| Container<`Listener`_>
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
 
 
 Listener
@@ -2632,59 +2622,36 @@ Listener
 .. _Listener:
 
 .. list-table:: :guilabel:`Listener`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - port
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - Port
-      - PortProtocol
-    * - protocol
-      - Choice
-      - .. fa:: times
-      - 
-      - 
-      - Protocol
-      - PortProtocol
+      - Constraints
+      - Default
     * - redirect
-      - PortProtocol_ Paco schema
-      - .. fa:: times
-      - 
-      - 
+      - Object<PortProtocol_>
       - Redirect
-      - Listener
+      - 
+      - 
     * - rules
-      - Container of ListenerRule_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<ListenerRule_>
       - Container of listener rules
-      - Listener
+      - 
+      - 
     * - ssl_certificates
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - List of SSL certificate References
-      - Listener
+      - 
+      - 
     * - target_group
       - String
-      - .. fa:: times
-      - 
-      - 
       - Target group
-      - Listener
+      - 
+      - 
 
+*Base Schemas* `PortProtocol`_
 
 
 ListenerRule
@@ -2695,59 +2662,41 @@ ListenerRule
 .. _ListenerRule:
 
 .. list-table:: :guilabel:`ListenerRule`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
+      - Constraints
+      - Default
     * - host
       - String
-      - .. fa:: times
-      - 
-      - 
       - Host header value
-      - ListenerRule
+      - 
+      - 
     * - priority
       - Int
-      - .. fa:: times
+      - Forward condition priority
       - 1
       - 
-      - Forward condition priority
-      - ListenerRule
     * - redirect_host
       - String
-      - .. fa:: times
-      - 
-      - 
       - The host to redirect to
-      - ListenerRule
+      - 
+      - 
     * - rule_type
       - String
-      - .. fa:: times
-      - 
-      - 
       - Type of Rule
-      - ListenerRule
+      - 
+      - 
     * - target_group
       - String
-      - .. fa:: times
-      - 
-      - 
       - Target group name
-      - ListenerRule
+      - 
+      - 
 
+*Base Schemas* `Deployable`_
 
 
 PortProtocol
@@ -2758,31 +2707,52 @@ Port and Protocol
 .. _PortProtocol:
 
 .. list-table:: :guilabel:`PortProtocol`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - port
       - Int
-      - .. fa:: times
-      - 
-      - 
       - Port
-      - PortProtocol
+      - 
+      - 
     * - protocol
       - Choice
-      - .. fa:: times
-      - 
-      - 
       - Protocol
-      - PortProtocol
+      - 
+      - 
 
+
+
+TargetGroups
+^^^^^^^^^^^^^
+
+
+Container for `TargetGroup`_ objects.
+    
+
+.. _TargetGroups:
+
+.. list-table:: :guilabel:`TargetGroups` |bars| Container<`TargetGroup`_>
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
 
 
 TargetGroup
@@ -2793,492 +2763,386 @@ Target Group
 .. _TargetGroup:
 
 .. list-table:: :guilabel:`TargetGroup`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - port
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - Port
-      - PortProtocol
-    * - protocol
-      - Choice
-      - .. fa:: times
-      - 
-      - 
-      - Protocol
-      - PortProtocol
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - connection_drain_timeout
       - Int
-      - .. fa:: times
-      - 
-      - 
       - Connection drain timeout
-      - TargetGroup
+      - 
+      - 
     * - health_check_http_code
       - String
-      - .. fa:: times
-      - 
-      - 
       - Health check HTTP codes
-      - TargetGroup
+      - 
+      - 
     * - health_check_interval
       - Int
-      - .. fa:: times
-      - 
-      - 
       - Health check interval
-      - TargetGroup
+      - 
+      - 
     * - health_check_path
       - String
-      - .. fa:: times
+      - Health check path
       - /
       - 
-      - Health check path
-      - TargetGroup
     * - health_check_timeout
       - Int
-      - .. fa:: times
-      - 
-      - 
       - Health check timeout
-      - TargetGroup
+      - 
+      - 
     * - healthy_threshold
       - Int
-      - .. fa:: times
-      - 
-      - 
       - Healthy threshold
-      - TargetGroup
+      - 
+      - 
     * - unhealthy_threshold
       - Int
-      - .. fa:: times
-      - 
-      - 
       - Unhealthy threshold
-      - TargetGroup
+      - 
+      - 
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `PortProtocol`_, `Title`_, `Type`_
 
 
 ASG
 ----
 
 
-    Auto Scaling Group
+Auto Scaling Group
     
 
 .. _ASG:
 
 .. list-table:: :guilabel:`ASG`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - monitoring
-      - MonitorConfig_ Paco schema
-      - .. fa:: times
-      - 
-      - 
-      - 
-      - Monitorable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - associate_public_ip_address
       - Boolean
-      - .. fa:: times
+      - Associate Public IP Address
       - False
       - 
-      - Associate Public IP Address
-      - ASG
     * - availability_zone
       - String
-      - .. fa:: times
+      - Availability Zones to launch instances in.
       - all
       - 
-      - Availability Zones to launch instances in.
-      - ASG
     * - block_device_mappings
-      - List of BlockDeviceMapping_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<BlockDeviceMapping_>
       - Block Device Mappings
-      - ASG
+      - 
+      - 
     * - cfn_init
-      - CloudFormationInit_ Paco schema
-      - .. fa:: times
-      - 
-      - 
+      - Object<CloudFormationInit_>
       - CloudFormation Init
-      - ASG
+      - 
+      - 
     * - cooldown_secs
       - Int
-      - .. fa:: times
+      - Cooldown seconds
       - 300
       - 
-      - Cooldown seconds
-      - ASG
     * - desired_capacity
       - Int
-      - .. fa:: times
+      - Desired capacity
       - 1
       - 
-      - Desired capacity
-      - ASG
     * - ebs_optimized
       - Boolean
-      - .. fa:: times
+      - EBS Optimized
       - False
       - 
-      - EBS Optimized
-      - ASG
     * - ebs_volume_mounts
-      - List of EBSVolumeMount_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<EBSVolumeMount_>
       - Elastic Block Store Volume Mounts
-      - ASG
+      - 
+      - 
     * - efs_mounts
-      - List of EFSMount_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<EFSMount_>
       - Elastic Filesystem Configuration
-      - ASG
+      - 
+      - 
     * - eip
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Elastic IP Reference or AllocationId
-      - ASG
+      - 
+      - 
     * - health_check_grace_period_secs
       - Int
-      - .. fa:: times
+      - Health check grace period in seconds
       - 300
       - 
-      - Health check grace period in seconds
-      - ASG
     * - health_check_type
       - String
-      - .. fa:: times
+      - Health check type
       - EC2
       - Must be one of: 'EC2', 'ELB'
-      - Health check type
-      - ASG
     * - instance_ami
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Instance AMI
-      - ASG
+      - 
+      - 
     * - instance_ami_type
       - String
-      - .. fa:: times
+      - The AMI Operating System family
       - amazon
       - Must be one of amazon, centos, suse, debian, ubuntu, microsoft or redhat.
-      - The AMI Operating System family
-      - ASG
     * - instance_iam_role
-      - Role_ Paco schema
-      - .. fa:: check
+      - Object<Role_> |star|
       - 
       - 
       - 
-      - ASG
     * - instance_key_pair
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Instance key pair reference
-      - ASG
+      - 
+      - 
     * - instance_monitoring
       - Boolean
-      - .. fa:: times
+      - Instance monitoring
       - False
       - 
-      - Instance monitoring
-      - ASG
     * - instance_type
       - String
-      - .. fa:: times
-      - 
-      - 
       - Instance type
-      - ASG
+      - 
+      - 
     * - launch_options
-      - EC2LaunchOptions_ Paco schema
-      - .. fa:: times
-      - 
-      - 
+      - Object<EC2LaunchOptions_>
       - EC2 Launch Options
-      - ASG
+      - 
+      - 
     * - lifecycle_hooks
-      - Container of ASGLifecycleHooks_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<ASGLifecycleHooks_>
       - Lifecycle Hooks
-      - ASG
+      - 
+      - 
     * - load_balancers
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - Target groups
-      - ASG
+      - 
+      - 
     * - max_instances
       - Int
-      - .. fa:: times
+      - Maximum instances
       - 2
       - 
-      - Maximum instances
-      - ASG
     * - min_instances
       - Int
-      - .. fa:: times
+      - Minimum instances
       - 1
       - 
-      - Minimum instances
-      - ASG
     * - scaling_policies
-      - Container of ASGScalingPolicies_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<ASGScalingPolicies_>
       - Scaling Policies
-      - ASG
+      - 
+      - 
     * - scaling_policy_cpu_average
       - Int
-      - .. fa:: times
+      - Average CPU Scaling Polciy
       - 0
       - 
-      - Average CPU Scaling Polciy
-      - ASG
     * - secrets
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - List of Secrets Manager References
-      - ASG
+      - 
+      - 
     * - security_groups
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - Security groups
-      - ASG
+      - 
+      - 
     * - segment
       - String
-      - .. fa:: times
-      - 
-      - 
       - Segment
-      - ASG
+      - 
+      - 
     * - target_groups
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - Target groups
-      - ASG
+      - 
+      - 
     * - termination_policies
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - Terminiation policies
-      - ASG
+      - 
+      - 
     * - update_policy_max_batch_size
       - Int
-      - .. fa:: times
+      - Update policy maximum batch size
       - 1
       - 
-      - Update policy maximum batch size
-      - ASG
     * - update_policy_min_instances_in_service
       - Int
-      - .. fa:: times
+      - Update policy minimum instances in service
       - 1
       - 
-      - Update policy minimum instances in service
-      - ASG
     * - user_data_pre_script
       - String
-      - .. fa:: times
-      - 
-      - 
       - User data pre-script
-      - ASG
+      - 
+      - 
     * - user_data_script
       - String
-      - .. fa:: times
-      - 
-      - 
       - User data script
-      - ASG
+      - 
+      - 
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
 
 
 ASGLifecycleHooks
 ^^^^^^^^^^^^^^^^^^
 
 
-    Container of ASG LifecycleHOoks
+Container for `ASGLifecycleHook` objects.
     
 
 .. _ASGLifecycleHooks:
 
-.. list-table:: :guilabel:`ASGLifecycleHooks` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`ASGLifecycleHooks` |bars| Container<`ASGLifecycleHook`_>
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
+
+
+ASGLifecycleHook
+^^^^^^^^^^^^^^^^^
+
+
+ASG Lifecycle Hook
+    
+
+.. _ASGLifecycleHook:
+
+.. list-table:: :guilabel:`ASGLifecycleHook`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - default_result
+      - String
+      - Default Result
+      - 
+      - 
+    * - lifecycle_transition
+      - String |star|
+      - ASG Lifecycle Transition
+      - 
+      - 
+    * - notification_target_arn
+      - String |star|
+      - Lifecycle Notification Target Arn
+      - 
+      - 
+    * - role_arn
+      - String |star|
+      - Licecycel Publish Role ARN
+      - 
+      - 
+
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
 ASGScalingPolicies
 ^^^^^^^^^^^^^^^^^^^
 
 
-    Container of Auto Scaling Group Scaling Policies
+Container for `ASGScalingPolicy`_ objects.
     
 
 .. _ASGScalingPolicies:
 
-.. list-table:: :guilabel:`ASGScalingPolicies` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`ASGScalingPolicies` |bars| Container<`ASGScalingPolicy`_>
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
+
+
+ASGScalingPolicy
+^^^^^^^^^^^^^^^^^
+
+
+Auto Scaling Group Scaling Policy
+    
+
+.. _ASGScalingPolicy:
+
+.. list-table:: :guilabel:`ASGScalingPolicy`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - adjustment_type
+      - String |star|
+      - Adjustment Type
+      - ChangeInCapacity
+      - 
+    * - alarms
+      - List<SimpleCloudWatchAlarm_> |star|
+      - Alarms
+      - 
+      - 
+    * - cooldown
+      - Int
+      - Scaling Cooldown in Seconds
+      - 300
+      - 
+    * - policy_type
+      - String |star|
+      - Policy Type
+      - SimpleScaling
+      - 
+    * - scaling_adjustment
+      - Int |star|
+      - Scaling Adjustment
+      - 
+      - 
+
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
 BlockDeviceMapping
@@ -3289,37 +3153,29 @@ BlockDeviceMapping
 .. _BlockDeviceMapping:
 
 .. list-table:: :guilabel:`BlockDeviceMapping`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - device_name
-      - String
-      - .. fa:: check
-      - 
-      - 
+      - String |star|
       - The device name exposed to the EC2 instance
-      - BlockDeviceMapping
+      - 
+      - 
     * - ebs
-      - BlockDevice_ Paco schema
-      - .. fa:: times
-      - 
-      - 
+      - Object<BlockDevice_>
       - Amazon Ebs volume
-      - BlockDeviceMapping
+      - 
+      - 
     * - virtual_name
       - String
-      - .. fa:: times
+      - The name of the virtual device.
       - 
       - The name must be in the form ephemeralX where X is a number starting from zero (0), for example, ephemeral0.
-      - The name of the virtual device.
-      - BlockDeviceMapping
 
 
 
@@ -3331,58 +3187,44 @@ BlockDevice
 .. _BlockDevice:
 
 .. list-table:: :guilabel:`BlockDevice`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - delete_on_termination
       - Boolean
-      - .. fa:: times
+      - Indicates whether to delete the volume when the instance is terminated.
       - True
       - 
-      - Indicates whether to delete the volume when the instance is terminated.
-      - BlockDevice
     * - encrypted
       - Boolean
-      - .. fa:: times
-      - 
-      - 
       - Specifies whether the EBS volume is encrypted.
-      - BlockDevice
+      - 
+      - 
     * - iops
       - Int
-      - .. fa:: times
+      - The number of I/O operations per second (IOPS) to provision for the volume.
       - 
       - The maximum ratio of IOPS to volume size (in GiB) is 50:1, so for 5,000 provisioned IOPS, you need at least 100 GiB storage on the volume.
-      - The number of I/O operations per second (IOPS) to provision for the volume.
-      - BlockDevice
     * - size_gib
       - Int
-      - .. fa:: times
+      - The volume size, in Gibibytes (GiB).
       - 
       - This can be a number from 1-1,024 for standard, 4-16,384 for io1, 1-16,384 for gp2, and 500-16,384 for st1 and sc1.
-      - The volume size, in Gibibytes (GiB).
-      - BlockDevice
     * - snapshot_id
       - String
-      - .. fa:: times
-      - 
-      - 
       - The snapshot ID of the volume to use.
-      - BlockDevice
+      - 
+      - 
     * - volume_type
-      - String
-      - .. fa:: check
+      - String |star|
+      - The volume type, which can be standard for Magnetic, io1 for Provisioned IOPS SSD, gp2 for General Purpose SSD, st1 for Throughput Optimized HDD, or sc1 for Cold HDD.
       - 
       - Must be one of standard, io1, gp2, st1 or sc1.
-      - The volume type, which can be standard for Magnetic, io1 for Provisioned IOPS SSD, gp2 for General Purpose SSD, st1 for Throughput Optimized HDD, or sc1 for Cold HDD.
-      - BlockDevice
 
 
 
@@ -3390,150 +3232,110 @@ EBSVolumeMount
 ^^^^^^^^^^^^^^^
 
 
-    EBS Volume Mount Configuration
+EBS Volume Mount Configuration
     
 
 .. _EBSVolumeMount:
 
 .. list-table:: :guilabel:`EBSVolumeMount`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
+      - Constraints
+      - Default
     * - device
-      - String
-      - .. fa:: check
-      - 
-      - 
+      - String |star|
       - Device to mount the EBS Volume with.
-      - EBSVolumeMount
+      - 
+      - 
     * - filesystem
-      - String
-      - .. fa:: check
-      - 
-      - 
+      - String |star|
       - Filesystem to mount the EBS Volume with.
-      - EBSVolumeMount
+      - 
+      - 
     * - folder
-      - String
-      - .. fa:: check
-      - 
-      - 
+      - String |star|
       - Folder to mount the EBS Volume
-      - EBSVolumeMount
+      - 
+      - 
     * - volume
-      - TextReference
-      - .. fa:: check
-      - 
-      - 
+      - TextReference |star|
       - EBS Volume Resource Reference
-      - EBSVolumeMount
+      - 
+      - 
 
+*Base Schemas* `Deployable`_
 
 
 EFSMount
 ^^^^^^^^^
 
 
-    EFS Mount Folder and Target Configuration
+EFS Mount Folder and Target Configuration
     
 
 .. _EFSMount:
 
 .. list-table:: :guilabel:`EFSMount`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
+      - Constraints
+      - Default
     * - folder
-      - String
-      - .. fa:: check
-      - 
-      - 
+      - String |star|
       - Folder to mount the EFS target
-      - EFSMount
+      - 
+      - 
     * - target
-      - TextReference
-      - .. fa:: check
-      - 
-      - 
+      - TextReference |star|
       - EFS Target Resource Reference
-      - EFSMount
+      - 
+      - 
 
+*Base Schemas* `Deployable`_
 
 
 EC2LaunchOptions
 ^^^^^^^^^^^^^^^^^
 
 
-    EC2 Launch Options
+EC2 Launch Options
     
 
 .. _EC2LaunchOptions:
 
 .. list-table:: :guilabel:`EC2LaunchOptions`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - cfn_init_config_sets
-      - List of Strings
-      - .. fa:: times
+      - List<string>
+      - List of cfn-init config sets
       - []
       - 
-      - List of cfn-init config sets
-      - EC2LaunchOptions
     * - update_packages
       - Boolean
-      - .. fa:: times
+      - Update Distribution Packages
       - False
       - 
-      - Update Distribution Packages
-      - EC2LaunchOptions
 
+*Base Schemas* `Named`_, `Title`_
 
 
 CloudFormationInit
-^^^^^^^^^^^^^^^^^^^
+-------------------
 
 
 `CloudFormation Init`_ is a method to configure an EC2 instance after it is launched.
@@ -3649,45 +3451,31 @@ not yet implemented.
 .. _CloudFormationInit:
 
 .. list-table:: :guilabel:`CloudFormationInit`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - config_sets
-      - Container of CloudFormationConfigSets_ Paco schemas
-      - .. fa:: check
-      - 
-      - 
+      - Container<CloudFormationConfigSets_> |star|
       - CloudFormation Init configSets
-      - CloudFormationInit
+      - 
+      - 
     * - configurations
-      - Container of CloudFormationConfigurations_ Paco schemas
-      - .. fa:: check
-      - 
-      - 
+      - Container<CloudFormationConfigurations_> |star|
       - CloudFormation Init configurations
-      - CloudFormationInit
+      - 
+      - 
     * - parameters
       - Dict
-      - .. fa:: times
+      - Parameters
       - {}
       - 
-      - Parameters
-      - CloudFormationInit
 
+*Base Schemas* `Named`_, `Title`_
 
 
 CloudFormationConfigSets
@@ -3697,25 +3485,22 @@ CloudFormationConfigSets
 
 .. _CloudFormationConfigSets:
 
-.. list-table:: :guilabel:`CloudFormationConfigSets` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`CloudFormationConfigSets`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
 
 
 CloudFormationConfigurations
@@ -3725,24 +3510,467 @@ CloudFormationConfigurations
 
 .. _CloudFormationConfigurations:
 
-.. list-table:: :guilabel:`CloudFormationConfigurations` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`CloudFormationConfigurations` |bars| Container<`CloudFormationConfiguration`_>
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CloudFormationConfiguration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CloudFormationConfiguration:
+
+.. list-table:: :guilabel:`CloudFormationConfiguration`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - commands
+      - Container<CloudFormationInitCommands_>
+      - Commands
+      - 
+      - 
+    * - files
+      - Container<CloudFormationInitFiles_>
+      - Files
+      - 
+      - 
+    * - groups
+      - Object<CloudFormationInitGroups_>
+      - Groups
+      - 
+      - 
+    * - packages
+      - Object<CloudFormationInitPackages_>
+      - Packages
+      - 
+      - 
+    * - services
+      - Object<CloudFormationInitServices_>
+      - Services
+      - 
+      - 
+    * - sources
+      - Container<CloudFormationInitSources_>
+      - Sources
+      - 
+      - 
+    * - users
+      - Object<CloudFormationInitUsers_>
+      - Users
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CloudFormationInitCommands
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CloudFormationInitCommands:
+
+.. list-table:: :guilabel:`CloudFormationInitCommands`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CloudFormationInitCommand
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CloudFormationInitCommand:
+
+.. list-table:: :guilabel:`CloudFormationInitCommand`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - command
+      - String |star|
+      - Command
+      - 
+      - 
+    * - cwd
       - String
-      - .. fa:: times
+      - Cwd. The working directory
       - 
       - 
-      - Title
-      - Title
+    * - env
+      - Dict
+      - Environment Variables. This property overwrites, rather than appends, the existing environment.
+      - {}
+      - 
+    * - ignore_errors
+      - Boolean
+      - Ingore errors - determines whether cfn-init continues to run if the command in contained in the command key fails (returns a non-zero value). Set to true if you want cfn-init to continue running even if the command fails.
+      - False
+      - 
+    * - test
+      - String
+      - A test command that determines whether cfn-init runs commands that are specified in the command key. If the test passes, cfn-init runs the commands.
+      - 
+      - 
+
+
+
+CloudFormationInitFiles
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CloudFormationInitFiles:
+
+.. list-table:: :guilabel:`CloudFormationInitFiles`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CloudFormationInitFile
+^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CloudFormationInitFile:
+
+.. list-table:: :guilabel:`CloudFormationInitFile`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - authentication
+      - String
+      - The name of an authentication method to use.
+      - 
+      - 
+    * - content
+      - Object<Interface_>
+      - Either a string or a properly formatted YAML object.
+      - 
+      - 
+    * - content_cfn_file
+      - YAMLFileReference
+      - File path to a properly formatted CloudFormation Functions YAML object.
+      - 
+      - 
+    * - content_file
+      - StringFileReference
+      - File path to a string.
+      - 
+      - 
+    * - context
+      - String
+      - Specifies a context for files that are to be processed as Mustache templates.
+      - 
+      - 
+    * - encoding
+      - String
+      - The encoding format.
+      - 
+      - 
+    * - group
+      - String
+      - The name of the owning group for this file. Not supported for Windows systems.
+      - 
+      - 
+    * - mode
+      - String
+      - A six-digit octal value representing the mode for this file.
+      - 
+      - 
+    * - owner
+      - String
+      - The name of the owning user for this file. Not supported for Windows systems.
+      - 
+      - 
+    * - source
+      - String
+      - A URL to load the file from.
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CloudFormationInitGroups
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+    * -
+      -
+      -
+      -
+      -
+
+
+
+CloudFormationInitPackages
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CloudFormationInitPackages:
+
+.. list-table:: :guilabel:`CloudFormationInitPackages`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - apt
+      - Container<CloudFormationInitVersionedPackageSet_>
+      - Apt packages
+      - 
+      - 
+    * - msi
+      - Container<CloudFormationInitPathOrUrlPackageSet_>
+      - MSI packages
+      - 
+      - 
+    * - python
+      - Container<CloudFormationInitVersionedPackageSet_>
+      - Apt packages
+      - 
+      - 
+    * - rpm
+      - Container<CloudFormationInitPathOrUrlPackageSet_>
+      - RPM packages
+      - 
+      - 
+    * - rubygems
+      - Container<CloudFormationInitVersionedPackageSet_>
+      - Rubygems packages
+      - 
+      - 
+    * - yum
+      - Container<CloudFormationInitVersionedPackageSet_>
+      - Yum packages
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CloudFormationInitVersionedPackageSet
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+    * -
+      -
+      -
+      -
+      -
+
+
+
+CloudFormationInitPathOrUrlPackageSet
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+    * -
+      -
+      -
+      -
+      -
+
+
+
+CloudFormationInitServiceCollection
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CloudFormationInitServiceCollection:
+
+.. list-table:: :guilabel:`CloudFormationInitServiceCollection`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CloudFormationInitServices
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CloudFormationInitServices:
+
+.. list-table:: :guilabel:`CloudFormationInitServices`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - sysvinit
+      - Container<CloudFormationInitServiceCollection_>
+      - SysVInit Services for Linux OS
+      - 
+      - 
+    * - windows
+      - Container<CloudFormationInitServiceCollection_>
+      - Windows Services for Windows OS
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CloudFormationInitService
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CloudFormationInitService:
+
+.. list-table:: :guilabel:`CloudFormationInitService`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - commands
+      - List<string>
+      - A list of command names. If cfn-init runs the specified command, this service will be restarted.
+      - 
+      - 
+    * - enabled
+      - Boolean
+      - Ensure that the service will be started or not started upon boot.
+      - 
+      - 
+    * - ensure_running
+      - Boolean
+      - Ensure that the service is running or stopped after cfn-init finishes.
+      - 
+      - 
+    * - files
+      - List<string>
+      - A list of files. If cfn-init changes one directly via the files block, this service will be restarted
+      - 
+      - 
+    * - packages
+      - Dict
+      - A map of package manager to list of package names. If cfn-init installs or updates one of these packages, this service will be restarted.
+      - {}
+      - 
+    * - sources
+      - List<string>
+      - A list of directories. If cfn-init expands an archive into one of these directories, this service will be restarted.
+      - 
+      - 
+
+
+
+CloudFormationInitSources
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CloudFormationInitSources:
+
+.. list-table:: :guilabel:`CloudFormationInitSources`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CloudFormationInitUsers
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+    * -
+      -
+      -
+      -
+      -
 
 
 
@@ -3750,205 +3978,122 @@ CodePipeBuildDeploy
 --------------------
 
 
-    Code Pipeline: Build and Deploy
+Code Pipeline: Build and Deploy
     
 
 .. _CodePipeBuildDeploy:
 
 .. list-table:: :guilabel:`CodePipeBuildDeploy`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - alb_target_group
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - ALB Target Group Reference
-      - CodePipeBuildDeploy
+      - 
+      - 
     * - artifacts_bucket
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Artifacts S3 Bucket Reference
-      - CodePipeBuildDeploy
+      - 
+      - 
     * - asg
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - ASG Reference
-      - CodePipeBuildDeploy
+      - 
+      - 
     * - auto_rollback_enabled
       - Boolean
-      - .. fa:: times
+      - Automatic rollback enabled
       - True
       - 
-      - Automatic rollback enabled
-      - CodePipeBuildDeploy
     * - codebuild_compute_type
       - String
-      - .. fa:: times
-      - 
-      - 
       - CodeBuild Compute Type
-      - CodePipeBuildDeploy
+      - 
+      - 
     * - codebuild_image
       - String
-      - .. fa:: times
-      - 
-      - 
       - CodeBuild Docker Image
-      - CodePipeBuildDeploy
+      - 
+      - 
     * - codecommit_repository
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - CodeCommit Respository
-      - CodePipeBuildDeploy
+      - 
+      - 
     * - cross_account_support
       - Boolean
-      - .. fa:: times
+      - Cross Account Support
       - False
       - 
-      - Cross Account Support
-      - CodePipeBuildDeploy
     * - data_account
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Data Account Reference
-      - CodePipeBuildDeploy
+      - 
+      - 
     * - deploy_config_type
       - String
-      - .. fa:: times
+      - Deploy Config Type
       - HOST_COUNT
       - 
-      - Deploy Config Type
-      - CodePipeBuildDeploy
     * - deploy_config_value
       - Int
-      - .. fa:: times
+      - Deploy Config Value
       - 0
       - 
-      - Deploy Config Value
-      - CodePipeBuildDeploy
     * - deploy_instance_role
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Deploy Instance Role Reference
-      - CodePipeBuildDeploy
+      - 
+      - 
     * - deploy_style_option
       - String
-      - .. fa:: times
+      - Deploy Style Option
       - WITH_TRAFFIC_CONTROL
       - 
-      - Deploy Style Option
-      - CodePipeBuildDeploy
     * - deployment_branch_name
       - String
-      - .. fa:: times
-      - 
-      - 
       - Deployment Branch Name
-      - CodePipeBuildDeploy
+      - 
+      - 
     * - deployment_environment
       - String
-      - .. fa:: times
-      - 
-      - 
       - Deployment Environment
-      - CodePipeBuildDeploy
+      - 
+      - 
     * - elb_name
       - String
-      - .. fa:: times
-      - 
-      - 
       - ELB Name
-      - CodePipeBuildDeploy
+      - 
+      - 
     * - manual_approval_enabled
       - Boolean
-      - .. fa:: times
+      - Manual approval enabled
       - False
       - 
-      - Manual approval enabled
-      - CodePipeBuildDeploy
     * - manual_approval_notification_email
       - String
-      - .. fa:: times
-      - 
-      - 
       - Manual approval notification email
-      - CodePipeBuildDeploy
+      - 
+      - 
     * - timeout_mins
       - Int
-      - .. fa:: times
+      - Timeout in Minutes
       - 60
       - 
-      - Timeout in Minutes
-      - CodePipeBuildDeploy
     * - tools_account
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Tools Account Reference
-      - CodePipeBuildDeploy
+      - 
+      - 
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 AWSCertificateManager
@@ -3959,80 +4104,31 @@ AWSCertificateManager
 .. _AWSCertificateManager:
 
 .. list-table:: :guilabel:`AWSCertificateManager`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - domain_name
       - String
-      - .. fa:: times
-      - 
-      - 
       - Domain Name
-      - AWSCertificateManager
+      - 
+      - 
     * - external_resource
       - Boolean
-      - .. fa:: times
+      - Marks this resource as external to avoid creating and validating it.
       - False
       - 
-      - Marks this resource as external to avoid creating and validating it.
-      - AWSCertificateManager
     * - subject_alternative_names
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - Subject alternative names
-      - AWSCertificateManager
+      - 
+      - 
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 CodeDeployApplication
@@ -4060,73 +4156,26 @@ CodeDeploy Application
 .. _CodeDeployApplication:
 
 .. list-table:: :guilabel:`CodeDeployApplication`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - compute_platform
-      - String
-      - .. fa:: check
+      - String |star|
+      - Compute Platform
       - 
       - Must be one of Lambda, Server or ECS
-      - Compute Platform
-      - CodeDeployApplication
     * - deployment_groups
-      - Container of CodeDeployDeploymentGroups_ Paco schemas
-      - .. fa:: check
-      - 
-      - 
+      - Container<CodeDeployDeploymentGroups_> |star|
       - CodeDeploy Deployment Groups
-      - CodeDeployApplication
+      - 
+      - 
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 CodeDeployDeploymentGroups
@@ -4136,25 +4185,22 @@ CodeDeployDeploymentGroups
 
 .. _CodeDeployDeploymentGroups:
 
-.. list-table:: :guilabel:`CodeDeployDeploymentGroups` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`CodeDeployDeploymentGroups`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
 
 
 CodeDeployDeploymentGroup
@@ -4165,59 +4211,36 @@ CodeDeployDeploymentGroup
 .. _CodeDeployDeploymentGroup:
 
 .. list-table:: :guilabel:`CodeDeployDeploymentGroup`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - autoscalinggroups
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - A list of refs to  Auto Scaling groups that CodeDeploy automatically deploys revisions to when new instances are created
-      - CodeDeployDeploymentGroup
+      - 
+      - 
     * - ignore_application_stop_failures
       - Boolean
-      - .. fa:: times
-      - 
-      - 
       - Ignore Application Stop Failures
-      - CodeDeployDeploymentGroup
+      - 
+      - 
     * - revision_location_s3
-      - DeploymentGroupS3Location_ Paco schema
-      - .. fa:: times
-      - 
-      - 
+      - Object<DeploymentGroupS3Location_>
       - S3 Bucket revision location
-      - CodeDeployDeploymentGroup
+      - 
+      - 
     * - role_policies
-      - List of Policy_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<Policy_>
       - Policies to grant the deployment group role
-      - CodeDeployDeploymentGroup
+      - 
+      - 
 
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 RDS
 ---
@@ -4312,44 +4335,34 @@ Option groups enable and configure features that are specific to a particular DB
 .. _RDSOptionConfiguration:
 
 .. list-table:: :guilabel:`RDSOptionConfiguration`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - option_name
       - String
-      - .. fa:: times
-      - 
-      - 
       - Option Name
-      - RDSOptionConfiguration
+      - 
+      - 
     * - option_settings
-      - List of NameValuePair_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<NameValuePair_>
       - List of option name value pairs.
-      - RDSOptionConfiguration
+      - 
+      - 
     * - option_version
       - String
-      - .. fa:: times
-      - 
-      - 
       - Option Version
-      - RDSOptionConfiguration
+      - 
+      - 
     * - port
       - String
-      - .. fa:: times
-      - 
-      - 
       - Port
-      - RDSOptionConfiguration
+      - 
+      - 
 
 
 
@@ -4361,30 +4374,24 @@ A Name/Value pair to use for RDS Option Group configuration
 .. _NameValuePair:
 
 .. list-table:: :guilabel:`NameValuePair`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - name
       - String
-      - .. fa:: times
-      - 
-      - 
       - Name
-      - NameValuePair
+      - 
+      - 
     * - value
       - String
-      - .. fa:: times
-      - 
-      - 
       - Value
-      - NameValuePair
+      - 
+      - 
 
 
 
@@ -4400,643 +4407,101 @@ in a different Availability Zone (AZ).
 .. _RDSMysql:
 
 .. list-table:: :guilabel:`RDSMysql`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - monitoring
-      - MonitorConfig_ Paco schema
-      - .. fa:: times
-      - 
-      - 
-      - 
-      - Monitorable
-    * - allow_major_version_upgrade
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Allow major version upgrades
-      - RDS
-    * - auto_minor_version_upgrade
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Automatic minor version upgrades
-      - RDS
-    * - backup_preferred_window
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Backup Preferred Window
-      - RDS
-    * - backup_retention_period
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - Backup Retention Period in days
-      - RDS
-    * - cloudwatch_logs_exports
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
-      - List of CloudWatch Logs Exports
-      - RDS
-    * - db_instance_type
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - RDS Instance Type
-      - RDS
-    * - db_snapshot_identifier
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - DB Snapshot Identifier to restore from
-      - RDS
-    * - deletion_protection
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Deletion Protection
-      - RDS
-    * - dns
-      - List of DNS_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - List of DNS for the RDS
-      - RDS
-    * - engine
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - RDS Engine
-      - RDS
-    * - engine_version
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - RDS Engine Version
-      - RDS
-    * - kms_key_id
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Enable Storage Encryption
-      - RDS
-    * - license_model
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - License Model
-      - RDS
-    * - maintenance_preferred_window
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Maintenance Preferred Window
-      - RDS
-    * - master_user_password
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Master User Password
-      - RDS
-    * - master_username
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Master Username
-      - RDS
-    * - option_configurations
-      - List of RDSOptionConfiguration_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - Option Configurations
-      - RDS
-    * - parameter_group
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - RDS Parameter Group
-      - RDS
-    * - port
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - DB Port
-      - RDS
-    * - primary_domain_name
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Primary Domain Name
-      - RDS
-    * - primary_hosted_zone
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Primary Hosted Zone
-      - RDS
-    * - publically_accessible
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Assign a Public IP address
-      - RDS
-    * - secrets_password
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Secrets Manager password
-      - RDS
-    * - security_groups
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
-      - List of VPC Security Group Ids
-      - RDS
-    * - segment
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Segment
-      - RDS
-    * - storage_encrypted
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Enable Storage Encryption
-      - RDS
-    * - storage_size_gb
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - DB Storage Size in Gigabytes
-      - RDS
-    * - storage_type
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - DB Storage Type
-      - RDS
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - multi_az
       - Boolean
-      - .. fa:: times
+      - Multiple Availability Zone deployment
       - False
       - 
-      - Multiple Availability Zone deployment
-      - RDSMysql
 
+*Base Schemas* `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
 
 
 RDSAurora
 ^^^^^^^^^^
 
 
-    RDS Aurora
+RDS Aurora
     
 
 .. _RDSAurora:
 
 .. list-table:: :guilabel:`RDSAurora`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - monitoring
-      - MonitorConfig_ Paco schema
-      - .. fa:: times
-      - 
-      - 
-      - 
-      - Monitorable
-    * - allow_major_version_upgrade
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Allow major version upgrades
-      - RDS
-    * - auto_minor_version_upgrade
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Automatic minor version upgrades
-      - RDS
-    * - backup_preferred_window
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Backup Preferred Window
-      - RDS
-    * - backup_retention_period
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - Backup Retention Period in days
-      - RDS
-    * - cloudwatch_logs_exports
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
-      - List of CloudWatch Logs Exports
-      - RDS
-    * - db_instance_type
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - RDS Instance Type
-      - RDS
-    * - db_snapshot_identifier
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - DB Snapshot Identifier to restore from
-      - RDS
-    * - deletion_protection
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Deletion Protection
-      - RDS
-    * - dns
-      - List of DNS_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - List of DNS for the RDS
-      - RDS
-    * - engine
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - RDS Engine
-      - RDS
-    * - engine_version
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - RDS Engine Version
-      - RDS
-    * - kms_key_id
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Enable Storage Encryption
-      - RDS
-    * - license_model
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - License Model
-      - RDS
-    * - maintenance_preferred_window
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Maintenance Preferred Window
-      - RDS
-    * - master_user_password
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Master User Password
-      - RDS
-    * - master_username
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Master Username
-      - RDS
-    * - option_configurations
-      - List of RDSOptionConfiguration_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - Option Configurations
-      - RDS
-    * - parameter_group
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - RDS Parameter Group
-      - RDS
-    * - port
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - DB Port
-      - RDS
-    * - primary_domain_name
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Primary Domain Name
-      - RDS
-    * - primary_hosted_zone
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Primary Hosted Zone
-      - RDS
-    * - publically_accessible
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Assign a Public IP address
-      - RDS
-    * - secrets_password
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Secrets Manager password
-      - RDS
-    * - security_groups
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
-      - List of VPC Security Group Ids
-      - RDS
-    * - segment
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Segment
-      - RDS
-    * - storage_encrypted
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Enable Storage Encryption
-      - RDS
-    * - storage_size_gb
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - DB Storage Size in Gigabytes
-      - RDS
-    * - storage_type
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - DB Storage Type
-      - RDS
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - secondary_domain_name
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Secondary Domain Name
-      - RDSAurora
+      - 
+      - 
     * - secondary_hosted_zone
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Secondary Hosted Zone
-      - RDSAurora
+      - 
+      - 
 
+*Base Schemas* `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
 
 
 DBParameterGroup
 -----------------
 
 
-    AWS::RDS::DBParameterGroup
+AWS::RDS::DBParameterGroup
     
 
 .. _DBParameterGroup:
 
 .. list-table:: :guilabel:`DBParameterGroup`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - description
       - String
-      - .. fa:: times
-      - 
-      - 
       - Description
-      - DBParameterGroup
+      - 
+      - 
     * - family
-      - String
-      - .. fa:: check
-      - 
-      - 
+      - String |star|
       - Database Family
-      - DBParameterGroup
+      - 
+      - 
     * - parameters
-      - Container of DBParameters_ Paco schemas
-      - .. fa:: check
-      - 
-      - 
+      - Container<DBParameters_> |star|
       - Database Parameter set
-      - DBParameterGroup
+      - 
+      - 
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 DBParameters
 ^^^^^^^^^^^^^
 
 A dict of database parameters
+    * -
+      -
+      -
+      -
+      -
 
 
 
@@ -5044,135 +4509,72 @@ EC2
 ----
 
 
-    EC2 Instance
+EC2 Instance
     
 
 .. _EC2:
 
 .. list-table:: :guilabel:`EC2`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - associate_public_ip_address
       - Boolean
-      - .. fa:: times
+      - Associate Public IP Address
       - False
       - 
-      - Associate Public IP Address
-      - EC2
     * - disable_api_termination
       - Boolean
-      - .. fa:: times
+      - Disable API Termination
       - False
       - 
-      - Disable API Termination
-      - EC2
     * - instance_ami
       - String
-      - .. fa:: times
-      - 
-      - 
       - Instance AMI
-      - EC2
+      - 
+      - 
     * - instance_key_pair
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Instance key pair reference
-      - EC2
+      - 
+      - 
     * - instance_type
       - String
-      - .. fa:: times
-      - 
-      - 
       - Instance type
-      - EC2
+      - 
+      - 
     * - private_ip_address
       - String
-      - .. fa:: times
-      - 
-      - 
       - Private IP Address
-      - EC2
+      - 
+      - 
     * - root_volume_size_gb
       - Int
-      - .. fa:: times
+      - Root volume size GB
       - 8
       - 
-      - Root volume size GB
-      - EC2
     * - security_groups
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - Security groups
-      - EC2
+      - 
+      - 
     * - segment
       - String
-      - .. fa:: times
-      - 
-      - 
       - Segment
-      - EC2
+      - 
+      - 
     * - user_data_script
       - String
-      - .. fa:: times
-      - 
-      - 
       - User data script
-      - EC2
+      - 
+      - 
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 Lambda
@@ -5244,157 +4646,81 @@ For the code that the Lambda function will run, use the ``code:`` block and spec
 .. _Lambda:
 
 .. list-table:: :guilabel:`Lambda`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - monitoring
-      - MonitorConfig_ Paco schema
-      - .. fa:: times
-      - 
-      - 
-      - 
-      - Monitorable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - code
-      - LambdaFunctionCode_ Paco schema
-      - .. fa:: check
-      - 
-      - 
+      - Object<LambdaFunctionCode_> |star|
       - The function deployment package.
-      - Lambda
+      - 
+      - 
     * - description
-      - String
-      - .. fa:: check
-      - 
-      - 
+      - String |star|
       - A description of the function.
-      - Lambda
+      - 
+      - 
     * - environment
-      - Container of LambdaEnvironment_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Object<LambdaEnvironment_>
       - Lambda Function Environment
-      - Lambda
+      - 
+      - 
     * - handler
-      - String
-      - .. fa:: check
-      - 
-      - 
+      - String |star|
       - Function Handler
-      - Lambda
+      - 
+      - 
     * - iam_role
-      - Role_ Paco schema
-      - .. fa:: check
-      - 
-      - 
+      - Object<Role_> |star|
       - The IAM Role this Lambda will execute as.
-      - Lambda
+      - 
+      - 
     * - layers
-      - List of Strings
-      - .. fa:: check
+      - List<string> |star|
+      - Layers
       - 
       - Up to 5 Layer ARNs
-      - Layers
-      - Lambda
     * - memory_size
       - Int
-      - .. fa:: times
+      - Function memory size (MB)
       - 128
       - 
-      - Function memory size (MB)
-      - Lambda
     * - reserved_concurrent_executions
       - Int
-      - .. fa:: times
+      - Reserved Concurrent Executions
       - 0
       - 
-      - Reserved Concurrent Executions
-      - Lambda
     * - runtime
-      - String
-      - .. fa:: check
+      - String |star|
+      - Runtime environment
       - python3.7
       - 
-      - Runtime environment
-      - Lambda
     * - sdb_cache
       - Boolean
-      - .. fa:: times
+      - SDB Cache Domain
       - False
       - 
-      - SDB Cache Domain
-      - Lambda
     * - sns_topics
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - List of SNS Topic Paco references
-      - Lambda
+      - 
+      - 
     * - timeout
       - Int
-      - .. fa:: times
+      - Max function execution time in seconds.
       - 
       - Must be between 0 and 900 seconds.
-      - Max function execution time in seconds.
-      - Lambda
     * - vpc_config
-      - LambdaVpcConfig_ Paco schema
-      - .. fa:: times
-      - 
-      - 
+      - Object<LambdaVpcConfig_>
       - Vpc Configuration
-      - Lambda
+      - 
+      - 
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
 
 
 LambdaFunctionCode
@@ -5405,37 +4731,29 @@ The deployment package for a Lambda function.
 .. _LambdaFunctionCode:
 
 .. list-table:: :guilabel:`LambdaFunctionCode`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - s3_bucket
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - An Amazon S3 bucket in the same AWS Region as your function
-      - LambdaFunctionCode
+      - 
+      - 
     * - s3_key
       - String
-      - .. fa:: times
-      - 
-      - 
       - The Amazon S3 key of the deployment package.
-      - LambdaFunctionCode
+      - 
+      - 
     * - zipfile
       - StringFileReference
-      - .. fa:: times
+      - The function as an external file.
       - 
       - Maximum of 4096 characters.
-      - The function as an external file.
-      - LambdaFunctionCode
 
 
 
@@ -5443,29 +4761,25 @@ LambdaEnvironment
 ^^^^^^^^^^^^^^^^^^
 
 
-    Lambda Environment
+Lambda Environment
     
 
 .. _LambdaEnvironment:
 
-.. list-table:: :guilabel:`LambdaEnvironment` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`LambdaEnvironment`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - variables
-      - List of LambdaVariable_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<LambdaVariable_>
       - Lambda Function Variables
-      - LambdaEnvironment
+      - 
+      - 
 
 
 
@@ -5473,44 +4787,32 @@ LambdaVpcConfig
 ^^^^^^^^^^^^^^^^
 
 
-    Lambda Environment
+Lambda Environment
     
 
 .. _LambdaVpcConfig:
 
 .. list-table:: :guilabel:`LambdaVpcConfig`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - security_groups
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - List of VPC Security Group Ids
-      - LambdaVpcConfig
+      - 
+      - 
     * - segments
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - VPC Segments to attach the function
-      - LambdaVpcConfig
+      - 
+      - 
 
+*Base Schemas* `Named`_, `Title`_
 
 
 LambdaVariable
@@ -5523,30 +4825,24 @@ LambdaVariable
 .. _LambdaVariable:
 
 .. list-table:: :guilabel:`LambdaVariable`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - key
-      - String
-      - .. fa:: check
-      - 
-      - 
+      - String |star|
       - Variable Name
-      - LambdaVariable
+      - 
+      - 
     * - value
-      - TextReference
-      - .. fa:: check
-      - 
-      - 
+      - TextReference |star|
       - Variable Value
-      - LambdaVariable
+      - 
+      - 
 
 
 
@@ -5554,257 +4850,159 @@ ManagedPolicy
 --------------
 
 
-    IAM Managed Policy
+IAM Managed Policy
     
 
 .. _ManagedPolicy:
 
-.. list-table:: :guilabel:`ManagedPolicy` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`ManagedPolicy`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - path
       - String
-      - .. fa:: times
+      - Path
       - /
       - 
-      - Path
-      - ManagedPolicy
     * - roles
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - List of Role Names
-      - ManagedPolicy
+      - 
+      - 
     * - statement
-      - List of Statement_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<Statement_>
       - Statements
-      - ManagedPolicy
+      - 
+      - 
     * - users
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - List of IAM Users
-      - ManagedPolicy
+      - 
+      - 
 
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
 S3Bucket
 ---------
 
 
-    S3 Bucket : A template describing an S3 Bbucket
+S3 Bucket : A template describing an S3 Bbucket
     
 
 .. _S3Bucket:
 
 .. list-table:: :guilabel:`S3Bucket`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - account
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Account Reference
-      - S3Bucket
+      - 
+      - 
     * - bucket_name
-      - String
-      - .. fa:: check
+      - String |star|
+      - Bucket Name
       - bucket
       - A short unique name to assign the bucket.
-      - Bucket Name
-      - S3Bucket
     * - cloudfront_origin
       - Boolean
-      - .. fa:: times
+      - Creates and listens for a CloudFront Access Origin Identity
       - False
       - 
-      - Creates and listens for a CloudFront Access Origin Identity
-      - S3Bucket
     * - deletion_policy
       - String
-      - .. fa:: times
+      - Bucket Deletion Policy
       - delete
       - 
-      - Bucket Deletion Policy
-      - S3Bucket
     * - external_resource
       - Boolean
-      - .. fa:: times
+      - Boolean indicating whether the S3 Bucket already exists or not
       - False
       - 
-      - Boolean indicating whether the S3 Bucket already exists or not
-      - S3Bucket
     * - notifications
-      - S3NotificationConfiguration_ Paco schema
-      - .. fa:: times
-      - 
-      - 
+      - Object<S3NotificationConfiguration_>
       - Notification configuration
-      - S3Bucket
+      - 
+      - 
     * - policy
-      - List of S3BucketPolicy_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<S3BucketPolicy_>
       - List of S3 Bucket Policies
-      - S3Bucket
+      - 
+      - 
     * - region
       - String
-      - .. fa:: times
-      - 
-      - 
       - Bucket region
-      - S3Bucket
+      - 
+      - 
     * - versioning
       - Boolean
-      - .. fa:: times
+      - Enable Versioning on the bucket.
       - False
       - 
-      - Enable Versioning on the bucket.
-      - S3Bucket
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 S3BucketPolicy
 ^^^^^^^^^^^^^^^
 
 
-    S3 Bucket Policy
+S3 Bucket Policy
     
 
 .. _S3BucketPolicy:
 
 .. list-table:: :guilabel:`S3BucketPolicy`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - action
-      - List of Strings
-      - .. fa:: check
-      - 
-      - 
+      - List<string> |star|
       - List of Actions
-      - S3BucketPolicy
+      - 
+      - 
     * - aws
-      - List of Strings
-      - .. fa:: times
+      - List<string>
+      - List of AWS Principles.
       - 
       - Either this field or the principal field must be set.
-      - List of AWS Principles.
-      - S3BucketPolicy
     * - condition
       - Dict
-      - .. fa:: times
+      - Condition
       - {}
       - Each Key is the Condition name and the Value must be a dictionary of request filters. e.g. { "StringEquals" : { "aws:username" : "johndoe" }}
-      - Condition
-      - S3BucketPolicy
     * - effect
-      - String
-      - .. fa:: check
+      - String |star|
+      - Effect
       - Deny
       - Must be one of: 'Allow', 'Deny'
-      - Effect
-      - S3BucketPolicy
     * - principal
       - Dict
-      - .. fa:: times
+      - Prinicpals
       - {}
       - Either this field or the aws field must be set. Key should be one of: AWS, Federated, Service or CanonicalUser. Value can be either a String or a List.
-      - Prinicpals
-      - S3BucketPolicy
     * - resource_suffix
-      - List of Strings
-      - .. fa:: check
-      - 
-      - 
+      - List<string> |star|
       - List of AWS Resources Suffixes
-      - S3BucketPolicy
+      - 
+      - 
 
 
 
@@ -5816,30 +5014,24 @@ S3LambdaConfiguration
 .. _S3LambdaConfiguration:
 
 .. list-table:: :guilabel:`S3LambdaConfiguration`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - event
       - String
-      - .. fa:: times
+      - S3 bucket event for which to invoke the AWS Lambda function
       - 
       - Must be a supported event type: https://docs.aws.amazon.com/AmazonS3/latest/dev/NotificationHowTo.html
-      - S3 bucket event for which to invoke the AWS Lambda function
-      - S3LambdaConfiguration
     * - function
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Reference to a Lambda
-      - S3LambdaConfiguration
+      - 
+      - 
 
 
 
@@ -5851,23 +5043,19 @@ S3NotificationConfiguration
 .. _S3NotificationConfiguration:
 
 .. list-table:: :guilabel:`S3NotificationConfiguration`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - lambdas
-      - List of S3LambdaConfiguration_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<S3LambdaConfiguration_>
       - Lambda configurations
-      - S3NotificationConfiguration
+      - 
+      - 
 
 
 
@@ -5913,80 +5101,31 @@ Simple Notification Service (SNS) Topic resource.
 .. _SNSTopic:
 
 .. list-table:: :guilabel:`SNSTopic`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - cross_account_access
       - Boolean
-      - .. fa:: times
+      - Cross-account access from all other accounts in this project.
       - False
       - 
-      - Cross-account access from all other accounts in this project.
-      - SNSTopic
     * - display_name
       - String
-      - .. fa:: times
-      - 
-      - 
       - Display name for SMS Messages
-      - SNSTopic
+      - 
+      - 
     * - subscriptions
-      - List of SNSTopicSubscription_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<SNSTopicSubscription_>
       - List of SNS Topic Subscriptions
-      - SNSTopic
+      - 
+      - 
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 SNSTopicSubscription
@@ -5997,30 +5136,24 @@ SNSTopicSubscription
 .. _SNSTopicSubscription:
 
 .. list-table:: :guilabel:`SNSTopicSubscription`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - endpoint
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - SNS Topic Endpoint
-      - SNSTopicSubscription
+      - 
+      - 
     * - protocol
       - String
-      - .. fa:: times
+      - Notification protocol
       - email
       - Must be a valid SNS Topic subscription protocol: 'http', 'https', 'email', 'email-json', 'sms', 'sqs', 'application', 'lambda'.
-      - Notification protocol
-      - SNSTopicSubscription
 
 
 
@@ -6028,142 +5161,72 @@ CloudFront
 -----------
 
 
-    CloudFront CDN Configuration
+CloudFront CDN Configuration
     
 
 .. _CloudFront:
 
 .. list-table:: :guilabel:`CloudFront`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - monitoring
-      - MonitorConfig_ Paco schema
-      - .. fa:: times
-      - 
-      - 
-      - 
-      - Monitorable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - cache_behaviors
-      - List of CloudFrontCacheBehavior_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<CloudFrontCacheBehavior_>
       - List of Cache Behaviors
-      - CloudFront
+      - 
+      - 
     * - custom_error_responses
-      - List of CloudFrontCustomErrorResponse_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<CloudFrontCustomErrorResponse_>
       - List of Custom Error Responses
-      - CloudFront
+      - 
+      - 
     * - default_cache_behavior
-      - CloudFrontDefaultCacheBehavior_ Paco schema
-      - .. fa:: times
-      - 
-      - 
+      - Object<CloudFrontDefaultCacheBehavior_>
       - Default Cache Behavior
-      - CloudFront
+      - 
+      - 
     * - default_root_object
       - String
-      - .. fa:: times
+      - The default path to load from the origin.
       - index.html
       - 
-      - The default path to load from the origin.
-      - CloudFront
     * - domain_aliases
-      - List of DNS_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<DNS_>
       - List of DNS for the Distribution
-      - CloudFront
+      - 
+      - 
     * - factory
-      - Container of CloudFrontFactory_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<CloudFrontFactory_>
       - CloudFront Factory
-      - CloudFront
+      - 
+      - 
     * - origins
-      - Container of CloudFrontOrigin_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<CloudFrontOrigin_>
       - Map of Origins
-      - CloudFront
+      - 
+      - 
     * - price_class
       - String
-      - .. fa:: times
+      - Price Class
       - All
       - 
-      - Price Class
-      - CloudFront
     * - viewer_certificate
-      - CloudFrontViewerCertificate_ Paco schema
-      - .. fa:: times
-      - 
-      - 
+      - Object<CloudFrontViewerCertificate_>
       - Viewer Certificate
-      - CloudFront
+      - 
+      - 
     * - webacl_id
       - String
-      - .. fa:: times
-      - 
-      - 
       - WAF WebACLId
-      - CloudFront
+      - 
+      - 
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
 
 
 CloudFrontDefaultCacheBehavior
@@ -6174,73 +5237,51 @@ CloudFrontDefaultCacheBehavior
 .. _CloudFrontDefaultCacheBehavior:
 
 .. list-table:: :guilabel:`CloudFrontDefaultCacheBehavior`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - allowed_methods
-      - List of Strings
-      - .. fa:: times
+      - List<string>
+      - List of Allowed HTTP Methods
       - ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT']
       - 
-      - List of Allowed HTTP Methods
-      - CloudFrontDefaultCacheBehavior
     * - cached_methods
-      - List of Strings
-      - .. fa:: times
+      - List<string>
+      - List of HTTP Methods to cache
       - ['GET', 'HEAD', 'OPTIONS']
       - 
-      - List of HTTP Methods to cache
-      - CloudFrontDefaultCacheBehavior
     * - compress
       - Boolean
-      - .. fa:: times
+      - Compress certain files automatically
       - False
       - 
-      - Compress certain files automatically
-      - CloudFrontDefaultCacheBehavior
     * - default_ttl
-      - Int
-      - .. fa:: check
+      - Int |star|
+      - Default TTTL
       - 0
       - 
-      - Default TTTL
-      - CloudFrontDefaultCacheBehavior
     * - forwarded_values
-      - CloudFrontForwardedValues_ Paco schema
-      - .. fa:: times
-      - 
-      - 
+      - Object<CloudFrontForwardedValues_>
       - Forwarded Values
-      - CloudFrontDefaultCacheBehavior
+      - 
+      - 
     * - target_origin
-      - TextReference
-      - .. fa:: check
-      - 
-      - 
+      - TextReference |star|
       - Target Origin
-      - CloudFrontDefaultCacheBehavior
+      - 
+      - 
     * - viewer_protocol_policy
-      - String
-      - .. fa:: check
+      - String |star|
+      - Viewer Protocol Policy
       - redirect-to-https
       - 
-      - Viewer Protocol Policy
-      - CloudFrontDefaultCacheBehavior
 
+*Base Schemas* `Named`_, `Title`_
 
 
 CloudFrontCacheBehavior
@@ -6251,175 +5292,90 @@ CloudFrontCacheBehavior
 .. _CloudFrontCacheBehavior:
 
 .. list-table:: :guilabel:`CloudFrontCacheBehavior`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - allowed_methods
-      - List of Strings
-      - .. fa:: times
-      - ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT']
-      - 
-      - List of Allowed HTTP Methods
-      - CloudFrontDefaultCacheBehavior
-    * - cached_methods
-      - List of Strings
-      - .. fa:: times
-      - ['GET', 'HEAD', 'OPTIONS']
-      - 
-      - List of HTTP Methods to cache
-      - CloudFrontDefaultCacheBehavior
-    * - compress
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Compress certain files automatically
-      - CloudFrontDefaultCacheBehavior
-    * - default_ttl
-      - Int
-      - .. fa:: check
-      - 0
-      - 
-      - Default TTTL
-      - CloudFrontDefaultCacheBehavior
-    * - forwarded_values
-      - CloudFrontForwardedValues_ Paco schema
-      - .. fa:: times
-      - 
-      - 
-      - Forwarded Values
-      - CloudFrontDefaultCacheBehavior
-    * - target_origin
-      - TextReference
-      - .. fa:: check
-      - 
-      - 
-      - Target Origin
-      - CloudFrontDefaultCacheBehavior
-    * - viewer_protocol_policy
-      - String
-      - .. fa:: check
-      - redirect-to-https
-      - 
-      - Viewer Protocol Policy
-      - CloudFrontDefaultCacheBehavior
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - path_pattern
-      - String
-      - .. fa:: check
-      - 
-      - 
+      - String |star|
       - Path Pattern
-      - CloudFrontCacheBehavior
+      - 
+      - 
 
+*Base Schemas* `CloudFrontDefaultCacheBehavior`_, `Named`_, `Title`_
 
 
 CloudFrontFactory
 ^^^^^^^^^^^^^^^^^^
 
 
-    CloudFront Factory
+CloudFront Factory
     
 
 .. _CloudFrontFactory:
 
 .. list-table:: :guilabel:`CloudFrontFactory`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - domain_aliases
-      - List of DNS_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<DNS_>
       - List of DNS for the Distribution
-      - CloudFrontFactory
+      - 
+      - 
     * - viewer_certificate
-      - CloudFrontViewerCertificate_ Paco schema
-      - .. fa:: times
-      - 
-      - 
+      - Object<CloudFrontViewerCertificate_>
       - Viewer Certificate
-      - CloudFrontFactory
+      - 
+      - 
 
+*Base Schemas* `Named`_, `Title`_
 
 
 CloudFrontOrigin
 ^^^^^^^^^^^^^^^^^
 
 
-    CloudFront Origin Configuration
+CloudFront Origin Configuration
     
 
 .. _CloudFrontOrigin:
 
 .. list-table:: :guilabel:`CloudFrontOrigin`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - custom_origin_config
-      - CloudFrontCustomOriginConfig_ Paco schema
-      - .. fa:: times
-      - 
-      - 
+      - Object<CloudFrontCustomOriginConfig_>
       - Custom Origin Configuration
-      - CloudFrontOrigin
+      - 
+      - 
     * - domain_name
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Origin Resource Reference
-      - CloudFrontOrigin
+      - 
+      - 
     * - s3_bucket
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Origin S3 Bucket Reference
-      - CloudFrontOrigin
+      - 
+      - 
 
+*Base Schemas* `Named`_, `Title`_
 
 
 CloudFrontCustomOriginConfig
@@ -6430,66 +5386,46 @@ CloudFrontCustomOriginConfig
 .. _CloudFrontCustomOriginConfig:
 
 .. list-table:: :guilabel:`CloudFrontCustomOriginConfig`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - http_port
       - Int
-      - .. fa:: times
-      - 
-      - 
       - HTTP Port
-      - CloudFrontCustomOriginConfig
+      - 
+      - 
     * - https_port
       - Int
-      - .. fa:: times
-      - 
-      - 
       - HTTPS Port
-      - CloudFrontCustomOriginConfig
+      - 
+      - 
     * - keepalive_timeout
       - Int
-      - .. fa:: times
+      - HTTP Keepalive Timeout
       - 5
       - 
-      - HTTP Keepalive Timeout
-      - CloudFrontCustomOriginConfig
     * - protocol_policy
       - String
-      - .. fa:: times
-      - 
-      - 
       - Protocol Policy
-      - CloudFrontCustomOriginConfig
+      - 
+      - 
     * - read_timeout
       - Int
-      - .. fa:: times
+      - Read timeout
       - 30
       - 
-      - Read timeout
-      - CloudFrontCustomOriginConfig
     * - ssl_protocols
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - List of SSL Protocols
-      - CloudFrontCustomOriginConfig
+      - 
+      - 
 
+*Base Schemas* `Named`_, `Title`_
 
 
 CloudFrontCustomErrorResponse
@@ -6500,44 +5436,34 @@ CloudFrontCustomErrorResponse
 .. _CloudFrontCustomErrorResponse:
 
 .. list-table:: :guilabel:`CloudFrontCustomErrorResponse`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - error_caching_min_ttl
       - Int
-      - .. fa:: times
-      - 
-      - 
       - Error Caching Min TTL
-      - CloudFrontCustomErrorResponse
+      - 
+      - 
     * - error_code
       - Int
-      - .. fa:: times
-      - 
-      - 
       - HTTP Error Code
-      - CloudFrontCustomErrorResponse
+      - 
+      - 
     * - response_code
       - Int
-      - .. fa:: times
-      - 
-      - 
       - HTTP Response Code
-      - CloudFrontCustomErrorResponse
+      - 
+      - 
     * - response_page_path
       - String
-      - .. fa:: times
-      - 
-      - 
       - Response Page Path
-      - CloudFrontCustomErrorResponse
+      - 
+      - 
 
 
 
@@ -6549,45 +5475,31 @@ CloudFrontViewerCertificate
 .. _CloudFrontViewerCertificate:
 
 .. list-table:: :guilabel:`CloudFrontViewerCertificate`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - certificate
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Certificate Reference
-      - CloudFrontViewerCertificate
+      - 
+      - 
     * - minimum_protocol_version
       - String
-      - .. fa:: times
+      - Minimum SSL Protocol Version
       - TLSv1.1_2016
       - 
-      - Minimum SSL Protocol Version
-      - CloudFrontViewerCertificate
     * - ssl_supported_method
       - String
-      - .. fa:: times
+      - SSL Supported Method
       - sni-only
       - 
-      - SSL Supported Method
-      - CloudFrontViewerCertificate
 
+*Base Schemas* `Named`_, `Title`_
 
 
 CloudFrontForwardedValues
@@ -6598,45 +5510,31 @@ CloudFrontForwardedValues
 .. _CloudFrontForwardedValues:
 
 .. list-table:: :guilabel:`CloudFrontForwardedValues`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - cookies
-      - CloudFrontCookies_ Paco schema
-      - .. fa:: times
-      - 
-      - 
+      - Object<CloudFrontCookies_>
       - Forward Cookies
-      - CloudFrontForwardedValues
+      - 
+      - 
     * - headers
-      - List of Strings
-      - .. fa:: times
+      - List<string>
+      - Forward Headers
       - ['*']
       - 
-      - Forward Headers
-      - CloudFrontForwardedValues
     * - query_string
       - Boolean
-      - .. fa:: times
+      - Forward Query Strings
       - True
       - 
-      - Forward Query Strings
-      - CloudFrontForwardedValues
 
+*Base Schemas* `Named`_, `Title`_
 
 
 CloudFrontCookies
@@ -6647,938 +5545,611 @@ CloudFrontCookies
 .. _CloudFrontCookies:
 
 .. list-table:: :guilabel:`CloudFrontCookies`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - forward
       - String
-      - .. fa:: times
+      - Cookies Forward Action
       - all
       - 
-      - Cookies Forward Action
-      - CloudFrontCookies
     * - whitelisted_names
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - White Listed Names
-      - CloudFrontCookies
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+ElastiCache
+------------
+
+
+Base ElastiCache Interface
+    
+
+.. _ElastiCache:
+
+.. list-table:: :guilabel:`ElastiCache`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - at_rest_encryption
+      - Boolean
+      - Enable encryption at rest
+      - 
+      - 
+    * - auto_minor_version_upgrade
+      - Boolean
+      - Enable automatic minor version upgrades
+      - 
+      - 
+    * - automatic_failover_enabled
+      - Boolean
+      - Specifies whether a read-only replica is automatically promoted to read/write primary if the existing primary fails
+      - 
+      - 
+    * - az_mode
+      - String
+      - AZ mode
+      - 
+      - 
+    * - cache_clusters
+      - Int
+      - Number of Cache Clusters
+      - 
+      - 
+    * - cache_node_type
+      - String
+      - Cache Node Instance type
+      - 
+      - 
+    * - description
+      - String
+      - Replication Description
+      - 
+      - 
+    * - engine
+      - String
+      - ElastiCache Engine
+      - 
+      - 
+    * - engine_version
+      - String
+      - ElastiCache Engine Version
+      - 
+      - 
+    * - maintenance_preferred_window
+      - String
+      - Preferred maintenance window
+      - 
+      - 
+    * - number_of_read_replicas
+      - Int
+      - Number of read replicas
+      - 
+      - 
+    * - parameter_group
+      - TextReference
+      - Parameter Group name or reference
+      - 
+      - 
+    * - port
+      - Int
+      - Port
+      - 
+      - 
+    * - security_groups
+      - List<string>
+      - List of Security Groups
+      - 
+      - 
+    * - segment
+      - TextReference
+      - Segment
+      - 
+      - 
 
 
 
 ElastiCacheRedis
------------------
+^^^^^^^^^^^^^^^^^
 
 
-    Redis ElastiCache Interface
+Redis ElastiCache Interface
     
 
 .. _ElastiCacheRedis:
 
 .. list-table:: :guilabel:`ElastiCacheRedis`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - at_rest_encryption
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Enable encryption at rest
-      - ElastiCache
-    * - auto_minor_version_upgrade
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Enable automatic minor version upgrades
-      - ElastiCache
-    * - automatic_failover_enabled
-      - Boolean
-      - .. fa:: times
-      - 
-      - 
-      - Specifies whether a read-only replica is automatically promoted to read/write primary if the existing primary fails
-      - ElastiCache
-    * - az_mode
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - AZ mode
-      - ElastiCache
-    * - cache_clusters
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - Number of Cache Clusters
-      - ElastiCache
-    * - cache_node_type
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Cache Node Instance type
-      - ElastiCache
-    * - description
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Replication Description
-      - ElastiCache
-    * - engine
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - ElastiCache Engine
-      - ElastiCache
-    * - engine_version
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - ElastiCache Engine Version
-      - ElastiCache
-    * - maintenance_preferred_window
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Preferred maintenance window
-      - ElastiCache
-    * - number_of_read_replicas
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - Number of read replicas
-      - ElastiCache
-    * - parameter_group
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Parameter Group name or reference
-      - ElastiCache
-    * - port
-      - Int
-      - .. fa:: times
-      - 
-      - 
-      - Port
-      - ElastiCache
-    * - security_groups
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
-      - List of Security Groups
-      - ElastiCache
-    * - segment
-      - TextReference
-      - .. fa:: times
-      - 
-      - 
-      - Segment
-      - ElastiCache
-    * - monitoring
-      - MonitorConfig_ Paco schema
-      - .. fa:: times
-      - 
-      - 
-      - 
-      - Monitorable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - cache_parameter_group_family
       - String
-      - .. fa:: times
-      - 
-      - 
       - Cache Parameter Group Family
-      - ElastiCacheRedis
+      - 
+      - 
     * - snapshot_retention_limit_days
       - Int
-      - .. fa:: times
-      - 
-      - 
       - Snapshot Retention Limit in Days
-      - ElastiCacheRedis
+      - 
+      - 
     * - snapshot_window
       - String
-      - .. fa:: times
-      - 
-      - 
       - The daily time range (in UTC) during which ElastiCache begins taking a daily snapshot of your node group (shard).
-      - ElastiCacheRedis
+      - 
+      - 
 
+*Base Schemas* `ElastiCache`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
 
 
 DeploymentPipeline
 -------------------
 
 
-    Code Pipeline: Build and Deploy
+Code Pipeline: Build and Deploy
     
 
 .. _DeploymentPipeline:
 
 .. list-table:: :guilabel:`DeploymentPipeline`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - build
-      - Container of DeploymentPipelineBuildStage_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<DeploymentPipelineBuildStage_>
       - Deployment Pipeline Build Stage
-      - DeploymentPipeline
+      - 
+      - 
     * - configuration
-      - DeploymentPipelineConfiguration_ Paco schema
-      - .. fa:: times
-      - 
-      - 
+      - Object<DeploymentPipelineConfiguration_>
       - Deployment Pipeline General Configuration
-      - DeploymentPipeline
+      - 
+      - 
     * - deploy
-      - Container of DeploymentPipelineDeployStage_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<DeploymentPipelineDeployStage_>
       - Deployment Pipeline Deploy Stage
-      - DeploymentPipeline
+      - 
+      - 
     * - source
-      - Container of DeploymentPipelineSourceStage_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<DeploymentPipelineSourceStage_>
       - Deployment Pipeline Source Stage
-      - DeploymentPipeline
+      - 
+      - 
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 DeploymentPipelineSourceStage
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-    A map of DeploymentPipeline source stage actions
+A map of DeploymentPipeline source stage actions
     
 
 .. _DeploymentPipelineSourceStage:
 
-.. list-table:: :guilabel:`DeploymentPipelineSourceStage` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`DeploymentPipelineSourceStage`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
 
 
 DeploymentPipelineDeployStage
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-    A map of DeploymentPipeline deploy stage actions
+A map of DeploymentPipeline deploy stage actions
     
 
 .. _DeploymentPipelineDeployStage:
 
-.. list-table:: :guilabel:`DeploymentPipelineDeployStage` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`DeploymentPipelineDeployStage`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
 
 
 DeploymentPipelineBuildStage
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-    A map of DeploymentPipeline build stage actions
+A map of DeploymentPipeline build stage actions
     
 
 .. _DeploymentPipelineBuildStage:
 
-.. list-table:: :guilabel:`DeploymentPipelineBuildStage` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`DeploymentPipelineBuildStage`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
 
 
 DeploymentPipelineDeployCodeDeploy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-    CodeDeploy DeploymentPipeline Deploy Stage
+CodeDeploy DeploymentPipeline Deploy Stage
     
 
 .. _DeploymentPipelineDeployCodeDeploy:
 
-.. list-table:: :guilabel:`DeploymentPipelineDeployCodeDeploy` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`DeploymentPipelineDeployCodeDeploy`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - run_order
-      - Int
-      - .. fa:: times
-      - 1
-      - 
-      - The order in which to run this stage
-      - DeploymentPipelineStageAction
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - The type of DeploymentPipeline Source Stage
-      - DeploymentPipelineStageAction
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - alb_target_group
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - ALB Target Group Reference
-      - DeploymentPipelineDeployCodeDeploy
+      - 
+      - 
     * - auto_rollback_enabled
-      - Boolean
-      - .. fa:: check
+      - Boolean |star|
+      - Automatic rollback enabled
       - True
       - 
-      - Automatic rollback enabled
-      - DeploymentPipelineDeployCodeDeploy
     * - auto_scaling_group
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - ASG Reference
-      - DeploymentPipelineDeployCodeDeploy
+      - 
+      - 
     * - deploy_instance_role
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Deploy Instance Role Reference
-      - DeploymentPipelineDeployCodeDeploy
+      - 
+      - 
     * - deploy_style_option
       - String
-      - .. fa:: times
+      - Deploy Style Option
       - WITH_TRAFFIC_CONTROL
       - 
-      - Deploy Style Option
-      - DeploymentPipelineDeployCodeDeploy
     * - elb_name
       - String
-      - .. fa:: times
-      - 
-      - 
       - ELB Name
-      - DeploymentPipelineDeployCodeDeploy
+      - 
+      - 
     * - minimum_healthy_hosts
-      - CodeDeployMinimumHealthyHosts_ Paco schema
-      - .. fa:: times
-      - 
-      - 
+      - Object<CodeDeployMinimumHealthyHosts_>
       - The minimum number of healthy instances that should be available at any time during the deployment.
-      - DeploymentPipelineDeployCodeDeploy
+      - 
+      - 
 
+*Base Schemas* `Deployable`_, `Named`_, `DeploymentPipelineStageAction`_, `Title`_
 
 
 CodeDeployMinimumHealthyHosts
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-    CodeDeploy Minimum Healthy Hosts
+CodeDeploy Minimum Healthy Hosts
     
 
 .. _CodeDeployMinimumHealthyHosts:
 
 .. list-table:: :guilabel:`CodeDeployMinimumHealthyHosts`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - type
       - String
-      - .. fa:: times
+      - Deploy Config Type
       - HOST_COUNT
       - 
-      - Deploy Config Type
-      - CodeDeployMinimumHealthyHosts
     * - value
       - Int
-      - .. fa:: times
+      - Deploy Config Value
       - 0
       - 
-      - Deploy Config Value
-      - CodeDeployMinimumHealthyHosts
 
+*Base Schemas* `Named`_, `Title`_
 
 
 DeploymentPipelineManualApproval
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-    ManualApproval DeploymentPipeline
+ManualApproval DeploymentPipeline
     
 
 .. _DeploymentPipelineManualApproval:
 
-.. list-table:: :guilabel:`DeploymentPipelineManualApproval` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`DeploymentPipelineManualApproval`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - run_order
-      - Int
-      - .. fa:: times
-      - 1
-      - 
-      - The order in which to run this stage
-      - DeploymentPipelineStageAction
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - The type of DeploymentPipeline Source Stage
-      - DeploymentPipelineStageAction
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - manual_approval_notification_email
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - Manual Approval Notification Email List
-      - DeploymentPipelineManualApproval
+      - 
+      - 
 
+*Base Schemas* `Deployable`_, `Named`_, `DeploymentPipelineStageAction`_, `Title`_
 
 
 DeploymentPipelineDeployS3
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-    Amazon S3 Deployment Provider
+Amazon S3 Deployment Provider
     
 
 .. _DeploymentPipelineDeployS3:
 
-.. list-table:: :guilabel:`DeploymentPipelineDeployS3` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`DeploymentPipelineDeployS3`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - run_order
-      - Int
-      - .. fa:: times
-      - 1
-      - 
-      - The order in which to run this stage
-      - DeploymentPipelineStageAction
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - The type of DeploymentPipeline Source Stage
-      - DeploymentPipelineStageAction
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - bucket
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - S3 Bucket Reference
-      - DeploymentPipelineDeployS3
+      - 
+      - 
     * - extract
       - Boolean
-      - .. fa:: times
+      - Boolean indicating whether the deployment artifact will be unarchived.
       - True
       - 
-      - Boolean indicating whether the deployment artifact will be unarchived.
-      - DeploymentPipelineDeployS3
     * - object_key
       - String
-      - .. fa:: times
-      - 
-      - 
       - S3 object key to store the deployment artifact as.
-      - DeploymentPipelineDeployS3
+      - 
+      - 
 
+*Base Schemas* `Deployable`_, `Named`_, `DeploymentPipelineStageAction`_, `Title`_
 
 
 DeploymentPipelineBuildCodeBuild
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-    CodeBuild DeploymentPipeline Build Stage
+CodeBuild DeploymentPipeline Build Stage
     
 
 .. _DeploymentPipelineBuildCodeBuild:
 
-.. list-table:: :guilabel:`DeploymentPipelineBuildCodeBuild` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`DeploymentPipelineBuildCodeBuild`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - run_order
-      - Int
-      - .. fa:: times
-      - 1
-      - 
-      - The order in which to run this stage
-      - DeploymentPipelineStageAction
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - The type of DeploymentPipeline Source Stage
-      - DeploymentPipelineStageAction
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - codebuild_compute_type
       - String
-      - .. fa:: times
-      - 
-      - 
       - CodeBuild Compute Type
-      - DeploymentPipelineBuildCodeBuild
+      - 
+      - 
     * - codebuild_image
       - String
-      - .. fa:: times
-      - 
-      - 
       - CodeBuild Docker Image
-      - DeploymentPipelineBuildCodeBuild
+      - 
+      - 
     * - deployment_environment
       - String
-      - .. fa:: times
-      - 
-      - 
       - Deployment Environment
-      - DeploymentPipelineBuildCodeBuild
+      - 
+      - 
     * - role_policies
-      - List of Policy_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<Policy_>
       - Project IAM Role Policies
-      - DeploymentPipelineBuildCodeBuild
+      - 
+      - 
     * - timeout_mins
       - Int
-      - .. fa:: times
+      - Timeout in Minutes
       - 60
       - 
-      - Timeout in Minutes
-      - DeploymentPipelineBuildCodeBuild
 
+*Base Schemas* `Deployable`_, `Named`_, `DeploymentPipelineStageAction`_, `Title`_
 
 
 DeploymentPipelineSourceCodeCommit
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-    CodeCommit DeploymentPipeline Source Stage
+CodeCommit DeploymentPipeline Source Stage
     
 
 .. _DeploymentPipelineSourceCodeCommit:
 
-.. list-table:: :guilabel:`DeploymentPipelineSourceCodeCommit` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`DeploymentPipelineSourceCodeCommit`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - run_order
-      - Int
-      - .. fa:: times
-      - 1
-      - 
-      - The order in which to run this stage
-      - DeploymentPipelineStageAction
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - The type of DeploymentPipeline Source Stage
-      - DeploymentPipelineStageAction
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - codecommit_repository
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - CodeCommit Respository
-      - DeploymentPipelineSourceCodeCommit
+      - 
+      - 
     * - deployment_branch_name
       - String
-      - .. fa:: times
-      - 
-      - 
       - Deployment Branch Name
-      - DeploymentPipelineSourceCodeCommit
+      - 
+      - 
 
+*Base Schemas* `Deployable`_, `Named`_, `DeploymentPipelineStageAction`_, `Title`_
 
 
 DeploymentPipelineStageAction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-    Deployment Pipeline Source Stage
+Deployment Pipeline Source Stage
     
 
 .. _DeploymentPipelineStageAction:
 
-.. list-table:: :guilabel:`DeploymentPipelineStageAction` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`DeploymentPipelineStageAction`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - run_order
       - Int
-      - .. fa:: times
+      - The order in which to run this stage
       - 1
       - 
-      - The order in which to run this stage
-      - DeploymentPipelineStageAction
     * - type
       - String
-      - .. fa:: times
-      - 
-      - 
       - The type of DeploymentPipeline Source Stage
-      - DeploymentPipelineStageAction
+      - 
+      - 
 
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
 DeploymentPipelineConfiguration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-    Deployment Pipeline General Configuration
+Deployment Pipeline General Configuration
     
 
 .. _DeploymentPipelineConfiguration:
 
 .. list-table:: :guilabel:`DeploymentPipelineConfiguration`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - account
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - The account where Pipeline tools will be provisioned.
-      - DeploymentPipelineConfiguration
+      - 
+      - 
     * - artifacts_bucket
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Artifacts S3 Bucket Reference
-      - DeploymentPipelineConfiguration
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+DeploymentGroupS3Location
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _DeploymentGroupS3Location:
+
+.. list-table:: :guilabel:`DeploymentGroupS3Location`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - bucket
+      - TextReference
+      - S3 Bucket revision location
+      - 
+      - 
+    * - bundle_type
+      - String
+      - Bundle Type
+      - 
+      - Must be one of JSON, tar, tgz, YAML or zip.
+    * - key
+      - String |star|
+      - The name of the Amazon S3 object that represents the bundled artifacts for the application revision.
+      - 
+      - 
 
 
 
@@ -7592,152 +6163,58 @@ EFS
 .. _EFS:
 
 .. list-table:: :guilabel:`EFS`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - encrypted
-      - Boolean
-      - .. fa:: check
+      - Boolean |star|
+      - Encryption at Rest
       - False
       - 
-      - Encryption at Rest
-      - EFS
     * - security_groups
-      - List of Strings
-      - .. fa:: check
-      - 
-      - 
+      - List<string> |star|
       - Security groups
-      - EFS
+      - 
+      - 
     * - segment
       - String
-      - .. fa:: times
-      - 
-      - 
       - Segment
-      - EFS
+      - 
+      - 
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 EIP
 ----
 
 
-    Elastic IP
+Elastic IP
     
 
 .. _EIP:
 
 .. list-table:: :guilabel:`EIP`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - dns
-      - List of DNS_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<DNS_>
       - List of DNS for the EIP
-      - EIP
+      - 
+      - 
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 Route53HealthCheck
@@ -7748,315 +6225,150 @@ Route53 Health Check
 .. _Route53HealthCheck:
 
 .. list-table:: :guilabel:`Route53HealthCheck`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - domain_name
       - String
-      - .. fa:: times
+      - Fully Qualified Domain Name
       - 
       - Either this or the load_balancer field can be set but not both.
-      - Fully Qualified Domain Name
-      - Route53HealthCheck
     * - enable_sni
       - Boolean
-      - .. fa:: times
+      - Enable SNI
       - False
       - 
-      - Enable SNI
-      - Route53HealthCheck
     * - failure_threshold
       - Int
-      - .. fa:: times
+      - Number of consecutive health checks that an endpoint must pass or fail for Amazon Route 53 to change the current status of the endpoint from unhealthy to healthy or vice versa.
       - 3
       - 
-      - Number of consecutive health checks that an endpoint must pass or fail for Amazon Route 53 to change the current status of the endpoint from unhealthy to healthy or vice versa.
-      - Route53HealthCheck
     * - health_check_type
-      - String
-      - .. fa:: check
+      - String |star|
+      - Health Check Type
       - 
       - Must be one of HTTP, HTTPS or TCP
-      - Health Check Type
-      - Route53HealthCheck
     * - health_checker_regions
-      - List of Strings
-      - .. fa:: times
+      - List<string>
+      - Health checker regions
       - 
       - List of AWS Region names (e.g. us-west-2) from which to make health checks.
-      - Health checker regions
-      - Route53HealthCheck
     * - ip_address
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - IP Address
-      - Route53HealthCheck
+      - 
+      - 
     * - latency_graphs
       - Boolean
-      - .. fa:: times
+      - Measure latency and display CloudWatch graph in the AWS Console
       - False
       - 
-      - Measure latency and display CloudWatch graph in the AWS Console
-      - Route53HealthCheck
     * - load_balancer
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Load Balancer Endpoint
-      - Route53HealthCheck
+      - 
+      - 
     * - match_string
       - String
-      - .. fa:: times
-      - 
-      - 
       - String to match in the first 5120 bytes of the response
-      - Route53HealthCheck
+      - 
+      - 
     * - port
       - Int
-      - .. fa:: times
+      - Port
       - 80
       - 
-      - Port
-      - Route53HealthCheck
     * - request_interval_fast
       - Boolean
-      - .. fa:: times
+      - Fast request interval will only wait 10 seconds between each health check response instead of the standard 30
       - False
       - 
-      - Fast request interval will only wait 10 seconds between each health check response instead of the standard 30
-      - Route53HealthCheck
     * - resource_path
       - String
-      - .. fa:: times
+      - Resource Path
       - /
       - String such as '/health.html'. Path should return a 2xx or 3xx. Query string parameters are allowed: '/search?query=health'
-      - Resource Path
-      - Route53HealthCheck
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 EventsRule
 -----------
 
 
-    Events Rule
+Events Rule
     
 
 .. _EventsRule:
 
 .. list-table:: :guilabel:`EventsRule`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - description
       - String
-      - .. fa:: times
-      - 
-      - 
       - Description
-      - EventsRule
+      - 
+      - 
     * - schedule_expression
-      - String
-      - .. fa:: check
-      - 
-      - 
+      - String |star|
       - Schedule Expression
-      - EventsRule
+      - 
+      - 
     * - targets
-      - List of Strings
-      - .. fa:: check
-      - 
-      - 
+      - List<string> |star|
       - The AWS Resources that are invoked when the Rule is triggered.
-      - EventsRule
+      - 
+      - 
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 EBS
 ----
 
 
-    Elastic Block Store Volume
+Elastic Block Store Volume
     
 
 .. _EBS:
 
 .. list-table:: :guilabel:`EBS`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - availability_zone
-      - Int
-      - .. fa:: check
-      - 
-      - 
+      - Int |star|
       - Availability Zone to create Volume in.
-      - EBS
+      - 
+      - 
     * - size_gib
-      - Int
-      - .. fa:: check
+      - Int |star|
+      - Volume Size in GiB
       - 10
       - 
-      - Volume Size in GiB
-      - EBS
     * - volume_type
       - String
-      - .. fa:: times
+      - Volume Type
       - gp2
       - Must be one of: gp2 | io1 | sc1 | st1 | standard
-      - Volume Type
-      - EBS
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 NetEnv - secrets_manager:
@@ -8066,28 +6378,141 @@ NetEnv - secrets_manager:
 SecretsManager
 ---------------
 
-Secrets Manager
+Secrets Manager contains `SecretManagerApplication` objects.
 
 .. _SecretsManager:
 
-.. list-table:: :guilabel:`SecretsManager` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`SecretsManager` |bars| Container<`SecretsManagerApplication`_>
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+SecretsManagerApplication
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Container for `SecretsManagerGroup`_ objects.
+
+.. _SecretsManagerApplication:
+
+.. list-table:: :guilabel:`SecretsManagerApplication` |bars| Container<`SecretsManagerGroup`_>
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+SecretsManagerGroup
+^^^^^^^^^^^^^^^^^^^^
+
+Container for `SecretsManagerSecret`_ objects.
+
+.. _SecretsManagerGroup:
+
+.. list-table:: :guilabel:`SecretsManagerGroup` |bars| Container<`SecretsManagerSecret`_>
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+SecretsManagerSecret
+^^^^^^^^^^^^^^^^^^^^^
+
+Secret for the Secrets Manager.
+
+.. _SecretsManagerSecret:
+
+.. list-table:: :guilabel:`SecretsManagerSecret`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - generate_secret_string
+      - Object<GenerateSecretString_>
+      - Generate SecretString object
+      - 
+      - 
+
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
+
+
+GenerateSecretString
+^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _GenerateSecretString:
+
+.. list-table:: :guilabel:`GenerateSecretString`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - exclude_characters
       - String
-      - .. fa:: times
+      - A string that includes characters that should not be included in the generated password.
       - 
       - 
-      - Title
-      - Title
+    * - generate_string_key
+      - String
+      - The JSON key name that's used to add the generated password to the JSON structure.
+      - 
+      - 
+    * - password_length
+      - Int
+      - The desired length of the generated password.
+      - 32
+      - 
+    * - secret_string_template
+      - String
+      - A properly structured JSON string that the generated password can be added to.
+      - 
+      - 
+
+*Base Schemas* `Deployable`_
 
 
 NetEnv - backup_vaults:
@@ -8146,146 +6571,95 @@ BackupVaults
 -------------
 
 
+Container for `BackupVault` objects.
+    
 
 .. _BackupVaults:
 
-.. list-table:: :guilabel:`BackupVaults` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`BackupVaults` |bars| Container<`BackupVault`_>
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
 
 
 BackupVault
-------------
+^^^^^^^^^^^^
 
 
-AWS Backup Vault
+An AWS Backup Vault.
     
 
 .. _BackupVault:
 
 .. list-table:: :guilabel:`BackupVault`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - notification_events
-      - List of Strings
-      - .. fa:: times
+      - List<string>
+      - Notification Events
       - 
       - Each notification event must be one of BACKUP_JOB_STARTED, BACKUP_JOB_COMPLETED, RESTORE_JOB_STARTED, RESTORE_JOB_COMPLETED, RECOVERY_POINT_MODIFIED
-      - Notification Events
-      - BackupVault
     * - notification_group
       - String
-      - .. fa:: times
-      - 
-      - 
       - Notification Group
-      - BackupVault
+      - 
+      - 
     * - plans
-      - Container of BackupPlans_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<BackupPlans_>
       - Backup Plans
-      - BackupVault
+      - 
+      - 
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 BackupPlans
-------------
+^^^^^^^^^^^^
 
 
+Container for `BackupPlan`_ objects.
+    
 
 .. _BackupPlans:
 
-.. list-table:: :guilabel:`BackupPlans` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`BackupPlans` |bars| Container<`BackupPlan`_>
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
 
 
 BackupPlan
------------
+^^^^^^^^^^^
 
 
 AWS Backup Plan
@@ -8294,163 +6668,128 @@ AWS Backup Plan
 .. _BackupPlan:
 
 .. list-table:: :guilabel:`BackupPlan`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - dns_enabled
-      - Boolean
-      - .. fa:: times
-      - True
-      - 
-      - Boolean indicating whether DNS record sets will be created.
-      - DNSEnablable
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - change_protected
-      - Boolean
-      - .. fa:: times
-      - False
-      - 
-      - Boolean indicating whether this resource can be modified or not.
-      - Resource
-    * - order
-      - Int
-      - .. fa:: times
-      - 0
-      - 
-      - The order in which the resource will be deployed
-      - Resource
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - type
-      - String
-      - .. fa:: times
-      - 
-      - A valid AWS Resource type: ASG, LBApplication, etc.
-      - Type of Resources
-      - Type
+      - Constraints
+      - Default
     * - plan_rules
-      - List of BackupPlanRule_ Paco schemas
-      - .. fa:: check
-      - 
-      - 
+      - List<BackupPlanRule_> |star|
       - Backup Plan Rules
-      - BackupPlan
+      - 
+      - 
     * - selections
-      - List of BackupPlanSelection_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<BackupPlanSelection_>
       - Backup Plan Selections
-      - BackupPlan
+      - 
+      - 
 
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 BackupPlanRule
----------------
+^^^^^^^^^^^^^^^
 
 
 
 .. _BackupPlanRule:
 
 .. list-table:: :guilabel:`BackupPlanRule`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - lifecycle_delete_after_days
       - Int
-      - .. fa:: times
-      - 
-      - 
       - Delete after days
-      - BackupPlanRule
+      - 
+      - 
     * - lifecycle_move_to_cold_storage_after_days
       - Int
-      - .. fa:: times
+      - Move to cold storage after days
       - 
       - If Delete after days value is set, this value must be smaller
-      - Move to cold storage after days
-      - BackupPlanRule
     * - schedule_expression
       - String
-      - .. fa:: times
+      - Schedule Expression
       - 
       - Must be a valid Schedule Expression.
-      - Schedule Expression
-      - BackupPlanRule
 
+*Base Schemas* `Named`_, `Title`_
 
 
 BackupPlanSelection
---------------------
+^^^^^^^^^^^^^^^^^^^^
 
 
 
 .. _BackupPlanSelection:
 
 .. list-table:: :guilabel:`BackupPlanSelection`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - resources
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - Backup Plan Resources
-      - BackupPlanSelection
+      - 
+      - 
     * - tags
-      - List of BackupSelectionConditionResourceType_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - List<BackupSelectionConditionResourceType_>
       - List of condition resource types
-      - BackupPlanSelection
+      - 
+      - 
     * - title
-      - String
-      - .. fa:: check
-      - 
-      - 
+      - String |star|
       - Title
-      - BackupPlanSelection
+      - 
+      - 
+
+
+
+BackupSelectionConditionResourceType
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _BackupSelectionConditionResourceType:
+
+.. list-table:: :guilabel:`BackupSelectionConditionResourceType`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - condition_key
+      - String |star|
+      - Tag Key
+      - 
+      - 
+    * - condition_type
+      - String |star|
+      - Condition Type
+      - 
+      - String Condition operator must be one of: StringEquals, StringNotEquals, StringEqualsIgnoreCase, StringNotEqualsIgnoreCase, StringLike, StringNotLike.
+    * - condition_value
+      - String |star|
+      - Tag Value
+      - 
+      - 
 
 
 NetEnv - environments:
@@ -8509,157 +6848,95 @@ Environment
 ------------
 
 
-    Environment
+Environment
     
 
 .. _Environment:
 
-.. list-table:: :guilabel:`Environment` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`Environment`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
 
 
 EnvironmentDefault
 -------------------
 
 
-    Default values for an Environment's configuration
+Default values for an Environment's configuration
     
 
 .. _EnvironmentDefault:
 
-.. list-table:: :guilabel:`EnvironmentDefault` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`EnvironmentDefault`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - alarm_sets
-      - Container of AlarmSets_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - Alarm Sets
-      - RegionContainer
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - applications
-      - Container of ApplicationEngines_ Paco schemas
-      - .. fa:: check
-      - 
-      - 
+      - Container<ApplicationEngines_> |star|
       - Application container
-      - EnvironmentDefault
+      - 
+      - 
     * - network
-      - Container of Network_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<Network_>
       - Network
-      - EnvironmentDefault
+      - 
+      - 
     * - secrets_manager
-      - Container of SecretsManager_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
+      - Container<SecretsManager_>
       - Secrets Manager
-      - EnvironmentDefault
+      - 
+      - 
 
+*Base Schemas* `RegionContainer`_, `Named`_, `Title`_
 
 
 EnvironmentRegion
 ------------------
 
 
-    An actual provisioned Environment in a specific region.
-    May contains overrides of the IEnvironmentDefault where needed.
+An actual provisioned Environment in a specific region.
+May contains overrides of the IEnvironmentDefault where needed.
     
 
 .. _EnvironmentRegion:
 
-.. list-table:: :guilabel:`EnvironmentRegion` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`EnvironmentRegion`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - applications
-      - Container of ApplicationEngines_ Paco schemas
-      - .. fa:: check
-      - 
-      - 
-      - Application container
-      - EnvironmentDefault
-    * - network
-      - Container of Network_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - Network
-      - EnvironmentDefault
-    * - secrets_manager
-      - Container of SecretsManager_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - Secrets Manager
-      - EnvironmentDefault
-    * - alarm_sets
-      - Container of AlarmSets_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - Alarm Sets
-      - RegionContainer
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `RegionContainer`_, `EnvironmentDefault`_, `Deployable`_, `Named`_, `Title`_
 
-Monitoring: monitor/*.yaml
-===========================
+Monitoring: monitor/\*.yaml
+============================
 
 The ``monitor`` directory can contain two files: ``monitor/alarmsets.yaml`` and ``monitor/logging.yaml``. These files
 contain CloudWatch Alarm and CloudWatch Agent Log Source configuration. These alarms and log sources
@@ -8697,268 +6974,131 @@ Alarm
 ------
 
 
-    An Alarm
+An Alarm
     
 
 .. _Alarm:
 
 .. list-table:: :guilabel:`Alarm`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - enabled
-      - Boolean
-      - .. fa:: times
-      - False
-      - Could be deployed to AWS
-      - Enabled
-      - Deployable
-    * - notifications
-      - Container of AlarmNotifications_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - Alarm Notifications
-      - Notifiable
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - classification
-      - String
-      - .. fa:: check
+      - String |star|
+      - Classification
       - unset
       - Must be one of: 'performance', 'security' or 'health'
-      - Classification
-      - Alarm
     * - description
       - String
-      - .. fa:: times
-      - 
-      - 
       - Description
-      - Alarm
+      - 
+      - 
     * - notification_groups
-      - List of Strings
-      - .. fa:: times
-      - 
-      - 
+      - List<string>
       - List of notificationn groups the alarm is subscribed to.
-      - Alarm
+      - 
+      - 
     * - runbook_url
       - String
-      - .. fa:: times
-      - 
-      - 
       - Runbook URL
-      - Alarm
+      - 
+      - 
     * - severity
       - String
-      - .. fa:: times
+      - Severity
       - low
       - Must be one of: 'low', 'critical'
-      - Severity
-      - Alarm
 
+*Base Schemas* `Deployable`_, `Named`_, `Notifiable`_, `Title`_
 
 
 AlarmSet
 ---------
 
 
-    A collection of Alarms
+A container of Alarm objects.
     
 
 .. _AlarmSet:
 
-.. list-table:: :guilabel:`AlarmSet` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`AlarmSet`
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - notifications
-      - Container of AlarmNotifications_ Paco schemas
-      - .. fa:: times
-      - 
-      - 
-      - Alarm Notifications
-      - Notifiable
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - resource_type
       - String
-      - .. fa:: times
+      - Resource type
       - 
       - Must be a valid AWS resource type
-      - Resource type
-      - AlarmSet
 
+*Base Schemas* `Named`_, `Notifiable`_, `Title`_
 
 
 AlarmSets
 ----------
 
 
-    A collection of AlarmSets
+A container of `AlarmSet`_ objects.
     
 
 .. _AlarmSets:
 
-.. list-table:: :guilabel:`AlarmSets` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`AlarmSets` |bars| Container<`AlarmSet`_>
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
 
 
 Dimension
 ----------
 
 
-    A dimension of a metric
+A dimension of a metric
     
 
 .. _Dimension:
 
 .. list-table:: :guilabel:`Dimension`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
+      - Constraints
+      - Default
     * - name
       - String
-      - .. fa:: times
-      - 
-      - 
       - Dimension name
-      - Dimension
+      - 
+      - 
     * - value
       - TextReference
-      - .. fa:: times
-      - 
-      - 
       - Value to look-up dimension
-      - Dimension
-
-
-
-CloudWatchLogSource
---------------------
-
-
-    Log source for a CloudWatch agent
-    
-
-.. _CloudWatchLogSource:
-
-.. list-table:: :guilabel:`CloudWatchLogSource`
-    :widths: 15 8 4 12 15 30 10
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Req?
-      - Default
-      - Constraints
-      - Purpose
-      - Base Schema
-    * - expire_events_after_days
-      - String
-      - .. fa:: times
       - 
       - 
-      - Expire Events After. Retention period of logs in this group
-      - CloudWatchLogRetention
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
-    * - encoding
-      - String
-      - .. fa:: times
-      - utf-8
-      - 
-      - Encoding
-      - CloudWatchLogSource
-    * - log_stream_name
-      - String
-      - .. fa:: check
-      - 
-      - CloudWatch Log Stream name
-      - Log stream name
-      - CloudWatchLogSource
-    * - multi_line_start_pattern
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Multi-line start pattern
-      - CloudWatchLogSource
-    * - path
-      - String
-      - .. fa:: check
-      - 
-      - Must be a valid filesystem path expression. Wildcard * is allowed.
-      - Path
-      - CloudWatchLogSource
-    * - timestamp_format
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Timestamp format
-      - CloudWatchLogSource
-    * - timezone
-      - String
-      - .. fa:: times
-      - Local
-      - Must be one of: 'Local', 'UTC'
-      - Timezone
-      - CloudWatchLogSource
 
 
 
@@ -8966,79 +7106,530 @@ AlarmNotifications
 -------------------
 
 
-    Alarm Notifications
+Container for `AlarmNotification`_ objects.
     
 
 .. _AlarmNotifications:
 
-.. list-table:: :guilabel:`AlarmNotifications` |bars| Container where the keys are the ``name`` field.
-    :widths: 15 8 4 12 15 30 10
+.. list-table:: :guilabel:`AlarmNotifications` |bars| Container<`AlarmNotification`_>
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
 
+*Base Schemas* `Named`_, `Title`_
 
 
 AlarmNotification
 ------------------
 
 
-    Alarm Notification
+Alarm Notification
     
 
 .. _AlarmNotification:
 
 .. list-table:: :guilabel:`AlarmNotification`
-    :widths: 15 8 4 12 15 30 10
+    :widths: 15 28 30 12 15
     :header-rows: 1
 
     * - Field name
       - Type
-      - Req?
-      - Default
-      - Constraints
       - Purpose
-      - Base Schema
-    * - title
-      - String
-      - .. fa:: times
-      - 
-      - 
-      - Title
-      - Title
+      - Constraints
+      - Default
     * - classification
       - String
-      - .. fa:: times
+      - Classification filter
       - 
       - Must be one of: 'performance', 'security', 'health' or ''.
-      - Classification filter
-      - AlarmNotification
     * - groups
-      - List of Strings
-      - .. fa:: check
-      - 
-      - 
+      - List<string> |star|
       - List of groups
-      - AlarmNotification
+      - 
+      - 
     * - severity
       - String
-      - .. fa:: times
+      - Severity filter
       - 
       - Must be one of: 'low', 'critical'
-      - Severity filter
-      - AlarmNotification
+
+*Base Schemas* `Named`_, `Title`_
+
+
+HealthChecks
+-------------
+
+Container for `Route53HealthCheck`_ objects.
+
+.. _HealthChecks:
+
+.. list-table:: :guilabel:`HealthChecks` |bars| Container<`Route53HealthCheck`_>
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+SimpleCloudWatchAlarm
+^^^^^^^^^^^^^^^^^^^^^^
+
+
+A Simple CloudWatch Alarm
+    
+
+.. _SimpleCloudWatchAlarm:
+
+.. list-table:: :guilabel:`SimpleCloudWatchAlarm`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - actions_enabled
+      - Boolean
+      - Actions Enabled
+      - 
+      - 
+    * - alarm_description
+      - String
+      - Alarm Description
+      - 
+      - Valid JSON document with Paco fields.
+    * - comparison_operator
+      - String
+      - Comparison operator
+      - 
+      - Must be one of: 'GreaterThanThreshold','GreaterThanOrEqualToThreshold', 'LessThanThreshold', 'LessThanOrEqualToThreshold'
+    * - dimensions
+      - List<Dimension_>
+      - Dimensions
+      - 
+      - 
+    * - evaluation_periods
+      - Int
+      - Evaluation periods
+      - 
+      - 
+    * - metric_name
+      - String |star|
+      - Metric name
+      - 
+      - 
+    * - namespace
+      - String
+      - Namespace
+      - 
+      - 
+    * - period
+      - Int
+      - Period in seconds
+      - 
+      - 
+    * - statistic
+      - String
+      - Statistic
+      - 
+      - 
+    * - threshold
+      - Float
+      - Threshold
+      - 
+      - 
+
+
+
+CloudWatchLogRetention
+^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CloudWatchLogRetention:
+
+.. list-table:: :guilabel:`CloudWatchLogRetention`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - expire_events_after_days
+      - String
+      - Expire Events After. Retention period of logs in this group
+      - 
+      - 
+
+
+
+CloudWatchLogSets
+------------------
+
+
+Container for `CloudWatchLogSet`_ objects.
+    
+
+.. _CloudWatchLogSets:
+
+.. list-table:: :guilabel:`CloudWatchLogSets` |bars| Container<`CloudWatchLogSet`_>
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CloudWatchLogSet
+-----------------
+
+
+A set of Log Group objects
+    
+
+.. _CloudWatchLogSet:
+
+.. list-table:: :guilabel:`CloudWatchLogSet`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - log_groups
+      - Container<CloudWatchLogGroups_>
+      - A CloudWatchLogGroups container
+      - 
+      - 
+
+*Base Schemas* `CloudWatchLogRetention`_, `Named`_, `Title`_
+
+
+CloudWatchLogGroups
+^^^^^^^^^^^^^^^^^^^^
+
+
+Container for `CloudWatchLogGroup`_ objects.
+    
+
+.. _CloudWatchLogGroups:
+
+.. list-table:: :guilabel:`CloudWatchLogGroups` |bars| Container<`CloudWatchLogGroup`_>
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CloudWatchLogGroup
+^^^^^^^^^^^^^^^^^^^
+
+
+A CloudWatchLogGroup is responsible for retention, access control and metric filters
+    
+
+.. _CloudWatchLogGroup:
+
+.. list-table:: :guilabel:`CloudWatchLogGroup`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - log_group_name
+      - String
+      - Log group name. Can override the LogGroup name used from the name field.
+      - 
+      - 
+    * - metric_filters
+      - Container<MetricFilters_>
+      - Metric Filters
+      - 
+      - 
+    * - sources
+      - Container<CloudWatchLogSources_>
+      - A CloudWatchLogSources container
+      - 
+      - 
+
+*Base Schemas* `CloudWatchLogRetention`_, `Named`_, `Title`_
+
+
+CloudWatchLogSources
+^^^^^^^^^^^^^^^^^^^^^
+
+
+A container of `CloudWatchLogSource`_ objects.
+    
+
+.. _CloudWatchLogSources:
+
+.. list-table:: :guilabel:`CloudWatchLogSources` |bars| Container<`CloudWatchLogSource`_>
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CloudWatchLogSource
+^^^^^^^^^^^^^^^^^^^^
+
+
+Log source for a CloudWatch agent.
+    
+
+.. _CloudWatchLogSource:
+
+.. list-table:: :guilabel:`CloudWatchLogSource`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - encoding
+      - String
+      - Encoding
+      - utf-8
+      - 
+    * - log_stream_name
+      - String |star|
+      - Log stream name
+      - 
+      - CloudWatch Log Stream name
+    * - multi_line_start_pattern
+      - String
+      - Multi-line start pattern
+      - 
+      - 
+    * - path
+      - String |star|
+      - Path
+      - 
+      - Must be a valid filesystem path expression. Wildcard * is allowed.
+    * - timestamp_format
+      - String
+      - Timestamp format
+      - 
+      - 
+    * - timezone
+      - String
+      - Timezone
+      - Local
+      - Must be one of: 'Local', 'UTC'
+
+*Base Schemas* `CloudWatchLogRetention`_, `Named`_, `Title`_
+
+
+MetricFilters
+^^^^^^^^^^^^^^
+
+
+Container for `Metric`Filter` objects.
+    
+
+.. _MetricFilters:
+
+.. list-table:: :guilabel:`MetricFilters` |bars| Container<`MetricFilter`_>
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+MetricFilter
+^^^^^^^^^^^^^
+
+
+    Metric filter
+    
+
+.. _MetricFilter:
+
+.. list-table:: :guilabel:`MetricFilter`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - filter_pattern
+      - String
+      - Filter pattern
+      - 
+      - 
+    * - metric_transformations
+      - List<MetricTransformation_>
+      - Metric transformations
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+MetricTransformation
+^^^^^^^^^^^^^^^^^^^^^
+
+
+Metric Transformation
+    
+
+.. _MetricTransformation:
+
+.. list-table:: :guilabel:`MetricTransformation`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - default_value
+      - Float
+      - The value to emit when a filter pattern does not match a log event.
+      - 
+      - 
+    * - metric_name
+      - String |star|
+      - The name of the CloudWatch Metric.
+      - 
+      - 
+    * - metric_namespace
+      - String
+      - The namespace of the CloudWatch metric. If not set, the namespace used will be 'AIM/{log-group-name}'.
+      - 
+      - 
+    * - metric_value
+      - String |star|
+      - The value that is published to the CloudWatch metric.
+      - 
+      - 
+
+
+
+Metric
+-------
+
+
+A set of metrics to collect and an optional collection interval:
+
+- name: disk
+    measurements:
+    - free
+    collection_interval: 900
+    
+
+.. _Metric:
+
+.. list-table:: :guilabel:`Metric`
+    :widths: 15 28 30 12 15
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - collection_interval
+      - Int
+      - Collection interval
+      - 
+      - 
+    * - drop_device
+      - Boolean
+      - Drops the device name from disk metrics
+      - True
+      - 
+    * - measurements
+      - List<string>
+      - Measurements
+      - 
+      - 
+    * - name
+      - String
+      - Metric(s) group name
+      - 
+      - 
+    * - resources
+      - List<string>
+      - List of resources for this metric
+      - 
+      - 
 
 

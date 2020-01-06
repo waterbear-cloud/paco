@@ -137,7 +137,6 @@ applications:
   {{cookiecutter.application_name}}:
     title: "{{cookiecutter.application_title}}"
     enabled: true
-    managed_updates: true
     notifications:
       app:
         groups:

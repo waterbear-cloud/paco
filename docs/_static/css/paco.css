@@ -151,6 +151,12 @@ a.icon-home {
   font-size: 1.2em;
 }
 
+.fa-star {
+  color: #B22222;
+  font-size: 9px;
+  vertical-align: super;
+}
+
 .wy-table-responsive {
   clear: both;
 }
