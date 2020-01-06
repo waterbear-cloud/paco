@@ -1,5 +1,5 @@
-Paco for AWS cloud orchestration
-================================
+Paco: Prescribed automation for cloud orchestration
+===================================================
 
 .. image:: _static/images/paco-provision.png
    :class: paco-right
