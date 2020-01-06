@@ -4,8 +4,13 @@ Changelog for paco
 3.5.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Fixed
 
+- Fix starter projects: check for aws_second_region in ``paco init project``.
+
+### Changed
+
+- Starter Projects paco-project-version brought up to 6.3.
 
 3.5.0 (2020-01-03)
 ------------------

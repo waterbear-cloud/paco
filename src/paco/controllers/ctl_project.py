@@ -24,7 +24,7 @@ prompt_help_mapping = {
     'network_environment_name': "NetworkEnvironment name - short alphanumeric string used to name cloud resources",
     'network_environment_title': "NetworkEnvironment title - Long description for a NetworkEnvironment",
     'application_name': "Application name - short alphanumeric string used to name cloud resources",
-    'application_title': "Application title = Long description for this application",
+    'application_title': "Application title - Long description for this application",
     'aws_default_region': "AWS Region name - e.g. us-west-2, us-east-1 or ca-central-1",
     'aws_default_region_allowed_values': vocabulary.aws_regions.keys(),
     'master_account_id': "AWS account id this project will connect to",
@@ -70,7 +70,7 @@ class ProjectController(Controller):
 
     def choose_template(self, starting_templates):
         "Ask user to choose a Paco project template"
-        print("Choose a starting project template:\n")
+        print("Choose a starter project template:\n")
         index = 1
         index_dict = {}
         for name, info in starting_templates.items():
@@ -136,9 +136,10 @@ class ProjectController(Controller):
                 project_context['accounts'] += '  - ' + key + '\n'
 
             # short region name for second region  (s3lambda)
-            project_context['short_region_list'] = vocabulary.aws_regions[
-                project_context['aws_second_region']
-            ]['short_name']
+            if 'aws_second_region' in project_context:
+                project_context['short_region_list'] = vocabulary.aws_regions[
+                    project_context['aws_second_region']
+                ]['short_name']
 
             cookiecutter(
                 os.path.join(os.path.dirname(__file__), '..', 'cookiecutters', packagename),
