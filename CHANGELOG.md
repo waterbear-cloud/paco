@@ -1,6 +1,12 @@
 Changelog for paco
 ==================
 
+3.5.2 (unreleased)
+------------------
+
+- Nothing changed yet.
+
+
 3.5.1 (2020-01-06)
 ------------------
 
