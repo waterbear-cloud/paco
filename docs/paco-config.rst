@@ -969,25 +969,80 @@ CodeCommit: resource/codecommit.yaml
 -------------------------------------
 
 The ``resource/codecommit.yaml`` file manages CodeCommit repositories and users.
+The top-level of the file is CodeCommitRepositoryGroups, and each group contains a set
+of CodeCommit Repositories.
+
+
+.. code-block:: yaml
+    :caption: Example resource/codecommit.yaml file
+
+    # Application CodeCommitRepositoryGroup
+    application:
+      # SaaS API CodeCommitRepository
+      saas-api:
+        enabled: true
+        account: paco.ref accounts.tools
+        region: us-west-2
+        description: "SaaS API"
+        repository_name: "saas-api"
+        users:
+          bobsnail:
+            username: bobsnail@example.com
+            public_ssh_key: 'ssh-rsa AAAAB3Nza.........6OzEFxCbJ'
+
+      # SaaS UI CodeCommitRepository
+      saas-ui:
+        enabled: true
+        account: paco.ref accounts.tools
+        region: us-west-2
+        description: "Saas UI"
+        repository_name: "saas-ui"
+        users:
+          bobsnail:
+            username: bobsnail@example.com
+            public_ssh_key: 'ssh-rsa AAAAB3Nza.........6OzEFxCbJ'
+          external_dev_team:
+            username: external_dev_team
+            public_ssh_key: 'ssh-rsa AAZA5RNza.........6OzEGHb7'
+
+    # Docs CodeCommitRepositoryGroups
+    docs:
+      saas-book:
+        enabled: true
+        account: paco.ref accounts.prod
+        region: eu-central-1
+        description: "The SaaS Book (PDF)"
+        repository_name: "saas-book"
+        users:
+          bobsnail:
+            username: bobsnail@example.com
+            public_ssh_key: 'ssh-rsa AAAAB3Nza.........6OzEFxCbJ'
+
+Provision CodeCommit repos and users with:
 
 .. code-block:: bash
 
     paco provision resource.codecommit
 
-.. code-block:: yaml
-    :caption: Example resource/codecommit.yaml file
+Be sure to save the AWS SSH key ID for each user after your provision their key. You can also see the SSH keys
+in the AWS Console in the IAM Users if you lose them.
 
-    app:
-      site:
-        enabled: true
-        account: paco.ref accounts.tools
-        region: 'us-west-2'
-        description: "Application repo"
-        repository_name: "saas-app"
-        users:
-          kevin_teague:
-            username: kevin.t@waterbear.cloud
-            public_ssh_key: 'ssh-rsa AAAAB3Nza.........6OzEFxCbJ'
+Visit the CodeCommit service in the AWS Console to see the SSH Url for a Git repo.
+
+To authenticate, if you are using your default public SSH key, you can embed the AWS SSH key ID as the user in SSH Url:
+
+.. code-block:: bash
+
+    git clone ssh://APKAV........63ICK@server/project.git
+
+Or add the AWS SSH key Id to your `~/.ssh/config` file. This is the easiest way, especially if you have
+to deal with multiple SSH keys on your workstation:
+
+.. code-block:: bash
+
+    Host git-codecommit.*.amazonaws.com
+      User APKAV........63ICK
+      IdentityFile ~/.ssh/my_pubilc_key_rsa
 
 
 
@@ -1010,11 +1065,65 @@ CodeCommit Service Configuration
       - Constraints
       - Default
     * - repository_groups
-      - Dict
-      - Group of Repositories
+      - Container<CodeCommitRepositoryGroups_> |star|
+      - Container of CodeCommitRepositoryGroup objects
       - 
       - 
 
+
+
+CodeCommitRepositoryGroups
+---------------------------
+
+
+Container for `CodeCommitRepositoryGroup`_ objects.
+    
+
+.. _CodeCommitRepositoryGroups:
+
+.. list-table:: :guilabel:`CodeCommitRepositoryGroups` |bars| Container<`CodeCommitRepositoryGroup`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CodeCommitRepositoryGroup
+--------------------------
+
+
+Container for `CodeCommitRepository`_ objects.
+    
+
+.. _CodeCommitRepositoryGroup:
+
+.. list-table:: :guilabel:`CodeCommitRepositoryGroup` |bars| Container<`CodeCommitRepository`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
 
 
 CodeCommitRepository

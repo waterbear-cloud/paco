@@ -140,7 +140,6 @@ users with:
 
 Be sure to save the AWS SSH key ID for each user. You can also see these keys in IAM in the AWS Console if you lose them.
 
-
 Next, you will need to use the AWS Console to switch to the tools account that the CodeCommit
 repo was provisioned in and go to the CodeCommit service. You should see something like:
 
@@ -148,7 +147,7 @@ repo was provisioned in and go to the CodeCommit service. You should see somethi
 
 Copy the SSH Url and clone the repo with `git clone <ssh-url>`.
 
-To authenticate when cloneing the repo, each user can either add the AWS SSH key Id to their `~/.ssh/config` file:
+To authenticate when cloning the repo, each user can either add the AWS SSH key Id to their `~/.ssh/config` file:
 
 .. code-block:: bash
 
@@ -156,7 +155,7 @@ To authenticate when cloneing the repo, each user can either add the AWS SSH key
       User APKAV........63ICK
       IdentityFile ~/.ssh/my_pubilc_key_rsa
 
-Or if they are using their default public key, they can use embed the AWS SSH key ID as the user in SSH Url:
+Or if they are using their default public key, they can embed the AWS SSH key ID as the user in SSH Url:
 
 .. code-block:: bash
 
