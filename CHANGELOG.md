@@ -4,8 +4,12 @@ Changelog for Paco
 3.5.2 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Fixed
 
+- `paco init project` creates the `.gitignore` after cookiecutter runs. This avoids having a | character
+  in the filename, which certain filsystems do not like.
+
+- Fixed bug where resource/s3.yaml buckets were being run twice on validate and provision.
 
 3.5.1 (2020-01-06)
 ------------------
