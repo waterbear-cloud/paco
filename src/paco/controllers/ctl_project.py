@@ -147,6 +147,14 @@ class ProjectController(Controller):
                 extra_context=project_context
             )
 
+            # create the .gitignore seperately that filename can't be nested in git repo
+            # tried using {{['.gitignore']|join}} but the | character is a problem on Windows filesystems
+            fh = open(self.paco_ctx.home + os.sep + '.gitignore', 'w')
+            fh.write(".credentials.yaml\n")
+            fh.write(".credentials.yml\n")
+            fh.write("build/\n")
+            fh.close()
+
 
     def init_credentials(self, force=False):
         "Create a .credentials file for a Paco project"
