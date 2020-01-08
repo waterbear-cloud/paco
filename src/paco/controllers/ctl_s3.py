@@ -251,13 +251,13 @@ class S3Controller(Controller):
                 )
                 self.add_bucket(bucket_config)
 
-    def init_s3_resource(self, stack_tags):
+    def init_s3_resource(self, bucket_list, stack_tags):
         if self.init_s3_resource_done == True:
             return
         self.paco_ctx.log_action_col("Init", "S3")
         self.init_s3_resource_done = True
         s3_env_map = {}
-        for bucket_id in self.paco_ctx.project['resource']['s3'].buckets.keys():
+        for bucket_id in bucket_list:
             bucket_config = self.paco_ctx.project['resource']['s3'].buckets[bucket_id]
             account_ctx = self.paco_ctx.get_account_context(account_ref=bucket_config.account)
             region = bucket_config.region
@@ -277,7 +277,12 @@ class S3Controller(Controller):
 
     def init(self, command=None, model_obj=None):
         if model_obj != None:
-            self.init_s3_resource(stack_tags=None)
+            bucket_list = []
+            if type(model_obj) == dict:
+                bucket_list.extend(model_obj.keys())
+            else:
+                bucket_list.append(model_obj.name)
+            self.init_s3_resource(bucket_list, stack_tags=None)
 
     def init_context(self, account_ctx, region, resource_ref, stack_group, stack_tags):
         if resource_ref.startswith('paco.ref '):
@@ -287,6 +292,15 @@ class S3Controller(Controller):
             # Add an 'paco.ref ' key here so that we can take paco.ref's from the yaml
             # and still do a lookup on them
             self.contexts['paco.ref '+resource_ref] = self.contexts[resource_ref]
+
+    def context_list(self):
+        "Returns contexts that do not include the redundant 'paco.ref ' prefixed keys."
+        contexts = []
+        for key, value in self.contexts.items():
+            if key.startswith('paco.ref '):
+                continue
+            contexts.append(value)
+        return contexts
 
     def add_bucket(self, bucket, config_ref=None, **kwargs):
         if config_ref:
@@ -319,20 +333,20 @@ class S3Controller(Controller):
         if resource_ref != None and resource_ref in self.contexts:
             return self.contexts[resource_ref].validate()
         elif resource_ref == None:
-            for s3_context in self.contexts.values():
+            for s3_context in self.context_list():
                 s3_context.validate()
 
     def provision(self, resource_ref=None):
         if resource_ref != None and resource_ref in self.contexts:
             return self.contexts[resource_ref].provision()
         elif resource_ref == None:
-            for s3_context in self.contexts.values():
+            for s3_context in self.context_list():
                 s3_context.provision()
 
     def delete(self, resource_ref=None):
         if resource_ref != None and resource_ref in self.contexts:
             return self.contexts[resource_ref].delete()
         elif resource_ref == None:
-            for s3_context in self.contexts.values():
+            for s3_context in self.context_list():
                 s3_context.delete()
 

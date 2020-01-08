@@ -62,7 +62,7 @@ class S3(CFTemplate):
         bucket_name = s3_ctl.get_bucket_name(self.s3_context_id)
 
         # Init Troposphere template
-        self.init_template('bucket.title_or_name')
+        self.init_template(bucket.title_or_name)
         template = self.template
 
         # Resources
