@@ -53,7 +53,11 @@ A generic placeholder for any schema.
 
 {IApplicationEngine}
 
-{IFunction}
+Function
+--------
+
+A callable function that returns a value.
+
 
 Accounts: accounts/\*.yaml
 ==========================
@@ -714,7 +718,10 @@ Console to switch between performance and debug configuration quickl in an emerg
 
 {IDBParameterGroup}
 
-{IDBParameters}
+DBParameters
+------------
+
+A unconstrainted set of key-value pairs.
 
 {IEC2}
 
@@ -1030,6 +1037,8 @@ def convert_schema_to_list_table(schema, level='-', header=True):
     Introspects a Schema-based Interface and returns
     a ReStructured Text representation of it.
     """
+    if schema.__name__ in ('IFunction', 'IDBParameters'):
+        return ''
     schema_name = strip_interface_char(schema.__name__)
     output = []
 

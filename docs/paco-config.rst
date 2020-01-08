@@ -418,18 +418,10 @@ Application Engine : A template describing an application
 
 *Base Schemas* `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Notifiable`_, `Title`_
 
-
 Function
----------
-
+--------
 
 A callable function that returns a value.
-    
-    * -
-      -
-      -
-      -
-      -
 
 
 Accounts: accounts/\*.yaml
@@ -4797,17 +4789,10 @@ DBParameterGroup
 
 *Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
-
 DBParameters
-^^^^^^^^^^^^^
+------------
 
-A dict of database parameters
-    * -
-      -
-      -
-      -
-      -
-
+A unconstrainted set of key-value pairs.
 
 
 EC2
