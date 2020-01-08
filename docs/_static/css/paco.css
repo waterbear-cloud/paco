@@ -220,12 +220,11 @@ a.icon-home {
 
 .rst-content .wy-table-responsive table.docutils td {
   padding: 7px 12px;
-  font-size: 70%;
+  font-size: 14px !important;
 }
 
 .rst-content .wy-table-responsive table.docutils:not(.field-list) tr:nth-child(2n-1) td {
   background-color: #f3f3f3;
-  font-size: 14px !important;
 }
 
 .rst-content dl.simple dt {
