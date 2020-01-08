@@ -53,7 +53,7 @@ A generic placeholder for any schema.
 
 {IApplicationEngine}
 
-
+{IFunction}
 
 Accounts: accounts/\*.yaml
 ==========================
@@ -96,121 +96,12 @@ The ``resource/cloudtrail.yaml`` file contains CloudTrails.
         s3_bucket_account: 'paco.ref accounts.security'
         s3_key_prefix: 'cloudtrails'
 
-
-IAM: resource/iam.yaml
-----------------------
-
-The ``resource/iam.yaml`` file contains IAM Users. Each user account can be given
-different levels of access a set of AWS accounts. For more information on how
-IAM Users can be managed, see `Managing IAM Users with Paco`_.
-
-.. code-block:: bash
-
-    paco provision resource.iam.users
-
-
-.. _Managing IAM Users with Paco: ./paco-users.html
-
-{IIAMResource}
-
-{IIAMUsers}
-
-{IIAMUser}
-
-{IIAMUserProgrammaticAccess}
-
-{IIAMUserPermissions}
-
-{IRole}
-
-{IAssumeRolePolicy}
-
-{IPolicy}
-
-{IStatement}
-
-SNS Topics: resource/snstopics.yaml
------------------------------------
-
-The ``resource/snstopics.yaml`` file manages AWS Simple Notification Service (SNS) resources.
-SNS has only two resources: SNS Topics and SNS Subscriptions.
-
-.. code-block:: bash
-
-    paco provision resource.snstopics
-
-.. code-block:: yaml
-    :caption: Example resource/snstopics.yaml file
-
-    account: paco.ref accounts.prod
-    regions:
-      - 'us-west-2'
-      - 'us-east-1'
-    groups:
-      admin:
-        title: "Administrator Group"
-        enabled: true
-        cross_account_access: true
-        subscriptions:
-          - endpoint: http://example.com/yes
-            protocol: http
-          - endpoint: https://example.com/orno
-            protocol: https
-          - endpoint: bob@example.com
-            protocol: email
-          - endpoint: bob@example.com
-            protocol: email-json
-          - endpoint: '555-555-5555'
-            protocol: sms
-          - endpoint: arn:aws:sqs:us-east-2:444455556666:queue1
-            protocol: sqs
-          - endpoint: arn:aws:sqs:us-east-2:444455556666:queue1
-            protocol: application
-          - endpoint: arn:aws:lambda:us-east-1:123456789012:function:my-function
-            protocol: lambda
-
-.. sidebar:: Prescribed Automation
-
-    ``cross_account_access``: Creates an SNS Topic Policy which will grant all of the AWS Accounts in this
-    Paco Project access to the ``sns.Publish`` permission for this SNS Topic.
-
-    You will need this if you want to send CloudWatch Alarms from multiple accounts to the same
-    SNS Topic(s) in one account.
-
-EC2 Keypairs: resource/ec2.yaml
---------------------------------
-
-The ``resource/ec2.yaml`` file manages AWS EC2 Keypairs.
-
-.. code-block:: bash
-
-    paco provision resource.ec2.keypairs # all keypairs
-    paco provision resource.ec2.keypairs.devnet_usw2 # single keypair
-
-.. code-block:: yaml
-    :caption: Example resource/ec2.yaml file
-
-    keypairs:
-      devnet_usw2:
-        keypair_name: "dev-us-west-2"
-        region: "us-west-2"
-        account: paco.ref accounts.dev
-      staging_cac1:
-        keypair_name: "staging-us-west-2"
-        region: "ca-central-1"
-        account: paco.ref accounts.stage
-      prod_usw2:
-        keypair_name: "prod-us-west-2"
-        region: "us-west-2"
-        account: paco.ref accounts.prod
-
 CodeCommit: resource/codecommit.yaml
 -------------------------------------
 
 The ``resource/codecommit.yaml`` file manages CodeCommit repositories and users.
 The top-level of the file is CodeCommitRepositoryGroups, and each group contains a set
 of CodeCommit Repositories.
-
 
 .. code-block:: yaml
     :caption: Example resource/codecommit.yaml file
@@ -293,6 +184,130 @@ to deal with multiple SSH keys on your workstation:
 {ICodeCommitRepository}
 
 {ICodeCommitUser}
+
+EC2 Keypairs: resource/ec2.yaml
+--------------------------------
+
+The ``resource/ec2.yaml`` file manages AWS EC2 Keypairs.
+
+.. code-block:: bash
+
+    paco provision resource.ec2.keypairs # all keypairs
+    paco provision resource.ec2.keypairs.devnet_usw2 # single keypair
+
+.. code-block:: yaml
+    :caption: Example resource/ec2.yaml file
+
+    keypairs:
+      devnet_usw2:
+        keypair_name: "dev-us-west-2"
+        region: "us-west-2"
+        account: paco.ref accounts.dev
+      staging_cac1:
+        keypair_name: "staging-us-west-2"
+        region: "ca-central-1"
+        account: paco.ref accounts.stage
+      prod_usw2:
+        keypair_name: "prod-us-west-2"
+        region: "us-west-2"
+        account: paco.ref accounts.prod
+
+{IEC2KeyPair}
+
+IAM: resource/iam.yaml
+----------------------
+
+The ``resource/iam.yaml`` file contains IAM Users. Each user account can be given
+different levels of access a set of AWS accounts. For more information on how
+IAM Users can be managed, see `Managing IAM Users with Paco`_.
+
+.. code-block:: bash
+
+    paco provision resource.iam.users
+
+
+.. _Managing IAM Users with Paco: ./paco-users.html
+
+{IIAMResource}
+
+{IIAMUsers}
+
+{IIAMUser}
+
+{IIAMUserProgrammaticAccess}
+
+{IIAMUserPermissions}
+
+{IRole}
+
+{IAssumeRolePolicy}
+
+{IPolicy}
+
+{IStatement}
+
+Route 53: resource/route53.yaml
+-------------------------------
+
+The ``resource/route53.yaml`` file manages AWS Route 53.
+
+{IRoute53Resource}
+
+{IRoute53HostedZone}
+
+{IRoute53HostedZoneExternalResource}
+
+{IRoute53RecordSet}
+
+
+SNS Topics: resource/snstopics.yaml
+-----------------------------------
+
+The ``resource/snstopics.yaml`` file manages AWS Simple Notification Service (SNS) resources.
+SNS has only two resources: SNS Topics and SNS Subscriptions.
+
+.. code-block:: bash
+
+    paco provision resource.snstopics
+
+.. code-block:: yaml
+    :caption: Example resource/snstopics.yaml file
+
+    account: paco.ref accounts.prod
+    regions:
+      - 'us-west-2'
+      - 'us-east-1'
+    groups:
+      admin:
+        title: "Administrator Group"
+        enabled: true
+        cross_account_access: true
+        subscriptions:
+          - endpoint: http://example.com/yes
+            protocol: http
+          - endpoint: https://example.com/orno
+            protocol: https
+          - endpoint: bob@example.com
+            protocol: email
+          - endpoint: bob@example.com
+            protocol: email-json
+          - endpoint: '555-555-5555'
+            protocol: sms
+          - endpoint: arn:aws:sqs:us-east-2:444455556666:queue1
+            protocol: sqs
+          - endpoint: arn:aws:sqs:us-east-2:444455556666:queue1
+            protocol: application
+          - endpoint: arn:aws:lambda:us-east-1:123456789012:function:my-function
+            protocol: lambda
+
+.. sidebar:: Prescribed Automation
+
+    ``cross_account_access``: Creates an SNS Topic Policy which will grant all of the AWS Accounts in this
+    Paco Project access to the ``sns.Publish`` permission for this SNS Topic.
+
+    You will need this if you want to send CloudWatch Alarms from multiple accounts to the same
+    SNS Topic(s) in one account.
+
 
 NetworkEnvironments: netenv/\*.yaml
 ====================================
@@ -719,6 +734,10 @@ Console to switch between performance and debug configuration quickl in an emerg
 
 {IS3BucketPolicy}
 
+{IS3StaticWebsiteHosting}
+
+{IS3StaticWebsiteHostingRedirectRequests}
+
 {IS3LambdaConfiguration}
 
 {IS3NotificationConfiguration}
@@ -1002,7 +1021,7 @@ def strip_interface_char(name):
     """
     Takes an Interface name and strips the leading I character
     """
-    if name != 'Interface':
+    if name not in  ('Interface'):
         return name[1:]
     return name
 
@@ -1113,13 +1132,21 @@ def indent_text(text):
 
 def convert_field_to_table_row(schema, field, table_row_template):
     """Schema field converted to string that represents a ReST table row"""
+    # add Required star
     if field.required:
         required = ' |star|'
     else:
         required = ''
 
+    paco_ref = False
+    if schemas.IPacoReference.providedBy(field):
+        paco_ref = True
+
     # Type field
     data_type = field.__class__.__name__
+    if data_type == 'PacoReference':
+        if field.str_ok:
+            data_type += '|String'
     if data_type in ('TextLine', 'Text'):
         data_type = 'String'
     elif data_type == 'Bool':
@@ -1146,7 +1173,11 @@ def convert_field_to_table_row(schema, field, table_row_template):
                 strip_interface_char(field.value_type.schema.__name__)
             )
         else:
-            data_type = 'List<string>'
+            if schemas.IPacoReference.providedBy(field.value_type):
+                paco_ref = True
+                data_type = 'List<PacoReference>'
+            else:
+                data_type = 'List<String>'
     data_type = data_type + required
 
     # don't display the name field, it is derived from the key
@@ -1158,6 +1189,29 @@ def convert_field_to_table_row(schema, field, table_row_template):
     else:
         default = field.default
 
+    # Constraints field
+    constraints = field.description
+    if paco_ref:
+        if hasattr(field, 'value_type'):
+            schema_constraint = field.value_type.schema_constraint
+            str_ok = field.value_type.str_ok
+        else:
+            schema_constraint = field.schema_constraint
+            str_ok = field.str_ok
+        if schema_constraint != '':
+            if len(constraints) > 0:
+                constraints += ' '
+            constraints += 'Paco Reference to `{}`_.'.format(strip_interface_char(schema_constraint))
+        else:
+            print("Warning: Paco Reference field {}.{} does not specify schema constraint.".format(
+                schema.__name__, field.__name__)
+            )
+        if str_ok == True:
+            if len(constraints) > 0:
+                constraints += ' '
+            constraints += 'String Ok.'
+    constraints = indent_text(constraints)
+
     if name != 'name' or not schema.extends(schemas.INamed):
         return table_row_template.format(
             **{
@@ -1165,7 +1219,7 @@ def convert_field_to_table_row(schema, field, table_row_template):
                 'type': data_type,
                 'default': default,
                 'purpose': field.title,
-                'constraints': indent_text(field.description)
+                'constraints': constraints
             }
         )
     else:
@@ -1224,6 +1278,8 @@ MINOR_SCHEMAS = {
     'ILambdaVpcConfig': None,
     'ILambdaVariable': None,
     'IS3BucketPolicy': None,
+    'IS3StaticWebsiteHosting': None,
+    'IS3StaticWebsiteHostingRedirectRequests': None,
     'IS3LambdaConfiguration': None,
     'IS3NotificationConfiguration': None,
     'ISNSTopicSubscription': None,
@@ -1266,8 +1322,8 @@ MINOR_SCHEMAS = {
     'IStatement': None,
     'ICodeCommit': None,
     'ICodeCommitRepository': None,
-    'CodeCommitRepositoryGroup': None,
-    'CodeCommitRepositoryGroups': None,
+    'ICodeCommitRepositoryGroup': None,
+    'ICodeCommitRepositoryGroups': None,
     'ICodeCommitUser': None,
     'ICloudFormationConfiguration': None,
     'ICloudFormationInitCommands': None,
@@ -1303,6 +1359,11 @@ MINOR_SCHEMAS = {
     'IBackupPlanSelection': None,
     'IBackupSelectionConditionResourceType': None,
     'IBackupSelectionConditionResourceType': None,
+    'IRoute53Resource': None,
+    'IRoute53HostedZone': None,
+    'IRoute53HostedZoneExternalResource': None,
+    'IRoute53RecordSet': None,
+    'IEC2KeyPair': None,
 }
 
 def create_tables_from_schema():

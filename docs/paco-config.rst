@@ -253,7 +253,7 @@ A set of metrics and a default collection interval
       - 
       - 
     * - asg_metrics
-      - List<string>
+      - List<String>
       - ASG Metrics
       - Must be one of: 'GroupMinSize', 'GroupMaxSize', 'GroupDesiredCapacity', 'GroupInServiceInstances', 'GroupPendingInstances', 'GroupStandbyInstances', 'GroupTerminatingInstances', 'GroupTotalInstances'
       - 
@@ -419,6 +419,18 @@ Application Engine : A template describing an application
 *Base Schemas* `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Notifiable`_, `Title`_
 
 
+Function
+---------
+
+
+A callable function that returns a value.
+    
+    * -
+      -
+      -
+      -
+      -
+
 
 Accounts: accounts/\*.yaml
 ==========================
@@ -470,7 +482,7 @@ Cloud account information
       - 
       - False
     * - organization_account_ids
-      - List<string>
+      - List<String>
       - A list of account ids to add to the Master account's AWS Organization
       - Each string in the list must contain only digits.
       - 
@@ -542,6 +554,306 @@ The ``resource/cloudtrail.yaml`` file contains CloudTrails.
         s3_bucket_account: 'paco.ref accounts.security'
         s3_key_prefix: 'cloudtrails'
 
+CodeCommit: resource/codecommit.yaml
+-------------------------------------
+
+The ``resource/codecommit.yaml`` file manages CodeCommit repositories and users.
+The top-level of the file is CodeCommitRepositoryGroups, and each group contains a set
+of CodeCommit Repositories.
+
+.. code-block:: yaml
+    :caption: Example resource/codecommit.yaml file
+
+    # Application CodeCommitRepositoryGroup
+    application:
+      # SaaS API CodeCommitRepository
+      saas-api:
+        enabled: true
+        account: paco.ref accounts.tools
+        region: us-west-2
+        description: "SaaS API"
+        repository_name: "saas-api"
+        users:
+          bobsnail:
+            username: bobsnail@example.com
+            public_ssh_key: 'ssh-rsa AAAAB3Nza.........6OzEFxCbJ'
+
+      # SaaS UI CodeCommitRepository
+      saas-ui:
+        enabled: true
+        account: paco.ref accounts.tools
+        region: us-west-2
+        description: "Saas UI"
+        repository_name: "saas-ui"
+        users:
+          bobsnail:
+            username: bobsnail@example.com
+            public_ssh_key: 'ssh-rsa AAAAB3Nza.........6OzEFxCbJ'
+          external_dev_team:
+            username: external_dev_team
+            public_ssh_key: 'ssh-rsa AAZA5RNza.........6OzEGHb7'
+
+    # Docs CodeCommitRepositoryGroups
+    docs:
+      saas-book:
+        enabled: true
+        account: paco.ref accounts.prod
+        region: eu-central-1
+        description: "The SaaS Book (PDF)"
+        repository_name: "saas-book"
+        users:
+          bobsnail:
+            username: bobsnail@example.com
+            public_ssh_key: 'ssh-rsa AAAAB3Nza.........6OzEFxCbJ'
+
+Provision CodeCommit repos and users with:
+
+.. code-block:: bash
+
+    paco provision resource.codecommit
+
+Be sure to save the AWS SSH key ID for each user after your provision their key. You can also see the SSH keys
+in the AWS Console in the IAM Users if you lose them.
+
+Visit the CodeCommit service in the AWS Console to see the SSH Url for a Git repo.
+
+To authenticate, if you are using your default public SSH key, you can embed the AWS SSH key ID as the user in SSH Url:
+
+.. code-block:: bash
+
+    git clone ssh://APKAV........63ICK@server/project.git
+
+Or add the AWS SSH key Id to your `~/.ssh/config` file. This is the easiest way, especially if you have
+to deal with multiple SSH keys on your workstation:
+
+.. code-block:: bash
+
+    Host git-codecommit.*.amazonaws.com
+      User APKAV........63ICK
+      IdentityFile ~/.ssh/my_pubilc_key_rsa
+
+
+
+CodeCommit
+^^^^^^^^^^^
+
+
+CodeCommit Service Configuration
+    
+
+.. _CodeCommit:
+
+.. list-table:: :guilabel:`CodeCommit`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - repository_groups
+      - Container<CodeCommitRepositoryGroups_> |star|
+      - Container of CodeCommitRepositoryGroup objects
+      - 
+      - 
+
+
+
+CodeCommitRepositoryGroups
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Container for `CodeCommitRepositoryGroup`_ objects.
+    
+
+.. _CodeCommitRepositoryGroups:
+
+.. list-table:: :guilabel:`CodeCommitRepositoryGroups` |bars| Container<`CodeCommitRepositoryGroup`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CodeCommitRepositoryGroup
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Container for `CodeCommitRepository`_ objects.
+    
+
+.. _CodeCommitRepositoryGroup:
+
+.. list-table:: :guilabel:`CodeCommitRepositoryGroup` |bars| Container<`CodeCommitRepository`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CodeCommitRepository
+^^^^^^^^^^^^^^^^^^^^^
+
+
+CodeCommit Repository
+    
+
+.. _CodeCommitRepository:
+
+.. list-table:: :guilabel:`CodeCommitRepository`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - account
+      - PacoReference |star|
+      - Account this repo belongs to.
+      - Paco Reference to `Account`_.
+      - 
+    * - description
+      - String
+      - Repository Description
+      - 
+      - 
+    * - region
+      - String
+      - AWS Region
+      - 
+      - 
+    * - repository_name
+      - String
+      - Repository Name
+      - 
+      - 
+    * - users
+      - Container<CodeCommitUser_>
+      - CodeCommit Users
+      - 
+      - 
+
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
+
+
+CodeCommitUser
+^^^^^^^^^^^^^^^
+
+
+CodeCommit User
+    
+
+.. _CodeCommitUser:
+
+.. list-table:: :guilabel:`CodeCommitUser`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - public_ssh_key
+      - String
+      - CodeCommit User Public SSH Key
+      - 
+      - 
+    * - username
+      - String
+      - CodeCommit Username
+      - 
+      - 
+
+
+EC2 Keypairs: resource/ec2.yaml
+--------------------------------
+
+The ``resource/ec2.yaml`` file manages AWS EC2 Keypairs.
+
+.. code-block:: bash
+
+    paco provision resource.ec2.keypairs # all keypairs
+    paco provision resource.ec2.keypairs.devnet_usw2 # single keypair
+
+.. code-block:: yaml
+    :caption: Example resource/ec2.yaml file
+
+    keypairs:
+      devnet_usw2:
+        keypair_name: "dev-us-west-2"
+        region: "us-west-2"
+        account: paco.ref accounts.dev
+      staging_cac1:
+        keypair_name: "staging-us-west-2"
+        region: "ca-central-1"
+        account: paco.ref accounts.stage
+      prod_usw2:
+        keypair_name: "prod-us-west-2"
+        region: "us-west-2"
+        account: paco.ref accounts.prod
+
+
+EC2KeyPair
+^^^^^^^^^^^
+
+
+EC2 SSH Key Pair
+    
+
+.. _EC2KeyPair:
+
+.. list-table:: :guilabel:`EC2KeyPair`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - account
+      - PacoReference
+      - AWS Account the key pair belongs to
+      - Paco Reference to `Account`_.
+      - 
+    * - keypair_name
+      - String |star|
+      - The name of the EC2 KeyPair
+      - 
+      - 
+    * - region
+      - String |star|
+      - AWS Region
+      - Must be a valid AWS Region name
+      - no-region-set
+
+*Base Schemas* `Named`_, `Title`_
 
 IAM: resource/iam.yaml
 ----------------------
@@ -631,9 +943,9 @@ IAM User
       - Constraints
       - Default
     * - account
-      - TextReference |star|
+      - PacoReference |star|
       - Paco account reference to install this user
-      - 
+      - Paco Reference to `Account`_.
       - 
     * - account_whitelist
       - CommaList
@@ -760,7 +1072,7 @@ Role
       - 
       - False
     * - managed_policy_arns
-      - List<string>
+      - List<String>
       - Managed policy ARNs
       - 
       - 
@@ -810,7 +1122,7 @@ AssumeRolePolicy
       - Constraints
       - Default
     * - aws
-      - List<string>
+      - List<String>
       - List of AWS Principles
       - 
       - 
@@ -820,7 +1132,7 @@ AssumeRolePolicy
       - 
       - 
     * - service
-      - List<string>
+      - List<String>
       - Service
       - 
       - 
@@ -873,7 +1185,7 @@ Statement
       - Constraints
       - Default
     * - action
-      - List<string>
+      - List<String>
       - Action(s)
       - 
       - 
@@ -883,12 +1195,165 @@ Statement
       - Must be one of: 'Allow', 'Deny'
       - 
     * - resource
-      - List<string>
+      - List<String>
       - Resrource(s)
       - 
       - 
 
 *Base Schemas* `Named`_, `Title`_
+
+Route 53: resource/route53.yaml
+-------------------------------
+
+The ``resource/route53.yaml`` file manages AWS Route 53.
+
+
+Route53Resource
+^^^^^^^^^^^^^^^^
+
+
+Route53 Service Configuration
+    
+
+.. _Route53Resource:
+
+.. list-table:: :guilabel:`Route53Resource`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - hosted_zones
+      - Container<Route53HostedZone_>
+      - Hosted Zones
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+Route53HostedZone
+^^^^^^^^^^^^^^^^^^
+
+
+Route53 Hosted Zone
+    
+
+.. _Route53HostedZone:
+
+.. list-table:: :guilabel:`Route53HostedZone`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - account
+      - PacoReference |star|
+      - Account this Hosted Zone belongs to
+      - Paco Reference to `Account`_.
+      - 
+    * - domain_name
+      - String |star|
+      - Domain Name
+      - 
+      - 
+    * - external_resource
+      - Object<Route53HostedZoneExternalResource_>
+      - External HostedZone Id Configuration
+      - 
+      - 
+    * - parent_zone
+      - String
+      - Parent Hozed Zone name
+      - 
+      - 
+    * - record_sets
+      - List<Route53RecordSet_> |star|
+      - List of Record Sets
+      - 
+      - 
+
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
+
+
+Route53HostedZoneExternalResource
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Existing Hosted Zone configuration
+    
+
+.. _Route53HostedZoneExternalResource:
+
+.. list-table:: :guilabel:`Route53HostedZoneExternalResource`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - hosted_zone_id
+      - String |star|
+      - ID of an existing Hosted Zone
+      - 
+      - 
+    * - nameservers
+      - List<String> |star|
+      - List of the Hosted Zones Nameservers
+      - 
+      - 
+
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
+
+
+Route53RecordSet
+^^^^^^^^^^^^^^^^^
+
+
+Route53 Record Set
+    
+
+.. _Route53RecordSet:
+
+.. list-table:: :guilabel:`Route53RecordSet`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - record_name
+      - String |star|
+      - Record Set Full Name
+      - 
+      - 
+    * - resource_records
+      - List<String> |star|
+      - Record Set Values
+      - 
+      - 
+    * - ttl
+      - Int
+      - Record TTL
+      - 
+      - 300
+    * - type
+      - String |star|
+      - Record Set Type
+      - 
+      - 
+
+
 
 SNS Topics: resource/snstopics.yaml
 -----------------------------------
@@ -937,270 +1402,6 @@ SNS has only two resources: SNS Topics and SNS Subscriptions.
 
     You will need this if you want to send CloudWatch Alarms from multiple accounts to the same
     SNS Topic(s) in one account.
-
-EC2 Keypairs: resource/ec2.yaml
---------------------------------
-
-The ``resource/ec2.yaml`` file manages AWS EC2 Keypairs.
-
-.. code-block:: bash
-
-    paco provision resource.ec2.keypairs # all keypairs
-    paco provision resource.ec2.keypairs.devnet_usw2 # single keypair
-
-.. code-block:: yaml
-    :caption: Example resource/ec2.yaml file
-
-    keypairs:
-      devnet_usw2:
-        keypair_name: "dev-us-west-2"
-        region: "us-west-2"
-        account: paco.ref accounts.dev
-      staging_cac1:
-        keypair_name: "staging-us-west-2"
-        region: "ca-central-1"
-        account: paco.ref accounts.stage
-      prod_usw2:
-        keypair_name: "prod-us-west-2"
-        region: "us-west-2"
-        account: paco.ref accounts.prod
-
-CodeCommit: resource/codecommit.yaml
--------------------------------------
-
-The ``resource/codecommit.yaml`` file manages CodeCommit repositories and users.
-The top-level of the file is CodeCommitRepositoryGroups, and each group contains a set
-of CodeCommit Repositories.
-
-
-.. code-block:: yaml
-    :caption: Example resource/codecommit.yaml file
-
-    # Application CodeCommitRepositoryGroup
-    application:
-      # SaaS API CodeCommitRepository
-      saas-api:
-        enabled: true
-        account: paco.ref accounts.tools
-        region: us-west-2
-        description: "SaaS API"
-        repository_name: "saas-api"
-        users:
-          bobsnail:
-            username: bobsnail@example.com
-            public_ssh_key: 'ssh-rsa AAAAB3Nza.........6OzEFxCbJ'
-
-      # SaaS UI CodeCommitRepository
-      saas-ui:
-        enabled: true
-        account: paco.ref accounts.tools
-        region: us-west-2
-        description: "Saas UI"
-        repository_name: "saas-ui"
-        users:
-          bobsnail:
-            username: bobsnail@example.com
-            public_ssh_key: 'ssh-rsa AAAAB3Nza.........6OzEFxCbJ'
-          external_dev_team:
-            username: external_dev_team
-            public_ssh_key: 'ssh-rsa AAZA5RNza.........6OzEGHb7'
-
-    # Docs CodeCommitRepositoryGroups
-    docs:
-      saas-book:
-        enabled: true
-        account: paco.ref accounts.prod
-        region: eu-central-1
-        description: "The SaaS Book (PDF)"
-        repository_name: "saas-book"
-        users:
-          bobsnail:
-            username: bobsnail@example.com
-            public_ssh_key: 'ssh-rsa AAAAB3Nza.........6OzEFxCbJ'
-
-Provision CodeCommit repos and users with:
-
-.. code-block:: bash
-
-    paco provision resource.codecommit
-
-Be sure to save the AWS SSH key ID for each user after your provision their key. You can also see the SSH keys
-in the AWS Console in the IAM Users if you lose them.
-
-Visit the CodeCommit service in the AWS Console to see the SSH Url for a Git repo.
-
-To authenticate, if you are using your default public SSH key, you can embed the AWS SSH key ID as the user in SSH Url:
-
-.. code-block:: bash
-
-    git clone ssh://APKAV........63ICK@server/project.git
-
-Or add the AWS SSH key Id to your `~/.ssh/config` file. This is the easiest way, especially if you have
-to deal with multiple SSH keys on your workstation:
-
-.. code-block:: bash
-
-    Host git-codecommit.*.amazonaws.com
-      User APKAV........63ICK
-      IdentityFile ~/.ssh/my_pubilc_key_rsa
-
-
-
-CodeCommit
-^^^^^^^^^^^
-
-
-CodeCommit Service Configuration
-    
-
-.. _CodeCommit:
-
-.. list-table:: :guilabel:`CodeCommit`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - repository_groups
-      - Container<CodeCommitRepositoryGroups_> |star|
-      - Container of CodeCommitRepositoryGroup objects
-      - 
-      - 
-
-
-
-CodeCommitRepositoryGroups
----------------------------
-
-
-Container for `CodeCommitRepositoryGroup`_ objects.
-    
-
-.. _CodeCommitRepositoryGroups:
-
-.. list-table:: :guilabel:`CodeCommitRepositoryGroups` |bars| Container<`CodeCommitRepositoryGroup`_>
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * -
-      -
-      -
-      -
-      -
-
-*Base Schemas* `Named`_, `Title`_
-
-
-CodeCommitRepositoryGroup
---------------------------
-
-
-Container for `CodeCommitRepository`_ objects.
-    
-
-.. _CodeCommitRepositoryGroup:
-
-.. list-table:: :guilabel:`CodeCommitRepositoryGroup` |bars| Container<`CodeCommitRepository`_>
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * -
-      -
-      -
-      -
-      -
-
-*Base Schemas* `Named`_, `Title`_
-
-
-CodeCommitRepository
-^^^^^^^^^^^^^^^^^^^^^
-
-
-CodeCommit Repository
-    
-
-.. _CodeCommitRepository:
-
-.. list-table:: :guilabel:`CodeCommitRepository`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - account
-      - TextReference |star|
-      - AWS Account Reference
-      - 
-      - 
-    * - description
-      - String
-      - Repository Description
-      - 
-      - 
-    * - region
-      - String
-      - AWS Region
-      - 
-      - 
-    * - repository_name
-      - String
-      - Repository Name
-      - 
-      - 
-    * - users
-      - Container<CodeCommitUser_>
-      - CodeCommit Users
-      - 
-      - 
-
-*Base Schemas* `Deployable`_, `Named`_, `Title`_
-
-
-CodeCommitUser
-^^^^^^^^^^^^^^^
-
-
-CodeCommit User
-    
-
-.. _CodeCommitUser:
-
-.. list-table:: :guilabel:`CodeCommitUser`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - public_ssh_key
-      - String
-      - CodeCommit User Public SSH Key
-      - 
-      - 
-    * - username
-      - String
-      - CodeCommit Username
-      - 
-      - 
 
 
 NetworkEnvironments: netenv/\*.yaml
@@ -1365,9 +1566,9 @@ Network
       - Constraints
       - Default
     * - aws_account
-      - TextReference
-      - Paco Reference to an AWS Account
-      - 
+      - PacoReference
+      - Account this Network belongs to
+      - Paco Reference to `Account`_.
       - 
 
 *Base Schemas* `NetworkEnvironment`_, `Deployable`_, `Named`_, `Title`_
@@ -1464,9 +1665,9 @@ VPC Peering
       - Constraints
       - Default
     * - network_environment
-      - TextReference
+      - PacoReference
       - Network Environment Reference
-      - 
+      - Paco Reference to `NetworkEnvironment`_.
       - 
     * - peer_account_id
       - String
@@ -1521,9 +1722,9 @@ VPC Peering Route
       - A valid CIDR v4 block or an empty string
       - 
     * - segment
-      - TextReference
-      - Segment reference
-      - 
+      - PacoReference
+      - Segment
+      - Paco Reference to `Segment`_.
       - 
 
 
@@ -1552,9 +1753,9 @@ NAT Gateway
       - Can be 'all' or number of AZ: 1, 2, 3, 4 ...
       - all
     * - default_route_segments
-      - List<string>
+      - List<PacoReference>
       - Default Route Segments
-      - 
+      - Paco Reference to `Segment`_.
       - 
     * - ec2_instance_type
       - String
@@ -1562,19 +1763,19 @@ NAT Gateway
       - 
       - t2.nano
     * - ec2_key_pair
-      - TextReference
-      - EC2 key pair reference
-      - 
+      - PacoReference
+      - EC2 key pair
+      - Paco Reference to `EC2KeyPair`_.
       - 
     * - security_groups
-      - List<string>
+      - List<PacoReference>
       - Security Groups
-      - 
+      - Paco Reference to `SecurityGroup`_.
       - 
     * - segment
-      - TextReference
+      - PacoReference
       - Segment
-      - 
+      - Paco Reference to `Segment`_.
       - 
     * - type
       - String
@@ -1636,7 +1837,7 @@ Private Hosted Zone
       - 
       - 
     * - vpc_associations
-      - List<string>
+      - List<String>
       - List of VPC Ids
       - 
       - 
@@ -1760,9 +1961,9 @@ Security group egress
       - Constraints
       - Default
     * - destination_security_group
-      - TextReference
+      - PacoReference|String
       - Destination Security Group Reference
-      - A Paco reference to a SecurityGroup
+      - A Paco reference to a SecurityGroup Paco Reference to `SecurityGroup`_. String Ok.
       - 
 
 *Base Schemas* `SecurityGroupRule`_, `Name`_
@@ -1785,9 +1986,9 @@ Security group ingress
       - Constraints
       - Default
     * - source_security_group
-      - TextReference
+      - PacoReference|String
       - Source Security Group Reference
-      - An Paco reference to a SecurityGroup
+      - A Paco Reference to a SecurityGroup Paco Reference to `SecurityGroup`_. String Ok.
       - 
 
 *Base Schemas* `SecurityGroupRule`_, `Name`_
@@ -2023,7 +2224,7 @@ An Api Gateway Rest API resource
       - Must be one of 'HEADER' to read the API key from the X-API-Key header of a request or 'AUTHORIZER' to read the API key from the UsageIdentifierKey from a Lambda authorizer.
       - 
     * - binary_media_types
-      - List<string>
+      - List<String>
       - Binary Media Types. The list of binary media types that are supported by the RestApi resource, such as image/png or application/octet-stream. By default, RestApi supports only UTF-8-encoded text payloads.
       - Duplicates are not allowed. Slashes must be escaped with ~1. For example, image/png would be image~1png in the BinaryMediaTypes list.
       - 
@@ -2053,7 +2254,7 @@ An Api Gateway Rest API resource
       - 
       - 
     * - endpoint_configuration
-      - List<string>
+      - List<String>
       - Endpoint configuration. A list of the endpoint types of the API. Use this field when creating an API. When importing an existing API, specify the endpoint configuration types using the `parameters` field.
       - List of strings, each must be one of 'EDGE', 'REGIONAL', 'PRIVATE'
       - 
@@ -2381,9 +2582,9 @@ ApiGatewayMethodIntegration
       - Must be one of ANY, DELETE, GET, HEAD, OPTIONS, PATCH, POST or PUT.
       - POST
     * - integration_lambda
-      - TextReference
+      - PacoReference
       - Integration Lambda
-      - 
+      - Paco Reference to `Lambda`_.
       - 
     * - integration_responses
       - List<ApiGatewayMethodIntegrationResponse_>
@@ -2604,9 +2805,9 @@ to a target group, use the ``target_groups`` field on an ASG resource.
       - Constraints
       - Default
     * - access_logs_bucket
-      - TextReference
+      - PacoReference
       - Bucket to store access logs in
-      - 
+      - Paco Reference to `S3Bucket`_.
       - 
     * - access_logs_prefix
       - String
@@ -2639,9 +2840,9 @@ to a target group, use the ``target_groups`` field on an ASG resource.
       - 
       - 
     * - security_groups
-      - List<string>
+      - List<PacoReference>
       - Security Groups
-      - 
+      - Paco Reference to `SecurityGroup`_.
       - 
     * - segment
       - String
@@ -2674,19 +2875,19 @@ DNS
       - Constraints
       - Default
     * - domain_name
-      - TextReference
+      - PacoReference|String
       - Domain name
-      - 
+      - Paco Reference to `Route53HostedZone`_. String Ok.
       - 
     * - hosted_zone
-      - TextReference
+      - PacoReference|String
       - Hosted Zone Id
-      - 
+      - Paco Reference to `Route53HostedZone`_. String Ok.
       - 
     * - ssl_certificate
-      - TextReference
+      - PacoReference
       - SSL certificate Reference
-      - 
+      - Paco Reference to `AWSCertificateManager`_.
       - 
     * - ttl
       - Int
@@ -2750,9 +2951,9 @@ Listener
       - 
       - 
     * - ssl_certificates
-      - List<string>
+      - List<PacoReference>
       - List of SSL certificate References
-      - 
+      - Paco Reference to `AWSCertificateManager`_.
       - 
     * - target_group
       - String
@@ -2983,9 +3184,9 @@ Auto Scaling Group
       - 
       - 
     * - eip
-      - TextReference
-      - Elastic IP Reference or AllocationId
-      - 
+      - PacoReference|String
+      - Elastic IP or AllocationId to attach to instance at launch
+      - Paco Reference to `EIP`_. String Ok.
       - 
     * - health_check_grace_period_secs
       - Int
@@ -2998,9 +3199,9 @@ Auto Scaling Group
       - Must be one of: 'EC2', 'ELB'
       - EC2
     * - instance_ami
-      - TextReference
+      - PacoReference|String
       - Instance AMI
-      - 
+      - Paco Reference to `Function`_. String Ok.
       - 
     * - instance_ami_type
       - String
@@ -3013,9 +3214,9 @@ Auto Scaling Group
       - 
       - 
     * - instance_key_pair
-      - TextReference
-      - Instance key pair reference
-      - 
+      - PacoReference
+      - Key pair to connect to launched instances
+      - Paco Reference to `EC2KeyPair`_.
       - 
     * - instance_monitoring
       - Boolean
@@ -3038,9 +3239,9 @@ Auto Scaling Group
       - 
       - 
     * - load_balancers
-      - List<string>
+      - List<PacoReference>
       - Target groups
-      - 
+      - Paco Reference to `TargetGroup`_.
       - 
     * - max_instances
       - Int
@@ -3063,14 +3264,14 @@ Auto Scaling Group
       - 
       - 0
     * - secrets
-      - List<string>
+      - List<PacoReference>
       - List of Secrets Manager References
-      - 
+      - Paco Reference to `SecretsManagerSecret`_.
       - 
     * - security_groups
-      - List<string>
+      - List<PacoReference>
       - Security groups
-      - 
+      - Paco Reference to `SecurityGroup`_.
       - 
     * - segment
       - String
@@ -3078,12 +3279,12 @@ Auto Scaling Group
       - 
       - 
     * - target_groups
-      - List<string>
+      - List<PacoReference>
       - Target groups
-      - 
+      - Paco Reference to `TargetGroup`_.
       - 
     * - termination_policies
-      - List<string>
+      - List<String>
       - Terminiation policies
       - 
       - 
@@ -3371,9 +3572,9 @@ EBS Volume Mount Configuration
       - 
       - 
     * - volume
-      - TextReference |star|
+      - PacoReference|String |star|
       - EBS Volume Resource Reference
-      - 
+      - Paco Reference to `EBS`_. String Ok.
       - 
 
 *Base Schemas* `Deployable`_
@@ -3403,9 +3604,9 @@ EFS Mount Folder and Target Configuration
       - 
       - 
     * - target
-      - TextReference |star|
+      - PacoReference|String |star|
       - EFS Target Resource Reference
-      - 
+      - Paco Reference to `EFS`_. String Ok.
       - 
 
 *Base Schemas* `Deployable`_
@@ -3430,7 +3631,7 @@ EC2 Launch Options
       - Constraints
       - Default
     * - cfn_init_config_sets
-      - List<string>
+      - List<String>
       - List of cfn-init config sets
       - 
       - []
@@ -4014,7 +4215,7 @@ CloudFormationInitService
       - Constraints
       - Default
     * - commands
-      - List<string>
+      - List<String>
       - A list of command names. If cfn-init runs the specified command, this service will be restarted.
       - 
       - 
@@ -4029,7 +4230,7 @@ CloudFormationInitService
       - 
       - 
     * - files
-      - List<string>
+      - List<String>
       - A list of files. If cfn-init changes one directly via the files block, this service will be restarted
       - 
       - 
@@ -4039,7 +4240,7 @@ CloudFormationInitService
       - 
       - {}
     * - sources
-      - List<string>
+      - List<String>
       - A list of directories. If cfn-init expands an archive into one of these directories, this service will be restarted.
       - 
       - 
@@ -4102,19 +4303,19 @@ Code Pipeline: Build and Deploy
       - Constraints
       - Default
     * - alb_target_group
-      - TextReference
-      - ALB Target Group Reference
-      - 
+      - PacoReference
+      - ALB Target Group to deploy to
+      - Paco Reference to `TargetGroup`_.
       - 
     * - artifacts_bucket
-      - TextReference
-      - Artifacts S3 Bucket Reference
-      - 
+      - PacoReference
+      - S3 Bucket for Artifacts
+      - Paco Reference to `S3Bucket`_.
       - 
     * - asg
-      - TextReference
+      - PacoReference
       - ASG Reference
-      - 
+      - Paco Reference to `ASG`_.
       - 
     * - auto_rollback_enabled
       - Boolean
@@ -4132,20 +4333,15 @@ Code Pipeline: Build and Deploy
       - 
       - 
     * - codecommit_repository
-      - TextReference
+      - PacoReference
       - CodeCommit Respository
-      - 
+      - Paco Reference to `CodeCommitRepository`_.
       - 
     * - cross_account_support
       - Boolean
       - Cross Account Support
       - 
       - False
-    * - data_account
-      - TextReference
-      - Data Account Reference
-      - 
-      - 
     * - deploy_config_type
       - String
       - Deploy Config Type
@@ -4157,9 +4353,9 @@ Code Pipeline: Build and Deploy
       - 
       - 0
     * - deploy_instance_role
-      - TextReference
+      - PacoReference
       - Deploy Instance Role Reference
-      - 
+      - Paco Reference to `Role`_.
       - 
     * - deploy_style_option
       - String
@@ -4197,9 +4393,9 @@ Code Pipeline: Build and Deploy
       - 
       - 60
     * - tools_account
-      - TextReference
-      - Tools Account Reference
-      - 
+      - PacoReference
+      - Account where CodePipeline runs
+      - Paco Reference to `Account`_.
       - 
 
 *Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
@@ -4232,7 +4428,7 @@ AWSCertificateManager
       - 
       - False
     * - subject_alternative_names
-      - List<string>
+      - List<String>
       - Subject alternative names
       - 
       - 
@@ -4329,9 +4525,9 @@ CodeDeployDeploymentGroup
       - Constraints
       - Default
     * - autoscalinggroups
-      - List<string>
-      - A list of refs to  Auto Scaling groups that CodeDeploy automatically deploys revisions to when new instances are created
-      - 
+      - List<PacoReference>
+      - AutoScalingGroups that CodeDeploy automatically deploys revisions to when new instances are created
+      - Paco Reference to `ASG`_.
       - 
     * - ignore_application_stop_failures
       - Boolean
@@ -4552,14 +4748,14 @@ RDS Aurora
       - Constraints
       - Default
     * - secondary_domain_name
-      - TextReference
+      - PacoReference|String
       - Secondary Domain Name
-      - 
+      - Paco Reference to `Route53HostedZone`_. String Ok.
       - 
     * - secondary_hosted_zone
-      - TextReference
+      - PacoReference
       - Secondary Hosted Zone
-      - 
+      - Paco Reference to `Route53HostedZone`_.
       - 
 
 *Base Schemas* `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
@@ -4569,7 +4765,7 @@ DBParameterGroup
 -----------------
 
 
-AWS::RDS::DBParameterGroup
+DBParameterGroup
     
 
 .. _DBParameterGroup:
@@ -4648,9 +4844,9 @@ EC2 Instance
       - 
       - 
     * - instance_key_pair
-      - TextReference
-      - Instance key pair reference
-      - 
+      - PacoReference
+      - key pair for connections to instance
+      - Paco Reference to `EC2KeyPair`_.
       - 
     * - instance_type
       - String
@@ -4668,9 +4864,9 @@ EC2 Instance
       - 
       - 8
     * - security_groups
-      - List<string>
+      - List<PacoReference>
       - Security groups
-      - 
+      - Paco Reference to `SecurityGroup`_.
       - 
     * - segment
       - String
@@ -4789,7 +4985,7 @@ For the code that the Lambda function will run, use the ``code:`` block and spec
       - 
       - 
     * - layers
-      - List<string> |star|
+      - List<String> |star|
       - Layers
       - Up to 5 Layer ARNs
       - 
@@ -4814,9 +5010,9 @@ For the code that the Lambda function will run, use the ``code:`` block and spec
       - 
       - False
     * - sns_topics
-      - List<string>
-      - List of SNS Topic Paco references
-      - 
+      - List<PacoReference>
+      - List of SNS Topic Paco references or SNS Topic ARNs to subscribe the Lambda to.
+      - Paco Reference to `SNSTopic`_. String Ok.
       - 
     * - timeout
       - Int
@@ -4849,9 +5045,9 @@ The deployment package for a Lambda function.
       - Constraints
       - Default
     * - s3_bucket
-      - TextReference
+      - PacoReference|String
       - An Amazon S3 bucket in the same AWS Region as your function
-      - 
+      - Paco Reference to `S3Bucket`_. String Ok.
       - 
     * - s3_key
       - String
@@ -4911,14 +5107,14 @@ Lambda Environment
       - Constraints
       - Default
     * - security_groups
-      - List<string>
+      - List<PacoReference>
       - List of VPC Security Group Ids
-      - 
+      - Paco Reference to `SecurityGroup`_.
       - 
     * - segments
-      - List<string>
+      - List<PacoReference>
       - VPC Segments to attach the function
-      - 
+      - Paco Reference to `Segment`_.
       - 
 
 *Base Schemas* `Named`_, `Title`_
@@ -4948,9 +5144,9 @@ LambdaVariable
       - 
       - 
     * - value
-      - TextReference |star|
-      - Variable Value
-      - 
+      - PacoReference|String |star|
+      - String Value or a Paco Reference to a resource output
+      - Paco Reference to `Interface`_. String Ok.
       - 
 
 
@@ -4979,7 +5175,7 @@ IAM Managed Policy
       - 
       - /
     * - roles
-      - List<string>
+      - List<String>
       - List of Role Names
       - 
       - 
@@ -4989,7 +5185,7 @@ IAM Managed Policy
       - 
       - 
     * - users
-      - List<string>
+      - List<String>
       - List of IAM Users
       - 
       - 
@@ -5001,7 +5197,7 @@ S3Bucket
 ---------
 
 
-S3 Bucket : A template describing an S3 Bbucket
+S3 Bucket
     
 
 .. _S3Bucket:
@@ -5016,9 +5212,9 @@ S3 Bucket : A template describing an S3 Bbucket
       - Constraints
       - Default
     * - account
-      - TextReference
-      - Account Reference
-      - 
+      - PacoReference
+      - Account that S3 Bucket belongs to.
+      - Paco Reference to `Account`_.
       - 
     * - bucket_name
       - String |star|
@@ -5055,6 +5251,11 @@ S3 Bucket : A template describing an S3 Bbucket
       - Bucket region
       - 
       - 
+    * - static_website_hosting
+      - Object<S3StaticWebsiteHosting_>
+      - Static website hosting configuration.
+      - 
+      - 
     * - versioning
       - Boolean
       - Enable Versioning on the bucket.
@@ -5083,12 +5284,12 @@ S3 Bucket Policy
       - Constraints
       - Default
     * - action
-      - List<string> |star|
+      - List<String> |star|
       - List of Actions
       - 
       - 
     * - aws
-      - List<string>
+      - List<String>
       - List of AWS Principles.
       - Either this field or the principal field must be set.
       - 
@@ -5108,9 +5309,63 @@ S3 Bucket Policy
       - Either this field or the aws field must be set. Key should be one of: AWS, Federated, Service or CanonicalUser. Value can be either a String or a List.
       - {}
     * - resource_suffix
-      - List<string> |star|
+      - List<String> |star|
       - List of AWS Resources Suffixes
       - 
+      - 
+
+
+
+S3StaticWebsiteHosting
+^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _S3StaticWebsiteHosting:
+
+.. list-table:: :guilabel:`S3StaticWebsiteHosting`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - redirect_requests
+      - Object<S3StaticWebsiteHostingRedirectRequests_>
+      - Redirect requests configuration.
+      - 
+      - 
+
+*Base Schemas* `Deployable`_
+
+
+S3StaticWebsiteHostingRedirectRequests
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _S3StaticWebsiteHostingRedirectRequests:
+
+.. list-table:: :guilabel:`S3StaticWebsiteHostingRedirectRequests`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - protocol
+      - String |star|
+      - Protocol
+      - 
+      - 
+    * - target
+      - PacoReference|String |star|
+      - Target S3 Bucket or domain.
+      - Paco Reference to `S3Bucket`_. String Ok.
       - 
 
 
@@ -5137,9 +5392,9 @@ S3LambdaConfiguration
       - Must be a supported event type: https://docs.aws.amazon.com/AmazonS3/latest/dev/NotificationHowTo.html
       - 
     * - function
-      - TextReference
-      - Reference to a Lambda
-      - 
+      - PacoReference
+      - Lambda function to notify
+      - Paco Reference to `Lambda`_.
       - 
 
 
@@ -5254,9 +5509,9 @@ SNSTopicSubscription
       - Constraints
       - Default
     * - endpoint
-      - TextReference
-      - SNS Topic Endpoint
-      - 
+      - PacoReference|String
+      - SNS Topic ARN or Paco Reference
+      - Paco Reference to `SNSTopic`_. String Ok.
       - 
     * - protocol
       - String
@@ -5355,12 +5610,12 @@ CloudFrontDefaultCacheBehavior
       - Constraints
       - Default
     * - allowed_methods
-      - List<string>
+      - List<String>
       - List of Allowed HTTP Methods
       - 
       - ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT']
     * - cached_methods
-      - List<string>
+      - List<String>
       - List of HTTP Methods to cache
       - 
       - ['GET', 'HEAD', 'OPTIONS']
@@ -5380,9 +5635,9 @@ CloudFrontDefaultCacheBehavior
       - 
       - 
     * - target_origin
-      - TextReference |star|
+      - PacoReference |star|
       - Target Origin
-      - 
+      - Paco Reference to `CloudFrontOrigin`_.
       - 
     * - viewer_protocol_policy
       - String |star|
@@ -5474,14 +5729,14 @@ CloudFront Origin Configuration
       - 
       - 
     * - domain_name
-      - TextReference
+      - PacoReference|String
       - Origin Resource Reference
-      - 
+      - Paco Reference to `Route53HostedZone`_. String Ok.
       - 
     * - s3_bucket
-      - TextReference
+      - PacoReference
       - Origin S3 Bucket Reference
-      - 
+      - Paco Reference to `S3Bucket`_.
       - 
 
 *Base Schemas* `Named`_, `Title`_
@@ -5529,7 +5784,7 @@ CloudFrontCustomOriginConfig
       - 
       - 30
     * - ssl_protocols
-      - List<string>
+      - List<String>
       - List of SSL Protocols
       - 
       - 
@@ -5593,9 +5848,9 @@ CloudFrontViewerCertificate
       - Constraints
       - Default
     * - certificate
-      - TextReference
+      - PacoReference
       - Certificate Reference
-      - 
+      - Paco Reference to `AWSCertificateManager`_.
       - 
     * - minimum_protocol_version
       - String
@@ -5633,7 +5888,7 @@ CloudFrontForwardedValues
       - 
       - 
     * - headers
-      - List<string>
+      - List<String>
       - Forward Headers
       - 
       - ['*']
@@ -5668,7 +5923,7 @@ CloudFrontCookies
       - 
       - all
     * - whitelisted_names
-      - List<string>
+      - List<String>
       - White Listed Names
       - 
       - 
@@ -5750,9 +6005,9 @@ Base ElastiCache Interface
       - 
       - 
     * - parameter_group
-      - TextReference
-      - Parameter Group name or reference
-      - 
+      - PacoReference|String
+      - Parameter Group name
+      - Paco Reference to `Interface`_. String Ok.
       - 
     * - port
       - Int
@@ -5760,14 +6015,14 @@ Base ElastiCache Interface
       - 
       - 
     * - security_groups
-      - List<string>
+      - List<PacoReference>
       - List of Security Groups
-      - 
+      - Paco Reference to `SecurityGroup`_.
       - 
     * - segment
-      - TextReference
+      - PacoReference
       - Segment
-      - 
+      - Paco Reference to `Segment`_.
       - 
 
 
@@ -5951,9 +6206,9 @@ CodeDeploy DeploymentPipeline Deploy Stage
       - Constraints
       - Default
     * - alb_target_group
-      - TextReference
+      - PacoReference
       - ALB Target Group Reference
-      - 
+      - Paco Reference to `TargetGroup`_.
       - 
     * - auto_rollback_enabled
       - Boolean |star|
@@ -5961,14 +6216,14 @@ CodeDeploy DeploymentPipeline Deploy Stage
       - 
       - True
     * - auto_scaling_group
-      - TextReference
+      - PacoReference
       - ASG Reference
-      - 
+      - Paco Reference to `ASG`_.
       - 
     * - deploy_instance_role
-      - TextReference
+      - PacoReference
       - Deploy Instance Role Reference
-      - 
+      - Paco Reference to `Role`_.
       - 
     * - deploy_style_option
       - String
@@ -6040,7 +6295,7 @@ ManualApproval DeploymentPipeline
       - Constraints
       - Default
     * - manual_approval_notification_email
-      - List<string>
+      - List<String>
       - Manual Approval Notification Email List
       - 
       - 
@@ -6067,9 +6322,9 @@ Amazon S3 Deployment Provider
       - Constraints
       - Default
     * - bucket
-      - TextReference
+      - PacoReference
       - S3 Bucket Reference
-      - 
+      - Paco Reference to `S3Bucket`_.
       - 
     * - extract
       - Boolean
@@ -6151,9 +6406,9 @@ CodeCommit DeploymentPipeline Source Stage
       - Constraints
       - Default
     * - codecommit_repository
-      - TextReference
+      - PacoReference
       - CodeCommit Respository
-      - 
+      - Paco Reference to `CodeCommitRepository`_.
       - 
     * - deployment_branch_name
       - String
@@ -6215,14 +6470,14 @@ Deployment Pipeline General Configuration
       - Constraints
       - Default
     * - account
-      - TextReference
+      - PacoReference
       - The account where Pipeline tools will be provisioned.
-      - 
+      - Paco Reference to `Account`_.
       - 
     * - artifacts_bucket
-      - TextReference
+      - PacoReference
       - Artifacts S3 Bucket Reference
-      - 
+      - Paco Reference to `S3Bucket`_.
       - 
 
 *Base Schemas* `Named`_, `Title`_
@@ -6245,9 +6500,9 @@ DeploymentGroupS3Location
       - Constraints
       - Default
     * - bucket
-      - TextReference
+      - PacoReference
       - S3 Bucket revision location
-      - 
+      - Paco Reference to `S3Bucket`_.
       - 
     * - bundle_type
       - String
@@ -6298,9 +6553,9 @@ AWS Elastic File System (EFS) resource.
       - 
       - False
     * - security_groups
-      - List<string> |star|
+      - List<PacoReference> |star|
       - Security groups
-      - Paco Reference to a `SecurityGroup`_
+      - `SecurityGroup`_ the EFS belongs to Paco Reference to `SecurityGroup`_.
       - 
     * - segment
       - String
@@ -6375,14 +6630,14 @@ Route53 Health Check
       - Must be one of HTTP, HTTPS or TCP
       - 
     * - health_checker_regions
-      - List<string>
+      - List<String>
       - Health checker regions
       - List of AWS Region names (e.g. us-west-2) from which to make health checks.
       - 
     * - ip_address
-      - TextReference
+      - PacoReference|String
       - IP Address
-      - 
+      - Paco Reference to `EIP`_. String Ok.
       - 
     * - latency_graphs
       - Boolean
@@ -6390,9 +6645,9 @@ Route53 Health Check
       - 
       - False
     * - load_balancer
-      - TextReference
+      - PacoReference|String
       - Load Balancer Endpoint
-      - 
+      - Paco Reference to `LBApplication`_. String Ok.
       - 
     * - match_string
       - String
@@ -6447,9 +6702,9 @@ Events Rule
       - 
       - 
     * - targets
-      - List<string> |star|
+      - List<PacoReference> |star|
       - The AWS Resources that are invoked when the Rule is triggered.
-      - 
+      - Paco Reference to `Interface`_.
       - 
 
 *Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
@@ -6734,7 +6989,7 @@ An AWS Backup Vault.
       - Constraints
       - Default
     * - notification_events
-      - List<string>
+      - List<String>
       - Notification Events
       - Each notification event must be one of BACKUP_JOB_STARTED, BACKUP_JOB_COMPLETED, RESTORE_JOB_STARTED, RESTORE_JOB_COMPLETED, RECOVERY_POINT_MODIFIED
       - 
@@ -6863,9 +7118,9 @@ BackupPlanSelection
       - Constraints
       - Default
     * - resources
-      - List<string>
+      - List<PacoReference>
       - Backup Plan Resources
-      - 
+      - Paco Reference to `Interface`_.
       - 
     * - tags
       - List<BackupSelectionConditionResourceType_>
@@ -7120,7 +7375,7 @@ An Alarm
       - 
       - 
     * - notification_groups
-      - List<string>
+      - List<String>
       - List of notificationn groups the alarm is subscribed to.
       - 
       - 
@@ -7216,9 +7471,9 @@ A dimension of a metric
       - 
       - 
     * - value
-      - TextReference
-      - Value to look-up dimension
-      - 
+      - PacoReference|String
+      - String or a Paco Reference to resource output.
+      - Paco Reference to `Interface`_. String Ok.
       - 
 
 
@@ -7274,7 +7529,7 @@ Alarm Notification
       - Must be one of: 'performance', 'security', 'health' or ''.
       - 
     * - groups
-      - List<string> |star|
+      - List<String> |star|
       - List of groups
       - 
       - 
@@ -7738,7 +7993,7 @@ A set of metrics to collect and an optional collection interval:
       - 
       - True
     * - measurements
-      - List<string>
+      - List<String>
       - Measurements
       - 
       - 
@@ -7748,7 +8003,7 @@ A set of metrics to collect and an optional collection interval:
       - 
       - 
     * - resources
-      - List<string>
+      - List<String>
       - List of resources for this metric
       - 
       - 
