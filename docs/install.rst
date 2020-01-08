@@ -8,12 +8,12 @@ Install Python
 
 Paco is written in Python and requires Python 3.6 or greater.
 
+Paco currently works with macos and Linux. **Windows support is not yet available.**
+
 Get the latest version of Python from python.org_ or with your operating systems
 package manager. Some helpful links for specific operating systems:
 
 - `Python on macos`_
-
-- `Python on Windows`_
 
 - `Python on Ubuntu 16.04 LTS`_
 
@@ -51,8 +51,6 @@ You should now have the ``paco`` application installed:
 .. _python.org: https://www.python.org/downloads/
 
 .. _Python on macos: https://medium.com/@briantorresgil/definitive-guide-to-python-on-mac-osx-65acd8d969d0
-
-.. _Python on Windows: https://docs.microsoft.com/en-us/windows/python/beginners
 
 .. _Python on Ubuntu 16.04 LTS: http://ubuntuhandbook.org/index.php/2017/07/install-python-3-6-1-in-ubuntu-16-04-lts/
 
