@@ -1,4 +1,4 @@
-Changelog for paco
+Changelog for Paco
 ==================
 
 3.5.2 (unreleased)
