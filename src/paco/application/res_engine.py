@@ -39,6 +39,7 @@ class ResourceEngine():
         "Add an Alarms template with Alarms specific to the Resource"
         # If alarm_sets exist init alarms for them
         if getattr(self.resource, 'monitoring', None) != None and \
+            self.resource.monitoring.enabled and \
             getattr(self.resource.monitoring, 'alarm_sets', None) != None and \
             len(self.resource.monitoring.alarm_sets.values()) > 0:
             paco.cftemplates.CWAlarms(

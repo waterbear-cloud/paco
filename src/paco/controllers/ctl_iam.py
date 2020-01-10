@@ -467,10 +467,26 @@ class IAMController(Controller):
             for key_meta in keys_meta['AccessKeyMetadata']:
                 key_num = self.get_sdb_attribute_value(sdb_client, sdb_domain, sdb_item_name, key_meta['AccessKeyId']+'KeyNum')
                 if key_num == None:
-                    print("Error: Unable to locate Access Key Num for key: {}".format(key_meta['AccessKeyId']+'KeyNum'))
+                    print("Creating missing KeyNum Access Key Meta data for: {} + {}".format(user_config.username, key_meta['AccessKeyId']))
+                    key_num = str(keys_meta['AccessKeyMetadata'].index(key_meta)+1)
+                    self.put_sdb_attribute(
+                        sdb_client,
+                        sdb_domain,
+                        sdb_item_name,
+                        key_meta['AccessKeyId']+'KeyNum',
+                        key_num
+                    )
                 key_version = self.get_sdb_attribute_value(sdb_client, sdb_domain, sdb_item_name, key_meta['AccessKeyId']+'Version')
                 if key_version == None:
-                    print("Error: Unable to locate Access Key Version for key: {}".format(key_meta['AccessKeyId']+'Version'))
+                    print("Creating missing Version Access Key Meta data for: {} + {}".format(user_config.username, key_meta['AccessKeyId']))
+                    key_version = getattr(access_key_config, 'access_key_{}_version'.format(key_num))
+                    self.put_sdb_attribute(
+                        sdb_client,
+                        sdb_domain,
+                        sdb_item_name,
+                        key_meta['AccessKeyId']+'Version',
+                        key_version
+                    )
                 if key_num == None or key_version == None:
                     continue
                 key_config = {
@@ -522,7 +538,8 @@ class IAMController(Controller):
         cache_id = md5sum(str_data=cache_data)
         return cache_id
 
-    def init_users(self):
+    def init_users(self, model_obj):
+        self.stack_group_filter = model_obj.paco_ref_parts
         master_account_ctx = self.paco_ctx.get_account_context(account_ref='paco.ref accounts.master')
         # StackGroup
         for account_name in self.paco_ctx.project['accounts'].keys():
@@ -609,9 +626,11 @@ class IAMController(Controller):
         if self.init_done == True:
             return
         self.init_done = True
-        if model_obj.paco_ref_list[2] == 'users':
+        if model_obj.paco_ref_parts.startswith('resource.iam') == False:
+            return
+        if len(model_obj.paco_ref_list) == 2 or model_obj.paco_ref_list[2] == 'users':
             self.stack_group_filter = model_obj.paco_ref_parts
-            self.init_users()
+            self.init_users(model_obj)
 
     def create_managed_policy(
         self,
