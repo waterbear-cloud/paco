@@ -1012,6 +1012,10 @@ class StackGroup():
                 stack = stack_obj.get_stack_from_ref(ref)
                 if stack != None:
                     return stack
-            elif stack_obj.template.config_ref and stack_obj.template.config_ref != '' and ref.raw.find(stack_obj.template.config_ref) != -1:
-                return stack_obj
+            elif stack_obj.template.config_ref and \
+                stack_obj.template.config_ref != '' and \
+                ref.raw.find(stack_obj.template.config_ref) != -1 and \
+                ( stack_obj.template.config_ref == ref.ref or ref.ref.startswith(stack_obj.template.config_ref+'.') ):
+                    return stack_obj
+
         return None

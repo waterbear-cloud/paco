@@ -8,6 +8,16 @@ yaml.default_flow_sytle = False
 
 class ASGResourceEngine(ResourceEngine):
 
+    @property
+    def stack_name(self):
+        stack_name = '-'.join([
+            self.app_engine.get_aws_name(),
+            'ASG',
+            self.grp_id,
+            self.res_id
+        ])
+        return stack_name
+
     def init_resource(self):
         # Create instance role
         role_profile_arn = None
@@ -83,7 +93,8 @@ role_name: %s""" % ("ASGInstance")
                 self.grp_id,
                 self.res_id,
                 self.resource,
-                instance_iam_role_ref
+                instance_iam_role_ref,
+                self.stack_name
             ),
             self.app_engine.ec2_launch_manager.get_cache_id(self.resource, self.app_id, self.grp_id)
         )

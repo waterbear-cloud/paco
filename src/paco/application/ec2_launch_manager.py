@@ -378,7 +378,7 @@ function ec2lm_install_wget() {
         """Adds functions for getting secrets from Secrets Manager"""
         self.ec2lm_functions_script[ec2lm_bucket_name] += self.user_data_secrets(resource, grp_id, instance_iam_role_ref)
 
-    def init_ec2lm_function(self, ec2lm_bucket_name, resource, instance_iam_role_ref):
+    def init_ec2lm_function(self, ec2lm_bucket_name, resource, instance_iam_role_ref, stack_name):
 
         script_table = {
             'ec2lm_bucket_name': ec2lm_bucket_name,
@@ -456,6 +456,7 @@ function ec2lm_timeout() {{
 
 # Launch Bundles
 function ec2lm_launch_bundles() {{
+    mkdir -p $EC2LM_FOLDER/LaunchBundles/
     cd $EC2LM_FOLDER/LaunchBundles/
 
     echo "EC2LM: LaunchBundles: Loading"
@@ -485,16 +486,16 @@ function ec2lm_instance_tag_value() {{
     aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=$TAG_NAME" --query 'Tags[0].Value' |tr -d '"'
 }}
 
-# Runs pip
-function ec2lm_pip() {{
-    for PIP_CMD in pip3 pip2 pip
-    do
-        which $PIP_CMD >/dev/null 2>&1
-        if [ $? -eq 0 ] ; then
-            $PIP_CMD $@
-            return
-        fi
-    done
+# Signal the ASG resource
+function ec2lm_signal_asg_resource() {{
+    STATUS=$1
+    if [ "$STATUS" != "SUCCESS" -a "$STATUS" != "FAILURE" ] ; then
+        echo "EC2LM: Signal ASG Resource: Error: Invalid status: $STATUS: Valid values: SUCCESS | FAILURE"
+        return 1
+    fi
+    ASG_LOGICAL_ID=$(ec2lm_instance_tag_value 'aws:cloudformation:logical-id')
+    echo "EC2LM: Signaling ASG Resource: $EC2LM_STACK_NAME: $ASG_LOGICAL_ID: $INSTANCE_ID: $STATUS"
+    aws cloudformation signal-resource --region $REGION --stack $EC2LM_STACK_NAME --logical-resource-id $ASG_LOGICAL_ID --unique-id $INSTANCE_ID --status $STATUS
 }}
 """
         self.ec2lm_functions_script[ec2lm_bucket_name] = script_template.format(script_table)
@@ -509,6 +510,21 @@ statement:
     resource:
       - '*'
 """
+        # Signal Resource permissions if its needed
+        if resource.rolling_update_policy != None and resource.rolling_update_policy.wait_on_resource_signals == True:
+            rolling_update_policy_table = {
+                'region': self.aws_region,
+                'stack_name': stack_name,
+                'account': self.account_ctx.id
+            }
+            policy_config_yaml += """
+  - effect: Allow
+    action:
+      - "cloudformation:SignalResource"
+    resource:
+      - 'arn:aws:cloudformation:{0[region]}:{0[account]}:stack/{0[stack_name]}/*'
+""".format(rolling_update_policy_table)
+
         group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
 
         policy_ref = '{}.{}.ec2lm.policy'.format(resource.paco_ref_parts, self.id)
@@ -524,13 +540,26 @@ statement:
             change_protected=resource.change_protected
         )
 
-    def user_data_script(self, app_id, grp_id, resource_id, resource, instance_iam_role_ref):
+    def user_data_script(self, app_id, grp_id, resource_id, resource, instance_iam_role_ref, stack_name):
         """BASH script that will load the launch bundle from user_data"""
 
         script_fmt = """#!/bin/bash
 echo "EC2LM: Start"
 echo "EC2LM: Script: $0"
 echo "EC2LM: CacheId: {0[cache_id]}"
+
+# Runs pip
+function ec2lm_pip() {{
+    for PIP_CMD in pip3 pip2 pip
+    do
+        which $PIP_CMD >/dev/null 2>&1
+        if [ $? -eq 0 ] ; then
+            $PIP_CMD $@
+            return
+        fi
+    done
+}}
+
 {0[pre_script]}
 {0[update_packages]}
 {0[install_aws_cli]}
@@ -541,7 +570,7 @@ if [ -d $EC2LM_FOLDER ]; then
     mkdir -p /tmp/ec2lm_backups/
     mv $EC2LM_FOLDER /tmp/ec2lm_backups/
 fi
-mkdir -p $EC2LM_FOLDER
+mkdir -p $EC2LM_FOLDER/
 aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
 
 . $EC2LM_FOLDER/$EC2LM_FUNCTIONS
@@ -574,7 +603,7 @@ aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
             script_table['launch_bundles'] = 'ec2lm_launch_bundles\n'
 
         # EC2LM Functions
-        self.init_ec2lm_function(ec2lm_bucket_name, resource, instance_iam_role_ref)
+        self.init_ec2lm_function(ec2lm_bucket_name, resource, instance_iam_role_ref, stack_name)
         self.add_ec2lm_function_swap(ec2lm_bucket_name)
         self.add_ec2lm_function_wget(ec2lm_bucket_name, resource.instance_ami_type)
 

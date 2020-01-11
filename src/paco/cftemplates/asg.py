@@ -305,10 +305,23 @@ class ASG(CFTemplate):
         )
         template.add_resource(asg_res)
         asg_res.DependsOn = launch_config_res
+        if asg_config.rolling_update_policy != None:
+            max_batch_size = asg_config.rolling_update_policy.max_batch_size
+            min_instances_in_service = asg_config.rolling_update_policy.min_instances_in_service
+            pause_time = asg_config.rolling_update_policy.pause_time
+            wait_on_resource_signals = asg_config.rolling_update_policy.wait_on_resource_signals
+        else:
+            max_batch_size = asg_config.update_policy_max_batch_size
+            min_instances_in_service = asg_config.update_policy_min_instances_in_service
+            pause_time = 'PT0S'
+            wait_on_resource_signals = False
+
         asg_res.UpdatePolicy = troposphere.policies.UpdatePolicy(
             AutoScalingRollingUpdate=troposphere.policies.AutoScalingRollingUpdate(
-                MaxBatchSize=asg_config.update_policy_max_batch_size,
-                MinInstancesInService=asg_config.update_policy_min_instances_in_service
+                MaxBatchSize=max_batch_size,
+                MinInstancesInService=min_instances_in_service,
+                PauseTime=pause_time,
+                WaitOnResourceSignals=wait_on_resource_signals
             )
         )
 

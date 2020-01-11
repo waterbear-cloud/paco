@@ -725,7 +725,8 @@ class IAMController(Controller):
     def delete(self):
         #print("Not doing anything because this deletes all of the users.")
         #print("TODO: Implement a per user delete!")
-        #return
+        print("\nIAM User delete is unavailable. Please disable users to remove them.")
+        return
         for account_name in self.iam_user_stack_groups.keys():
             if account_name == 'master':
                 continue
