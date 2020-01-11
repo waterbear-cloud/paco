@@ -380,6 +380,16 @@ function ec2lm_install_wget() {
 
     def init_ec2lm_function(self, ec2lm_bucket_name, resource, instance_iam_role_ref, stack_name):
 
+        oldest_health_check_timeout = 0
+        if resource.rolling_update_policy != None:
+            if resource.target_groups != None and len(resource.target_groups) > 0:
+                for target_group in resource.target_groups:
+                    if paco.models.references.is_ref(target_group):
+                        target_group_obj = self.paco_ctx.get_ref(target_group)
+                        health_check_timeout = (target_group_obj.healthy_threshold*target_group_obj.health_check_interval)
+                        if oldest_health_check_timeout < health_check_timeout:
+                            oldest_health_check_timeout = health_check_timeout
+
         script_table = {
             'ec2lm_bucket_name': ec2lm_bucket_name,
             'paco_environment': self.app_engine.env_ctx.env_id,
@@ -388,7 +398,8 @@ function ec2lm_install_wget() {
             'aws_account_id': self.account_ctx.id,
             'launch_bundle_names': ' '.join(self.launch_bundle_names),
             'paco_base_path': self.paco_base_path,
-            'tool_name_legacy_flag': 'AIM' if self.paco_ctx.legacy_flag('aim_name_2019_11_28') == True else 'PACO'
+            'tool_name_legacy_flag': 'AIM' if self.paco_ctx.legacy_flag('aim_name_2019_11_28') == True else 'PACO',
+            'oldest_health_check_timeout': oldest_health_check_timeout
         }
 
         script_template = """
@@ -493,13 +504,21 @@ function ec2lm_signal_asg_resource() {{
         echo "EC2LM: Signal ASG Resource: Error: Invalid status: $STATUS: Valid values: SUCCESS | FAILURE"
         return 1
     fi
-    ASG_LOGICAL_ID=$(ec2lm_instance_tag_value 'aws:cloudformation:logical-id')
-    echo "EC2LM: Signaling ASG Resource: $EC2LM_STACK_NAME: $ASG_LOGICAL_ID: $INSTANCE_ID: $STATUS"
-    aws cloudformation signal-resource --region $REGION --stack $EC2LM_STACK_NAME --logical-resource-id $ASG_LOGICAL_ID --unique-id $INSTANCE_ID --status $STATUS
+    STACK_STATUS=$(aws cloudformation describe-stacks --stack $EC2LM_STACK_NAME --region $REGION --query "Stacks[0].StackStatus" | tr -d '"')
+    if [[ "$STACK_STATUS" == *"PROGRESS" ]]; then
+        # ASG Rolling Update
+        ASG_LOGICAL_ID=$(ec2lm_instance_tag_value 'aws:cloudformation:logical-id')
+        # Sleep 90 seconds to allow ALB healthcheck to succeed otherwise older instances will begin to shutdown
+        echo "EC2LM: Sleeping for {0[oldest_health_check_timeout]} seconds to allow target healthcheck to succeed."
+        sleep {0[oldest_health_check_timeout]}
+        echo "EC2LM: Signaling ASG Resource: $EC2LM_STACK_NAME: $ASG_LOGICAL_ID: $INSTANCE_ID: $STATUS"
+        aws cloudformation signal-resource --region $REGION --stack $EC2LM_STACK_NAME --logical-resource-id $ASG_LOGICAL_ID --unique-id $INSTANCE_ID --status $STATUS
+    else
+        echo "EC2LM: Resource Signaling: Not a rolling update: skipping"
+    fi
 }}
 """
         self.ec2lm_functions_script[ec2lm_bucket_name] = script_template.format(script_table)
-
         policy_config_yaml = """
 name: 'DescribeTags'
 enabled: true
@@ -521,6 +540,7 @@ statement:
   - effect: Allow
     action:
       - "cloudformation:SignalResource"
+      - "cloudformation:DescribeStacks"
     resource:
       - 'arn:aws:cloudformation:{0[region]}:{0[account]}:stack/{0[stack_name]}/*'
 """.format(rolling_update_policy_table)
@@ -618,7 +638,14 @@ aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
                 script_table['update_packages'] = vocabulary.user_data_script['update_packages'][resource.instance_ami_type]
 
         script_table['cache_id'] = self.get_cache_id(resource, app_id, grp_id)
-        return script_fmt.format(script_table)
+        user_data_script = script_fmt.format(script_table)
+        if resource.rolling_update_policy != None and \
+            resource.rolling_update_policy.wait_on_resource_signals == True and \
+                resource.user_data_script.find('ec2lm_signal_asg_resource') == -1:
+            print("!! WARNING: {}.rolling_update_policy.wait_on_resource_signals == True".format(resource.paco_ref_parts))
+            print("          : 'ec2lm_signal_asg_resource <SUCCESS|FAILURE>' was not detected in your user_data_script for this resource.")
+
+        return user_data_script
 
     def user_data_secrets(self, resource, grp_id, instance_iam_role_ref):
         secrets_script = """
