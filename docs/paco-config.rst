@@ -2193,6 +2193,8 @@ NetEnv - resources:
 At it's heart, an Application is a collection of Resources. These are the Resources available for
 applications.
 
+# API Gateway schemas
+
 
 ApiGatewayRestApi
 ------------------
@@ -2662,7 +2664,7 @@ ApiGatewayMethodIntegrationResponse
 
 
 ApiGatewayMethodMethodResponse
--------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
 
@@ -2692,7 +2694,7 @@ ApiGatewayMethodMethodResponse
 
 
 ApiGatewayMethodMethodResponseModel
-------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
 
@@ -2719,397 +2721,7 @@ ApiGatewayMethodMethodResponseModel
       - 
 
 
-
-LBApplication
---------------
-
-
-The ``LBApplication`` resource type creates an Application Load Balancer. Use load balancers to route traffic from
-the internet to your web servers.
-
-Load balancers have ``listeners`` which will accept requrests on specified ports and protocols. If a listener
-uses the HTTPS protocol, it can have a Paco reference to an SSL Certificate. A listener can then either
-redirect the traffic to another port/protcol or send it one of it's named ``target_groups``.
-
-Each target group will specify it's health check configuration. To specify which resources will belong
-to a target group, use the ``target_groups`` field on an ASG resource.
-
-.. sidebar:: Prescribed Automation
-
-    ``dns``: Creates Route 53 Record Sets that will resolve DNS records to the domain name of the load balancer.
-
-    ``enable_access_logs``: Set to True to turn on access logs for the load balancer, and will automatically create
-    an S3 Bucket with permissions for AWS to write to that bucket.
-
-    ``access_logs_bucket``: Name an existing S3 Bucket (in the same region) instead of automatically creating a new one.
-    Remember that if you supply your own S3 Bucket, you are responsible for ensuring that the bucket policy for
-    it grants AWS the `s3:PutObject` permission.
-
-.. code-block:: yaml
-    :caption: Example LBApplication load balancer resource YAML
-
-    type: LBApplication
-    enabled: true
-    enable_access_logs: true
-    target_groups:
-        api:
-            health_check_interval: 30
-            health_check_timeout: 10
-            healthy_threshold: 2
-            unhealthy_threshold: 2
-            port: 3000
-            protocol: HTTP
-            health_check_http_code: 200
-            health_check_path: /
-            connection_drain_timeout: 30
-    listeners:
-        http:
-            port: 80
-            protocol: HTTP
-            redirect:
-                port: 443
-                protocol: HTTPS
-        https:
-            port: 443
-            protocol: HTTPS
-            ssl_certificates:
-                - paco.ref netenv.app.applications.app.groups.certs.resources.root
-            target_group: api
-    dns:
-        - hosted_zone: paco.ref resource.route53.mynetenv
-          domain_name: api.example.com
-    scheme: internet-facing
-    security_groups:
-        - paco.ref netenv.app.network.vpc.security_groups.app.alb
-    segment: public
-
-
-
-.. _LBApplication:
-
-.. list-table:: :guilabel:`LBApplication`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - access_logs_bucket
-      - PacoReference
-      - Bucket to store access logs in
-      - Paco Reference to `S3Bucket`_.
-      - 
-    * - access_logs_prefix
-      - String
-      - Access Logs S3 Bucket prefix
-      - 
-      - 
-    * - dns
-      - List<DNS_>
-      - List of DNS for the ALB
-      - 
-      - 
-    * - enable_access_logs
-      - Boolean
-      - Write access logs to an S3 Bucket
-      - 
-      - 
-    * - idle_timeout_secs
-      - Int
-      - Idle timeout in seconds
-      - The idle timeout value, in seconds.
-      - 60
-    * - listeners
-      - Container<Listeners_>
-      - Listeners
-      - 
-      - 
-    * - scheme
-      - Choice
-      - Scheme
-      - 
-      - 
-    * - security_groups
-      - List<PacoReference>
-      - Security Groups
-      - Paco Reference to `SecurityGroup`_.
-      - 
-    * - segment
-      - String
-      - Id of the segment stack
-      - 
-      - 
-    * - target_groups
-      - Container<TargetGroups_>
-      - Target Groups
-      - 
-      - 
-
-*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
-
-
-DNS
-^^^^
-
-
-
-.. _DNS:
-
-.. list-table:: :guilabel:`DNS`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - domain_name
-      - PacoReference|String
-      - Domain name
-      - Paco Reference to `Route53HostedZone`_. String Ok.
-      - 
-    * - hosted_zone
-      - PacoReference|String
-      - Hosted Zone Id
-      - Paco Reference to `Route53HostedZone`_. String Ok.
-      - 
-    * - ssl_certificate
-      - PacoReference
-      - SSL certificate Reference
-      - Paco Reference to `AWSCertificateManager`_.
-      - 
-    * - ttl
-      - Int
-      - TTL
-      - 
-      - 300
-
-
-
-Listeners
-^^^^^^^^^^
-
-
-Container for `Listener`_ objects.
-    
-
-.. _Listeners:
-
-.. list-table:: :guilabel:`Listeners` |bars| Container<`Listener`_>
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * -
-      -
-      -
-      -
-      -
-
-*Base Schemas* `Named`_, `Title`_
-
-
-Listener
-^^^^^^^^^
-
-
-
-.. _Listener:
-
-.. list-table:: :guilabel:`Listener`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - redirect
-      - Object<PortProtocol_>
-      - Redirect
-      - 
-      - 
-    * - rules
-      - Container<ListenerRule_>
-      - Container of listener rules
-      - 
-      - 
-    * - ssl_certificates
-      - List<PacoReference>
-      - List of SSL certificate References
-      - Paco Reference to `AWSCertificateManager`_.
-      - 
-    * - target_group
-      - String
-      - Target group
-      - 
-      - 
-
-*Base Schemas* `PortProtocol`_
-
-
-ListenerRule
-^^^^^^^^^^^^^
-
-
-
-.. _ListenerRule:
-
-.. list-table:: :guilabel:`ListenerRule`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - host
-      - String
-      - Host header value
-      - 
-      - 
-    * - priority
-      - Int
-      - Forward condition priority
-      - 
-      - 1
-    * - redirect_host
-      - String
-      - The host to redirect to
-      - 
-      - 
-    * - rule_type
-      - String
-      - Type of Rule
-      - 
-      - 
-    * - target_group
-      - String
-      - Target group name
-      - 
-      - 
-
-*Base Schemas* `Deployable`_
-
-
-PortProtocol
-^^^^^^^^^^^^^
-
-Port and Protocol
-
-.. _PortProtocol:
-
-.. list-table:: :guilabel:`PortProtocol`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - port
-      - Int
-      - Port
-      - 
-      - 
-    * - protocol
-      - Choice
-      - Protocol
-      - 
-      - 
-
-
-
-TargetGroups
-^^^^^^^^^^^^^
-
-
-Container for `TargetGroup`_ objects.
-    
-
-.. _TargetGroups:
-
-.. list-table:: :guilabel:`TargetGroups` |bars| Container<`TargetGroup`_>
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * -
-      -
-      -
-      -
-      -
-
-*Base Schemas* `Named`_, `Title`_
-
-
-TargetGroup
-^^^^^^^^^^^^
-
-Target Group
-
-.. _TargetGroup:
-
-.. list-table:: :guilabel:`TargetGroup`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - connection_drain_timeout
-      - Int
-      - Connection drain timeout
-      - 
-      - 
-    * - health_check_http_code
-      - String
-      - Health check HTTP codes
-      - 
-      - 
-    * - health_check_interval
-      - Int
-      - Health check interval
-      - 
-      - 
-    * - health_check_path
-      - String
-      - Health check path
-      - 
-      - /
-    * - health_check_timeout
-      - Int
-      - Health check timeout
-      - 
-      - 
-    * - healthy_threshold
-      - Int
-      - Healthy threshold
-      - 
-      - 
-    * - unhealthy_threshold
-      - Int
-      - Unhealthy threshold
-      - 
-      - 
-
-*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `PortProtocol`_, `Title`_, `Type`_
+# ASG Schemas
 
 
 ASG
@@ -3245,6 +2857,11 @@ Auto Scaling Group
       - Minimum instances
       - 
       - 1
+    * - rolling_update_policy
+      - Object<ASGRollingUpdatePolicy_>
+      - Rolling Update Policy
+      - 
+      - 
     * - scaling_policies
       - Container<ASGScalingPolicies_>
       - Scaling Policies
@@ -3443,6 +3060,48 @@ Auto Scaling Group Scaling Policy
       - Scaling Adjustment
       - 
       - 
+
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
+
+
+ASGRollingUpdatePolicy
+^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Auto Scaling Group Roling Update Policy
+    
+
+.. _ASGRollingUpdatePolicy:
+
+.. list-table:: :guilabel:`ASGRollingUpdatePolicy`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - max_batch_size
+      - Int
+      - Maximum batch size
+      - 
+      - 1
+    * - min_instances_in_service
+      - Int
+      - Minimum instances in service
+      - 
+      - 1
+    * - pause_time
+      - String
+      - Minimum instances in service
+      - Healthy success timeout
+      - PT0S
+    * - wait_on_resource_signals
+      - Boolean |star|
+      - Wait for resource signals
+      - 
+      - False
 
 *Base Schemas* `Deployable`_, `Named`_, `Title`_
 
@@ -4053,6 +3712,8 @@ CloudFormationInitGroups
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
+Container for CloudFormationInit Groups
+    
     * -
       -
       -
@@ -4268,6 +3929,8 @@ CloudFormationInitUsers
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 
+Container for CloudFormationInit Users
+    
     * -
       -
       -
@@ -4275,122 +3938,7 @@ CloudFormationInitUsers
       -
 
 
-
-CodePipeBuildDeploy
---------------------
-
-
-Code Pipeline: Build and Deploy
-    
-
-.. _CodePipeBuildDeploy:
-
-.. list-table:: :guilabel:`CodePipeBuildDeploy`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - alb_target_group
-      - PacoReference
-      - ALB Target Group to deploy to
-      - Paco Reference to `TargetGroup`_.
-      - 
-    * - artifacts_bucket
-      - PacoReference
-      - S3 Bucket for Artifacts
-      - Paco Reference to `S3Bucket`_.
-      - 
-    * - asg
-      - PacoReference
-      - ASG Reference
-      - Paco Reference to `ASG`_.
-      - 
-    * - auto_rollback_enabled
-      - Boolean
-      - Automatic rollback enabled
-      - 
-      - True
-    * - codebuild_compute_type
-      - String
-      - CodeBuild Compute Type
-      - 
-      - 
-    * - codebuild_image
-      - String
-      - CodeBuild Docker Image
-      - 
-      - 
-    * - codecommit_repository
-      - PacoReference
-      - CodeCommit Respository
-      - Paco Reference to `CodeCommitRepository`_.
-      - 
-    * - cross_account_support
-      - Boolean
-      - Cross Account Support
-      - 
-      - False
-    * - deploy_config_type
-      - String
-      - Deploy Config Type
-      - 
-      - HOST_COUNT
-    * - deploy_config_value
-      - Int
-      - Deploy Config Value
-      - 
-      - 0
-    * - deploy_instance_role
-      - PacoReference
-      - Deploy Instance Role Reference
-      - Paco Reference to `Role`_.
-      - 
-    * - deploy_style_option
-      - String
-      - Deploy Style Option
-      - 
-      - WITH_TRAFFIC_CONTROL
-    * - deployment_branch_name
-      - String
-      - Deployment Branch Name
-      - 
-      - 
-    * - deployment_environment
-      - String
-      - Deployment Environment
-      - 
-      - 
-    * - elb_name
-      - String
-      - ELB Name
-      - 
-      - 
-    * - manual_approval_enabled
-      - Boolean
-      - Manual approval enabled
-      - 
-      - False
-    * - manual_approval_notification_email
-      - String
-      - Manual approval notification email
-      - 
-      - 
-    * - timeout_mins
-      - Int
-      - Timeout in Minutes
-      - 
-      - 60
-    * - tools_account
-      - PacoReference
-      - Account where CodePipeline runs
-      - Paco Reference to `Account`_.
-      - 
-
-*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+# ACM
 
 
 AWSCertificateManager
@@ -4427,1083 +3975,7 @@ AWSCertificateManager
 
 *Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
-
-CodeDeployApplication
-----------------------
-
-
-CodeDeploy Application
-
-.. code-block:: yaml
-    :caption: Example CodeDeployApplication resource YAML
-
-    type: CodeDeployApplication
-    order: 40
-    compute_platform: "Server"
-    deployment_groups:
-      deployment:
-        title: "My Deployment Group description"
-        ignore_application_stop_failures: true
-        revision_location_s3: paco.ref netenv.mynet.applications.app.groups.deploybucket
-        autoscalinggroups:
-          - paco.ref netenv.mynet.applications.app.groups.web
-
-
-
-.. _CodeDeployApplication:
-
-.. list-table:: :guilabel:`CodeDeployApplication`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - compute_platform
-      - String |star|
-      - Compute Platform
-      - Must be one of Lambda, Server or ECS
-      - 
-    * - deployment_groups
-      - Container<CodeDeployDeploymentGroups_> |star|
-      - CodeDeploy Deployment Groups
-      - 
-      - 
-
-*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
-
-
-CodeDeployDeploymentGroups
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-
-
-.. _CodeDeployDeploymentGroups:
-
-.. list-table:: :guilabel:`CodeDeployDeploymentGroups`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * -
-      -
-      -
-      -
-      -
-
-*Base Schemas* `Named`_, `Title`_
-
-
-CodeDeployDeploymentGroup
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-
-
-.. _CodeDeployDeploymentGroup:
-
-.. list-table:: :guilabel:`CodeDeployDeploymentGroup`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - autoscalinggroups
-      - List<PacoReference>
-      - AutoScalingGroups that CodeDeploy automatically deploys revisions to when new instances are created
-      - Paco Reference to `ASG`_.
-      - 
-    * - ignore_application_stop_failures
-      - Boolean
-      - Ignore Application Stop Failures
-      - 
-      - 
-    * - revision_location_s3
-      - Object<DeploymentGroupS3Location_>
-      - S3 Bucket revision location
-      - 
-      - 
-    * - role_policies
-      - List<Policy_>
-      - Policies to grant the deployment group role
-      - 
-      - 
-
-*Base Schemas* `Deployable`_, `Named`_, `Title`_
-
-RDS
----
-
-Relational Database Service (RDS) is a collection of relational databases.
-
-There is no plain vanilla RDS type, but rather choose the type that specifies which kind of relational database
-engine to use. For example, ``RDSMysql`` for MySQL on RDS or ``RDSAurora`` for an Amazon Aurora database.
-
-If you want to use DB Parameter Groups with your RDS, then use the ``parameter_group`` field to
-reference a DBParameterGroup_ resource. Keeping DB Parameter Group as a separate resource allows you
-to have multiple Paramater Groups provisioned at the same time. For example, you might have both
-resources for ``dbparams_performance`` and ``dbparams_debug``, allowing you to use the AWS
-Console to switch between performance and debug configuration quickl in an emergency.
-
-.. sidebar:: Prescribed Automation
-
-  **Using Secrets Manager with RDS**
-
-  You can set the initial password with ``master_user_password``, however this requires storing a password
-  in plain-text on disk. This is fine if you have a process for changing the password after creating a database,
-  however, the Paco Secrets Manager support allows you to use a ``secrets_password`` instead of the
-  ``master_user_password`` field:
-
-  .. code-block:: yaml
-
-      type: RDSMysql
-      secrets_password: paco.ref netenv.mynet.secrets_manager.app.grp.mysql
-
-  Then in your NetworkEnvironments ``secrets_manager`` configuration you would write:
-
-  .. code-block:: yaml
-
-      secrets_manager:
-        app: # application name
-          grp: # group name
-              mysql: # secret name
-                enabled: true
-                generate_secret_string:
-                  enabled: true
-                  # secret_string_template and generate_string_key must
-                  # have the following values for RDS secrets
-                  secret_string_template: '{"username": "admin"}'
-                  generate_string_key: "password"
-
-  This would generate a new, random password in the AWS Secrets Manager service when the database is provisioned
-  and connect that password with RDS.
-
-.. code-block:: yaml
-  :caption: RDSMysql resource example
-
-  type: RDSMysql
-  order: 1
-  title: "Joe's MySQL Database server"
-  enabled: true
-  engine_version: 5.7.26
-  db_instance_type: db.t3.micro
-  port: 3306
-  storage_type: gp2
-  storage_size_gb: 20
-  storage_encrypted: true
-  multi_az: true
-  allow_major_version_upgrade: false
-  auto_minor_version_upgrade: true
-  publically_accessible: false
-  master_username: root
-  master_user_password: "change-me"
-  backup_preferred_window: 08:00-08:30
-  backup_retention_period: 7
-  maintenance_preferred_window: 'sat:10:00-sat:10:30'
-  license_model: "general-public-license"
-  cloudwatch_logs_exports:
-    - error
-    - slowquery
-  security_groups:
-    - paco.ref netenv.mynet.network.vpc.security_groups.app.database
-  segment: paco.ref netenv.mynet.network.vpc.segments.private
-  primary_domain_name: database.example.internal
-  primary_hosted_zone: paco.ref netenv.mynet.network.vpc.private_hosted_zone
-  parameter_group: paco.ref netenv.mynet.applications.app.groups.web.resources.dbparams_performance
-
-
-
-
-RDSOptionConfiguration
-^^^^^^^^^^^^^^^^^^^^^^^
-
-
-Option groups enable and configure features that are specific to a particular DB engine.
-    
-
-.. _RDSOptionConfiguration:
-
-.. list-table:: :guilabel:`RDSOptionConfiguration`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - option_name
-      - String
-      - Option Name
-      - 
-      - 
-    * - option_settings
-      - List<NameValuePair_>
-      - List of option name value pairs.
-      - 
-      - 
-    * - option_version
-      - String
-      - Option Version
-      - 
-      - 
-    * - port
-      - String
-      - Port
-      - 
-      - 
-
-
-
-NameValuePair
-^^^^^^^^^^^^^^
-
-A Name/Value pair to use for RDS Option Group configuration
-
-.. _NameValuePair:
-
-.. list-table:: :guilabel:`NameValuePair`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - name
-      - String
-      - Name
-      - 
-      - 
-    * - value
-      - String
-      - Value
-      - 
-      - 
-
-
-
-RDSMysql
-^^^^^^^^^
-
-
-The RDSMysql type extends the base RDS schema with a ``multi_az`` field. When you provision a Multi-AZ DB Instance,
-Amazon RDS automatically creates a primary DB Instance and synchronously replicates the data to a standby instance
-in a different Availability Zone (AZ).
-    
-
-.. _RDSMysql:
-
-.. list-table:: :guilabel:`RDSMysql`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - multi_az
-      - Boolean
-      - Multiple Availability Zone deployment
-      - 
-      - False
-
-*Base Schemas* `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
-
-
-RDSAurora
-^^^^^^^^^^
-
-
-RDS Aurora
-    
-
-.. _RDSAurora:
-
-.. list-table:: :guilabel:`RDSAurora`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - secondary_domain_name
-      - PacoReference|String
-      - Secondary Domain Name
-      - Paco Reference to `Route53HostedZone`_. String Ok.
-      - 
-    * - secondary_hosted_zone
-      - PacoReference
-      - Secondary Hosted Zone
-      - Paco Reference to `Route53HostedZone`_.
-      - 
-
-*Base Schemas* `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
-
-
-DBParameterGroup
------------------
-
-
-DBParameterGroup
-    
-
-.. _DBParameterGroup:
-
-.. list-table:: :guilabel:`DBParameterGroup`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - description
-      - String
-      - Description
-      - 
-      - 
-    * - family
-      - String |star|
-      - Database Family
-      - 
-      - 
-    * - parameters
-      - Container<DBParameters_> |star|
-      - Database Parameter set
-      - 
-      - 
-
-*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
-
-DBParameters
-------------
-
-A unconstrainted set of key-value pairs.
-
-
-EC2
-----
-
-
-EC2 Instance
-    
-
-.. _EC2:
-
-.. list-table:: :guilabel:`EC2`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - associate_public_ip_address
-      - Boolean
-      - Associate Public IP Address
-      - 
-      - False
-    * - disable_api_termination
-      - Boolean
-      - Disable API Termination
-      - 
-      - False
-    * - instance_ami
-      - String
-      - Instance AMI
-      - 
-      - 
-    * - instance_key_pair
-      - PacoReference
-      - key pair for connections to instance
-      - Paco Reference to `EC2KeyPair`_.
-      - 
-    * - instance_type
-      - String
-      - Instance type
-      - 
-      - 
-    * - private_ip_address
-      - String
-      - Private IP Address
-      - 
-      - 
-    * - root_volume_size_gb
-      - Int
-      - Root volume size GB
-      - 
-      - 8
-    * - security_groups
-      - List<PacoReference>
-      - Security groups
-      - Paco Reference to `SecurityGroup`_.
-      - 
-    * - segment
-      - String
-      - Segment
-      - 
-      - 
-    * - user_data_script
-      - String
-      - User data script
-      - 
-      - 
-
-*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
-
-
-Lambda
--------
-
-
-Lambda Functions allow you to run code without provisioning servers and only
-pay for the compute time when the code is running.
-
-For the code that the Lambda function will run, use the ``code:`` block and specify
-``s3_bucket`` and ``s3_key`` to deploy the code from an S3 Bucket or use ``zipfile`` to read a local file from disk.
-
-.. sidebar:: Prescribed Automation
-
-    ``sdb_cache``: Create a SimpleDB Domain and IAM Policy that grants full access to that domain. Will
-    also make the domain available to the Lambda function as an environment variable named ``SDB_CACHE_DOMAIN``.
-
-    ``sns_topics``: Subscribes the Lambda to SNS Topics. For each Paco reference to an SNS Topic,
-    Paco will create an SNS Topic Subscription so that the Lambda function will recieve all messages sent to that SNS Topic.
-    It will also create a Lambda Permission granting that SNS Topic the ability to publish to the Lambda.
-
-    **S3 Bucket Notification permission** Paco will check all resources in the Application for any S3 Buckets configured
-    to notify this Lambda. Lambda Permissions will be created to allow those S3 Buckets to invoke the Lambda.
-
-    **Events Rule permission** Paco will check all resources in the Application for CloudWatch Events Rule that are configured
-    to notify this Lambda and create a Lambda permission to allow that Event Rule to invoke the Lambda.
-
-.. code-block:: yaml
-    :caption: Lambda function resource YAML
-
-    type: Lambda
-    enabled: true
-    order: 1
-    title: 'My Lambda Application'
-    description: 'Checks the Widgets Service and applies updates to a Route 53 Record Set.'
-    code:
-        s3_bucket: my-bucket-name
-        s3_key: 'myapp-1.0.zip'
-    environment:
-        variables:
-        - key: 'VAR_ONE'
-          value: 'hey now!'
-        - key: 'VAR_TWO'
-          value: 'Hank Kingsley'
-    iam_role:
-        enabled: true
-        policies:
-          - name: DNSRecordSet
-            statement:
-              - effect: Allow
-                action:
-                  - route53:ChangeResourceRecordSets
-                resource:
-                  - 'arn:aws:route53:::hostedzone/AJKDU9834DUY934'
-    handler: 'myapp.lambda_handler'
-    memory_size: 128
-    runtime: 'python3.7'
-    timeout: 900
-    sns_topics:
-      - paco.ref netenv.app.applications.app.groups.web.resources.snstopic
-    vpc_config:
-        segments:
-          - paco.ref netenv.app.network.vpc.segments.public
-        security_groups:
-          - paco.ref netenv.app.network.vpc.security_groups.app.function
-
-
-
-.. _Lambda:
-
-.. list-table:: :guilabel:`Lambda`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - code
-      - Object<LambdaFunctionCode_> |star|
-      - The function deployment package.
-      - 
-      - 
-    * - description
-      - String |star|
-      - A description of the function.
-      - 
-      - 
-    * - environment
-      - Object<LambdaEnvironment_>
-      - Lambda Function Environment
-      - 
-      - 
-    * - handler
-      - String |star|
-      - Function Handler
-      - 
-      - 
-    * - iam_role
-      - Object<Role_> |star|
-      - The IAM Role this Lambda will execute as.
-      - 
-      - 
-    * - layers
-      - List<String> |star|
-      - Layers
-      - Up to 5 Layer ARNs
-      - 
-    * - memory_size
-      - Int
-      - Function memory size (MB)
-      - 
-      - 128
-    * - reserved_concurrent_executions
-      - Int
-      - Reserved Concurrent Executions
-      - 
-      - 0
-    * - runtime
-      - String |star|
-      - Runtime environment
-      - 
-      - python3.7
-    * - sdb_cache
-      - Boolean
-      - SDB Cache Domain
-      - 
-      - False
-    * - sns_topics
-      - List<PacoReference>
-      - List of SNS Topic Paco references or SNS Topic ARNs to subscribe the Lambda to.
-      - Paco Reference to `SNSTopic`_. String Ok.
-      - 
-    * - timeout
-      - Int
-      - Max function execution time in seconds.
-      - Must be between 0 and 900 seconds.
-      - 
-    * - vpc_config
-      - Object<LambdaVpcConfig_>
-      - Vpc Configuration
-      - 
-      - 
-
-*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
-
-
-LambdaFunctionCode
-^^^^^^^^^^^^^^^^^^^
-
-The deployment package for a Lambda function.
-
-.. _LambdaFunctionCode:
-
-.. list-table:: :guilabel:`LambdaFunctionCode`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - s3_bucket
-      - PacoReference|String
-      - An Amazon S3 bucket in the same AWS Region as your function
-      - Paco Reference to `S3Bucket`_. String Ok.
-      - 
-    * - s3_key
-      - String
-      - The Amazon S3 key of the deployment package.
-      - 
-      - 
-    * - zipfile
-      - StringFileReference
-      - The function as an external file.
-      - Maximum of 4096 characters.
-      - 
-
-
-
-LambdaEnvironment
-^^^^^^^^^^^^^^^^^^
-
-
-Lambda Environment
-    
-
-.. _LambdaEnvironment:
-
-.. list-table:: :guilabel:`LambdaEnvironment`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - variables
-      - List<LambdaVariable_>
-      - Lambda Function Variables
-      - 
-      - 
-
-
-
-LambdaVpcConfig
-^^^^^^^^^^^^^^^^
-
-
-Lambda Environment
-    
-
-.. _LambdaVpcConfig:
-
-.. list-table:: :guilabel:`LambdaVpcConfig`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - security_groups
-      - List<PacoReference>
-      - List of VPC Security Group Ids
-      - Paco Reference to `SecurityGroup`_.
-      - 
-    * - segments
-      - List<PacoReference>
-      - VPC Segments to attach the function
-      - Paco Reference to `Segment`_.
-      - 
-
-*Base Schemas* `Named`_, `Title`_
-
-
-LambdaVariable
-^^^^^^^^^^^^^^^
-
-
-    Lambda Environment Variable
-    
-
-.. _LambdaVariable:
-
-.. list-table:: :guilabel:`LambdaVariable`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - key
-      - String |star|
-      - Variable Name
-      - 
-      - 
-    * - value
-      - PacoReference|String |star|
-      - String Value or a Paco Reference to a resource output
-      - Paco Reference to `Interface`_. String Ok.
-      - 
-
-
-
-ManagedPolicy
---------------
-
-
-IAM Managed Policy
-    
-
-.. _ManagedPolicy:
-
-.. list-table:: :guilabel:`ManagedPolicy`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - path
-      - String
-      - Path
-      - 
-      - /
-    * - roles
-      - List<String>
-      - List of Role Names
-      - 
-      - 
-    * - statement
-      - List<Statement_>
-      - Statements
-      - 
-      - 
-    * - users
-      - List<String>
-      - List of IAM Users
-      - 
-      - 
-
-*Base Schemas* `Deployable`_, `Named`_, `Title`_
-
-
-S3Bucket
----------
-
-
-S3 Bucket
-    
-
-.. _S3Bucket:
-
-.. list-table:: :guilabel:`S3Bucket`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - account
-      - PacoReference
-      - Account that S3 Bucket belongs to.
-      - Paco Reference to `Account`_.
-      - 
-    * - bucket_name
-      - String |star|
-      - Bucket Name
-      - A short unique name to assign the bucket.
-      - bucket
-    * - cloudfront_origin
-      - Boolean
-      - Creates and listens for a CloudFront Access Origin Identity
-      - 
-      - False
-    * - deletion_policy
-      - String
-      - Bucket Deletion Policy
-      - 
-      - delete
-    * - external_resource
-      - Boolean
-      - Boolean indicating whether the S3 Bucket already exists or not
-      - 
-      - False
-    * - notifications
-      - Object<S3NotificationConfiguration_>
-      - Notification configuration
-      - 
-      - 
-    * - policy
-      - List<S3BucketPolicy_>
-      - List of S3 Bucket Policies
-      - 
-      - 
-    * - region
-      - String
-      - Bucket region
-      - 
-      - 
-    * - static_website_hosting
-      - Object<S3StaticWebsiteHosting_>
-      - Static website hosting configuration.
-      - 
-      - 
-    * - versioning
-      - Boolean
-      - Enable Versioning on the bucket.
-      - 
-      - False
-
-*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
-
-
-S3BucketPolicy
-^^^^^^^^^^^^^^^
-
-
-S3 Bucket Policy
-    
-
-.. _S3BucketPolicy:
-
-.. list-table:: :guilabel:`S3BucketPolicy`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - action
-      - List<String> |star|
-      - List of Actions
-      - 
-      - 
-    * - aws
-      - List<String>
-      - List of AWS Principles.
-      - Either this field or the principal field must be set.
-      - 
-    * - condition
-      - Dict
-      - Condition
-      - Each Key is the Condition name and the Value must be a dictionary of request filters. e.g. { "StringEquals" : { "aws:username" : "johndoe" }}
-      - {}
-    * - effect
-      - String |star|
-      - Effect
-      - Must be one of: 'Allow', 'Deny'
-      - Deny
-    * - principal
-      - Dict
-      - Prinicpals
-      - Either this field or the aws field must be set. Key should be one of: AWS, Federated, Service or CanonicalUser. Value can be either a String or a List.
-      - {}
-    * - resource_suffix
-      - List<String> |star|
-      - List of AWS Resources Suffixes
-      - 
-      - 
-
-
-
-S3StaticWebsiteHosting
-^^^^^^^^^^^^^^^^^^^^^^^
-
-
-
-.. _S3StaticWebsiteHosting:
-
-.. list-table:: :guilabel:`S3StaticWebsiteHosting`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - redirect_requests
-      - Object<S3StaticWebsiteHostingRedirectRequests_>
-      - Redirect requests configuration.
-      - 
-      - 
-
-*Base Schemas* `Deployable`_
-
-
-S3StaticWebsiteHostingRedirectRequests
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-
-
-.. _S3StaticWebsiteHostingRedirectRequests:
-
-.. list-table:: :guilabel:`S3StaticWebsiteHostingRedirectRequests`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - protocol
-      - String |star|
-      - Protocol
-      - 
-      - 
-    * - target
-      - PacoReference|String |star|
-      - Target S3 Bucket or domain.
-      - Paco Reference to `S3Bucket`_. String Ok.
-      - 
-
-
-
-S3LambdaConfiguration
-^^^^^^^^^^^^^^^^^^^^^^
-
-
-
-.. _S3LambdaConfiguration:
-
-.. list-table:: :guilabel:`S3LambdaConfiguration`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - event
-      - String
-      - S3 bucket event for which to invoke the AWS Lambda function
-      - Must be a supported event type: https://docs.aws.amazon.com/AmazonS3/latest/dev/NotificationHowTo.html
-      - 
-    * - function
-      - PacoReference
-      - Lambda function to notify
-      - Paco Reference to `Lambda`_.
-      - 
-
-
-
-S3NotificationConfiguration
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-
-
-.. _S3NotificationConfiguration:
-
-.. list-table:: :guilabel:`S3NotificationConfiguration`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - lambdas
-      - List<S3LambdaConfiguration_>
-      - Lambda configurations
-      - 
-      - 
-
-
-
-SNSTopic
----------
-
-
-Simple Notification Service (SNS) Topic resource.
-
-.. sidebar:: Prescribed Automation
-
-    ``cross_account_access``: Creates an SNS Topic Policy which will grant all of the AWS Accounts in this
-    Paco Project access to the ``sns.Publish`` permission for this SNS Topic.
-
-.. code-block:: yaml
-    :caption: Example SNSTopic resource YAML
-
-    type: SNSTopic
-    order: 1
-    enabled: true
-    display_name: "Waterbear Cloud AWS"
-    cross_account_access: true
-    subscriptions:
-      - endpoint: http://example.com/yes
-        protocol: http
-      - endpoint: https://example.com/orno
-        protocol: https
-      - endpoint: bob@example.com
-        protocol: email
-      - endpoint: bob@example.com
-        protocol: email-json
-      - endpoint: '555-555-5555'
-        protocol: sms
-      - endpoint: arn:aws:sqs:us-east-2:444455556666:queue1
-        protocol: sqs
-      - endpoint: arn:aws:sqs:us-east-2:444455556666:queue1
-        protocol: application
-      - endpoint: arn:aws:lambda:us-east-1:123456789012:function:my-function
-        protocol: lambda
-
-
-
-.. _SNSTopic:
-
-.. list-table:: :guilabel:`SNSTopic`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - cross_account_access
-      - Boolean
-      - Cross-account access from all other accounts in this project.
-      - 
-      - False
-    * - display_name
-      - String
-      - Display name for SMS Messages
-      - 
-      - 
-    * - subscriptions
-      - List<SNSTopicSubscription_>
-      - List of SNS Topic Subscriptions
-      - 
-      - 
-
-*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
-
-
-SNSTopicSubscription
-^^^^^^^^^^^^^^^^^^^^^
-
-
-
-.. _SNSTopicSubscription:
-
-.. list-table:: :guilabel:`SNSTopicSubscription`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - endpoint
-      - PacoReference|String
-      - SNS Topic ARN or Paco Reference
-      - Paco Reference to `SNSTopic`_. String Ok.
-      - 
-    * - protocol
-      - String
-      - Notification protocol
-      - Must be a valid SNS Topic subscription protocol: 'http', 'https', 'email', 'email-json', 'sms', 'sqs', 'application', 'lambda'.
-      - email
-
+# CloudFront
 
 
 CloudFront
@@ -5915,17 +4387,34 @@ CloudFrontCookies
 
 *Base Schemas* `Named`_, `Title`_
 
-
-ElastiCache
-------------
+# CodeDeploy schemas
 
 
-Base ElastiCache Interface
-    
+CodeDeployApplication
+----------------------
 
-.. _ElastiCache:
 
-.. list-table:: :guilabel:`ElastiCache`
+CodeDeploy Application
+
+.. code-block:: yaml
+    :caption: Example CodeDeployApplication resource YAML
+
+    type: CodeDeployApplication
+    order: 40
+    compute_platform: "Server"
+    deployment_groups:
+      deployment:
+        title: "My Deployment Group description"
+        ignore_application_stop_failures: true
+        revision_location_s3: paco.ref netenv.mynet.applications.app.groups.deploybucket
+        autoscalinggroups:
+          - paco.ref netenv.mynet.applications.app.groups.web
+
+
+
+.. _CodeDeployApplication:
+
+.. list-table:: :guilabel:`CodeDeployApplication`
     :widths: 15 28 30 16 11
     :header-rows: 1
 
@@ -5934,119 +4423,85 @@ Base ElastiCache Interface
       - Purpose
       - Constraints
       - Default
-    * - at_rest_encryption
-      - Boolean
-      - Enable encryption at rest
+    * - compute_platform
+      - String |star|
+      - Compute Platform
+      - Must be one of Lambda, Server or ECS
+      - 
+    * - deployment_groups
+      - Container<CodeDeployDeploymentGroups_> |star|
+      - CodeDeploy Deployment Groups
       - 
       - 
-    * - auto_minor_version_upgrade
-      - Boolean
-      - Enable automatic minor version upgrades
-      - 
-      - 
-    * - automatic_failover_enabled
-      - Boolean
-      - Specifies whether a read-only replica is automatically promoted to read/write primary if the existing primary fails
-      - 
-      - 
-    * - az_mode
-      - String
-      - AZ mode
-      - 
-      - 
-    * - cache_clusters
-      - Int
-      - Number of Cache Clusters
-      - 
-      - 
-    * - cache_node_type
-      - String
-      - Cache Node Instance type
-      - 
-      - 
-    * - description
-      - String
-      - Replication Description
-      - 
-      - 
-    * - engine
-      - String
-      - ElastiCache Engine
-      - 
-      - 
-    * - engine_version
-      - String
-      - ElastiCache Engine Version
-      - 
-      - 
-    * - maintenance_preferred_window
-      - String
-      - Preferred maintenance window
-      - 
-      - 
-    * - number_of_read_replicas
-      - Int
-      - Number of read replicas
-      - 
-      - 
-    * - parameter_group
-      - PacoReference|String
-      - Parameter Group name
-      - Paco Reference to `Interface`_. String Ok.
-      - 
-    * - port
-      - Int
-      - Port
-      - 
-      - 
-    * - security_groups
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
+
+CodeDeployDeploymentGroups
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CodeDeployDeploymentGroups:
+
+.. list-table:: :guilabel:`CodeDeployDeploymentGroups`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CodeDeployDeploymentGroup
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CodeDeployDeploymentGroup:
+
+.. list-table:: :guilabel:`CodeDeployDeploymentGroup`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - autoscalinggroups
       - List<PacoReference>
-      - List of Security Groups
-      - Paco Reference to `SecurityGroup`_.
+      - AutoScalingGroups that CodeDeploy automatically deploys revisions to when new instances are created
+      - Paco Reference to `ASG`_.
       - 
-    * - segment
-      - PacoReference
-      - Segment
-      - Paco Reference to `Segment`_.
-      - 
-
-
-
-ElastiCacheRedis
-^^^^^^^^^^^^^^^^^
-
-
-Redis ElastiCache Interface
-    
-
-.. _ElastiCacheRedis:
-
-.. list-table:: :guilabel:`ElastiCacheRedis`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - cache_parameter_group_family
-      - String
-      - Cache Parameter Group Family
+    * - ignore_application_stop_failures
+      - Boolean
+      - Ignore Application Stop Failures
       - 
       - 
-    * - snapshot_retention_limit_days
-      - Int
-      - Snapshot Retention Limit in Days
+    * - revision_location_s3
+      - Object<DeploymentGroupS3Location_>
+      - S3 Bucket revision location
       - 
       - 
-    * - snapshot_window
-      - String
-      - The daily time range (in UTC) during which ElastiCache begins taking a daily snapshot of your node group (shard).
+    * - role_policies
+      - List<Policy_>
+      - Policies to grant the deployment group role
       - 
       - 
 
-*Base Schemas* `ElastiCache`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
+
+# Deployment Pipeline
 
 
 DeploymentPipeline
@@ -6501,6 +4956,150 @@ DeploymentGroupS3Location
       - 
 
 
+# EBS
+
+
+EBS
+----
+
+
+Elastic Block Store Volume
+    
+
+.. _EBS:
+
+.. list-table:: :guilabel:`EBS`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - availability_zone
+      - Int |star|
+      - Availability Zone to create Volume in.
+      - 
+      - 
+    * - size_gib
+      - Int |star|
+      - Volume Size in GiB
+      - 
+      - 10
+    * - volume_type
+      - String
+      - Volume Type
+      - Must be one of: gp2 | io1 | sc1 | st1 | standard
+      - gp2
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
+# EC2
+
+
+EC2
+----
+
+
+EC2 Instance
+    
+
+.. _EC2:
+
+.. list-table:: :guilabel:`EC2`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - associate_public_ip_address
+      - Boolean
+      - Associate Public IP Address
+      - 
+      - False
+    * - disable_api_termination
+      - Boolean
+      - Disable API Termination
+      - 
+      - False
+    * - instance_ami
+      - String
+      - Instance AMI
+      - 
+      - 
+    * - instance_key_pair
+      - PacoReference
+      - key pair for connections to instance
+      - Paco Reference to `EC2KeyPair`_.
+      - 
+    * - instance_type
+      - String
+      - Instance type
+      - 
+      - 
+    * - private_ip_address
+      - String
+      - Private IP Address
+      - 
+      - 
+    * - root_volume_size_gb
+      - Int
+      - Root volume size GB
+      - 
+      - 8
+    * - security_groups
+      - List<PacoReference>
+      - Security groups
+      - Paco Reference to `SecurityGroup`_.
+      - 
+    * - segment
+      - String
+      - Segment
+      - 
+      - 
+    * - user_data_script
+      - String
+      - User data script
+      - 
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
+# EIP
+
+
+EIP
+----
+
+
+Elastic IP
+    
+
+.. _EIP:
+
+.. list-table:: :guilabel:`EIP`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - dns
+      - List<DNS_>
+      - List of DNS for the EIP
+      - 
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
+# EFS
+
 
 EFS
 ----
@@ -6550,17 +5149,19 @@ AWS Elastic File System (EFS) resource.
 
 *Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
-
-EIP
-----
+# ElasticCache
 
 
-Elastic IP
+ElastiCache
+------------
+
+
+Base ElastiCache Interface
     
 
-.. _EIP:
+.. _ElastiCache:
 
-.. list-table:: :guilabel:`EIP`
+.. list-table:: :guilabel:`ElastiCache`
     :widths: 15 28 30 16 11
     :header-rows: 1
 
@@ -6569,13 +5170,869 @@ Elastic IP
       - Purpose
       - Constraints
       - Default
-    * - dns
-      - List<DNS_>
-      - List of DNS for the EIP
+    * - at_rest_encryption
+      - Boolean
+      - Enable encryption at rest
+      - 
+      - 
+    * - auto_minor_version_upgrade
+      - Boolean
+      - Enable automatic minor version upgrades
+      - 
+      - 
+    * - automatic_failover_enabled
+      - Boolean
+      - Specifies whether a read-only replica is automatically promoted to read/write primary if the existing primary fails
+      - 
+      - 
+    * - az_mode
+      - String
+      - AZ mode
+      - 
+      - 
+    * - cache_clusters
+      - Int
+      - Number of Cache Clusters
+      - 
+      - 
+    * - cache_node_type
+      - String
+      - Cache Node Instance type
+      - 
+      - 
+    * - description
+      - String
+      - Replication Description
+      - 
+      - 
+    * - engine
+      - String
+      - ElastiCache Engine
+      - 
+      - 
+    * - engine_version
+      - String
+      - ElastiCache Engine Version
+      - 
+      - 
+    * - maintenance_preferred_window
+      - String
+      - Preferred maintenance window
+      - 
+      - 
+    * - number_of_read_replicas
+      - Int
+      - Number of read replicas
+      - 
+      - 
+    * - parameter_group
+      - PacoReference|String
+      - Parameter Group name
+      - Paco Reference to `Interface`_. String Ok.
+      - 
+    * - port
+      - Int
+      - Port
+      - 
+      - 
+    * - security_groups
+      - List<PacoReference>
+      - List of Security Groups
+      - Paco Reference to `SecurityGroup`_.
+      - 
+    * - segment
+      - PacoReference
+      - Segment
+      - Paco Reference to `Segment`_.
+      - 
+
+
+
+ElastiCacheRedis
+^^^^^^^^^^^^^^^^^
+
+
+Redis ElastiCache Interface
+    
+
+.. _ElastiCacheRedis:
+
+.. list-table:: :guilabel:`ElastiCacheRedis`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - cache_parameter_group_family
+      - String
+      - Cache Parameter Group Family
+      - 
+      - 
+    * - snapshot_retention_limit_days
+      - Int
+      - Snapshot Retention Limit in Days
+      - 
+      - 
+    * - snapshot_window
+      - String
+      - The daily time range (in UTC) during which ElastiCache begins taking a daily snapshot of your node group (shard).
       - 
       - 
 
+*Base Schemas* `ElastiCache`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
+
+# Events Rule
+
+
+EventsRule
+-----------
+
+
+Events Rule
+    
+
+.. _EventsRule:
+
+.. list-table:: :guilabel:`EventsRule`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - description
+      - String
+      - Description
+      - 
+      - 
+    * - schedule_expression
+      - String |star|
+      - Schedule Expression
+      - 
+      - 
+    * - targets
+      - List<PacoReference> |star|
+      - The AWS Resources that are invoked when the Rule is triggered.
+      - Paco Reference to `Interface`_.
+      - 
+
 *Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
+# Lambda
+
+
+Lambda
+-------
+
+
+Lambda Functions allow you to run code without provisioning servers and only
+pay for the compute time when the code is running.
+
+For the code that the Lambda function will run, use the ``code:`` block and specify
+``s3_bucket`` and ``s3_key`` to deploy the code from an S3 Bucket or use ``zipfile`` to read a local file from disk.
+
+.. sidebar:: Prescribed Automation
+
+    ``sdb_cache``: Create a SimpleDB Domain and IAM Policy that grants full access to that domain. Will
+    also make the domain available to the Lambda function as an environment variable named ``SDB_CACHE_DOMAIN``.
+
+    ``sns_topics``: Subscribes the Lambda to SNS Topics. For each Paco reference to an SNS Topic,
+    Paco will create an SNS Topic Subscription so that the Lambda function will recieve all messages sent to that SNS Topic.
+    It will also create a Lambda Permission granting that SNS Topic the ability to publish to the Lambda.
+
+    **S3 Bucket Notification permission** Paco will check all resources in the Application for any S3 Buckets configured
+    to notify this Lambda. Lambda Permissions will be created to allow those S3 Buckets to invoke the Lambda.
+
+    **Events Rule permission** Paco will check all resources in the Application for CloudWatch Events Rule that are configured
+    to notify this Lambda and create a Lambda permission to allow that Event Rule to invoke the Lambda.
+
+.. code-block:: yaml
+    :caption: Lambda function resource YAML
+
+    type: Lambda
+    enabled: true
+    order: 1
+    title: 'My Lambda Application'
+    description: 'Checks the Widgets Service and applies updates to a Route 53 Record Set.'
+    code:
+        s3_bucket: my-bucket-name
+        s3_key: 'myapp-1.0.zip'
+    environment:
+        variables:
+        - key: 'VAR_ONE'
+          value: 'hey now!'
+        - key: 'VAR_TWO'
+          value: 'Hank Kingsley'
+    iam_role:
+        enabled: true
+        policies:
+          - name: DNSRecordSet
+            statement:
+              - effect: Allow
+                action:
+                  - route53:ChangeResourceRecordSets
+                resource:
+                  - 'arn:aws:route53:::hostedzone/AJKDU9834DUY934'
+    handler: 'myapp.lambda_handler'
+    memory_size: 128
+    runtime: 'python3.7'
+    timeout: 900
+    sns_topics:
+      - paco.ref netenv.app.applications.app.groups.web.resources.snstopic
+    vpc_config:
+        segments:
+          - paco.ref netenv.app.network.vpc.segments.public
+        security_groups:
+          - paco.ref netenv.app.network.vpc.security_groups.app.function
+
+
+
+.. _Lambda:
+
+.. list-table:: :guilabel:`Lambda`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - code
+      - Object<LambdaFunctionCode_> |star|
+      - The function deployment package.
+      - 
+      - 
+    * - description
+      - String |star|
+      - A description of the function.
+      - 
+      - 
+    * - environment
+      - Object<LambdaEnvironment_>
+      - Lambda Function Environment
+      - 
+      - 
+    * - handler
+      - String |star|
+      - Function Handler
+      - 
+      - 
+    * - iam_role
+      - Object<Role_> |star|
+      - The IAM Role this Lambda will execute as.
+      - 
+      - 
+    * - layers
+      - List<String> |star|
+      - Layers
+      - Up to 5 Layer ARNs
+      - 
+    * - memory_size
+      - Int
+      - Function memory size (MB)
+      - 
+      - 128
+    * - reserved_concurrent_executions
+      - Int
+      - Reserved Concurrent Executions
+      - 
+      - 0
+    * - runtime
+      - String |star|
+      - Runtime environment
+      - 
+      - python3.7
+    * - sdb_cache
+      - Boolean
+      - SDB Cache Domain
+      - 
+      - False
+    * - sns_topics
+      - List<PacoReference>
+      - List of SNS Topic Paco references or SNS Topic ARNs to subscribe the Lambda to.
+      - Paco Reference to `SNSTopic`_. String Ok.
+      - 
+    * - timeout
+      - Int
+      - Max function execution time in seconds.
+      - Must be between 0 and 900 seconds.
+      - 
+    * - vpc_config
+      - Object<LambdaVpcConfig_>
+      - Vpc Configuration
+      - 
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
+
+
+LambdaFunctionCode
+^^^^^^^^^^^^^^^^^^^
+
+The deployment package for a Lambda function.
+
+.. _LambdaFunctionCode:
+
+.. list-table:: :guilabel:`LambdaFunctionCode`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - s3_bucket
+      - PacoReference|String
+      - An Amazon S3 bucket in the same AWS Region as your function
+      - Paco Reference to `S3Bucket`_. String Ok.
+      - 
+    * - s3_key
+      - String
+      - The Amazon S3 key of the deployment package.
+      - 
+      - 
+    * - zipfile
+      - StringFileReference
+      - The function as an external file.
+      - Maximum of 4096 characters.
+      - 
+
+
+
+LambdaEnvironment
+^^^^^^^^^^^^^^^^^^
+
+
+Lambda Environment
+    
+
+.. _LambdaEnvironment:
+
+.. list-table:: :guilabel:`LambdaEnvironment`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - variables
+      - List<LambdaVariable_>
+      - Lambda Function Variables
+      - 
+      - 
+
+
+
+LambdaVpcConfig
+^^^^^^^^^^^^^^^^
+
+
+Lambda Environment
+    
+
+.. _LambdaVpcConfig:
+
+.. list-table:: :guilabel:`LambdaVpcConfig`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - security_groups
+      - List<PacoReference>
+      - List of VPC Security Group Ids
+      - Paco Reference to `SecurityGroup`_.
+      - 
+    * - segments
+      - List<PacoReference>
+      - VPC Segments to attach the function
+      - Paco Reference to `Segment`_.
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+LambdaVariable
+^^^^^^^^^^^^^^^
+
+
+    Lambda Environment Variable
+    
+
+.. _LambdaVariable:
+
+.. list-table:: :guilabel:`LambdaVariable`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - key
+      - String |star|
+      - Variable Name
+      - 
+      - 
+    * - value
+      - PacoReference|String |star|
+      - String Value or a Paco Reference to a resource output
+      - Paco Reference to `Interface`_. String Ok.
+      - 
+
+
+# LBApplication schemas
+
+
+LBApplication
+--------------
+
+
+The ``LBApplication`` resource type creates an Application Load Balancer. Use load balancers to route traffic from
+the internet to your web servers.
+
+Load balancers have ``listeners`` which will accept requrests on specified ports and protocols. If a listener
+uses the HTTPS protocol, it can have a Paco reference to an SSL Certificate. A listener can then either
+redirect the traffic to another port/protcol or send it one of it's named ``target_groups``.
+
+Each target group will specify it's health check configuration. To specify which resources will belong
+to a target group, use the ``target_groups`` field on an ASG resource.
+
+.. sidebar:: Prescribed Automation
+
+    ``dns``: Creates Route 53 Record Sets that will resolve DNS records to the domain name of the load balancer.
+
+    ``enable_access_logs``: Set to True to turn on access logs for the load balancer, and will automatically create
+    an S3 Bucket with permissions for AWS to write to that bucket.
+
+    ``access_logs_bucket``: Name an existing S3 Bucket (in the same region) instead of automatically creating a new one.
+    Remember that if you supply your own S3 Bucket, you are responsible for ensuring that the bucket policy for
+    it grants AWS the `s3:PutObject` permission.
+
+.. code-block:: yaml
+    :caption: Example LBApplication load balancer resource YAML
+
+    type: LBApplication
+    enabled: true
+    enable_access_logs: true
+    target_groups:
+        api:
+            health_check_interval: 30
+            health_check_timeout: 10
+            healthy_threshold: 2
+            unhealthy_threshold: 2
+            port: 3000
+            protocol: HTTP
+            health_check_http_code: 200
+            health_check_path: /
+            connection_drain_timeout: 30
+    listeners:
+        http:
+            port: 80
+            protocol: HTTP
+            redirect:
+                port: 443
+                protocol: HTTPS
+        https:
+            port: 443
+            protocol: HTTPS
+            ssl_certificates:
+                - paco.ref netenv.app.applications.app.groups.certs.resources.root
+            target_group: api
+    dns:
+        - hosted_zone: paco.ref resource.route53.mynetenv
+          domain_name: api.example.com
+    scheme: internet-facing
+    security_groups:
+        - paco.ref netenv.app.network.vpc.security_groups.app.alb
+    segment: public
+
+
+
+.. _LBApplication:
+
+.. list-table:: :guilabel:`LBApplication`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - access_logs_bucket
+      - PacoReference
+      - Bucket to store access logs in
+      - Paco Reference to `S3Bucket`_.
+      - 
+    * - access_logs_prefix
+      - String
+      - Access Logs S3 Bucket prefix
+      - 
+      - 
+    * - dns
+      - List<DNS_>
+      - List of DNS for the ALB
+      - 
+      - 
+    * - enable_access_logs
+      - Boolean
+      - Write access logs to an S3 Bucket
+      - 
+      - 
+    * - idle_timeout_secs
+      - Int
+      - Idle timeout in seconds
+      - The idle timeout value, in seconds.
+      - 60
+    * - listeners
+      - Container<Listeners_>
+      - Listeners
+      - 
+      - 
+    * - scheme
+      - Choice
+      - Scheme
+      - 
+      - 
+    * - security_groups
+      - List<PacoReference>
+      - Security Groups
+      - Paco Reference to `SecurityGroup`_.
+      - 
+    * - segment
+      - String
+      - Id of the segment stack
+      - 
+      - 
+    * - target_groups
+      - Container<TargetGroups_>
+      - Target Groups
+      - 
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
+
+
+DNS
+^^^^
+
+
+
+.. _DNS:
+
+.. list-table:: :guilabel:`DNS`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - domain_name
+      - PacoReference|String
+      - Domain name
+      - Paco Reference to `Route53HostedZone`_. String Ok.
+      - 
+    * - hosted_zone
+      - PacoReference|String
+      - Hosted Zone Id
+      - Paco Reference to `Route53HostedZone`_. String Ok.
+      - 
+    * - ssl_certificate
+      - PacoReference
+      - SSL certificate Reference
+      - Paco Reference to `AWSCertificateManager`_.
+      - 
+    * - ttl
+      - Int
+      - TTL
+      - 
+      - 300
+
+
+
+Listeners
+^^^^^^^^^^
+
+
+Container for `Listener`_ objects.
+    
+
+.. _Listeners:
+
+.. list-table:: :guilabel:`Listeners` |bars| Container<`Listener`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+Listener
+^^^^^^^^^
+
+
+
+.. _Listener:
+
+.. list-table:: :guilabel:`Listener`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - redirect
+      - Object<PortProtocol_>
+      - Redirect
+      - 
+      - 
+    * - rules
+      - Container<ListenerRule_>
+      - Container of listener rules
+      - 
+      - 
+    * - ssl_certificates
+      - List<PacoReference>
+      - List of SSL certificate References
+      - Paco Reference to `AWSCertificateManager`_.
+      - 
+    * - target_group
+      - String
+      - Target group
+      - 
+      - 
+
+*Base Schemas* `PortProtocol`_
+
+
+ListenerRule
+^^^^^^^^^^^^^
+
+
+
+.. _ListenerRule:
+
+.. list-table:: :guilabel:`ListenerRule`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - host
+      - String
+      - Host header value
+      - 
+      - 
+    * - priority
+      - Int
+      - Forward condition priority
+      - 
+      - 1
+    * - redirect_host
+      - String
+      - The host to redirect to
+      - 
+      - 
+    * - rule_type
+      - String
+      - Type of Rule
+      - 
+      - 
+    * - target_group
+      - String
+      - Target group name
+      - 
+      - 
+
+*Base Schemas* `Deployable`_
+
+
+PortProtocol
+^^^^^^^^^^^^^
+
+Port and Protocol
+
+.. _PortProtocol:
+
+.. list-table:: :guilabel:`PortProtocol`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - port
+      - Int
+      - Port
+      - 
+      - 
+    * - protocol
+      - Choice
+      - Protocol
+      - 
+      - 
+
+
+
+TargetGroups
+^^^^^^^^^^^^^
+
+
+Container for `TargetGroup`_ objects.
+    
+
+.. _TargetGroups:
+
+.. list-table:: :guilabel:`TargetGroups` |bars| Container<`TargetGroup`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+TargetGroup
+^^^^^^^^^^^^
+
+Target Group
+
+.. _TargetGroup:
+
+.. list-table:: :guilabel:`TargetGroup`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - connection_drain_timeout
+      - Int
+      - Connection drain timeout
+      - 
+      - 
+    * - health_check_http_code
+      - String
+      - Health check HTTP codes
+      - 
+      - 
+    * - health_check_interval
+      - Int
+      - Health check interval
+      - 
+      - 
+    * - health_check_path
+      - String
+      - Health check path
+      - 
+      - /
+    * - health_check_timeout
+      - Int
+      - Health check timeout
+      - 
+      - 
+    * - healthy_threshold
+      - Int
+      - Healthy threshold
+      - 
+      - 
+    * - unhealthy_threshold
+      - Int
+      - Unhealthy threshold
+      - 
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `PortProtocol`_, `Title`_, `Type`_
+
+# Managed Policy
+
+
+ManagedPolicy
+--------------
+
+
+IAM Managed Policy
+    
+
+.. _ManagedPolicy:
+
+.. list-table:: :guilabel:`ManagedPolicy`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - path
+      - String
+      - Path
+      - 
+      - /
+    * - roles
+      - List<String>
+      - List of Role Names
+      - 
+      - 
+    * - statement
+      - List<Statement_>
+      - Statements
+      - 
+      - 
+    * - users
+      - List<String>
+      - List of IAM Users
+      - 
+      - 
+
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
+
+# Route 53 Health Check
 
 
 Route53HealthCheck
@@ -6657,17 +6114,510 @@ Route53 Health Check
 
 *Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
-
-EventsRule
------------
+# S3 Bucket
 
 
-Events Rule
+S3Bucket
+---------
+
+
+S3 Bucket
     
 
-.. _EventsRule:
+.. _S3Bucket:
 
-.. list-table:: :guilabel:`EventsRule`
+.. list-table:: :guilabel:`S3Bucket`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - account
+      - PacoReference
+      - Account that S3 Bucket belongs to.
+      - Paco Reference to `Account`_.
+      - 
+    * - bucket_name
+      - String |star|
+      - Bucket Name
+      - A short unique name to assign the bucket.
+      - bucket
+    * - cloudfront_origin
+      - Boolean
+      - Creates and listens for a CloudFront Access Origin Identity
+      - 
+      - False
+    * - deletion_policy
+      - String
+      - Bucket Deletion Policy
+      - 
+      - delete
+    * - external_resource
+      - Boolean
+      - Boolean indicating whether the S3 Bucket already exists or not
+      - 
+      - False
+    * - notifications
+      - Object<S3NotificationConfiguration_>
+      - Notification configuration
+      - 
+      - 
+    * - policy
+      - List<S3BucketPolicy_>
+      - List of S3 Bucket Policies
+      - 
+      - 
+    * - region
+      - String
+      - Bucket region
+      - 
+      - 
+    * - static_website_hosting
+      - Object<S3StaticWebsiteHosting_>
+      - Static website hosting configuration.
+      - 
+      - 
+    * - versioning
+      - Boolean
+      - Enable Versioning on the bucket.
+      - 
+      - False
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
+
+S3BucketPolicy
+^^^^^^^^^^^^^^^
+
+
+S3 Bucket Policy
+    
+
+.. _S3BucketPolicy:
+
+.. list-table:: :guilabel:`S3BucketPolicy`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - action
+      - List<String> |star|
+      - List of Actions
+      - 
+      - 
+    * - aws
+      - List<String>
+      - List of AWS Principles.
+      - Either this field or the principal field must be set.
+      - 
+    * - condition
+      - Dict
+      - Condition
+      - Each Key is the Condition name and the Value must be a dictionary of request filters. e.g. { "StringEquals" : { "aws:username" : "johndoe" }}
+      - {}
+    * - effect
+      - String |star|
+      - Effect
+      - Must be one of: 'Allow', 'Deny'
+      - Deny
+    * - principal
+      - Dict
+      - Prinicpals
+      - Either this field or the aws field must be set. Key should be one of: AWS, Federated, Service or CanonicalUser. Value can be either a String or a List.
+      - {}
+    * - resource_suffix
+      - List<String> |star|
+      - List of AWS Resources Suffixes
+      - 
+      - 
+
+
+
+S3LambdaConfiguration
+^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _S3LambdaConfiguration:
+
+.. list-table:: :guilabel:`S3LambdaConfiguration`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - event
+      - String
+      - S3 bucket event for which to invoke the AWS Lambda function
+      - Must be a supported event type: https://docs.aws.amazon.com/AmazonS3/latest/dev/NotificationHowTo.html
+      - 
+    * - function
+      - PacoReference
+      - Lambda function to notify
+      - Paco Reference to `Lambda`_.
+      - 
+
+
+
+S3NotificationConfiguration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _S3NotificationConfiguration:
+
+.. list-table:: :guilabel:`S3NotificationConfiguration`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - lambdas
+      - List<S3LambdaConfiguration_>
+      - Lambda configurations
+      - 
+      - 
+
+
+# SNS Topic
+
+
+SNSTopic
+---------
+
+
+Simple Notification Service (SNS) Topic resource.
+
+.. sidebar:: Prescribed Automation
+
+    ``cross_account_access``: Creates an SNS Topic Policy which will grant all of the AWS Accounts in this
+    Paco Project access to the ``sns.Publish`` permission for this SNS Topic.
+
+.. code-block:: yaml
+    :caption: Example SNSTopic resource YAML
+
+    type: SNSTopic
+    order: 1
+    enabled: true
+    display_name: "Waterbear Cloud AWS"
+    cross_account_access: true
+    subscriptions:
+      - endpoint: http://example.com/yes
+        protocol: http
+      - endpoint: https://example.com/orno
+        protocol: https
+      - endpoint: bob@example.com
+        protocol: email
+      - endpoint: bob@example.com
+        protocol: email-json
+      - endpoint: '555-555-5555'
+        protocol: sms
+      - endpoint: arn:aws:sqs:us-east-2:444455556666:queue1
+        protocol: sqs
+      - endpoint: arn:aws:sqs:us-east-2:444455556666:queue1
+        protocol: application
+      - endpoint: arn:aws:lambda:us-east-1:123456789012:function:my-function
+        protocol: lambda
+
+
+
+.. _SNSTopic:
+
+.. list-table:: :guilabel:`SNSTopic`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - cross_account_access
+      - Boolean
+      - Cross-account access from all other accounts in this project.
+      - 
+      - False
+    * - display_name
+      - String
+      - Display name for SMS Messages
+      - 
+      - 
+    * - subscriptions
+      - List<SNSTopicSubscription_>
+      - List of SNS Topic Subscriptions
+      - 
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
+
+SNSTopicSubscription
+^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _SNSTopicSubscription:
+
+.. list-table:: :guilabel:`SNSTopicSubscription`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - endpoint
+      - PacoReference|String
+      - SNS Topic ARN or Paco Reference
+      - Paco Reference to `SNSTopic`_. String Ok.
+      - 
+    * - protocol
+      - String
+      - Notification protocol
+      - Must be a valid SNS Topic subscription protocol: 'http', 'https', 'email', 'email-json', 'sms', 'sqs', 'application', 'lambda'.
+      - email
+
+
+# RDS
+
+RDS
+---
+
+Relational Database Service (RDS) is a collection of relational databases.
+
+There is no plain vanilla RDS type, but rather choose the type that specifies which kind of relational database
+engine to use. For example, ``RDSMysql`` for MySQL on RDS or ``RDSAurora`` for an Amazon Aurora database.
+
+If you want to use DB Parameter Groups with your RDS, then use the ``parameter_group`` field to
+reference a DBParameterGroup_ resource. Keeping DB Parameter Group as a separate resource allows you
+to have multiple Paramater Groups provisioned at the same time. For example, you might have both
+resources for ``dbparams_performance`` and ``dbparams_debug``, allowing you to use the AWS
+Console to switch between performance and debug configuration quickl in an emergency.
+
+.. sidebar:: Prescribed Automation
+
+  **Using Secrets Manager with RDS**
+
+  You can set the initial password with ``master_user_password``, however this requires storing a password
+  in plain-text on disk. This is fine if you have a process for changing the password after creating a database,
+  however, the Paco Secrets Manager support allows you to use a ``secrets_password`` instead of the
+  ``master_user_password`` field:
+
+  .. code-block:: yaml
+
+      type: RDSMysql
+      secrets_password: paco.ref netenv.mynet.secrets_manager.app.grp.mysql
+
+  Then in your NetworkEnvironments ``secrets_manager`` configuration you would write:
+
+  .. code-block:: yaml
+
+      secrets_manager:
+        app: # application name
+          grp: # group name
+              mysql: # secret name
+                enabled: true
+                generate_secret_string:
+                  enabled: true
+                  # secret_string_template and generate_string_key must
+                  # have the following values for RDS secrets
+                  secret_string_template: '{"username": "admin"}'
+                  generate_string_key: "password"
+
+  This would generate a new, random password in the AWS Secrets Manager service when the database is provisioned
+  and connect that password with RDS.
+
+.. code-block:: yaml
+  :caption: RDSMysql resource example
+
+  type: RDSMysql
+  order: 1
+  title: "Joe's MySQL Database server"
+  enabled: true
+  engine_version: 5.7.26
+  db_instance_type: db.t3.micro
+  port: 3306
+  storage_type: gp2
+  storage_size_gb: 20
+  storage_encrypted: true
+  multi_az: true
+  allow_major_version_upgrade: false
+  auto_minor_version_upgrade: true
+  publically_accessible: false
+  master_username: root
+  master_user_password: "change-me"
+  backup_preferred_window: 08:00-08:30
+  backup_retention_period: 7
+  maintenance_preferred_window: 'sat:10:00-sat:10:30'
+  license_model: "general-public-license"
+  cloudwatch_logs_exports:
+    - error
+    - slowquery
+  security_groups:
+    - paco.ref netenv.mynet.network.vpc.security_groups.app.database
+  segment: paco.ref netenv.mynet.network.vpc.segments.private
+  primary_domain_name: database.example.internal
+  primary_hosted_zone: paco.ref netenv.mynet.network.vpc.private_hosted_zone
+  parameter_group: paco.ref netenv.mynet.applications.app.groups.web.resources.dbparams_performance
+
+
+
+
+RDSOptionConfiguration
+^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Option groups enable and configure features that are specific to a particular DB engine.
+    
+
+.. _RDSOptionConfiguration:
+
+.. list-table:: :guilabel:`RDSOptionConfiguration`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - option_name
+      - String
+      - Option Name
+      - 
+      - 
+    * - option_settings
+      - List<NameValuePair_>
+      - List of option name value pairs.
+      - 
+      - 
+    * - option_version
+      - String
+      - Option Version
+      - 
+      - 
+    * - port
+      - String
+      - Port
+      - 
+      - 
+
+
+
+NameValuePair
+^^^^^^^^^^^^^^
+
+A Name/Value pair to use for RDS Option Group configuration
+
+.. _NameValuePair:
+
+.. list-table:: :guilabel:`NameValuePair`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - name
+      - String
+      - Name
+      - 
+      - 
+    * - value
+      - String
+      - Value
+      - 
+      - 
+
+
+
+RDSMysql
+^^^^^^^^^
+
+
+The RDSMysql type extends the base RDS schema with a ``multi_az`` field. When you provision a Multi-AZ DB Instance,
+Amazon RDS automatically creates a primary DB Instance and synchronously replicates the data to a standby instance
+in a different Availability Zone (AZ).
+    
+
+.. _RDSMysql:
+
+.. list-table:: :guilabel:`RDSMysql`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - multi_az
+      - Boolean
+      - Multiple Availability Zone deployment
+      - 
+      - False
+
+*Base Schemas* `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
+
+
+RDSAurora
+^^^^^^^^^^
+
+
+RDS Aurora
+    
+
+.. _RDSAurora:
+
+.. list-table:: :guilabel:`RDSAurora`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - secondary_domain_name
+      - PacoReference|String
+      - Secondary Domain Name
+      - Paco Reference to `Route53HostedZone`_. String Ok.
+      - 
+    * - secondary_hosted_zone
+      - PacoReference
+      - Secondary Hosted Zone
+      - Paco Reference to `Route53HostedZone`_.
+      - 
+
+*Base Schemas* `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
+
+
+DBParameterGroup
+^^^^^^^^^^^^^^^^^
+
+
+DBParameterGroup
+    
+
+.. _DBParameterGroup:
+
+.. list-table:: :guilabel:`DBParameterGroup`
     :widths: 15 28 30 16 11
     :header-rows: 1
 
@@ -6681,55 +6631,23 @@ Events Rule
       - Description
       - 
       - 
-    * - schedule_expression
+    * - family
       - String |star|
-      - Schedule Expression
+      - Database Family
       - 
       - 
-    * - targets
-      - List<PacoReference> |star|
-      - The AWS Resources that are invoked when the Rule is triggered.
-      - Paco Reference to `Interface`_.
+    * - parameters
+      - Container<DBParameters_> |star|
+      - Database Parameter set
+      - 
       - 
 
 *Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
+DBParameters
+^^^^^^^^^^^^
 
-EBS
-----
-
-
-Elastic Block Store Volume
-    
-
-.. _EBS:
-
-.. list-table:: :guilabel:`EBS`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - availability_zone
-      - Int |star|
-      - Availability Zone to create Volume in.
-      - 
-      - 
-    * - size_gib
-      - Int |star|
-      - Volume Size in GiB
-      - 
-      - 10
-    * - volume_type
-      - String
-      - Volume Type
-      - Must be one of: gp2 | io1 | sc1 | st1 | standard
-      - gp2
-
-*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+A unconstrainted set of key-value pairs.
 
 
 NetEnv - secrets_manager:
