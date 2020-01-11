@@ -520,6 +520,8 @@ NetEnv - resources:
 At it's heart, an Application is a collection of Resources. These are the Resources available for
 applications.
 
+# API Gateway schemas
+
 {IApiGatewayRestApi}
 
 {IApiGatewayMethods}
@@ -546,21 +548,7 @@ applications.
 
 {IApiGatewayMethodMethodResponseModel}
 
-{ILBApplication}
-
-{IDNS}
-
-{IListeners}
-
-{IListener}
-
-{IListenerRule}
-
-{IPortProtocol}
-
-{ITargetGroups}
-
-{ITargetGroup}
+# ASG Schemas
 
 {IASG}
 
@@ -571,6 +559,8 @@ applications.
 {IASGScalingPolicies}
 
 {IASGScalingPolicy}
+
+{IASGRollingUpdatePolicy}
 
 {IBlockDeviceMapping}
 
@@ -616,15 +606,149 @@ applications.
 
 {ICloudFormationInitUsers}
 
-{ICodePipeBuildDeploy}
+# ACM
 
 {IAWSCertificateManager}
+
+# CloudFront
+
+{ICloudFront}
+
+{ICloudFrontDefaultCacheBehavior}
+
+{ICloudFrontCacheBehavior}
+
+{ICloudFrontFactory}
+
+{ICloudFrontOrigin}
+
+{ICloudFrontCustomOriginConfig}
+
+{ICloudFrontCustomErrorResponse}
+
+{ICloudFrontViewerCertificate}
+
+{ICloudFrontForwardedValues}
+
+{ICloudFrontCookies}
+
+# CodeDeploy schemas
 
 {ICodeDeployApplication}
 
 {ICodeDeployDeploymentGroups}
 
 {ICodeDeployDeploymentGroup}
+
+# Deployment Pipeline
+
+{IDeploymentPipeline}
+
+{IDeploymentPipelineSourceStage}
+
+{IDeploymentPipelineDeployStage}
+
+{IDeploymentPipelineBuildStage}
+
+{IDeploymentPipelineDeployCodeDeploy}
+
+{ICodeDeployMinimumHealthyHosts}
+
+{IDeploymentPipelineManualApproval}
+
+{IDeploymentPipelineDeployS3}
+
+{IDeploymentPipelineBuildCodeBuild}
+
+{IDeploymentPipelineSourceCodeCommit}
+
+{IDeploymentPipelineStageAction}
+
+{IDeploymentPipelineConfiguration}
+
+{IDeploymentGroupS3Location}
+
+# EBS
+
+{IEBS}
+
+# EC2
+
+{IEC2}
+
+# EIP
+
+{IEIP}
+
+# EFS
+
+{IEFS}
+
+# ElasticCache
+
+{IElastiCache}
+
+{IElastiCacheRedis}
+
+# Events Rule
+
+{IEventsRule}
+
+# Lambda
+
+{ILambda}
+
+{ILambdaFunctionCode}
+
+{ILambdaEnvironment}
+
+{ILambdaVpcConfig}
+
+{ILambdaVariable}
+
+# LBApplication schemas
+
+{ILBApplication}
+
+{IDNS}
+
+{IListeners}
+
+{IListener}
+
+{IListenerRule}
+
+{IPortProtocol}
+
+{ITargetGroups}
+
+{ITargetGroup}
+
+# Managed Policy
+
+{IManagedPolicy}
+
+# Route 53 Health Check
+
+{IRoute53HealthCheck}
+
+# S3 Bucket
+
+{IS3Bucket}
+
+{IS3BucketPolicy}
+
+{IS3LambdaConfiguration}
+
+{IS3NotificationConfiguration}
+
+# SNS Topic
+
+{ISNSTopic}
+
+{ISNSTopicSubscription}
+
+# RDS
 
 RDS
 ---
@@ -710,6 +834,8 @@ Console to switch between performance and debug configuration quickl in an emerg
 
 {IRDSOptionConfiguration}
 
+{INameValuePair}
+
 {IRDSMysql}
 
 {IRDSAurora}
@@ -717,99 +843,9 @@ Console to switch between performance and debug configuration quickl in an emerg
 {IDBParameterGroup}
 
 DBParameters
-------------
+^^^^^^^^^^^^
 
 A unconstrainted set of key-value pairs.
-
-{IEC2}
-
-{ILambda}
-
-{ILambdaFunctionCode}
-
-{ILambdaEnvironment}
-
-{ILambdaVpcConfig}
-
-{ILambdaVariable}
-
-{IManagedPolicy}
-
-{IS3Bucket}
-
-{IS3BucketPolicy}
-
-{IS3StaticWebsiteHosting}
-
-{IS3StaticWebsiteHostingRedirectRequests}
-
-{IS3LambdaConfiguration}
-
-{IS3NotificationConfiguration}
-
-{ISNSTopic}
-
-{ISNSTopicSubscription}
-
-{ICloudFront}
-
-{ICloudFrontDefaultCacheBehavior}
-
-{ICloudFrontCacheBehavior}
-
-{ICloudFrontFactory}
-
-{ICloudFrontOrigin}
-
-{ICloudFrontCustomOriginConfig}
-
-{ICloudFrontCustomErrorResponse}
-
-{ICloudFrontViewerCertificate}
-
-{ICloudFrontForwardedValues}
-
-{ICloudFrontCookies}
-
-{IElastiCache}
-
-{IElastiCacheRedis}
-
-{IDeploymentPipeline}
-
-{IDeploymentPipelineSourceStage}
-
-{IDeploymentPipelineDeployStage}
-
-{IDeploymentPipelineBuildStage}
-
-{IDeploymentPipelineDeployCodeDeploy}
-
-{ICodeDeployMinimumHealthyHosts}
-
-{IDeploymentPipelineManualApproval}
-
-{IDeploymentPipelineDeployS3}
-
-{IDeploymentPipelineBuildCodeBuild}
-
-{IDeploymentPipelineSourceCodeCommit}
-
-{IDeploymentPipelineStageAction}
-
-{IDeploymentPipelineConfiguration}
-
-{IDeploymentGroupS3Location}
-
-{IEFS}
-
-{IEIP}
-
-{IRoute53HealthCheck}
-
-{IEventsRule}
-
-{IEBS}
 
 
 NetEnv - secrets_manager:
@@ -1249,13 +1285,14 @@ MINOR_SCHEMAS = {
     'IApiGatewayResource': None,
     'IApiGatewayStages': None,
     'IApiGatewayStage': None,
-    'IApiGatewayMethodMethodResponse'
+    'IApiGatewayMethodMethodResponse': None,
     'IApiGatewayMethodMethodResponseModel': None,
     'IApiGatewayMethodIntegration': None,
     'IApiGatewayMethodIntegrationResponse': None,
     'IDNS': None,
     'IASGLifecycleHook': None,
     'IASGScalingPolicy': None,
+    'IASGRollingUpdatePolicy': None,
     'IListener': None,
     'ITargetGroup': None,
     'IListeners': None,
@@ -1280,6 +1317,7 @@ MINOR_SCHEMAS = {
     'IRDSOptionConfiguration': None,
     'INameValuePair': None,
     'IDBParameters': None,
+    'IDBParameterGroup': None,
     'ILambdaFunctionCode': None,
     'ILambdaEnvironment': None,
     'ILambdaVpcConfig': None,
