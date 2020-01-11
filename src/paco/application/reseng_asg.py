@@ -10,12 +10,18 @@ class ASGResourceEngine(ResourceEngine):
 
     @property
     def stack_name(self):
-        stack_name = '-'.join([
+        name_list = [
             self.app_engine.get_aws_name(),
-            'ASG',
             self.grp_id,
             self.res_id
-        ])
+        ]
+
+        if self.paco_ctx.legacy_flag('cftemplate_aws_name_2019_09_17') == True:
+            name_list.insert(1, 'ASG')
+        else:
+            name_list.append('ASG')
+
+        stack_name = '-'.join(name_list)
         return stack_name
 
     def init_resource(self):
