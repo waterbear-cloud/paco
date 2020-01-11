@@ -23,8 +23,8 @@ class BackupVault(CFTemplate):
             stack_group=stack_group,
             stack_tags=stack_tags
         )
-        self.set_aws_name('BackupVault')
-        self.init_template('Backup Vault')
+        self.set_aws_name(vault.name)
+        self.init_template('Backup Vault: ' + vault.name)
         self.paco_ctx.log_action_col("Init", "Backup", "Vault")
         is_enabled = vault.is_enabled()
         if not is_enabled:
