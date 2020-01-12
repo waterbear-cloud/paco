@@ -1350,6 +1350,7 @@ MINOR_SCHEMAS = {
     'ICodeCommitRepositoryGroup': None,
     'ICodeCommitRepositoryGroups': None,
     'ICodeCommitUser': None,
+    'ICloudFormationInit': None,
     'ICloudFormationConfiguration': None,
     'ICloudFormationInitCommands': None,
     'ICloudFormationInitCommand': None,

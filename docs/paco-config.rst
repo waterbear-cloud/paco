@@ -2791,24 +2791,36 @@ logical grouping for the purposes of automatic scaling and management.
 The Paco ASG resource provisions an AutoScalingGroup as well as LaunchConfiguration and TargetGroups
 for that ASG.
 
+
 .. sidebar:: Prescribed Automation
+
+    ASGs use Paco's **LaunchBundles**. A LaunchBundle is a zip file of code and configuration files that is
+    automatically created and stored in an S3 Bucket that the ASG has read permissions to. Paco adds BASH code
+    to the UserData script for the ASG's LaunchConfiguration that will iterate through all of the LaunchBundles
+    and download and run them. For example, if you specify in-host metrics for an ASG, it will have a LaunchBundle
+    created with the necessary CloudWatch agent configuration and a BASH script to install and configure the agent.
 
     ``cfn_init``: Contains CloudFormationInit (cfn-init) configuration. Paco allows reading cfn-init
     files from the filesystem, and also does additional validation checks on the configuration to ensure
-    it is correct. The ``launch_options`` has a ``cfn_init_config_sets`` field which can specify which
-    CfnInitConfigurationSets you want to automatically call during instance launch.
+    it is correct. The ``launch_options`` has a ``cfn_init_config_sets`` field to specify which
+    CfnInitConfigurationSets you want to automatically call during instance launch with a LaunchBundle.
 
-    ``ebs_volume_mounts``: Adds an EBS LaunchBundle to the UserData script that mounts all EBS Volumes
+    ``ebs_volume_mounts``: Adds an EBS LaunchBundle that mounts all EBS Volumes
     to the EC2 instance launched by the ASG. If the EBS Volume is unformatted, it will be formatted to the
     specified filesystem. **This feature only works with "self-healing" ASGs**. A "self-healing" ASG is an ASG
     with ``max_instances`` set to 1. Trying to launch a second instance in the ASG will fail to mount the EBS Volume
     as it can only be mounted to one instance at a time.
 
-    ``efs_mounts``: Adds an EFS LaunchBundle to the UserData script that mounts all EFS locations. A SecurityGroup
+    ``eip``: Adds an EIP LaunchBundle which will attach an Elastic IP to a launched instance.
+    **This feature only works with "self-healing" ASGs**. A "self-healing" ASG is an ASG
+    with ``max_instances`` set to 1. Trying to launch a second instance in the ASG will fail to attach the EIP
+    as it can only be mounted to one instance at a time.
+
+    ``efs_mounts``: Adds an EFS LaunchBundle that mounts all EFS locations. A SecurityGroup
     must still be manually configured to allow the ASG instances to network access to the EFS filesystem.
 
     ``monitoring``: Any fields specified in the ``metrics`` or ``log_sets`` fields will add a CloudWatchAgent LaunchBundle
-    to the UserData script that will install a CloudWatch Agent and configure it to collect all specified metrics and log sources.
+    that will install a CloudWatch Agent and configure it to collect all specified metrics and log sources.
 
     ``secrets``: Adds a policy to the Instance Role which allows instances to access the specified secrets.
 
@@ -3481,7 +3493,7 @@ EC2 Launch Options
 
 
 CloudFormationInit
--------------------
+^^^^^^^^^^^^^^^^^^^
 
 
 `CloudFormation Init`_ is a method to configure an EC2 instance after it is launched.
@@ -4576,7 +4588,16 @@ CodeDeployApplication
 ----------------------
 
 
-CodeDeploy Application
+CodeDeploy Application creates CodeDeploy Application and Deployment Groups for that application.
+
+This resource can be used when you already have another process in-place to put deploy artifacts
+into an S3 Bucket. If you also need to build artifacts, use `DeploymentPipeline`_ instead.
+
+.. sidebar:: Prescribed Automation
+
+    **CodeDeploy Service Role**: The AWS CodeDeploy service needs a Service Role that it is allowed to
+    assume to allow the service to run in your AWS Account. Paco will automatically create such a service
+    role for every CodeDeploy Application.
 
 .. code-block:: yaml
     :caption: Example CodeDeployApplication resource YAML
@@ -4591,6 +4612,33 @@ CodeDeploy Application
         revision_location_s3: paco.ref netenv.mynet.applications.app.groups.deploybucket
         autoscalinggroups:
           - paco.ref netenv.mynet.applications.app.groups.web
+
+It can be convienent to install the CodeDeploy agent on your instances using CloudFormationInit.
+
+.. code-block:: yaml
+    :caption: Example ASG configuration for cfn_init to install CodeDeploy agent
+
+    launch_options:
+      cfn_init_config_sets:
+        - "InstallCodeDeploy"
+    cfn_init:
+      config_sets:
+        InstallCodeDeploy:
+          - "InstallCodeDeploy"
+      files:
+        "/tmp/install_codedeploy.sh":
+          source: https://aws-codedeploy-us-west-2.s3.us-west-2.amazonaws.com/latest/install
+          mode: '000700'
+          owner: root
+          group: root
+      commands:
+        01_install_codedeploy:
+          command: "/tmp/install_codedeploy.sh auto > /var/log/cfn-init-codedeploy.log 2>&1"
+      services:
+        sysvinit:
+          codedeploy-agent:
+            enabled: true
+            ensure_running: true
 
 
 
@@ -5143,7 +5191,23 @@ EBS
 ----
 
 
-Elastic Block Store Volume
+Elastic Block Store (EBS) Volume.
+
+It is required to specify the ``availability_zone`` the EBS Volume will be created in.
+If the volume is going to be used by an ASG, it should launch an instance in the same
+``availability_zone`` (and region).
+
+.. code-block:: yaml
+    :caption: Example EBS resource YAML
+
+    my_volume:
+      type: EBS
+      order: 5
+      enabled: true
+      size_gib: 4
+      volume_type: gp2
+      availability_zone: 1
+
     
 
 .. _EBS:
@@ -5254,7 +5318,24 @@ EIP
 ----
 
 
-Elastic IP
+Elastic IP (EIP) resource.
+
+.. sidebar:: Prescribed Automation
+
+    ``dns``: Adds a DNS CNAME to resolve to this EIP's IP address to the Route 53 HostedZone.
+
+.. code-block:: yaml
+    :caption: Example EIP resource YAML
+
+    eip:
+      type: EIP
+      order: 5
+      enabled: true
+      dns:
+        - domain_name: example.com
+          hosted_zone: paco.ref resource.route53.examplecom
+          ttl: 60
+
     
 
 .. _EIP:
