@@ -520,8 +520,6 @@ NetEnv - resources:
 At it's heart, an Application is a collection of Resources. These are the Resources available for
 applications.
 
-# API Gateway schemas
-
 {IApiGatewayRestApi}
 
 {IApiGatewayMethods}
@@ -548,7 +546,6 @@ applications.
 
 {IApiGatewayMethodMethodResponseModel}
 
-# ASG Schemas
 
 {IASG}
 
@@ -606,11 +603,9 @@ applications.
 
 {ICloudFormationInitUsers}
 
-# ACM
 
 {IAWSCertificateManager}
 
-# CloudFront
 
 {ICloudFront}
 
@@ -632,7 +627,6 @@ applications.
 
 {ICloudFrontCookies}
 
-# CodeDeploy schemas
 
 {ICodeDeployApplication}
 
@@ -640,7 +634,6 @@ applications.
 
 {ICodeDeployDeploymentGroup}
 
-# Deployment Pipeline
 
 {IDeploymentPipeline}
 
@@ -668,33 +661,26 @@ applications.
 
 {IDeploymentGroupS3Location}
 
-# EBS
 
 {IEBS}
 
-# EC2
 
 {IEC2}
 
-# EIP
 
 {IEIP}
 
-# EFS
 
 {IEFS}
 
-# ElasticCache
 
 {IElastiCache}
 
 {IElastiCacheRedis}
 
-# Events Rule
 
 {IEventsRule}
 
-# Lambda
 
 {ILambda}
 
@@ -706,7 +692,6 @@ applications.
 
 {ILambdaVariable}
 
-# LBApplication schemas
 
 {ILBApplication}
 
@@ -724,15 +709,12 @@ applications.
 
 {ITargetGroup}
 
-# Managed Policy
 
 {IManagedPolicy}
 
-# Route 53 Health Check
 
 {IRoute53HealthCheck}
 
-# S3 Bucket
 
 {IS3Bucket}
 
@@ -742,13 +724,11 @@ applications.
 
 {IS3NotificationConfiguration}
 
-# SNS Topic
 
 {ISNSTopic}
 
 {ISNSTopicSubscription}
 
-# RDS
 
 RDS
 ---
