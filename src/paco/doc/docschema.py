@@ -971,38 +971,14 @@ The ``monitor`` directory can contain two files: ``monitor/alarmsets.yaml`` and 
 contain CloudWatch Alarm and CloudWatch Agent Log Source configuration. These alarms and log sources
 are grouped into named sets, and sets of alarms and logs can be applied to resources.
 
-Currently only support for CloudWatch, but it is intended in the future to support other alarm and log sets.
+Currently only CloudWatch is supported, but it is intended in the future to support other monitoring and logging services
+in the future.
 
-AlarmSets are first named by AWS Resource Type, then by the name of the AlarmSet. Each name in an AlarmSet is
-an Alarm.
-
-
-.. code-block:: yaml
-
-    # AutoScalingGroup alarms
-    ASG:
-        launch-health:
-            GroupPendingInstances-Low:
-                # alarm config here ...
-            GroupPendingInstances-Critical:
-                # alarm config here ...
-
-    # Application LoadBalancer alarms
-    LBApplication:
-        instance-health:
-            HealthyHostCount-Critical:
-                # alarm config here ...
-        response-latency:
-            TargetResponseTimeP95-Low:
-                # alarm config here ...
-            HTTPCode_Target_4XX_Count-Low:
-                # alarm config here ...
-
-{IAlarm}
+{IAlarmSets}
 
 {IAlarmSet}
 
-{IAlarmSets}
+{IAlarm}
 
 {IDimension}
 
@@ -1010,9 +986,18 @@ an Alarm.
 
 {IAlarmNotification}
 
-{IHealthChecks}
-
 {ISimpleCloudWatchAlarm}
+
+{IMetricFilters}
+
+{IMetricFilter}
+
+{IMetricTransformation}
+
+{IMetric}
+
+
+{ICloudWatchLogging}
 
 {ICloudWatchLogRetention}
 
@@ -1028,13 +1013,8 @@ an Alarm.
 
 {ICloudWatchLogSource}
 
-{IMetricFilters}
 
-{IMetricFilter}
-
-{IMetricTransformation}
-
-{IMetric}
+{IHealthChecks}
 
 """
 
@@ -1390,6 +1370,23 @@ MINOR_SCHEMAS = {
     'IRoute53HostedZoneExternalResource': None,
     'IRoute53RecordSet': None,
     'IEC2KeyPair': None,
+    'IAlarm': None,
+    'IAlarmSet': None,
+    'IDimension': None,
+    'IAlarmNotifications': None,
+    'IAlarmNotification': None,
+    'ISimpleCloudWatchAlarm': None,
+    'IMetricFilters': None,
+    'IMetricFilter': None,
+    'IMetricTransformation': None,
+    'IMetric': None,
+    'ICloudWatchLogRetention': None,
+    'ICloudWatchLogSets': None,
+    'ICloudWatchLogSet': None,
+    'ICloudWatchLogGroups': None,
+    'ICloudWatchLogGroup': None,
+    'ICloudWatchLogSources': None,
+    'ICloudWatchLogSource': None,
 }
 
 def create_tables_from_schema():

@@ -7470,13 +7470,21 @@ The ``monitor`` directory can contain two files: ``monitor/alarmsets.yaml`` and 
 contain CloudWatch Alarm and CloudWatch Agent Log Source configuration. These alarms and log sources
 are grouped into named sets, and sets of alarms and logs can be applied to resources.
 
-Currently only support for CloudWatch, but it is intended in the future to support other alarm and log sets.
+Currently only CloudWatch is supported, but it is intended in the future to support other monitoring and logging services
+in the future.
 
-AlarmSets are first named by AWS Resource Type, then by the name of the AlarmSet. Each name in an AlarmSet is
-an Alarm.
+
+AlarmSets
+----------
+
+
+Alarm Sets are defined in the file ``monitor/alarmsets.yaml``.
+
+AlarmSets are named to match a Paco Resource type, then a unique AlarmSet name.
 
 
 .. code-block:: yaml
+    :caption: Structure of an alarmets.yaml file
 
     # AutoScalingGroup alarms
     ASG:
@@ -7497,9 +7505,30 @@ an Alarm.
             HTTPCode_Target_4XX_Count-Low:
                 # alarm config here ...
 
+    
+
+.. _AlarmSets:
+
+.. list-table:: :guilabel:`AlarmSets` |bars| Container<`AlarmSet`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
 
 Alarm
-------
+^^^^^^
 
 
 An Alarm
@@ -7546,7 +7575,7 @@ An Alarm
 
 
 AlarmSet
----------
+^^^^^^^^^
 
 
 A container of Alarm objects.
@@ -7572,35 +7601,8 @@ A container of Alarm objects.
 *Base Schemas* `Named`_, `Notifiable`_, `Title`_
 
 
-AlarmSets
-----------
-
-
-A container of `AlarmSet`_ objects.
-    
-
-.. _AlarmSets:
-
-.. list-table:: :guilabel:`AlarmSets` |bars| Container<`AlarmSet`_>
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * -
-      -
-      -
-      -
-      -
-
-*Base Schemas* `Named`_, `Title`_
-
-
 Dimension
-----------
+^^^^^^^^^^
 
 
 A dimension of a metric
@@ -7631,7 +7633,7 @@ A dimension of a metric
 
 
 AlarmNotifications
--------------------
+^^^^^^^^^^^^^^^^^^^
 
 
 Container for `AlarmNotification`_ objects.
@@ -7658,7 +7660,7 @@ Container for `AlarmNotification`_ objects.
 
 
 AlarmNotification
-------------------
+^^^^^^^^^^^^^^^^^^
 
 
 Alarm Notification
@@ -7690,31 +7692,6 @@ Alarm Notification
       - Severity filter
       - Must be one of: 'low', 'critical'
       - 
-
-*Base Schemas* `Named`_, `Title`_
-
-
-HealthChecks
--------------
-
-Container for `Route53HealthCheck`_ objects.
-
-.. _HealthChecks:
-
-.. list-table:: :guilabel:`HealthChecks` |bars| Container<`Route53HealthCheck`_>
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * -
-      -
-      -
-      -
-      -
 
 *Base Schemas* `Named`_, `Title`_
 
@@ -7790,6 +7767,185 @@ A Simple CloudWatch Alarm
 
 
 
+MetricFilters
+^^^^^^^^^^^^^^
+
+
+Container for `Metric`Filter` objects.
+    
+
+.. _MetricFilters:
+
+.. list-table:: :guilabel:`MetricFilters` |bars| Container<`MetricFilter`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+MetricFilter
+^^^^^^^^^^^^^
+
+
+    Metric filter
+    
+
+.. _MetricFilter:
+
+.. list-table:: :guilabel:`MetricFilter`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - filter_pattern
+      - String
+      - Filter pattern
+      - 
+      - 
+    * - metric_transformations
+      - List<MetricTransformation_>
+      - Metric transformations
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+MetricTransformation
+^^^^^^^^^^^^^^^^^^^^^
+
+
+Metric Transformation
+    
+
+.. _MetricTransformation:
+
+.. list-table:: :guilabel:`MetricTransformation`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - default_value
+      - Float
+      - The value to emit when a filter pattern does not match a log event.
+      - 
+      - 
+    * - metric_name
+      - String |star|
+      - The name of the CloudWatch Metric.
+      - 
+      - 
+    * - metric_namespace
+      - String
+      - The namespace of the CloudWatch metric. If not set, the namespace used will be 'AIM/{log-group-name}'.
+      - 
+      - 
+    * - metric_value
+      - String |star|
+      - The value that is published to the CloudWatch metric.
+      - 
+      - 
+
+
+
+Metric
+^^^^^^^
+
+
+A set of metrics to collect and an optional collection interval:
+
+- name: disk
+    measurements:
+    - free
+    collection_interval: 900
+    
+
+.. _Metric:
+
+.. list-table:: :guilabel:`Metric`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - collection_interval
+      - Int
+      - Collection interval
+      - 
+      - 
+    * - drop_device
+      - Boolean
+      - Drops the device name from disk metrics
+      - 
+      - True
+    * - measurements
+      - List<String>
+      - Measurements
+      - 
+      - 
+    * - name
+      - String
+      - Metric(s) group name
+      - 
+      - 
+    * - resources
+      - List<String>
+      - List of resources for this metric
+      - 
+      - 
+
+
+
+
+CloudWatchLogging
+------------------
+
+
+CloudWatch Logging configuration
+    
+
+.. _CloudWatchLogging:
+
+.. list-table:: :guilabel:`CloudWatchLogging`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - log_sets
+      - Container<CloudWatchLogSets_>
+      - A CloudWatchLogSets container
+      - 
+      - 
+
+*Base Schemas* `CloudWatchLogRetention`_, `Named`_, `Title`_
+
+
 CloudWatchLogRetention
 ^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -7815,7 +7971,7 @@ CloudWatchLogRetention
 
 
 CloudWatchLogSets
-------------------
+^^^^^^^^^^^^^^^^^^
 
 
 Container for `CloudWatchLogSet`_ objects.
@@ -7842,7 +7998,7 @@ Container for `CloudWatchLogSet`_ objects.
 
 
 CloudWatchLogSet
------------------
+^^^^^^^^^^^^^^^^^
 
 
 A set of Log Group objects
@@ -8011,16 +8167,15 @@ Log source for a CloudWatch agent.
 *Base Schemas* `CloudWatchLogRetention`_, `Named`_, `Title`_
 
 
-MetricFilters
-^^^^^^^^^^^^^^
 
+HealthChecks
+-------------
 
-Container for `Metric`Filter` objects.
-    
+Container for `Route53HealthCheck`_ objects.
 
-.. _MetricFilters:
+.. _HealthChecks:
 
-.. list-table:: :guilabel:`MetricFilters` |bars| Container<`MetricFilter`_>
+.. list-table:: :guilabel:`HealthChecks` |bars| Container<`Route53HealthCheck`_>
     :widths: 15 28 30 16 11
     :header-rows: 1
 
@@ -8036,128 +8191,4 @@ Container for `Metric`Filter` objects.
       -
 
 *Base Schemas* `Named`_, `Title`_
-
-
-MetricFilter
-^^^^^^^^^^^^^
-
-
-    Metric filter
-    
-
-.. _MetricFilter:
-
-.. list-table:: :guilabel:`MetricFilter`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - filter_pattern
-      - String
-      - Filter pattern
-      - 
-      - 
-    * - metric_transformations
-      - List<MetricTransformation_>
-      - Metric transformations
-      - 
-      - 
-
-*Base Schemas* `Named`_, `Title`_
-
-
-MetricTransformation
-^^^^^^^^^^^^^^^^^^^^^
-
-
-Metric Transformation
-    
-
-.. _MetricTransformation:
-
-.. list-table:: :guilabel:`MetricTransformation`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - default_value
-      - Float
-      - The value to emit when a filter pattern does not match a log event.
-      - 
-      - 
-    * - metric_name
-      - String |star|
-      - The name of the CloudWatch Metric.
-      - 
-      - 
-    * - metric_namespace
-      - String
-      - The namespace of the CloudWatch metric. If not set, the namespace used will be 'AIM/{log-group-name}'.
-      - 
-      - 
-    * - metric_value
-      - String |star|
-      - The value that is published to the CloudWatch metric.
-      - 
-      - 
-
-
-
-Metric
--------
-
-
-A set of metrics to collect and an optional collection interval:
-
-- name: disk
-    measurements:
-    - free
-    collection_interval: 900
-    
-
-.. _Metric:
-
-.. list-table:: :guilabel:`Metric`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - collection_interval
-      - Int
-      - Collection interval
-      - 
-      - 
-    * - drop_device
-      - Boolean
-      - Drops the device name from disk metrics
-      - 
-      - True
-    * - measurements
-      - List<String>
-      - Measurements
-      - 
-      - 
-    * - name
-      - String
-      - Metric(s) group name
-      - 
-      - 
-    * - resources
-      - List<String>
-      - List of resources for this metric
-      - 
-      - 
-
 
