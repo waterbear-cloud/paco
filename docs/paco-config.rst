@@ -7505,6 +7505,393 @@ AlarmSets are named to match a Paco Resource type, then a unique AlarmSet name.
             HTTPCode_Target_4XX_Count-Low:
                 # alarm config here ...
 
+
+The base `Alarm`_ schema contains fields to add additional metadata to alarms. For CloudWatchAlarms, this
+metadata set in the AlarmDescription field as JSON:
+
+Alarms can have different contexts, which increases the number of metadata that is populated in the AlarmDescription field:
+
+ * Global context. Only has base context. e.g. a CloudTrail log alarm.
+
+ * NetworkEnvironmnet context. Base and NetworkEnvironment context. e.g. a VPC flow log alarm.
+
+ * Application context alarm. Base, NetworkEnvironment and Application contexts. e,g, an external HTTP health check alarm
+
+ * Resource context alarm. Base, NetworkEnvironment, Application and Resource contexts. e.g. an AutoScalingGroup CPU alarm
+
+.. code-block:: yaml
+
+    Base context for all alarms
+    ----------------------------
+
+    "project_name": Project name
+    "project_title": Project title
+    "account_name": Account name
+    "alarm_name": Alarm name
+    "classification": Classification
+    "severity": Severity
+    "topic_arns": SNS Topic ARN subscriptions
+    "description": Description (only if supplied)
+    "runbook_url": Runbook URL (only if supplied)
+
+    NetworkEnvironment context alarms
+    ---------------------------------
+
+    "netenv_name": NetworkEnvironment name
+    "netenv_title": NetworkEnvironment title
+    "env_name": Environment name
+    "env_title": Environment title
+    "envreg_name": EnvironmentRegion name
+    "envreg_title": EnvironmentRegion title
+
+    Application context alarms
+    --------------------------
+
+    "app_name": Application name
+    "app_title": Application title
+
+     Resource context alarms
+     -----------------------
+
+    "resource_group_name": Resource Group name
+    "resource_group_title": Resource Group title
+    "resource_name": Resource name
+    "resource_title": Resource title
+
+Alarms can be set in the ``monitoring:`` field for `Application`_ and `Resource`_ objects. The name of
+each `AlarmSet` should be listed in the ``alarm_sets:`` field. It is possible to override the individual fields of
+an Alarm in a netenv file.
+
+.. code-block:: yaml
+    :caption: Examples of adding AlarmSets to Environmnets
+
+    environments:
+      prod:
+        title: "Production"
+        default:
+          enabled: true
+          applications:
+            app:
+              monitoring:
+                enabled: true
+                alarm_sets:
+                  special-app-alarms:
+              groups:
+                site:
+                  resources:
+                    alb:
+                      monitoring:
+                        enabled: true
+                        alarm_sets:
+                          core:
+                          performance:
+                            # Override the SlowTargetResponseTime Alarm threshold field
+                            SlowTargetResponseTime:
+                              threshold: 2.0
+
+Stylistically, ``monitoring`` and ``alarm_sets`` can be specified in the base ``applications:`` section in a netenv file,
+and set to ``enabled: false``. Then only the production environment can override the enabled field to true. This makes it
+easy to enable a dev or test environment if you want to test alarms before using in a production environment.
+
+Alternatively, you may wish to only specify the monitoring in the ``environments:`` section of your netenv file only
+for production, and keep the base ``applications:`` configuration shorter.
+
+
+Alarm notifications tell alarms which SNS Topics to notify. Alarm notifications are set with the ``notifications:`` field
+at the `Application`_, `Resource`_, `AlarmSet`_ and `Alarm`_ level.
+
+.. code-block:: yaml
+    :caption: Examples of Alarm notifications
+
+    applications:
+      app:
+        enabled: true
+        # Application level notifications
+        notifications:
+          ops_team:
+            groups:
+            - cloud_ops
+        groups:
+          site:
+            resources:
+              web:
+                monitoring:
+                  # Resource level notifications
+                  notifications:
+                    web_team:
+                      groups:
+                      - web
+                  alarm_sets:
+                    instance-health-cwagent:
+                      notifications:
+                        # AlarmSet notifications
+                        alarmsetnotif:
+                          groups:
+                          - misterteam
+                      SwapPercent-Low:
+                        # Alarm level notifications
+                        notifications:
+                          singlealarm:
+                            groups:
+                            - oneguygetsthis
+
+Notifications can be filtered for specific ``severity`` and ``classification`` levels. This allows you to direct
+critical severity to one group and low severity to another, or to send only performance classification alarms to one
+group and security classification alarms to another.
+
+.. code-block:: yaml
+    :caption: Examples of severity and classification filters
+
+    notifications:
+      severe_security:
+        groups:
+        - security_group
+        severity: 'critical'
+        classification: 'security'
+
+Note that although you can configure multiple SNS Topics to subscribe to a single alarm, CloudWatch has a maximum
+limit of five SNS Topics that a given alarm may be subscribed to.
+
+It is also possible to write a Paco add-on that overrides the default CloudWatch notifications and instead notifies
+a single SNS Topic. This is intended to allow you to write an add-on that directs all alarms through a single Lambda
+(regardless or account or region) which is then responsible for delivering or taking action on alarms.
+
+Currently Global and NetworkEnvironment alarms are only supported through Paco add-ons.
+
+
+.. code-block:: yaml
+    :caption: Example alarmsets.yaml for Application, ALB, ASG, RDSMySQL and LogAlarms
+
+    App:
+      special-app-alarms:
+        CustomMetric:
+          description: "Custom metric has been triggered."
+          classification: health
+          severity: low
+          metric_name: "custom_metric"
+          period: 86400 # 1 day
+          evaluation_periods: 1
+          threshold: 1
+          comparison_operator: LessThanThreshold
+          statistic: Average
+          treat_missing_data: breaching
+          namespace: 'CustomMetric'
+
+    LBApplication:
+      core:
+        HealthyHostCount-Critical:
+          classification: health
+          severity: critical
+          description: "Alert if fewer than X number of backend hosts are passing health checks"
+          metric_name: "HealthyHostCount"
+          dimensions:
+            - name: LoadBalancer
+              value: paco.ref netenv.wa.applications.ap.groups.site.resources.alb.fullname
+            - name: TargetGroup
+              value: paco.ref netenv.wa.applications.ap.groups.site.resources.alb.target_groups.ap.fullname
+          period: 60
+          evaluation_periods: 5
+          statistic: Minimum
+          threshold: 1
+          comparison_operator: LessThanThreshold
+          treat_missing_data: breaching
+      performance:
+        SlowTargetResponseTime:
+          severity: low
+          classification: performance
+          description: "Average HTTP response time is unusually slow"
+          metric_name: "TargetResponseTime"
+          period: 60
+          evaluation_periods: 5
+          statistic: Average
+          threshold: 1.5
+          comparison_operator: GreaterThanOrEqualToThreshold
+          treat_missing_data: missing
+          dimensions:
+            - name: LoadBalancer
+              value: paco.ref netenv.wa.applications.ap.groups.site.resources.alb.fullname
+            - name: TargetGroup
+              value: paco.ref netenv.wa.applications.ap.groups.site.resources.alb.target_groups.ap.fullname
+        HTTPCode4XXCount:
+          classification: performance
+          severity: low
+          description: "Large number of 4xx HTTP error codes"
+          metric_name: "HTTPCode_Target_4XX_Count"
+          period: 60
+          evaluation_periods: 5
+          statistic: Sum
+          threshold: 100
+          comparison_operator: GreaterThanOrEqualToThreshold
+          treat_missing_data: notBreaching
+        HTTPCode5XXCount:
+          classification: performance
+          severity: low
+          description: "Large number of 5xx HTTP error codes"
+          metric_name: "HTTPCode_Target_5XX_Count"
+          period: 60
+          evaluation_periods: 5
+          statistic: Sum
+          threshold: 100
+          comparison_operator: GreaterThanOrEqualToThreshold
+          treat_missing_data: notBreaching
+
+    ASG:
+      core:
+        StatusCheck:
+          classification: health
+          severity: critical
+          metric_name: "StatusCheckFailed"
+          namespace: AWS/EC2
+          period: 60
+          evaluation_periods: 5
+          statistic: Maximum
+          threshold: 0
+          comparison_operator: GreaterThanThreshold
+          treat_missing_data: breaching
+        CPUTotal:
+          classification: performance
+          severity: critical
+          metric_name: "CPUUtilization"
+          namespace: AWS/EC2
+          period: 60
+          evaluation_periods: 30
+          threshold: 90
+          statistic: Average
+          treat_missing_data: breaching
+          comparison_operator: GreaterThanThreshold
+      cwagent:
+        SwapPercentLow:
+          classification: performance
+          severity: low
+          metric_name: "swap_used_percent"
+          namespace: "CWAgent"
+          period: 60
+          evaluation_periods: 5
+          statistic: Maximum
+          threshold: 80
+          comparison_operator: GreaterThanThreshold
+          treat_missing_data: breaching
+        DiskSpaceLow:
+          classification: health
+          severity: low
+          metric_name: "disk_used_percent"
+          namespace: "CWAgent"
+          period: 300
+          evaluation_periods: 1
+          statistic: Minimum
+          threshold: 60
+          comparison_operator: GreaterThanThreshold
+          treat_missing_data: breaching
+        DiskSpaceCritical:
+          classification: health
+          severity: low
+          metric_name: "disk_used_percent"
+          namespace: "CWAgent"
+          period: 300
+          evaluation_periods: 1
+          statistic: Minimum
+          threshold: 80
+          comparison_operator: GreaterThanThreshold
+          treat_missing_data: breaching
+
+      # CloudWatch Log Alarms
+      log-alarms:
+        CfnInitError:
+          type: LogAlarm
+          description: "CloudFormation Init Errors"
+          classification: health
+          severity: critical
+          log_set_name: 'cloud'
+          log_group_name: 'cfn_init'
+          metric_name: "CfnInitErrorMetric"
+          period: 300
+          evaluation_periods: 1
+          threshold: 1.0
+          treat_missing_data: notBreaching
+          comparison_operator: GreaterThanOrEqualToThreshold
+          statistic: Sum
+        CodeDeployError:
+          type: LogAlarm
+          description: "CodeDeploy Errors"
+          classification: health
+          severity: critical
+          log_set_name: 'cloud'
+          log_group_name: 'codedeploy'
+          metric_name: "CodeDeployErrorMetric"
+          period: 300
+          evaluation_periods: 1
+          threshold: 1.0
+          treat_missing_data: notBreaching
+          comparison_operator: GreaterThanOrEqualToThreshold
+          statistic: Sum
+        WsgiError:
+          type: LogAlarm
+          description: "HTTP WSGI Errors"
+          classification: health
+          severity: critical
+          log_set_name: 'ap'
+          log_group_name: 'httpd_error'
+          metric_name: "WsgiErrorMetric"
+          period: 300
+          evaluation_periods: 1
+          threshold: 1.0
+          treat_missing_data: notBreaching
+          comparison_operator: GreaterThanOrEqualToThreshold
+          statistic: Sum
+        HighHTTPTraffic:
+          type: LogAlarm
+          description: "High number of http access logs"
+          classification: performance
+          severity: low
+          log_set_name: 'ap'
+          log_group_name: 'httpd_access'
+          metric_name: "HttpdLogCountMetric"
+          period: 300
+          evaluation_periods: 1
+          threshold: 1000
+          treat_missing_data: ignore
+          comparison_operator: GreaterThanOrEqualToThreshold
+          statistic: Sum
+
+    RDSMysql:
+      basic-database:
+        CPUTotal-Low:
+          classification: performance
+          severity: low
+          metric_name: "CPUUtilization"
+          namespace: AWS/RDS
+          period: 300
+          evaluation_periods: 6
+          threshold: 90
+          comparison_operator: GreaterThanOrEqualToThreshold
+          statistic: Average
+          treat_missing_data: breaching
+
+        FreeableMemoryAlarm:
+          classification: performance
+          severity: low
+          metric_name: "FreeableMemory"
+          namespace: AWS/RDS
+          period: 300
+          evaluation_periods: 1
+          threshold: 100000000
+          comparison_operator: LessThanOrEqualToThreshold
+          statistic: Minimum
+          treat_missing_data: breaching
+
+        FreeStorageSpaceAlarm:
+          classification: performance
+          severity: low
+          metric_name: "FreeStorageSpace"
+          namespace: AWS/RDS
+          period: 300
+          evaluation_periods: 1
+          threshold: 5000000000
+          comparison_operator: LessThanOrEqualToThreshold
+          statistic: Minimum
+          treat_missing_data: breaching
+
+
     
 
 .. _AlarmSets:
@@ -7527,11 +7914,40 @@ AlarmSets are named to match a Paco Resource type, then a unique AlarmSet name.
 *Base Schemas* `Named`_, `Title`_
 
 
+AlarmSet
+^^^^^^^^^
+
+
+A container of Alarm objects.
+    
+
+.. _AlarmSet:
+
+.. list-table:: :guilabel:`AlarmSet`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - resource_type
+      - String
+      - Resource type
+      - Must be a valid AWS resource type
+      - 
+
+*Base Schemas* `Named`_, `Notifiable`_, `Title`_
+
+
 Alarm
 ^^^^^^
 
 
-An Alarm
+A Paco Alarm.
+
+This is a base schema which defines metadata useful to categorize an alarm.
     
 
 .. _Alarm:
@@ -7572,33 +7988,6 @@ An Alarm
       - low
 
 *Base Schemas* `Deployable`_, `Named`_, `Notifiable`_, `Title`_
-
-
-AlarmSet
-^^^^^^^^^
-
-
-A container of Alarm objects.
-    
-
-.. _AlarmSet:
-
-.. list-table:: :guilabel:`AlarmSet`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - resource_type
-      - String
-      - Resource type
-      - Must be a valid AWS resource type
-      - 
-
-*Base Schemas* `Named`_, `Notifiable`_, `Title`_
 
 
 Dimension
