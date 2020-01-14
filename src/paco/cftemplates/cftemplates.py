@@ -412,6 +412,15 @@ class CFTemplate():
         stream.write(self.body)
         stream.close()
 
+        yaml_path = pathlib.Path(self.get_yaml_path())
+        # Template size limit is 51,200 bytes
+        # Start warning if the template size gets close
+        warning_size_limite_bytes = 41200
+        if yaml_path.stat().st_size >= warning_size_limite_bytes:
+            print("WARNING: Template is reaching size limit of 51,200 bytes: Current size: {} bytes ".format(yaml_path.stat().st_size))
+            print("template: " + yaml_path)
+
+
     def init_applied_parameters_path(self, applied_template_path):
         return applied_template_path.with_suffix('.parameters')
 
