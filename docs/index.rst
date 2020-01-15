@@ -122,6 +122,7 @@ PACO is developed by Waterbear Cloud. Contact us about our `support and consulti
    :caption: Starter Projects
    :maxdepth: 3
 
+   start-wordpress-single
    start-managed-webapp-cicd
    start-s3lambda
 

@@ -3,7 +3,7 @@
 S3 Bucket Lambda replicator
 ===========================
 
-The **S3 Bucket Lambda replicator** starting project creates an S3 Bucket which will invoke
+The **S3 Bucket Lambda replicator** starter project creates an S3 Bucket which will invoke
 a Lambda function with every object addition and deletion. The Lambda will copy or delete
 the object from the source S3 Bucket to replica S3 Buckets in other regions.
 
