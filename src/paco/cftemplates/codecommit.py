@@ -97,7 +97,7 @@ Resources:
               - codecommit:Test*
               - codecommit:UntagResource
               - codecommit:Update*
-            Resource: !GetAtt {0[cf_repo_name_prefix]:s}Repository.Arn
+            Resource: {0[repository_arn]:s}
       Users:{0[users]:s}
 """
 
@@ -141,11 +141,15 @@ Resources:
                         unique_users[user.username] = []
                     unique_users[user.username].append(repo_name_prefix)
                     if repo_name_prefix not in policy_users.keys():
-                        policy_users[repo_name_prefix] = []
+                        policy_users[repo_name_prefix] = {
+                            'users': [],
+                            'config': repo_config
+                        }
 
-                    policy_users[repo_name_prefix].append(self.gen_cf_logical_name(user.username))
+                    policy_users[repo_name_prefix]['users'].append(self.gen_cf_logical_name(user.username))
 
-            resources_yaml += codecommit_repo_fmt.format(codecommit_repo_table)
+            if repo_config.external_resource == False:
+                resources_yaml += codecommit_repo_fmt.format(codecommit_repo_table)
             #outputs_yaml += codecommit_repo_outputs_fmt.format(codecommit_repo_table)
 
         # Users
@@ -157,11 +161,19 @@ Resources:
         # Policies
         for cf_repo_name_prefix in policy_users.keys():
             user_list_yaml = ""
-            for cf_user_name_prefix in policy_users[cf_repo_name_prefix]:
+            repo_config = policy_users[cf_repo_name_prefix]['config']
+            for cf_user_name_prefix in policy_users[cf_repo_name_prefix]['users']:
                 user_list_yaml += "\n        - !Ref %sUser" % cf_user_name_prefix
 
             codecommit_readwrite_table['cf_repo_name_prefix'] = cf_repo_name_prefix
             codecommit_readwrite_table['users'] = user_list_yaml
+            if repo_config.external_resource == True:
+                codecommit_readwrite_table['repository_arn'] = 'arn:aws:codecommit:{}:{}:{}'.format(
+                    aws_region,
+                    account_ctx.get_id(),
+                    repo_config.repository_name)
+            else:
+                codecommit_readwrite_table['repository_arn'] = '!GetAtt '+repo_name_prefix+'Repository.Arn'
 
             resources_yaml += codecommit_readwrite_fmt.format(codecommit_readwrite_table)
 
