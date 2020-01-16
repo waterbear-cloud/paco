@@ -253,8 +253,6 @@ IAM Users can be managed, see `Managing IAM Users with Paco`_.
 Route 53: resource/route53.yaml
 -------------------------------
 
-The ``resource/route53.yaml`` file manages AWS Route 53.
-
 {IRoute53Resource}
 
 {IRoute53HostedZone}
