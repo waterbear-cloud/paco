@@ -4,8 +4,13 @@ Changelog for Paco
 3.5.3 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Added
 
+- Warn if generated CloudFormation template reaches 80% or greater of the maximum stack size of 51,200 bytes.
+
+### Fixed
+
+- AWS Backup was missing group name in templates. Now creates a stack for every BackupVault.
 
 3.5.2 (2020-01-08)
 ------------------
