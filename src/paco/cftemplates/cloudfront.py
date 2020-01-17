@@ -69,6 +69,10 @@ class CloudFront(CFTemplate):
                 'MinimumProtocolVersion': cloudfront_config.viewer_certificate.minimum_protocol_version
             }
         }
+        if cloudfront_config.default_cache_behavior.min_ttl != -1:
+            distribution_config_dict['DefaultCacheBehavior']['MinTTL'] = cloudfront_config.default_cache_behavior.min_ttl
+        if cloudfront_config.default_cache_behavior.max_ttl != -1:
+            distribution_config_dict['DefaultCacheBehavior']['MaxTTL'] = cloudfront_config.default_cache_behavior.max_ttl
 
         # Domain Alises and Record Sets
         aliases_list = []
