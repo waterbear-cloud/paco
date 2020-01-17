@@ -5,6 +5,7 @@ from enum import Enum
 
 
 class CodeCommit(CFTemplate):
+    "Provision repo_list which is a list of repositories by account"
     def __init__(
         self,
         paco_ctx,
@@ -74,10 +75,10 @@ Resources:
         }
 
         codecommit_readwrite_fmt = """
-  {0[cf_repo_name_prefix]:s}RWPolicy:
+  {0[cf_resource_name_prefix]:s}RWPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      # PolicyName: {0[cf_repo_name_prefix]:s}
+      # PolicyName: {0[cf_resource_name_prefix]:s}
       PolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -97,7 +98,7 @@ Resources:
               - codecommit:Test*
               - codecommit:UntagResource
               - codecommit:Update*
-            Resource: {0[repository_arn]:s}
+            Resource:{0[repository_arns]:s}
       Users:{0[users]:s}
 """
 
@@ -108,7 +109,6 @@ Resources:
 
         codecommit_repo_outputs_fmt = """
 """
-
         codecommit_repo_table = {
             'repository_name': None,
             'repository_description': None,
@@ -125,55 +125,57 @@ Resources:
             repo_config = repo_item['repo_config']
             if repo_config.is_enabled() == False:
                 continue
+
             codecommit_repo_table['repository_name'] = repo_config.repository_name
             codecommit_repo_table['repository_description'] = repo_config.description
             cf_repo_name = '_'.join([repo_item['group_id'], repo_item['repo_id']])
             repo_name_prefix = self.gen_cf_logical_name(cf_repo_name)
             codecommit_repo_table['cf_resource_name_prefix'] = repo_name_prefix
 
+            if repo_config.external_resource == False:
+                resources_yaml += codecommit_repo_fmt.format(codecommit_repo_table)
+
             # A user may have access to more than one repository.
             # Build a list so we can attach them later.
-            codecommit_readwrite_table['users'] = ""
             if repo_config.users:
                 for user_key in repo_config.users.keys():
                     user = repo_config.users[user_key]
                     if user.username not in unique_users.keys():
-                        unique_users[user.username] = []
-                    unique_users[user.username].append(repo_name_prefix)
-                    if repo_name_prefix not in policy_users.keys():
-                        policy_users[repo_name_prefix] = {
-                            'users': [],
-                            'config': repo_config
+                        unique_users[user.username] = {
+                            'repo_name_prefix': [],
+                            'repo_config': []
                         }
 
-                    policy_users[repo_name_prefix]['users'].append(self.gen_cf_logical_name(user.username))
-
-            if repo_config.external_resource == False:
-                resources_yaml += codecommit_repo_fmt.format(codecommit_repo_table)
-            #outputs_yaml += codecommit_repo_outputs_fmt.format(codecommit_repo_table)
+                    unique_users[user.username]['repo_name_prefix'].append(repo_name_prefix)
+                    unique_users[user.username]['repo_config'].append(repo_config)
 
         # Users
         for username in unique_users.keys():
+            # IAM User
             codecommit_user_table['cf_resource_name_prefix'] = self.gen_cf_logical_name(username)
             codecommit_user_table['username'] = username
             resources_yaml += codecommit_user_fmt.format(codecommit_user_table)
 
-        # Policies
-        for cf_repo_name_prefix in policy_users.keys():
+            # User Policy
+            codecommit_readwrite_table = {}
             user_list_yaml = ""
-            repo_config = policy_users[cf_repo_name_prefix]['config']
-            for cf_user_name_prefix in policy_users[cf_repo_name_prefix]['users']:
-                user_list_yaml += "\n        - !Ref %sUser" % cf_user_name_prefix
-
-            codecommit_readwrite_table['cf_repo_name_prefix'] = cf_repo_name_prefix
+            user_list_yaml += "\n        - !Ref %sUser" % codecommit_user_table['cf_resource_name_prefix']
+            codecommit_readwrite_table['cf_resource_name_prefix'] = codecommit_user_table['cf_resource_name_prefix']
             codecommit_readwrite_table['users'] = user_list_yaml
-            if repo_config.external_resource == True:
-                codecommit_readwrite_table['repository_arn'] = 'arn:aws:codecommit:{}:{}:{}'.format(
-                    aws_region,
-                    account_ctx.get_id(),
-                    repo_config.repository_name)
-            else:
-                codecommit_readwrite_table['repository_arn'] = '!GetAtt '+repo_name_prefix+'Repository.Arn'
+
+            repo_arns_yaml = ""
+            for repo_config in unique_users[username]['repo_config']:
+                repo_idx = unique_users[username]['repo_config'].index(repo_config)
+                repo_logical_id_prefix = unique_users[username]['repo_name_prefix'][repo_idx]
+                if repo_config.external_resource == False:
+                    repo_arns_yaml += "\n              - !GetAtt "+repo_logical_id_prefix+"Repository.Arn"
+                else:
+                    repo_arns_yaml += "\n              - arn:aws:codecommit:{}:{}:{}".format(
+                        aws_region,
+                        account_ctx.get_id(),
+                        repo_config.repository_name )
+
+            codecommit_readwrite_table['repository_arns'] = repo_arns_yaml
 
             resources_yaml += codecommit_readwrite_fmt.format(codecommit_readwrite_table)
 

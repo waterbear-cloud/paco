@@ -113,12 +113,17 @@ class CodeCommitStackGroup(StackGroup):
         return cache_id
 
     def codecommit_post_stack_hook(self, hook, config):
+        "Iterates through users and displays the SSHPublicKeyId for each user in the stack."
         iam_client = self.account_ctx.get_aws_client('iam')
+        user_done = {}
         for repo_group in config.repository_groups.values():
             for repo_config in repo_group.values():
+                if self.paco_ctx.get_ref(repo_config.account+'.name') != self.account_ctx.get_name():
+                    continue
                 if repo_config.users != None:
                     for user_config in repo_config.users.values():
-                        if user_config.public_ssh_key != None:
+                        if user_config.public_ssh_key != None and user_config.username not in user_done.keys():
+                            user_done[user_config.username] = True
                             self.manage_ssh_key(iam_client, user_config)
 
     def validate(self):
