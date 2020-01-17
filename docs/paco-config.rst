@@ -734,6 +734,11 @@ CodeCommit Repository
       - Repository Description
       - 
       - 
+    * - external_resource
+      - Boolean
+      - Boolean indicating whether the CodeCommit repository already exists or not
+      - 
+      - False
     * - region
       - String
       - AWS Region
@@ -1197,14 +1202,28 @@ Statement
 Route 53: resource/route53.yaml
 -------------------------------
 
-The ``resource/route53.yaml`` file manages AWS Route 53.
-
 
 Route53Resource
 ^^^^^^^^^^^^^^^^
 
 
-Route53 Service Configuration
+The ``resource/route53.yaml`` file manages AWS Route 53 hosted zones.
+
+Provision Route 53 with:
+
+.. code-block:: bash
+
+    paco provision resource.route53
+
+.. code-block:: yaml
+    :caption: Example resource/route53.yaml file
+
+    hosted_zones:
+      example:
+        enabled: true
+        domain_name: example.com
+        account: aim.ref accounts.prod
+
     
 
 .. _Route53Resource:
