@@ -1,10 +1,16 @@
 Changelog for Paco
 ==================
 
-3.5.4 (unreleased)
+3.5.4 (2020-01-21)
 ------------------
 
-- Nothing changed yet.
+### Added
+
+- CloudFrontCacheBehaviours have min_ttl and max_ttl field support.
+
+### Fixed
+
+- CodeCommit repositories policy refactor to work around maximum 10 policy per IAM User limit.
 
 
 3.5.3 (2020-01-16)
