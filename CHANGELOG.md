@@ -4,7 +4,15 @@ Changelog for Paco
 3.5.5 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Fixed
+
+- EFS resource can be in a disabled state.
+
+- EIP resource will be removed when disabled.
+
+- ALB resource properly removes ALB when disabled.
+
+- ASG resource is properly disabled.
 
 
 3.5.4 (2020-01-21)

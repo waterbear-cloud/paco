@@ -1,7 +1,6 @@
 import os
 import troposphere
 import troposphere.efs
-
 from paco.cftemplates.cftemplates import CFTemplate
 
 
@@ -13,16 +12,13 @@ class EFS(CFTemplate):
         aws_region,
         stack_group,
         stack_tags,
-
         env_ctx,
         app_id,
         grp_id,
         res_id,
         efs_config,
-        config_ref):
-
-        # ---------------------------------------------------------------------------
-        # CFTemplate Initialization
+        config_ref
+    ):
         super().__init__(
             paco_ctx,
             account_ctx,
@@ -34,19 +30,11 @@ class EFS(CFTemplate):
         )
         self.set_aws_name('EFS', grp_id, res_id)
 
+        self.init_template('Elastic Filesystem')
+        if not efs_config.is_enabled():
+            self.set_template(self.template.to_yaml())
+            return
 
-        # ---------------------------------------------------------------------------
-        # Troposphere Template Initialization
-
-        template = troposphere.Template(
-            Description = 'Elastic Filesystem',
-        )
-        template.set_version()
-        template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="EmptyTemplatePlaceholder")
-        )
-
-        # ---------------------------------------------------------------------------
         # Parameters
         sg_list_param = self.create_cfn_ref_list_param(
             param_type='List<AWS::EC2::SecurityGroup::Id>',
@@ -55,29 +43,27 @@ class EFS(CFTemplate):
             value=efs_config.security_groups,
             ref_attribute='id',
             use_troposphere=True,
-            troposphere_template=template
+            troposphere_template=self.template
         )
-
         encrypted_param = self.create_cfn_parameter(
             name='EncryptedAtRest',
             param_type='String',
             description='Boolean indicating whether the data will be encrypted at rest.',
             value=efs_config.encrypted,
             use_troposphere=True,
-            troposphere_template=template,
+            troposphere_template=self.template,
         )
 
         # Elastic File System
         efs_res = troposphere.efs.FileSystem(
             title = 'EFS',
-            template = template,
+            template = self.template,
             Encrypted=troposphere.Ref(encrypted_param)
         )
-
         efs_id_output_logical_id = efs_res.title+'Id'
         troposphere.Output(
             title=efs_id_output_logical_id,
-            template=template,
+            template=self.template,
             Description="Elastic File System ID.",
             Value=troposphere.Ref(efs_res)
         )
@@ -97,17 +83,17 @@ class EFS(CFTemplate):
                 description='The SubnetId for AZ{}.'.format(az_idx),
                 value=subnet_id_ref,
                 use_troposphere=True,
-                troposphere_template=template,
+                troposphere_template=self.template,
             )
             efs_mount_logical_id = self.create_cfn_logical_id('EFSMountTargetAZ{}'.format(az_idx))
             troposphere.efs.MountTarget(
                 title=efs_mount_logical_id,
-                template=template,
+                template=self.template,
                 FileSystemId=troposphere.Ref(efs_res),
                 SecurityGroups=troposphere.Ref(sg_list_param),
                 SubnetId=troposphere.Ref(subnet_param)
             )
 
         # Generate the Template
-        self.set_template(template.to_yaml())
+        self.set_template(self.template.to_yaml())
 

@@ -40,12 +40,16 @@ class ALB(CFTemplate):
 
         # Init Troposphere template
         self.init_template('Application Load Balancer')
+        if not alb_config.is_enabled():
+            self.set_template(self.template.to_yaml())
+            return
 
         # Parameters
         if alb_config.is_enabled():
             alb_enable = 'true'
         else:
             alb_enable = 'false'
+
         alb_is_enabled_param = self.create_cfn_parameter(
             param_type='String',
             name='ALBEnabled',
@@ -390,8 +394,6 @@ class ALB(CFTemplate):
             )
             self.register_stack_output_config(alb_config.paco_ref_parts + '.dnsname', 'LoadBalancerDNSName')
 
-            self.set_template(self.template.to_yaml())
-
             if self.paco_ctx.legacy_flag('route53_record_set_2019_10_16') == False:
                 route53_ctl = self.paco_ctx.get_controller('route53')
                 for alb_dns in alb_config.dns:
@@ -411,3 +413,5 @@ class ALB(CFTemplate):
                             stack_group=self.stack_group,
                             config_ref=alb_config.paco_ref_parts + '.dns'
                         )
+
+        self.set_template(self.template.to_yaml())

@@ -1,8 +1,6 @@
 import os
 import troposphere
 import troposphere.ec2
-#import troposphere.<resource>
-
 from paco import utils
 from paco.cftemplates.cftemplates import CFTemplate
 
@@ -15,15 +13,12 @@ class EIP(CFTemplate):
         aws_region,
         stack_group,
         stack_tags,
-
         app_id,
         grp_id,
         res_id,
         eip_config,
-        config_ref):
-
-        # ---------------------------------------------------------------------------
-        # CFTemplate Initialization
+        config_ref
+    ):
         super().__init__(
             paco_ctx,
             account_ctx,
@@ -36,25 +31,19 @@ class EIP(CFTemplate):
         )
         self.set_aws_name('EIP', grp_id, res_id)
 
-        # ---------------------------------------------------------------------------
         # Troposphere Template Initialization
+        self.init_template('Elastic IP')
+        if not eip_config.is_enabled():
+            self.set_template(self.template.to_yaml())
+            return
 
-        template = troposphere.Template(
-            Description = 'Elastic IP',
-        )
-        template.set_version()
-        template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="EmptyTemplatePlaceholder")
-        )
-
-
+        template = self.template
         eip_res = troposphere.ec2.EIP(
             title='ElasticIP',
             template=template,
             Domain='vpc'
         )
 
-        # ---------------------------------------------------------------------------
         # Outputs
         eip_address_output = troposphere.Output(
             title='ElasticIPAddress',
