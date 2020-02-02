@@ -87,17 +87,14 @@ MFA protects you if your access key credentials are accidentaly exposed.
 You can use any User and Role in your IAM account, but follow the steps below to
 install a CloudFormation template that will create a dedicated User and Role to use with Paco.
 
-  1. Download the PacoInitialization.yaml_ CloudFormation template.
+  1. Click on `this URL to create a PacoAdminAccess CloudFormation stack`_ in your AWS Account.
 
-  #. Login to the AWS Console, visit the CloudFormation Service and click on the
-     "Create stack (with new resources (standard))" button. Choose "Upload a template file" and
-     then "Choose file" and choose the PacoInitialization.yaml file. Then click "Next".
+     .. image:: _static/images/create-paco-admin-stack.png
 
-     .. image:: _static/images/quickstart101-create-stack-init.png
+  #. Click "Next" and take note that you will create a IAM User with the name ``paco-admin``.
+     If you like you can change this username here.
 
-  #. Enter "PacoAccess" as the Stack name and enter the name of a new IAM User. Then click "Next".
-
-     .. image:: _static/images/quickstart101-stack-init-details.png
+     .. image:: _static/images/stack-admin-username.png
 
   #. On the "Configure stack options" screen you can leave everything default and click "Next".
      On the "Review PacoInitialization" you can also leave all the defaults click
@@ -105,7 +102,10 @@ install a CloudFormation template that will create a dedicated User and Role to 
      to confirm that this stack can create an IAM User.
      Finally click "Create stack".
 
-.. _PacoInitialization.yaml: ./_static/templates/PacoInitialization.yaml
+.. _this URL to create a PacoAdminAccess CloudFormation stack: https://console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/new?stackName=PacoAdminAccess&templateURL=https://paco-cloud.s3-us-west-2.amazonaws.com/PacoInitialization.yaml
+
+Create an AWS Access Key and configure MFA
+------------------------------------------
 
 Next you will need to set-up the new User account with an API key:
 
