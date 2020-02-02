@@ -188,10 +188,10 @@ class ProjectController(Controller):
         master = self.paco_ctx.project['accounts']['master']
         self.credentials['aws_default_region'] = master.region
         self.credentials['master_account_id'] = master.account_id
-        self.credentials['master_admin_iam_username'] = enhanced_input("master_admin_iam_username")
-        self.credentials['admin_iam_role_name'] = enhanced_input("admin_iam_role_name")
-        self.credentials['aws_access_key_id'] = enhanced_input("aws_access_key_id")
-        self.credentials['aws_secret_access_key']  = enhanced_input("aws_secret_access_key")
+        self.credentials['master_admin_iam_username'] = enhanced_input("Paco Admin Username", default='paco-admin')
+        self.credentials['admin_iam_role_name'] = 'Paco-Admin-Delegate-Role'
+        self.credentials['aws_access_key_id'] = enhanced_input("AWS Access Key")
+        self.credentials['aws_secret_access_key']  = enhanced_input("AWS Secret Key")
         self.credentials['mfa_session_expiry_secs'] = 43200
         self.credentials['assume_role_session_expiry_secs'] = 3600
 
@@ -206,6 +206,14 @@ class ProjectController(Controller):
                 stream=output_fd
             )
         os.chmod(self.credentials_path, stat.S_IRUSR)
+
+        print("Paco credentials file created at:\n")
+        print( "%s\n" % self.credentials_path)
+        print("It is NOT recommended to store this file in version control.")
+        print("Paco starter project include a .gitignore file to prevent this.")
+        print("You can store this file in a secrets mananger or re-create it again")
+        print("by generating a new AWS Api Key for the Paco Admin User and re-running")
+        print("this 'paco init credentials' command.\n")
 
     def init_accounts(self):
         "Initialize Accounts"

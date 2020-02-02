@@ -80,12 +80,19 @@ Create a User and Role in your AWS account
 When you run Paco it will requrie access to your AWS account.
 
 Paco requires access key credentials for an IAM User that has permissions to switch
-to an IAM Role that delegates full Administrator access. The reason for having the Administrator
-privileges in a Role and not the User is so that multi-factor authentication (MFA) can be enforced.
-MFA protects you if your access key credentials are accidentaly exposed.
+to an IAM Role that delegates full Administrator access.
 
-You can use any User and Role in your IAM account, but follow the steps below to
-install a CloudFormation template that will create a dedicated User and Role to use with Paco.
+
+.. Note::
+
+  Why can't I just use any AWS Access Key with Administrator access with Paco?
+
+  Paco requires an IAM User capable of switching to a Role that contains Administrator permissions.
+  Paco does this for security reasons. Paco will ask you for your MFA token from the CLI.
+  As you store an AWS Access Key and Secret in a Paco ``.credentials`` file, if this file is accidentaly leaked
+  then unwanted users will not be able to use your key without also being able to access your MFA device.
+
+To install a CloudFormation template that will create a User and Role to use with Paco.
 
   1. Click on `this URL to create a PacoAdminAccess CloudFormation stack`_ in your AWS Account.
 
