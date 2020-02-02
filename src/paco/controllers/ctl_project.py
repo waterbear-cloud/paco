@@ -100,7 +100,18 @@ class ProjectController(Controller):
         if pathlib.Path(self.paco_ctx.home).exists():
             print("Directory at {} already exists.\n".format(self.paco_ctx.home))
         else:
-            print("About to create a new Paco project directory at %s\n" % self.paco_ctx.home)
+            print("A Paco project is a directory of YAML files that describes a cloud architecture,")
+            print("it's configuration and automation.\n")
+            print("This command will create a new ready-to-run Paco project. Choose a starter project,")
+            print("answer some quesetions and a new Paco project directory will be created at:\n")
+            print("%s\n" % self.paco_ctx.home)
+            print("Important: You will be asked to supply names. These should be short and alphanumeric only.")
+            print("Paco uses these names when creating cloud resources. After you provision resources")
+            print("with Paco it is not possible to change these names. You may also be asked for titles,")
+            print("these can contain any characters and can be freely changed. They are used as internal comments")
+            print("to help you organize your networks, applications and environments.")
+            print()
+            print("(Press Ctrl-D to abort)\n")
             name = self.choose_template(starting_templates)
             packagename = starting_templates[name][0]
             allowed_key_list = []
@@ -154,6 +165,13 @@ class ProjectController(Controller):
             fh.write(".credentials.yml\n")
             fh.write("build/\n")
             fh.close()
+
+            print("\n\nPaco project created at:\n")
+            print("%s\n" % self.paco_ctx.home)
+            print("It is recommended to export the PACO_HOME environment variable to tell Paco")
+            print("where your active Paco project is located, although you can also use the")
+            print("`paco --home=/your/path` flag. Consider adding this to your BASH profile.\n")
+            print("export PACO_HOME=%s\n" % self.paco_ctx.home)
 
 
     def init_credentials(self, force=False):
