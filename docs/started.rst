@@ -146,21 +146,31 @@ if you used the CloudFormation template your role name will be ``Paco-Admin-Dele
 
     $ paco init credentials --home=/path/to/your-paco-project
 
-    Paco Project Credentials Initialization
+    Paco project credentials initialization
     ---------------------------------------
 
-    master_admin_iam_username: <your-paco-username>
-    admin_iam_role_name: Paco-Admin-Delegate-Role
-    aws_access_key_id: AKIA***********4MXP
-    aws_secret_access_key: 56aU******************57cT
+    Paco Admin Username: [paco-admin]:
+    AWS Access Key: KAKIA***********4MXP
+    AWS Secret Key: 56aU******************57cT
+    Paco credentials file created at:
+
+    /Users/bob/paco-project/.credentials.yaml
+
+    It is NOT recommended to store this file in version control.
+    Paco starter project include a .gitignore file to prevent this.
+    You can store this file in a secrets mananger or re-create it again
+    by generating a new AWS Api Key for the Paco Admin User and re-running
+    this 'paco init credentials' command.
+
 
 This will create a file named ``.credentials`` in your Paco project directory. Starting Paco projects also have a ``.gitignore``
 file that will prevent you from committing this credentials file to a git repo. You can save this file somewhere secure,
 or if it is lost use the AWS Console to create a new acccess key for your IAM User and re-run ``paco init credentials`` to
 generate a new ``.credentials`` file.
 
-Finally, use the ``paco validate`` command to verify your credentials work. The ``paco validate`` command generates CloudFormation
-templates and verifies them for correctness against your AWS account, but it will never modify any AWS resources.
+Finally, use the ``paco validate`` command to verify your credentials allow you to connect to your AWS account.
+The ``paco validate`` command generates CloudFormation templates and validates them in your AWS account.
+Validate will never modify resources. It's a safe command to run to test the state of your Paco proejct.
 
 .. code-block:: bash
 
