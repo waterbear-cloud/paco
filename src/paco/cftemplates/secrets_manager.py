@@ -70,3 +70,13 @@ class SecretsManager(CFTemplate):
         self.set_template(self.template.to_yaml())
 
 
+    def warn_template_changes(self, deep_diff):
+        """Inform the user about changes to generate_secret_string making new secrets"""
+        for change in deep_diff.values():
+            for diff_level in change:
+                if 'GenerateSecretString' in diff_level.path():
+                    print("WARNING: About to change the generate_secret_string CloudFormation for Secret(s).")
+                    print("Applying this change will cause the existing Secret(s) to be re-generated!")
+                    return
+
+

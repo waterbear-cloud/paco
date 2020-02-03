@@ -1140,6 +1140,16 @@ class CFTemplate():
         if new_file_path.exists():
             copyfile(new_file_path, applied_file_path)
 
+    def warn_template_changes(self):
+        """
+        Warn the user about template changes that might have unexpected consequences.
+        """
+        # base method: override this in the child class with the specific warning
+        # this method is responsible for printing an appropriate warning. This warning
+        # should include a newline above and below this warning and be prefixed with "WARNING: "
+        return None
+
+
     def validate_template_changes(self):
         if self.paco_ctx.disable_validation == True:
             return
@@ -1203,6 +1213,7 @@ class CFTemplate():
         print("\n--------------------------------------------------------")
         print("Stack: " + self.stack.get_name())
         print("")
+        self.warn_template_changes(deep_diff)
         answer = self.paco_ctx.input_confirm_action("\nAre these changes acceptable?")
         if answer == False:
             print("Aborted run.")

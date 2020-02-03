@@ -1,11 +1,24 @@
 Changelog for Paco
 ==================
 
-3.5.6 (unreleased)
+4.0.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Added
 
+- New ``warn_template_changes`` method for CFTemplate. This is a hook that allows
+  templates to print a warning about potential unintended side-effects of the change.
+  The SecretsManager template is the first to implement this warning hook.
+
+### Changed
+
+- Breaking: This will change the secrets for any secret that was created by ``generate_secret_string``.
+  Completed full implementation of ``secrets.generate_secret_string``, every property in the CloudFormation
+  resource is represented so that expressing defaults won't trigger new secret created.
+
+### Docs
+
+- Improved Getting Started documentation and "paco init project" CLI messages.
 
 3.5.5 (2020-01-29)
 ------------------
