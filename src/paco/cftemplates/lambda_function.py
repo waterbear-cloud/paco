@@ -7,7 +7,8 @@ from paco.utils import hash_smaller
 from io import StringIO
 from enum import Enum
 import os
-
+import troposphere
+import troposphere.awslambda
 
 
 class Lambda(CFTemplate):
@@ -20,39 +21,96 @@ class Lambda(CFTemplate):
         stack_tags,
         grp_id,
         res_id,
-        lambda_config,
-        lambda_config_ref
+        awslambda
     ):
         super().__init__(
             paco_ctx,
             account_ctx,
             aws_region,
-            config_ref=lambda_config_ref,
+            config_ref=awslambda.paco_ref_parts,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
             stack_group=stack_group,
             stack_tags=stack_tags,
             enabled=lambda_config.is_enabled()
         )
         self.set_aws_name('Lambda', grp_id, res_id)
-        self.set_parameter('FunctionDescription', lambda_config.description)
-        self.set_parameter('Handler', lambda_config.handler)
-        self.set_parameter('Runtime', lambda_config.runtime)
-        self.set_parameter('RoleArn', lambda_config.iam_role.get_arn())
-        self.set_parameter('RoleName', lambda_config.iam_role.resolve_ref_obj.role_name)
-        self.set_parameter('MemorySize', lambda_config.memory_size)
-        self.set_parameter('ReservedConcurrentExecutions', lambda_config.reserved_concurrent_executions)
-        self.set_parameter('Timeout', lambda_config.timeout)
-        self.set_parameter('EnableSDBCache', lambda_config.sdb_cache)
+
+        self.init_template('Lambda Function')
+
+        sdb_cache_param = self.create_cfn_parameter(
+            name='EnableSDBCache',
+            param_type='String',
+            description='Boolean indicating whether an SDB Domain will be created to be used as a cache.',
+            value=awslambda.sdb_cache
+        )
+        function_description_param = self.create_cfn_parameter(
+            name='FunctionDescription',
+            param_type='String',
+            description='A description of the Lamdba Function.',
+            value=awslambda.description
+        )
+        handler_param = self.create_cfn_parameter(
+            name='Handler',
+            param_type='String',
+            description='The name of the function to call upon execution.',
+            value=awslambda.handler
+        )
+        runtime_param = self.create_cfn_parameter(
+            name='Runtime',
+            param_type='String',
+            description='The name of the runtime language.',
+            value=awslambda.runtime
+        )
+        role_arn_param = self.create_cfn_parameter(
+            name='RoleArn',
+            param_type='String',
+            description='The execution role for the Lambda Function.',
+            value=awslambda.iam_role.get_arn()
+        )
+        role_name_param = self.create_cfn_parameter(
+            name='RoleName',
+            param_type='String',
+            description='The execution role name for the Lambda Function.',
+            value=awslambda.iam_role.resolve_ref_obj.role_name
+        )
+        memory_size_param = self.create_cfn_parameter(
+            name='MemorySize',
+            param_type='Number',
+            description="The amount of memory that your function has access to. Increasing the function's memory also increases its CPU allocation. The default value is 128 MB. The value must be a multiple of 64 MB.",
+            value=awslambda.memory_size
+        )
+        reserved_conc_exec_param = self.create_cfn_parameter(
+            name='ReservedConcurrentExecutions',
+            param_type='Number',
+            description='The number of simultaneous executions to reserve for the function.',
+            value=awslambda.reserved_concurrent_executions
+        )
+        timeout_param = self.create_cfn_parameter(
+            name='Timeout',
+            param_type='Number',
+            description='The amount of time that Lambda allows a function to run before stopping it. ',
+            value=awslambda.timeout
+        )
+
+        cfn_export_dict = awslambda.cfn_export_dict
 
         # Code object: S3 Bucket or inline ZipFile?
-        s3_code = ""
-        code_resource = ""
-        if lambda_config.code.s3_bucket:
-            if lambda_config.code.s3_bucket.startswith('paco.ref '):
-                self.set_parameter('CodeS3Bucket', lambda_config.code.s3_bucket + ".name")
+        if awslambda.code.s3_bucket:
+            if awslambda.code.s3_bucket.startswith('paco.ref '):
+                timeout_param = self.create_cfn_parameter(
+                    name='CodeS3Bucket',
+                    param_type='String',
+                    value=awslambda.code.s3_bucket + ".name"
+                    use_troposphere=True,
+                    troposphere_template=self.template,
+                )
+
+                self.set_parameter('CodeS3Bucket', )
             else:
-                self.set_parameter('CodeS3Bucket', lambda_config.code.s3_bucket)
-            self.set_parameter('CodeS3Key', lambda_config.code.s3_key)
+                self.set_parameter('CodeS3Bucket', awslambda.code.s3_bucket)
+            self.set_parameter('CodeS3Key', awslambda.code.s3_key)
+
+            cfn_export_dict['S3Bucket'] = troposphere.Ref()
             code_resource = """
         S3Bucket: !Ref CodeS3Bucket
         S3Key: !Ref CodeS3Key
@@ -71,60 +129,12 @@ class Lambda(CFTemplate):
             code_resource = """
         ZipFile: |
 """
-            for line in lambda_config.code.zipfile.split('\n'):
+            for line in awslambda.code.zipfile.split('\n'):
                 code_resource += padding + line + '\n'
 
-        # Define the Template
+        # XXX format string zone!!!
+
         template_fmt = """
-AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Lambda Function'
-
-Parameters:
-  FunctionDescription:
-    Description: "A description of the Lamdba Function."
-    Type: String
-
-  Handler:
-    Description: "The name of the function to call upon execution."
-    Type: String
-
-  Runtime:
-    Description: "The name of the runtime language."
-    Type: String
-
-  RoleArn:
-    Description: "The execution role for the Lambda Function."
-    Type: String
-
-  RoleName:
-    Description: "The execution role name for the Lambda Function."
-    Type: String
-
-  MemorySize:
-    Description: "The amount of memory that your function has access to. Increasing the function's memory also increases its CPU allocation. The default value is 128 MB. The value must be a multiple of 64 MB."
-    Type: Number
-
-  ReservedConcurrentExecutions:
-    Description: "The number of simultaneous executions to reserve for the function."
-    Type: Number
-    Default: 0
-
-  Timeout:
-    Description: "The amount of time that Lambda allows a function to run before stopping it. "
-    Type: Number
-{0[s3_code]:s}
-
-  EnableSDBCache:
-    Description: "Boolean indicating whether an SDB Domain will be created to be used as a cache."
-    Type: String
-
-  Layers:
-    Description: "List of up to 5 Lambda Layer ARNs."
-    Type: CommaDelimitedList
-    Default: ""
-
-{0[parameters]:s}
-
 Conditions:
   ReservedConcurrentExecutionsIsEnabled: !Not [!Equals [!Ref ReservedConcurrentExecutions, 0]]
   SDBCacheIsEnabled: !Equals [!Ref EnableSDBCache, 'true']
@@ -501,5 +511,3 @@ Outputs:
         template_table['parameters'] = parameters_yaml
 
         self.set_template(template_fmt.format(template_table))
-
-
