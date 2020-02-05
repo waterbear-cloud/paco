@@ -297,10 +297,6 @@ class PacoContext(object):
         # Load the Service plug-ins
         service_plugins = paco.models.services.list_service_plugins()
         for plugin_name, plugin_module in service_plugins.items():
-            # Skip it for now
-            if plugin_name.lower() == 'patch':
-                self.log_action_col("Skipping", 'Service', plugin_name)
-                continue
             try:
                 self.project['service'][plugin_name.lower()]
             except KeyError:
