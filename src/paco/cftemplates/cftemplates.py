@@ -1140,7 +1140,7 @@ class CFTemplate():
         if new_file_path.exists():
             copyfile(new_file_path, applied_file_path)
 
-    def warn_template_changes(self):
+    def warn_template_changes(self, deep_diff):
         """
         Warn the user about template changes that might have unexpected consequences.
         """
