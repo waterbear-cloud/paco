@@ -44,17 +44,12 @@ class ApiGatewayRestApi(CFTemplate):
         self.apigatewayrestapi = apigatewayrestapi
         self.set_aws_name('ApiGatewayRestApi', grp_id, res_id)
 
-        # ---------------------------------------------------------------------------
-        # Troposphere Template Initialization
+        self.init_template('ApiGateway: {}'.format(apigatewayrestapi.title))
+        if not self.apigatewayrestapi.is_enabled():
+            self.set_template(self.template.to_yaml())
+            return
 
-        template = troposphere.Template()
-        template.add_version('2010-09-09')
-        template.add_description(apigatewayrestapi.title)
-
-
-        # ---------------------------------------------------------------------------
         # Parameters
-
         method_params = []
         for method in self.apigatewayrestapi.methods.values():
             param_name = 'MethodArn' + self.create_cfn_logical_id(method.name)
@@ -68,9 +63,7 @@ class ApiGatewayRestApi(CFTemplate):
             method.parameter_arn_ref = troposphere.Ref(param_name)
             template.add_parameter(lambda_arn_param)
 
-        # ---------------------------------------------------------------------------
         # Resources
-
         restapi_logical_id = 'ApiGatewayRestApi'
         restapi_resource = troposphere.apigateway.RestApi.from_dict(
             restapi_logical_id,
