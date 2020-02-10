@@ -54,7 +54,7 @@ def enhanced_input(
         try_again = False
     return value
 
-def hash_smaller(text, max_len=99):
+def hash_smaller(text, max_len=99, suffix=False):
     "Return a string that is shorter than 100 chars by hashing the start"
     if len(text) <= max_len:
         return text
@@ -66,6 +66,9 @@ def hash_smaller(text, max_len=99):
     # hexdigest is twice length of the digest size
     # leave an extra char for a '-' seperator.
     hex_len = (max_len - 1) - (digest_size * 2)
+    # hash as suffix for resources which can be queried by prefix such as Event Rule
+    if suffix:
+        return text[:hex_len] + '-' + hash_sig
     return hash_sig + '-'  + text[-hex_len:]
 
 def md5sum(filename=None, str_data=None):

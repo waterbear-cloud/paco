@@ -132,8 +132,8 @@ class EventsRule(CFTemplate):
         # The Name is needed so that a Lambda can be created and it's Lambda ARN output
         # can be supplied as a Parameter to this Stack and a Lambda Permission can be
         # made with the Lambda. Avoids circular dependencies.
-        name = self.create_cfn_logical_id("EventsRule" + eventsrule.paco_ref)
-        name = hash_smaller(name, 64)
+        name = eventsrule.create_resource_name_join(eventsrule.paco_ref_parts.split('.'), '-')
+        name = hash_smaller(name, 64, suffix=True)
         event_rule_resource = troposphere.events.Rule(
             'EventRule',
             Name=name,

@@ -1,10 +1,13 @@
 Changelog for Paco
 ==================
 
-4.0.1 (unreleased)
+4.1.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Changed
+
+- EventsRules are named with a random suffix instead of a prefix. This makes it easier to
+  use the --name-prefix option for list-rules in the AWS CLI and API.
 
 
 4.0.0 (2020-02-05)
