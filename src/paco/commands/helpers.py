@@ -74,6 +74,13 @@ def init_cloud_command(
         sys.exit()
 
     # Inform about invalid scopes before trying to load the Paco project
+    scopes = config_scope.split('.')
+    if scopes[0] not in ('accounts', 'netenv', 'resource', 'service'):
+        print()
+        print("Not a valid top-level scope: {}. This must be one of: accounts, netenv, resource or service.\n".format(scopes[0]))
+        print("See the Paco CLI config scope docs at https://www.paco-cloud.io/en/latest//cli.html#config-scope\n")
+        sys.exit()
+
     if config_scope.startswith('accounts.'):
         print("\nThe accounts scope can only refer to the top-level 'accounts' and applies account actions")
         print("to all accounts listed in the organization_account_ids: field in the 'accounts/master.yaml' file.\n")
