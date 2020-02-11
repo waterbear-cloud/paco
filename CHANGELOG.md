@@ -4,6 +4,10 @@ Changelog for Paco
 4.1.0 (unreleased)
 ------------------
 
+### Added
+
+- EventRules can be in the State=ENABLED or State=DISABLED set by the ``enabled_state`` boolean field.
+
 ### Changed
 
 - EventsRules are named with a random suffix instead of a prefix. This makes it easier to

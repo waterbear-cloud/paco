@@ -134,12 +134,17 @@ class EventsRule(CFTemplate):
         # made with the Lambda. Avoids circular dependencies.
         name = eventsrule.create_resource_name_join(eventsrule.paco_ref_parts.split('.'), '-')
         name = hash_smaller(name, 64, suffix=True)
+        if eventsrule.enabled_state:
+            enabled_state = 'ENABLED'
+        else:
+            enabled_state = 'DISABLED'
         event_rule_resource = troposphere.events.Rule(
             'EventRule',
             Name=name,
             Description=troposphere.Ref(description_param),
             ScheduleExpression=troposphere.Ref(schedule_expression_param),
             Targets=targets,
+            State=enabled_state
         )
         self.template.add_resource(event_rule_resource)
 
