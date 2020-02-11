@@ -10,7 +10,7 @@ The CLI is divided into sub-commands. Run ``paco --help`` to see them:
     $ paco --help
     Usage: paco [OPTIONS] COMMAND [ARGS]...
 
-    Paco: Application Infrastructure Manager
+    Paco: Prescribed Automation for Cloud Orchestration
 
     Options:
     --version  Show the version and exit.
