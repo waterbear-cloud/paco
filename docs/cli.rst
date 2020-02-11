@@ -17,10 +17,10 @@ The CLI is divided into sub-commands. Run ``paco --help`` to see them:
     --help     Show this message and exit.
 
     Commands:
-    delete     Delete Paco managed resources
-    init       Commands for initializing Paco projects.
-    provision  Provision resources to the cloud.
-    validate   Validate an Paco project
+    delete     Delete cloud resources
+    init       Create a new Paco project.
+    provision  Create and configure cloud resources.
+    validate   Validate cloud resources.
 
 
 For most commands, you will need to tell ``paco`` where your Paco config directory is located.
