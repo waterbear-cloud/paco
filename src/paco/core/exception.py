@@ -8,11 +8,13 @@ BadConfigFiles StackDoesNotExist StackOutputMissing InvalidStackName \
 WaiterError')
 
 class PacoException(Exception):
+    "Deprecated PacoExceptions. New exceptions act like stanaard Python Exceptions"
     def __init__(self, code, message=None):
         super().__init__()
         self.code = code
         if message != None:
             self.message = message
+            self.title = message
         else:
             self.set_message(code)
 
@@ -40,16 +42,16 @@ class StackException(PacoException):
         return error_str
 
 class PacoBucketExists(Exception):
-    "S3 Bucket already exists"
+    title = "S3 Bucket already exists"
 
 class UnsupportedCloudFormationParameterType(Exception):
-    "Unsupported Parameter Type"
+    title = "Unsupported CloudFormation Parameter Type"
 
 class InvalidLogSetConfiguration(Exception):
-    "Invalid Log Set configuration"
+    title = "Invalid Log Set configuration in YAML"
 
 class PacoUnsupportedFeature(Exception):
-    "Feature does not yet exist"
+    title = "Feature does not yet exist"
 
 class InvalidPacoScope(Exception):
-    "Paco Reference not valid in this context."
+    title = "Invalid CONFIG_SCOPE argument"

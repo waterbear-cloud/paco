@@ -24,7 +24,7 @@ def provision_command(
     config_scope,
     home='.'
 ):
-    """Provision AWS Resources"""
+    """Provision Cloud Resources"""
     command = 'provision'
     controller_type, obj = init_cloud_command(
         command,
@@ -41,6 +41,6 @@ def provision_command(
     controller.provision()
 
 provision_command.help = """
-Provision AWS Resources.
+Provision Cloud Resources.
 
 """ + config_types

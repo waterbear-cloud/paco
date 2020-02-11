@@ -24,7 +24,7 @@ def delete_command(
     config_scope,
     home='.'
 ):
-    """Deletes provisioned AWS Resources"""
+    """Deletes provisioned Cloud Resources"""
     command = 'delete'
     controller_type, obj = init_cloud_command(
         command,
