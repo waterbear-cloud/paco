@@ -181,8 +181,6 @@ to deal with multiple SSH keys on your workstation:
 
 {ICodeCommit}
 
-{ICodeCommitRepositoryGroups}
-
 {ICodeCommitRepositoryGroup}
 
 {ICodeCommitRepository}
@@ -1326,7 +1324,6 @@ MINOR_SCHEMAS = {
     'ICodeCommit': None,
     'ICodeCommitRepository': None,
     'ICodeCommitRepositoryGroup': None,
-    'ICodeCommitRepositoryGroups': None,
     'ICodeCommitUser': None,
     'ICloudFormationInit': None,
     'ICloudFormationConfiguration': None,

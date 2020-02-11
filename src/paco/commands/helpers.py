@@ -73,6 +73,71 @@ def init_cloud_command(
         print('Paco configuration directory needs to be specified with either --home or PACO_HOME environment variable.')
         sys.exit()
 
+    # Inform about invalid scopes before trying to load the Paco project
+    if config_scope.startswith('accounts.'):
+        print("\nThe accounts scope can only refer to the top-level 'accounts' and applies account actions")
+        print("to all accounts listed in the organization_account_ids: field in the 'accounts/master.yaml' file.\n")
+        print("See the Paco CLI config scope docs at https://www.paco-cloud.io/en/latest//cli.html#config-scope\n")
+        sys.exit()
+
+    if config_scope.startswith('netenv'):
+        parts = config_scope.split('.')
+        if len(parts) < 3:
+            print()
+            print("The netenv scope must specify a minimum of a NetworkEnvironment and Environment, for example:\n")
+            print("  netenv.mynet.dev")
+            print("  netenv.mynet.prod")
+            print("  netenv.mynet.prod.us-west-2")
+            print("  netenv.mynet.test.us-west-2.applications.myapp\n")
+            print("See the Paco CLI config scope docs at https://www.paco-cloud.io/en/latest//cli.html#config-scope\n")
+            sys.exit()
+
+    if config_scope.startswith('resource'):
+        parts = config_scope.split('.')
+        if len(parts) == 1:
+            print()
+            print("The resource scope must specify a minimum of a global Resource type, for example:\n")
+            print("  resource.codecommit")
+            print("  resource.ec2\n")
+            print("See the Paco CLI config scope docs at https://www.paco-cloud.io/en/latest//cli.html#config-scope\n")
+            sys.exit()
+
+    if config_scope.lower().startswith('resource.codecommit'):
+        parts = config_scope.split('.')
+        if len(parts) > 2:
+            print()
+            print("The CodeCommit Resource scope can only apply to all CodeCommit repos:\n")
+            print("  resource.codecommit\n")
+            print("See the Paco CLI config scope docs at https://www.paco-cloud.io/en/latest//cli.html#config-scope\n")
+            sys.exit()
+
+    if config_scope.lower().startswith('resource.snstopics') or config_scope.lower().startswith('resource.notificationgroups'):
+        parts = config_scope.split('.')
+        if len(parts) > 2:
+            print()
+            print("The SNSTopics Resource scope can only apply to all SNS Topics:\n")
+            print("  resource.snstopics\n")
+            print("See the Paco CLI config scope docs at https://www.paco-cloud.io/en/latest//cli.html#config-scope\n")
+            sys.exit()
+
+    if config_scope.lower().startswith('resource.route53'):
+        parts = config_scope.split('.')
+        if len(parts) > 2:
+            print()
+            print("The Route 53 Resource scope can only apply to all Route 53 configuration:\n")
+            print("  resource.route53\n")
+            print("See the Paco CLI config scope docs at https://www.paco-cloud.io/en/latest//cli.html#config-scope\n")
+            sys.exit()
+
+    if config_scope.lower().startswith('resource.s3'):
+        parts = config_scope.split('.')
+        if len(parts) > 2:
+            print()
+            print("The S3 Resource scope can only apply to all S3 Buckets:\n")
+            print("  resource.s3\n")
+            print("See the Paco CLI config scope docs at https://www.paco-cloud.io/en/latest//cli.html#config-scope\n")
+            sys.exit()
+
     import warnings
     warnings.simplefilter("ignore")
     paco_ctx.load_project()

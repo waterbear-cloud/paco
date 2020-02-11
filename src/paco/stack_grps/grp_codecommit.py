@@ -5,19 +5,22 @@ from paco.core.exception import PacoErrorCode
 from paco.utils import md5sum
 
 class CodeCommitStackGroup(StackGroup):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 codecommit_config,
-                 repo_list,
-                 controller):
-
-        super().__init__(paco_ctx,
-                         account_ctx,
-                         account_ctx.get_name(),
-                         'Git',
-                         controller)
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        aws_region,
+        codecommit_config,
+        repo_list,
+        controller
+    ):
+        super().__init__(
+            paco_ctx,
+            account_ctx,
+            account_ctx.get_name(),
+            'Git',
+            controller
+        )
 
         # Initialize config with a deepcopy of the project defaults
         self.config = codecommit_config
@@ -39,24 +42,21 @@ class CodeCommitStackGroup(StackGroup):
                 hook_arg=self.config
             )
         # CodeCommit Repository
-        codecommit_template = paco.cftemplates.CodeCommit(self.paco_ctx,
-                                                         self.account_ctx,
-                                                         self.aws_region,
-                                                         self,
-                                                         None, # stack_tags
-                                                         stack_hooks,
-                                                         self.config,
-                                                         self.repo_list)
-
-
-
+        codecommit_template = paco.cftemplates.CodeCommit(
+            self.paco_ctx,
+            self.account_ctx,
+            self.aws_region,
+            self,
+            None, # stack_tags
+            stack_hooks,
+            self.config,
+            self.repo_list
+        )
         codecommit_stack = codecommit_template.stack
         codecommit_stack.set_termination_protection(True)
         self.stack_list.append(codecommit_stack)
 
-
     def manage_ssh_key(self, iam_client, user_config):
-
         ssh_keys = iam_client.list_ssh_public_keys(
             UserName=user_config.username
         )

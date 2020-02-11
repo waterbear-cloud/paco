@@ -630,38 +630,12 @@ CodeCommit
 ^^^^^^^^^^^
 
 
-CodeCommit Service Configuration
+Container for `CodeCommitRepositoryGroup`_ objects.
     
 
 .. _CodeCommit:
 
-.. list-table:: :guilabel:`CodeCommit`
-    :widths: 15 28 30 16 11
-    :header-rows: 1
-
-    * - Field name
-      - Type
-      - Purpose
-      - Constraints
-      - Default
-    * - repository_groups
-      - Container<CodeCommitRepositoryGroups_> |star|
-      - Container of CodeCommitRepositoryGroup objects
-      - 
-      - 
-
-
-
-CodeCommitRepositoryGroups
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-
-Container for `CodeCommitRepositoryGroup`_ objects.
-    
-
-.. _CodeCommitRepositoryGroups:
-
-.. list-table:: :guilabel:`CodeCommitRepositoryGroups` |bars| Container<`CodeCommitRepositoryGroup`_>
+.. list-table:: :guilabel:`CodeCommit` |bars| Container<`CodeCommitRepositoryGroup`_>
     :widths: 15 28 30 16 11
     :header-rows: 1
 
@@ -4297,7 +4271,7 @@ CloudFrontDefaultCacheBehavior
       - False
     * - default_ttl
       - Int |star|
-      - Default TTTL
+      - Default TTL
       - 
       - 0
     * - forwarded_values
@@ -4305,6 +4279,16 @@ CloudFrontDefaultCacheBehavior
       - Forwarded Values
       - 
       - 
+    * - max_ttl
+      - Int |star|
+      - Maximum TTL
+      - 
+      - -1
+    * - min_ttl
+      - Int |star|
+      - Minimum TTL
+      - 
+      - -1
     * - target_origin
       - PacoReference |star|
       - Target Origin
@@ -5585,6 +5569,11 @@ Events Rule
       - Description
       - 
       - 
+    * - enabled_state
+      - Boolean
+      - Enabled State
+      - 
+      - True
     * - schedule_expression
       - String |star|
       - Schedule Expression
@@ -7043,9 +7032,34 @@ GenerateSecretString
       - A string that includes characters that should not be included in the generated password.
       - 
       - 
+    * - exclude_lowercase
+      - Boolean
+      - The generated password should not include lowercase letters.
+      - 
+      - False
+    * - exclude_numbers
+      - Boolean
+      - The generated password should exclude digits.
+      - 
+      - False
+    * - exclude_punctuation
+      - Boolean
+      - The generated password should not include punctuation characters.
+      - 
+      - False
+    * - exclude_uppercase
+      - Boolean
+      - The generated password should not include uppercase letters.
+      - 
+      - False
     * - generate_string_key
       - String
       - The JSON key name that's used to add the generated password to the JSON structure.
+      - 
+      - 
+    * - include_space
+      - Boolean
+      - The generated password can include the space character.
       - 
       - 
     * - password_length
@@ -7053,6 +7067,11 @@ GenerateSecretString
       - The desired length of the generated password.
       - 
       - 32
+    * - require_each_included_type
+      - Boolean
+      - The generated password must include at least one of every allowed character type.
+      - 
+      - True
     * - secret_string_template
       - String
       - A properly structured JSON string that the generated password can be added to.

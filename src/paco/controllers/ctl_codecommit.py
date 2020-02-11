@@ -18,24 +18,28 @@ class CodeCommitController(Controller):
             controller_type = 'Service'
         else:
             controller_type = 'Resource'
-        super().__init__(paco_ctx,
-                         controller_type,
-                         "CodeCommit")
+        super().__init__(
+            paco_ctx,
+            controller_type,
+            "CodeCommit"
+        )
         if not 'codecommit' in self.paco_ctx.project['resource']:
             self.init_done = True
             return
         self.config = None
-        self.name = None
         self.stack_grps = []
         self.init_done = False
 
     def init(self, command=None, model_obj=None):
+        # global resource controllers are initialized without scope
+        # then later have scope applied if the subject of a specific cloud command
+        if model_obj != None:
+            self.model_obj = model_obj
+
         if self.init_done:
             return
         self.init_done = True
         self.paco_ctx.log_action_col("Init", "CodeCommit")
-        if model_obj:
-            self.name = model_obj.paco_ref_list[1]
         self.config = self.paco_ctx.project['resource']['codecommit']
         # Sets the CodeCommit reference resolver object to forward all
         # all paco.ref resource.codecommit.* calls to self.resolve_ref()
@@ -50,13 +54,14 @@ class CodeCommitController(Controller):
             for repo_region in self.config.account_region_ids(account_id):
                 account_ctx = self.paco_ctx.get_account_context(account_ref=account_id)
                 repo_list = self.config.repo_list_dict(account_id, repo_region)
-                codecommit_stack_grp = CodeCommitStackGroup(self.paco_ctx,
-                                                            account_ctx,
-                                                            repo_region,
-                                                            self.config,
-                                                            repo_list,
-                                                            self)
-
+                codecommit_stack_grp = CodeCommitStackGroup(
+                    self.paco_ctx,
+                    account_ctx,
+                    repo_region,
+                    self.config,
+                    repo_list,
+                    self
+                )
                 self.stack_grps.append(codecommit_stack_grp)
                 codecommit_stack_grp.init()
 
@@ -109,7 +114,7 @@ policies:
             stack_grp.validate()
 
     def provision(self):
-        self.confirm_yaml_changes(self.config)
+        self.confirm_yaml_changes(self.model_obj)
         for stack_grp in self.stack_grps:
             stack_grp.provision()
         self.apply_model_obj()

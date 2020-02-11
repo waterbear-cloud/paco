@@ -451,6 +451,12 @@ class PacoContext(object):
         and the new actual file to be applied.
         """
         project_folder_path = pathlib.Path(self.project_folder)
+
+        # the scope can be deeper than the file - however applied
+        # only operates at the file level
+        while not hasattr(model_obj, '_read_file_path'):
+            model_obj = model_obj.__parent__
+
         changed_file_path = project_folder_path.joinpath(model_obj._read_file_path)
         applied_file_path = project_folder_path.joinpath(
             'aimdata',

@@ -68,7 +68,7 @@ class CloudTrailStackGroup(StackGroup):
             try:
                 s3_ctl.add_bucket(
                     s3bucket,
-                    config_ref = s3_config_ref,
+                    config_ref=s3_config_ref,
                 )
             except PacoBucketExists:
                 # for multiple accounts there is only one bucket needed
