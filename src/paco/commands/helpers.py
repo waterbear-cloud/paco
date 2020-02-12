@@ -3,7 +3,7 @@ import os
 import sys
 import ruamel.yaml.constructor
 from paco.config.paco_context import PacoContext, AccountContext
-from paco.core.exception import PacoException, StackException, InvalidPacoScope
+from paco.core.exception import PacoException, StackException, InvalidPacoScope, PacoBaseException
 from paco.models.exceptions import InvalidPacoProjectFile, UnusedPacoProjectField, InvalidPacoReference
 from paco.models.references import get_model_obj_from_ref
 from boto3.exceptions import Boto3Error
@@ -250,6 +250,7 @@ def handle_exceptions(func):
             UnusedPacoProjectField,
             InvalidPacoProjectFile,
             PacoException,
+            PacoBaseException,
             StackException,
             BotoCoreError,
             ClientError,
@@ -272,10 +273,11 @@ def handle_exceptions(func):
                 if hasattr(error, 'args'):
                     if len(error.args) > 0:
                         click.echo(error.args[0])
-            elif error_name in ('InvalidPacoScope'):
-                click.echo(error)
             elif error_name in ('StackException'):
                 click.echo(error.message)
+            # generically catch new-style exceptions last
+            elif isinstance(error, PacoBaseException):
+                click.echo(error)
             else:
                 if hasattr(error, 'message'):
                     click.echo(error.message)

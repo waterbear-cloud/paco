@@ -7,7 +7,7 @@ import pathlib
 import pkg_resources
 import ruamel.yaml
 from paco.core.exception import StackException
-from paco.core.exception import PacoErrorCode
+from paco.core.exception import PacoErrorCode, MissingAccountId, InvalidAccountName
 from paco.models import vocabulary
 from paco.models.references import Reference
 from paco.models import references
@@ -35,7 +35,16 @@ class AccountContext(object):
         self.client_cache = {}
         self.resource_cache = {}
         self.paco_ctx = paco_ctx
-        self.config = paco_ctx.project['accounts'][name]
+        try:
+            self.config = paco_ctx.project['accounts'][name]
+        except KeyError:
+            # ToDo: this should be validated during model loading so that
+            # the error can identify which file it comes from ...
+            raise InvalidAccountName(
+"""The account '{}' does not exist. This name must match a name in this
+Paco projects `accounts/` directory.
+""".format(name)
+            )
         self.mfa_account = mfa_account
         self.aws_session = None
         self.temp_aws_session = None
@@ -50,12 +59,11 @@ class AccountContext(object):
         # check that account_id has been set
         # account YAML files are created without an account_id until they are provisioned
         if self.config.account_id == None:
-            print("""
-The account '{}' is missing an account_id field.
+            raise MissingAccountId(
+"""The account '{}' is missing an account_id field.
 Add this manually or run `paco provision accounts` for this project.
 """.format(self.config.name)
             )
-            sys.exit()
 
         self.admin_iam_role_arn = 'arn:aws:iam::{}:role/{}'.format(
             self.config.account_id,

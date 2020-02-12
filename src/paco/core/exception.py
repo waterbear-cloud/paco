@@ -41,6 +41,7 @@ class StackException(PacoException):
         error_str =  "StackException: " + self.code.name + ": " + self.message
         return error_str
 
+
 class PacoBucketExists(Exception):
     title = "S3 Bucket already exists"
 
@@ -53,5 +54,15 @@ class InvalidLogSetConfiguration(Exception):
 class PacoUnsupportedFeature(Exception):
     title = "Feature does not yet exist"
 
-class InvalidPacoScope(Exception):
+
+class PacoBaseException(Exception):
+    title = "Generic Paco Error"
+
+class InvalidPacoScope(PacoBaseException):
     title = "Invalid CONFIG_SCOPE argument"
+
+class MissingAccountId(PacoBaseException):
+    title = "No AWS account id"
+
+class InvalidAccountName(PacoBaseException):
+    title = "Invalid AWS account name"
