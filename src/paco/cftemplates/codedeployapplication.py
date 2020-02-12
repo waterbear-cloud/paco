@@ -52,8 +52,6 @@ class CodeDeployApplication(CFTemplate):
             name='ServiceRoleArn',
             description='The codedeploy service Role to assume.',
             value=role.get_arn(),
-            use_troposphere=True,
-            troposphere_template=self.template,
         )
 
         # CodeDeploy Application

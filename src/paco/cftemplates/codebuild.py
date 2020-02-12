@@ -55,24 +55,18 @@ class CodeBuild(CFTemplate):
             name='ResourceNamePrefix',
             description='The name to prefix resource names.',
             value=self.res_name_prefix,
-            use_troposphere=True,
-            troposphere_template=template,
         )
         self.cmk_arn_param = self.create_cfn_parameter(
             param_type='String',
             name='CMKArn',
             description='The KMS CMK Arn of the key used to encrypt deployment artifacts.',
             value=pipeline_config.paco_ref + '.kms.arn',
-            use_troposphere=True,
-            troposphere_template=template,
         )
         self.artifacts_bucket_name_param = self.create_cfn_parameter(
             param_type='String',
             name='ArtifactsBucketName',
             description='The name of the S3 Bucket to create that will hold deployment artifacts',
             value=artifacts_bucket_name,
-            use_troposphere=True,
-            troposphere_template=template,
         )
         self.codebuild_project_res = self.create_codebuild_cfn(
             template,
@@ -95,24 +89,18 @@ class CodeBuild(CFTemplate):
             name='CodeBuildComputeType',
             description='The type of compute environment. This determines the number of CPU cores and memory the build environment uses.',
             value=action_config.codebuild_compute_type,
-            use_troposphere=True,
-            troposphere_template=template,
         )
         image_param = self.create_cfn_parameter(
             param_type='String',
             name='CodeBuildImage',
             description='The image tag or image digest that identifies the Docker image to use for this build project.',
             value=action_config.codebuild_image,
-            use_troposphere=True,
-            troposphere_template=template,
         )
         deploy_env_name_param = self.create_cfn_parameter(
             param_type='String',
             name='DeploymentEnvironmentName',
             description='The name of the environment codebuild will be deploying into.',
             value=action_config.deployment_environment,
-            use_troposphere=True,
-            troposphere_template=template,
         )
         self.project_role_name = self.create_iam_resource_name(
             name_list=[self.res_name_prefix, 'CodeBuild-Project'],
@@ -223,8 +211,6 @@ class CodeBuild(CFTemplate):
             name='TimeoutInMinutes',
             description='How long, in minutes, from 5 to 480 (8 hours), for AWS CodeBuild to wait before timing out any related build that did not get marked as completed.',
             value=action_config.timeout_mins,
-            use_troposphere=True,
-            troposphere_template=template,
         )
 
         # CodeBuild: Environment

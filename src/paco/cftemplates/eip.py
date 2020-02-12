@@ -73,8 +73,6 @@ class EIP(CFTemplate):
                         name=zone_param_name,
                         description='Domain Alias Hosted Zone Id',
                         value=dns_config.hosted_zone+'.id',
-                        use_troposphere=True,
-                        troposphere_template=template
                         )
                     troposphere.route53.RecordSetType(
                         title = self.create_cfn_logical_id_join(['RecordSet', dns_hash]),

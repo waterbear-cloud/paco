@@ -52,13 +52,11 @@ class Route53HealthCheck(CFBaseAlarm):
             if self.health_check.ip_address != None:
                 # Set the IPAddress to ping
                 ip_address_param = self.create_cfn_parameter(
-                    param_type = 'String',
-                    name = 'IPAddress',
-                    description = 'IP address to monitor.',
-                    value = self.health_check.ip_address + '.address',
-                    use_troposphere = True
+                    param_type='String',
+                    name='IPAddress',
+                    description='IP address to monitor.',
+                    value=self.health_check.ip_address + '.address',
                 )
-                self.template.add_parameter(ip_address_param)
                 cfn_export_dict['HealthCheckConfig']['IPAddress'] = troposphere.Ref(ip_address_param)
             else:
                 # FullyQualifiedDomainName can be either a domain_name or a ref to an ALB endpoint
@@ -71,9 +69,7 @@ class Route53HealthCheck(CFBaseAlarm):
                     name = 'FQDNEndpoint',
                     description = 'Fully-qualified domain name of the endpoint to monitor.',
                     value = fqdn_value,
-                    use_troposphere = True
                 )
-                self.template.add_parameter(fqdn_param)
                 cfn_export_dict['HealthCheckConfig']['FullyQualifiedDomainName'] = troposphere.Ref(fqdn_param)
             # Set the Name in the HealthCheckTags
             # Route53 is global, but we add the app's region in the name

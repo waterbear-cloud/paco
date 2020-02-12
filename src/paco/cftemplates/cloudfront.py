@@ -45,12 +45,11 @@ class CloudFront(CFTemplate):
         )
 
         target_origin_param = self.create_cfn_parameter(
-                param_type='String',
-                name='TargetOrigin',
-                description='Target Origin',
-                value=cloudfront_config.default_cache_behavior.target_origin,
-                use_troposphere=True,
-                troposphere_template=template)
+            param_type='String',
+            name='TargetOrigin',
+            description='Target Origin',
+            value=cloudfront_config.default_cache_behavior.target_origin,
+        )
 
         distribution_config_dict = {
             'Enabled': cloudfront_config.is_enabled(),
@@ -79,20 +78,15 @@ class CloudFront(CFTemplate):
         aliases_param_map = {}
         for alias in cloudfront_config.domain_aliases:
             alias_hash = utils.md5sum(str_data=alias.domain_name)
-
             domain_name_param = 'DomainAlias' + alias_hash
             alias_param = self.create_cfn_parameter(
                 param_type='String',
                 name=domain_name_param,
                 description='Domain Alias CNAME',
-                value=alias.domain_name,
-                use_troposphere=True,
-                troposphere_template=template)
+                value=alias.domain_name
+            )
             aliases_list.append(troposphere.Ref(alias_param))
             aliases_param_map[alias.domain_name] = alias_param
-
-
-
 
         distribution_config_dict['Aliases'] = aliases_list
 
@@ -127,8 +121,7 @@ class CloudFront(CFTemplate):
                         name=self.create_cfn_logical_id('TargetOriginCacheBehavior'+target_origin_hash),
                         description='Target Origin',
                         value=cache_behavior.target_origin,
-                        use_troposphere=True,
-                        troposphere_template=template)
+                    )
                     target_origin_param_map[target_origin_hash] = cb_target_origin_param
                 else:
                     cb_target_origin_param = target_origin_param_map[target_origin_hash]
@@ -213,8 +206,6 @@ class CloudFront(CFTemplate):
                       name=param_name,
                       description='Origin Access Identity',
                       value=access_id_ref,
-                      use_troposphere=True,
-                      troposphere_template=template
                     )
                     origin_dict['S3OriginConfig']['OriginAccessIdentity'] = troposphere.Sub(
                         'origin-access-identity/cloudfront/${OriginAccessId}',
@@ -242,9 +233,7 @@ class CloudFront(CFTemplate):
               param_type='String',
               name='WebAclId',
               description='WAF Web Acl ID',
-              value=cloudfront_config.webacl_id,
-              use_troposphere=True,
-              troposphere_template=template
+              value=cloudfront_config.webacl_id
             )
             distribution_config_dict['WebACLId'] = troposphere.Ref(webacl_id_param)
 
@@ -265,9 +254,7 @@ class CloudFront(CFTemplate):
                         name=zone_param_name,
                         description='Domain Alias Hosted Zone Id',
                         value=alias.hosted_zone+'.id',
-                        use_troposphere=True,
-                        troposphere_template=template
-                        )
+                    )
                     record_set_res = troposphere.route53.RecordSetType(
                         title = self.create_cfn_logical_id_join(['RecordSet', alias_hash]),
                         template = template,

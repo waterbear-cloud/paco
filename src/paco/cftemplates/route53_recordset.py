@@ -51,9 +51,7 @@ class Route53RecordSet(CFTemplate):
             name='HostedZoneId',
             description='Record Set Hosted Zone Id',
             value=hosted_zone_id,
-            use_troposphere=True,
-            troposphere_template=self.template
-            )
+        )
 
         record_set_type = record_set_config['record_set_type']
         if record_set_config['record_set_type'] == 'Alias':
@@ -72,18 +70,13 @@ class Route53RecordSet(CFTemplate):
                 name='AliasHostedZoneId',
                 description='Hosted Zone Id for the A Alias',
                 value=record_set_config['alias_hosted_zone_id'],
-                use_troposphere=True,
-                troposphere_template=self.template
-                )
-
+            )
             alias_dns_name_param = self.create_cfn_parameter(
                 param_type='String',
                 name='AliasDNSName',
                 description='DNS Name for the A Alias',
                 value=record_set_config['alias_dns_name'],
-                use_troposphere=True,
-                troposphere_template=self.template
-                )
+            )
             record_set_dict['AliasTarget'] = {
                 'DNSName': troposphere.Ref(alias_dns_name_param),
                 'HostedZoneId': troposphere.Ref(alias_hosted_zone_id_param)
@@ -102,8 +95,6 @@ class Route53RecordSet(CFTemplate):
                     name='ResourceRecord' + record_hash,
                     description='Resource Record: ' + hash_name,
                     value=resource_record,
-                    use_troposphere=True,
-                    troposphere_template=self.template
                 )
                 record_set_dict['ResourceRecords'].append(troposphere.Ref(resource_record_param))
 

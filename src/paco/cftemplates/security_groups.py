@@ -11,22 +11,20 @@ from enum import Enum
 
 
 class SecurityGroups(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 env_ctx,
-                 security_groups_config,
-                 sg_group_id,
-                 sg_groups_config_ref,
-                 template_type):
-
-        #paco_ctx.log("SecurityGroup CF Template init")
-
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
+        env_ctx,
+        security_groups_config,
+        sg_group_id,
+        sg_groups_config_ref,
+        template_type
+    ):
         self.env_ctx = env_ctx
-
         super().__init__(
             paco_ctx,
             account_ctx,
@@ -36,7 +34,6 @@ class SecurityGroups(CFTemplate):
             stack_tags=stack_tags,
             environment_name=self.env_ctx.env_id,
         )
-
         rules_id = None
         if template_type == 'Rules':
             rules_id = 'Rules'
@@ -63,9 +60,7 @@ class SecurityGroups(CFTemplate):
             param_type='AWS::EC2::VPC::Id',
             description='The VPC Id',
             value='paco.ref netenv.{}.<environment>.<region>.network.vpc.id'.format(self.env_ctx.netenv_id),
-            use_troposphere=True
         )
-        template.add_parameter(vpc_id_param)
 
         # Security Group and Ingress/Egress Resources
         is_sg_enabled = False
@@ -207,8 +202,7 @@ class SecurityGroups(CFTemplate):
             name='SourceGroupId' + group_ref_hash,
             description='Source Security Group - ' + hash_ref,
             value=group_ref+'.id',
-            use_troposphere=True,
-            troposphere_template=template)
+        )
 
         self.source_group_param_cache[group_ref_hash] = source_sg_param
         return troposphere.Ref(self.source_group_param_cache[group_ref_hash])

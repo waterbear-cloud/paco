@@ -13,14 +13,11 @@ class Example(CFTemplate):
         aws_region,
         stack_group,
         stack_tags,
-
         grp_id,
         res_id,
         example_config,
-        config_ref):
-
-        # ---------------------------------------------------------------------------
-        # CFTemplate Initialization
+        config_ref
+    ):
         super().__init__(
             paco_ctx,
             account_ctx,
@@ -33,23 +30,19 @@ class Example(CFTemplate):
         )
         self.set_aws_name('Example', grp_id, res_id)
 
-        # ---------------------------------------------------------------------------
         # Troposphere Template Initialization
         self.init_template('Example Template')
+        if not example_config.is_enabled():
+            return self.set_template(self.template.to_yaml())
 
-        # ---------------------------------------------------------------------------
         # Parameters
-
         example_param = self.create_cfn_parameter(
             name='ExampleParameterName',
             param_type='String',
             description='Example parameter.',
             value=example_config.example_variable,
-            use_troposphere=True,
-            troposphere_template=self.template,
         )
 
-        # ---------------------------------------------------------------------------
         # Resource
         example_dict = {
             'some_property' : troposphere.Ref(example_param)
@@ -60,7 +53,6 @@ class Example(CFTemplate):
         )
         self.template.add_resource( example_res )
 
-        # ---------------------------------------------------------------------------
         # Outputs
         example_output = troposphere.Output(
             title='ExampleResourceId',

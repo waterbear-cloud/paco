@@ -57,13 +57,11 @@ class LogGroups(CFTemplate):
             # provide prefixed LogGroup name as a CFN Parameter
             param_name = 'Name' + loggroup_logical_id
             log_group_name_parameter = self.create_cfn_parameter(
-                param_type = 'String',
-                name = param_name,
-                description = 'LogGroup name',
-                value = prefixed_log_group_name,
-                use_troposphere = True
+                param_type='String',
+                name=param_name,
+                description='LogGroup name',
+                value=prefixed_log_group_name,
             )
-            template.add_parameter(log_group_name_parameter)
             cfn_export_dict['LogGroupName'] = troposphere.Ref(log_group_name_parameter)
 
             # override default retention?

@@ -109,8 +109,6 @@ class RDS(CFTemplate):
             name='DBSubnetIdList',
             description='The list of subnet IDs where this database will be provisioned.',
             value=rds_config.segment+'.subnet_id_list',
-            use_troposphere=True,
-            troposphere_template=template
         )
 
         db_subnet_group_res = troposphere.rds.DBSubnetGroup(
@@ -138,9 +136,7 @@ class RDS(CFTemplate):
                 param_type='String',
                 description='DB Parameter Group Name',
                 value=rds_config.parameter_group + '.name',
-                use_troposphere=True
             )
-            self.template.add_parameter(dbparametergroup_ref)
 
         # Option Group
         option_group_res = None
@@ -182,8 +178,6 @@ class RDS(CFTemplate):
                     name=self.create_cfn_logical_id('SecurityGroup'+sg_hash),
                     description='VPC Security Group to attach to the RDS.',
                     value=sg_ref+'.id',
-                    use_troposphere=True,
-                    troposphere_template=template
                 )
                 sg_param_ref_list.append(troposphere.Ref(sg_param))
 
@@ -252,9 +246,7 @@ class RDS(CFTemplate):
                         name='RDSSecretARN',
                         description='The ARN for the secret for the RDS master password.',
                         value=rds_config.secrets_password + '.arn',
-                        use_troposphere=True
                     )
-                    template.add_parameter(secret_arn_param)
                     secret_target_attachment_resource = troposphere.secretsmanager.SecretTargetAttachment(
                         title=sta_logical_id,
                         SecretId=troposphere.Ref(secret_arn_param),
@@ -274,8 +266,6 @@ class RDS(CFTemplate):
                         description='The master user password.',
                         value=rds_config.master_user_password,
                         noecho=True,
-                        use_troposphere=True,
-                        troposphere_template=template
                     )
                     db_instance_dict['MasterUserPassword'] = troposphere.Ref(master_password_param)
 
@@ -311,8 +301,6 @@ class RDS(CFTemplate):
                             name='DNSHostedZoneId'+dns_hash,
                             description='The hosted zone id to create the Route53 record set.',
                             value=rds_config.primary_hosted_zone+'.id',
-                            use_troposphere=True,
-                            troposphere_template=template
                         )
                         record_set_res = troposphere.route53.RecordSetType(
                             title = 'RecordSet'+dns_hash,

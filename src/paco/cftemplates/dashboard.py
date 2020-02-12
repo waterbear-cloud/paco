@@ -50,20 +50,16 @@ class CloudWatchDashboard(CFTemplate):
                     param_type=param_type,
                     name=key,
                     description='Dashboard {} Variable'.format(key),
-                    value=value,
-                    use_troposphere=True
+                    value=value
                 )
-                self.template.add_parameter(variable_param)
 
         # Region Parameter
         region_param = self.create_cfn_parameter(
             param_type='String',
             name='AwsRegion',
             description='Dashboard Region Variable',
-            value=aws_region,
-            use_troposphere=True
+            value=aws_region
         )
-        self.template.add_parameter(region_param)
 
         # Dashboard resource
         dashboard_logical_id = 'Dashboard'
