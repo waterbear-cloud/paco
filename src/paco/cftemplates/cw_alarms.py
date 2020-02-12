@@ -45,9 +45,7 @@ class CFBaseAlarm(CFTemplate):
                     description='SNS Topic to notify',
                     value=notification_paco_ref,
                     min_length=1, # prevent borked empty values from breaking notification
-                    use_troposphere=True
                 )
-                self.template.add_parameter(notification_param)
                 self.notification_param_map[param_name] = notification_param
             notification_cfn_refs.append(troposphere.Ref(notification_param))
         return notification_cfn_refs
@@ -66,10 +64,8 @@ class CFBaseAlarm(CFTemplate):
                     param_type='String',
                     name=param_name,
                     description='SNSTopic for Alarm to notify.',
-                    value=alarm_action,
-                    use_troposphere=True
+                    value=alarm_action
                 )
-                self.template.add_parameter(alarm_action_param)
                 self.alarm_action_param_map[param_name] = alarm_action_param
             alarm_action_list.append(troposphere.Ref(alarm_action_param))
 
@@ -165,13 +161,11 @@ class CWAlarms(CFBaseAlarm):
                 # ToDo: how to have Alarms for the read replica nodes?
                 value = resource.get_aws_name() + '-001'
             dimension_param = self.create_cfn_parameter(
-                param_type = 'String',
-                name = 'DimensionResource',
-                description = 'The resource id or name for the metric dimension.',
-                value = value,
-                use_troposphere = True
+                name='DimensionResource',
+                param_type='String',
+                description='The resource id or name for the metric dimension.',
+                value=value
             )
-            template.add_parameter(dimension_param)
         alarms_are_enabled = False
         for alarm in alarms:
             if alarm.enabled == True:
@@ -181,13 +175,11 @@ class CWAlarms(CFBaseAlarm):
             if len(alarm.dimensions) > 0:
                 for dimension in alarm.dimensions:
                     dimension.parameter = self.create_cfn_parameter(
-                        param_type = 'String',
-                        name = 'DimensionResource{}{}'.format(alarm.cfn_resource_name, dimension.name),
-                        description = 'The resource id or name for the metric dimension.',
-                        value = dimension.value,
-                        use_troposphere = True
+                        name='DimensionResource{}{}'.format(alarm.cfn_resource_name, dimension.name),
+                        param_type='String',
+                        description='The resource id or name for the metric dimension.',
+                        value=dimension.value,
                     )
-                    template.add_parameter(dimension.parameter)
 
             # compute dynamic attributes for cfn_export_dict
             alarm_export_dict = alarm.cfn_export_dict

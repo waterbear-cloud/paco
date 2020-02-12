@@ -80,9 +80,7 @@ class SNSTopics(CFTemplate):
                         name = param_name,
                         description = 'SNSTopic Endpoint value',
                         value = subscription.endpoint,
-                        use_troposphere = True
                     )
-                    template.add_parameter(parameter)
                     endpoint = parameter
                 else:
                     endpoint = subscription.endpoint

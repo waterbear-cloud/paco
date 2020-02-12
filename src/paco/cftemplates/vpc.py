@@ -9,16 +9,16 @@ from enum import Enum
 
 
 class VPC(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 vpc_config,
-                 vpc_config_ref):
-        #paco_ctx.log("VPC CF Template init")
-
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
+        vpc_config,
+        vpc_config_ref
+    ):
         super().__init__(
             paco_ctx=paco_ctx,
             account_ctx=account_ctx,
@@ -33,28 +33,24 @@ class VPC(CFTemplate):
         template.add_version('2010-09-09')
         template.add_description('Virtual Private Network')
 
-        #---------------------------------------------------------------------
         # VPC
         cidr_block_param = self.create_cfn_parameter(
             name='CidrBlock',
             param_type='String',
             description='The VPC CIDR block',
-            value=vpc_config.cidr,
-            use_troposphere=True
+            value=vpc_config.cidr
         )
         enable_dns_support_param = self.create_cfn_parameter(
             name='EnableDnsSupport',
             param_type='String',
             description='Indicates whether the DNS resolution is supported for the VPC.',
             value=vpc_config.enable_dns_support,
-            use_troposphere=True
         )
         enable_dns_hostname_param = self.create_cfn_parameter(
             name='EnableDnsHostnames',
             param_type='String',
             description='Indicates whether the instances launched in the VPC get DNS hostnames.',
             value=vpc_config.enable_dns_hostnames,
-            use_troposphere=True
         )
         vpc_dict = {
             'CidrBlock': troposphere.Ref(cidr_block_param),
@@ -66,11 +62,6 @@ class VPC(CFTemplate):
             'VPC',
             Value=troposphere.Ref(vpc_res)
         )
-
-
-        template.add_parameter(cidr_block_param)
-        template.add_parameter(enable_dns_support_param)
-        template.add_parameter(enable_dns_hostname_param)
         template.add_resource(vpc_res)
         template.add_output(vpc_output)
 
@@ -111,7 +102,6 @@ class VPC(CFTemplate):
                 param_type='String',
                 description='The name of the private hosted zone domain.',
                 value=vpc_config.private_hosted_zone.name,
-                use_troposphere=True
             )
             private_zone_vpcs = []
             private_zone_vpcs.append(troposphere.route53.HostedZoneVPCs(
@@ -134,8 +124,6 @@ class VPC(CFTemplate):
                 Description="Private Hosted Zone Id",
                 Value=troposphere.Ref(private_zone_res)
             )
-
-            template.add_parameter(internal_domain_name_param)
             template.add_resource(private_zone_res)
             template.add_output(private_zone_id_output)
 

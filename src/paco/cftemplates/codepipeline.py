@@ -57,24 +57,18 @@ class CodePipeline(CFTemplate):
             name='ResourceNamePrefix',
             description='The name to prefix resource names.',
             value=self.res_name_prefix,
-            use_troposphere=True,
-            troposphere_template=template,
         )
         self.cmk_arn_param = self.create_cfn_parameter(
             param_type='String',
             name='CMKArn',
             description='The KMS CMK Arn of the key used to encrypt deployment artifacts.',
             value=res_config.paco_ref + '.kms.arn',
-            use_troposphere=True,
-            troposphere_template=template,
         )
         self.artifacts_bucket_name_param = self.create_cfn_parameter(
             param_type='String',
             name='ArtifactsBucketName',
             description='The name of the S3 Bucket to create that will hold deployment artifacts',
             value=artifacts_bucket_name,
-            use_troposphere=True,
-            troposphere_template=template,
         )
         self.manual_approval_is_enabled = False
         self.create_codepipeline_cfn(
@@ -105,32 +99,24 @@ class CodePipeline(CFTemplate):
                     name='CodeCommitRepositoryArn',
                     description='The Arn of the CodeCommit repository',
                     value='{}.codecommit.arn'.format(action_config.paco_ref),
-                    use_troposphere=True,
-                    troposphere_template=template
                 )
                 codecommit_role_arn_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeCommitRoleArn',
                     description='The Arn of the CodeCommit Role',
                     value='{}.codecommit_role.arn'.format(action_config.paco_ref),
-                    use_troposphere=True,
-                    troposphere_template=template
                 )
                 codecommit_repo_name_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeCommitRepositoryName',
                     description='The name of the CodeCommit repository',
                     value=action_config.codecommit_repository+'.name',
-                    use_troposphere=True,
-                    troposphere_template=template,
                 )
                 deploy_branch_name_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeCommitDeploymentBranchName',
                     description='The name of the branch where commits will trigger a build.',
                     value=action_config.deployment_branch_name,
-                    use_troposphere=True,
-                    troposphere_template=template,
                 )
 
                 codecommit_source_action = troposphere.codepipeline.Actions(
@@ -174,8 +160,6 @@ class CodePipeline(CFTemplate):
                     name='CodeBuildProjectArn',
                     description='The arn of the CodeBuild project',
                     value='{}.project.arn'.format(action_config.paco_ref),
-                    use_troposphere=True,
-                    troposphere_template=template,
                 )
                 codebuild_build_action = troposphere.codepipeline.Actions(
                     Name='CodeBuild',
@@ -216,8 +200,6 @@ class CodePipeline(CFTemplate):
             name='ManualApprovalEnabled',
             description='Boolean indicating whether a manual approval is enabled or not.',
             value=self.manual_approval_is_enabled,
-            use_troposphere=True,
-            troposphere_template=template,
         )
         template.add_condition(
             'ManualApprovalIsEnabled',
@@ -363,8 +345,6 @@ class CodePipeline(CFTemplate):
                 name='ManualApprovalNotificationEmail'+email_hash,
                 description='Email to send notifications to when a deployment requires approval.',
                 value=approval_email,
-                use_troposphere=True,
-                troposphere_template=template,
             )
             subscription_list.append(
                 troposphere.sns.Subscription(
@@ -419,16 +399,12 @@ class CodePipeline(CFTemplate):
                     name='S3DeployBucketName',
                     description='The name of the S3 bucket to deploy to.',
                     value=action_config.bucket+'.name',
-                    use_troposphere=True,
-                    troposphere_template=template
                 )
                 s3_deploy_extract_param = self.create_cfn_parameter(
                     param_type='String',
                     name='S3DeployExtract',
                     description='Boolean indicating whether the deployment artifact will be extracted.',
                     value=action_config.extract,
-                    use_troposphere=True,
-                    troposphere_template=template
                 )
                 s3_deploy_object_key_param = 'AWS::NoValue'
                 if action_config.object_key != None:
@@ -437,16 +413,12 @@ class CodePipeline(CFTemplate):
                         name='S3DeployObjectKey',
                         description='S3 object key to store the deployment artifact as.',
                         value=action_config.object_key,
-                        use_troposphere=True,
-                        troposphere_template=template
                     )
                 s3_deploy_delegate_role_arn_param = self.create_cfn_parameter(
                     param_type='String',
                     name='S3DeployDelegateRoleArn',
                     description='The Arn of the IAM Role CodePipeline will assume to gain access to the deployment bucket.',
                     value=action_config._delegate_role_arn,
-                    use_troposphere=True,
-                    troposphere_template=template
                 )
                 # CodeDeploy Deploy Action
                 s3_deploy_action = troposphere.codepipeline.Actions(
@@ -487,32 +459,24 @@ class CodePipeline(CFTemplate):
                     name='CodeDeployToolsDelegateRoleArn',
                     description='The Arn of the CodeDeploy Delegate Role',
                     value=action_config.paco_ref + '.codedeploy_tools_delegate_role.arn',
-                    use_troposphere=True,
-                    troposphere_template=template
                 )
                 codedeploy_application_name_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeDeployApplicationName',
                     description='The CodeDeploy Application name to deploy to.',
                     value=action_config.paco_ref+'.codedeploy_application_name',
-                    use_troposphere=True,
-                    troposphere_template=template
                 )
                 codedeploy_group_name_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeDeployGroupName',
                     description='The name of the CodeDeploy deployment group.',
                     value=action_config.paco_ref + '.deployment_group.name',
-                    use_troposphere=True,
-                    troposphere_template=template
                 )
                 codedeploy_region_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeDeployRegion',
                     description='The AWS Region where deployments to CodeDeploy will be sent.',
                     value=self.env_ctx.region,
-                    use_troposphere=True,
-                    troposphere_template=template
                 )
                 # CodeDeploy Deploy Action
                 codedeploy_deploy_action = troposphere.codepipeline.Actions(

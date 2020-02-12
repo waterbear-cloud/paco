@@ -42,16 +42,12 @@ class EFS(CFTemplate):
             description='EFS mount target security group list.',
             value=efs_config.security_groups,
             ref_attribute='id',
-            use_troposphere=True,
-            troposphere_template=self.template
         )
         encrypted_param = self.create_cfn_parameter(
             name='EncryptedAtRest',
             param_type='String',
             description='Boolean indicating whether the data will be encrypted at rest.',
             value=efs_config.encrypted,
-            use_troposphere=True,
-            troposphere_template=self.template,
         )
 
         # Elastic File System
@@ -82,8 +78,6 @@ class EFS(CFTemplate):
                 param_type='String',
                 description='The SubnetId for AZ{}.'.format(az_idx),
                 value=subnet_id_ref,
-                use_troposphere=True,
-                troposphere_template=self.template,
             )
             efs_mount_logical_id = self.create_cfn_logical_id('EFSMountTargetAZ{}'.format(az_idx))
             troposphere.efs.MountTarget(

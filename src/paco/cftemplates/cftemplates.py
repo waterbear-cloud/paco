@@ -174,6 +174,7 @@ class CFTemplate():
         self.body = None
         self.aws_name = aws_name
         self.config_ref = config_ref
+        self.template = None
         self.template_file_id = None
         self.environment_name = environment_name
         # Stack
@@ -987,33 +988,33 @@ class CFTemplate():
             desc_value = type(value)
         else:
             desc_value = value
-        if use_troposphere == False:
+        if not self.template:
+            # if init_template has not been called, it's an old school format string template
             return """
   # {}: {}
   {}:
     Description: {}
     Type: {}{}
 """.format(name, desc_value, name, description, param_type, other_yaml)
-        else:
-            param_dict = {
-                'Description': description,
-                'Type': param_type
-            }
-            if default != None:
-                param_dict['Default'] = default
-            if noecho == True:
-                param_dict['NoEcho'] = True
-            if min_length != None:
-                param_dict['MinLength'] = min_length
-            if max_length != None:
-                param_dict['MaxLength'] = max_length
-            param = troposphere.Parameter.from_dict(
-                name,
-                param_dict
-            )
-            if troposphere_template != None:
-                troposphere_template.add_parameter(param)
-            return param
+
+        # create troposphere Parmeter and add it to the troposphere template
+        param_dict = {
+            'Description': description,
+            'Type': param_type
+        }
+        if default != None:
+            param_dict['Default'] = default
+        if noecho == True:
+            param_dict['NoEcho'] = True
+        if min_length != None:
+            param_dict['MinLength'] = min_length
+        if max_length != None:
+            param_dict['MaxLength'] = max_length
+        param = troposphere.Parameter.from_dict(
+            name,
+            param_dict
+        )
+        return self.template.add_parameter(param)
 
     def create_cfn_ref_list_param(
         self,

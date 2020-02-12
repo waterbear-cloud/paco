@@ -67,9 +67,7 @@ class IAMUsers(CFTemplate):
             param_type='String',
             description='The name of the user.',
             value=iam_user_config.username,
-            use_troposphere=True
         )
-        self.template.add_parameter(username_param)
 
         if iam_user_config.console_access_enabled == True:
             user_password = utils.md5sum(str_data=iam_user_config.username)[:8]
@@ -82,9 +80,7 @@ class IAMUsers(CFTemplate):
                 description='The password to assign of the user',
                 noecho=True,
                 value=user_password,
-                use_troposphere=True
             )
-            self.template.add_parameter(password_param)
 
         # ---------------------------------------------------------------------------
         # Resources

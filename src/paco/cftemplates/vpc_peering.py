@@ -9,18 +9,18 @@ from enum import Enum
 
 
 class VPCPeering(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 netenv_name,
-                 env_name,
-                 network_config,
-                 vpc_config_ref):
-        #paco_ctx.log("VPC CF Template init")
-
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
+        netenv_name,
+        env_name,
+        network_config,
+        vpc_config_ref
+    ):
         super().__init__(
             paco_ctx=paco_ctx,
             account_ctx=account_ctx,
@@ -40,18 +40,13 @@ class VPCPeering(CFTemplate):
             troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
         )
 
-
-        #---------------------------------------------------------------------
         # VPC Peering
-
         vpc_id_param = self.create_cfn_parameter(
             name='VpcId',
             param_type='AWS::EC2::VPC::Id',
             description='The VPC Id',
             value='paco.ref netenv.{}.<environment>.<region>.network.vpc.id'.format(netenv_name),
-            use_troposphere=True
         )
-        template.add_parameter(vpc_id_param)
 
         # Peer
         any_peering_enabled = False
@@ -83,7 +78,6 @@ class VPCPeering(CFTemplate):
                         param_type='String',
                         description='The route table ID for AZ {}.'.format(az_str),
                         value='{}.az{}.route_table.id'.format(route.segment, az_str),
-                        use_troposphere=True
                     )
                     peer_route_res = troposphere.ec2.Route(
                         'PeeringRoute' + resource_name_suffix,
@@ -91,7 +85,6 @@ class VPCPeering(CFTemplate):
                         VpcPeeringConnectionId = troposphere.Ref(vpc_peering_connection_res),
                         RouteTableId = troposphere.Ref(route_table_param)
                     )
-                    template.add_parameter(route_table_param)
                     template.add_resource(peer_route_res)
 
         self.enabled = any_peering_enabled

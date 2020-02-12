@@ -86,6 +86,5 @@ statement:
             self.stack_tags,
             self.grp_id,
             self.res_id,
-            self.resource,
-            self.resource.paco_ref_parts
+            self.resource
         )

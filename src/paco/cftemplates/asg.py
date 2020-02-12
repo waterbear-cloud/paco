@@ -65,24 +65,18 @@ class ASG(CFTemplate):
             description='List of security group ids to attach to the ASG instances.',
             value=asg_config.security_groups,
             ref_attribute='id',
-            use_troposphere=True,
-            troposphere_template=template
         )
         instance_key_pair_param = self.create_cfn_parameter(
             param_type='String',
             name='InstanceKeyPair',
             description='The EC2 SSH KeyPair to assign each ASG instance.',
             value=asg_config.instance_key_pair+'.keypair_name',
-            use_troposphere=True,
-            troposphere_template=template
         )
         instance_ami_param = self.create_cfn_parameter(
             param_type='String',
             name='InstanceAMI',
             description='The Amazon Machine Image Id to launch instances with.',
             value=asg_config.instance_ami,
-            use_troposphere=True,
-            troposphere_template=template
         )
         launch_config_dict = {
             'AssociatePublicIpAddress': asg_config.associate_public_ip_address,
@@ -115,8 +109,7 @@ class ASG(CFTemplate):
                 name='UserDataScript',
                 description='User data script to run at instance launch.',
                 value=user_data_64.decode('ascii'),
-                use_troposphere=True,
-                troposphere_template=template)
+            )
             launch_config_dict['UserData'] = troposphere.Ref(user_data_script_param)
 
         if role_profile_arn != None:
@@ -143,9 +136,7 @@ class ASG(CFTemplate):
                     name=key,
                     description='CloudFormation Init Parameter {} for ASG {}'.format(key, asg_config.name),
                     value=value,
-                    use_troposphere=True
                 )
-                template.add_parameter(cfn_init_param)
 
         # Launch Configuration resource
         launch_config_res = troposphere.autoscaling.LaunchConfiguration.from_dict(
@@ -165,9 +156,7 @@ class ASG(CFTemplate):
             param_type='List<AWS::EC2::Subnet::Id>',
             name='ASGSubnetList',
             description='A list of subnets where the ASG will launch instances',
-            value=subnet_list_ref,
-            use_troposphere=True,
-            troposphere_template=template
+            value=subnet_list_ref
         )
 
         min_instances = asg_config.min_instances if asg_config.is_enabled() else 0
@@ -191,8 +180,6 @@ class ASG(CFTemplate):
                 name='LoadBalancerNames',
                 description='A list of load balancer names to attach to the ASG',
                 value=asg_config.load_balancers,
-                use_troposphere=True,
-                troposphere_template=template
             )
             asg_dict['LoadBalancerNames'] = troposphere.Ref(load_balancer_names_param)
 
@@ -205,8 +192,6 @@ class ASG(CFTemplate):
                         name='TargetGroupARNs'+utils.md5sum(str_data=target_group_arn),
                         description='A Target Group ARNs to attach to the ASG',
                         value=target_group_arn+'.arn',
-                        use_troposphere=True,
-                        troposphere_template=template
                     )
                     asg_dict['TargetGroupARNs'].append(troposphere.Ref(target_group_arn_param))
 
@@ -235,8 +220,7 @@ class ASG(CFTemplate):
                 name='EIPAllocationId',
                 description='The allocation Id of the EIP to attach to the instance.',
                 value=eip_value,
-                use_troposphere=True,
-                troposphere_template=template)
+            )
             asg_dict['Tags'].append(
                 troposphere.autoscaling.Tag('Paco-EIP-Allocation-Id', troposphere.Ref(eip_id_param), True)
             )
@@ -254,8 +238,7 @@ class ASG(CFTemplate):
                     name='EFSId'+target_hash,
                     description='EFS Id',
                     value=efs_value,
-                    use_troposphere=True,
-                    troposphere_template=template)
+                )
                 asg_tag = troposphere.autoscaling.Tag(
                     'efs-id-' + target_hash,
                     troposphere.Ref(efs_id_param),
@@ -277,9 +260,8 @@ class ASG(CFTemplate):
                     param_type='String',
                     name='EBSVolumeId'+volume_hash,
                     description='EBS Volume Id',
-                    value=ebs_volume_id_value,
-                    use_troposphere=True,
-                    troposphere_template=template)
+                    value=ebs_volume_id_value
+                )
                 ebs_volume_id_tag = troposphere.autoscaling.Tag(
                     'ebs-volume-id-' + volume_hash,
                     troposphere.Ref(ebs_volume_id_param),
@@ -291,8 +273,7 @@ class ASG(CFTemplate):
                 #    name='EBSDevice'+volume_hash,
                 #   description='EBS Device Name',
                 #    value=ebs_volume_mount.device,
-                #    use_troposphere=True,
-                #    troposphere_template=template)
+                #)
                 #ebs_device_tag = troposphere.autoscaling.Tag(
                 #    'ebs-device-' + volume_hash,
                 #    troposphere.Ref(ebs_device_param),

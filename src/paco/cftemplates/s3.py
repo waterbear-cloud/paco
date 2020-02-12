@@ -81,14 +81,12 @@ class S3(CFTemplate):
                         param_name = self.create_cfn_logical_id('LambdaNotif' + lambda_notif.function[9:])
                         if param_name not in params:
                             lambda_arn_param = self.create_cfn_parameter(
-                                name = param_name,
-                                param_type = 'String',
-                                description = 'Lambda ARN parameter.',
-                                value = lambda_notif.function + '.arn',
-                                use_troposphere = True
+                                name=param_name,
+                                param_type='String',
+                                description='Lambda ARN parameter.',
+                                value=lambda_notif.function + '.arn',
                             )
                             params[param_name] = lambda_arn_param
-                            template.add_parameter(lambda_arn_param)
                         lambda_notifs.append({
                             'Event': lambda_notif.event,
                             'Function': troposphere.Ref(param_name)

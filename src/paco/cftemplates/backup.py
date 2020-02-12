@@ -37,9 +37,7 @@ class BackupVault(CFTemplate):
                 param_type='String',
                 name='ServiceRoleArn',
                 description='The Backup service Role to assume',
-                value=role.get_arn(),
-                use_troposphere=True,
-                troposphere_template=self.template,
+                value=role.get_arn()
             )
 
         # BackupVault resource
@@ -56,9 +54,7 @@ class BackupVault(CFTemplate):
                 description='SNS Topic to notify',
                 value=notification_paco_ref,
                 min_length=1, # prevent borked empty values from breaking notification
-                use_troposphere=True
             )
-            self.template.add_parameter(notification_param)
             cfn_export_dict['Notifications'] = {
                 'BackupVaultEvents': vault.notification_events,
                 'SNSTopicArn': troposphere.Ref(notification_param)

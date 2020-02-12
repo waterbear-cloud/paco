@@ -58,10 +58,8 @@ class ApiGatewayRestApi(CFTemplate):
                 param_type='String',
                 description='Lambda ARN parameter.',
                 value=method.integration.integration_lambda + '.arn',
-                use_troposphere=True
             )
             method.parameter_arn_ref = troposphere.Ref(param_name)
-            template.add_parameter(lambda_arn_param)
 
         # Resources
         restapi_logical_id = 'ApiGatewayRestApi'

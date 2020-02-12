@@ -68,8 +68,6 @@ class NATGateway(CFTemplate):
                     description='List of security group ids to attach to the instances.',
                     value=nat_security_groups,
                     ref_attribute='id',
-                    use_troposphere=True,
-                    troposphere_template=self.template
                 )
 
                 subnet_id_param = self.create_cfn_parameter(
@@ -79,8 +77,6 @@ class NATGateway(CFTemplate):
                     param_type='String',
                     description='SubnetId to launch an EC2 NAT instance',
                     value=nat_config.segment + '.az' + str(az_idx) + '.subnet_id',
-                    use_troposphere=True,
-                    troposphere_template=self.template,
                 )
                 ref_parts = nat_config.paco_ref_parts.split('.')
                 instance_name = utils.big_join(
@@ -139,8 +135,7 @@ class NATGateway(CFTemplate):
                     param_type='String',
                     description='RouteTable ID for '+segment_id+' AZ'+str(az_idx),
                     value=segment_ref+".az{}.route_table.id".format(az_idx),
-                    use_troposphere=True,
-                    troposphere_template=self.template)
+                )
 
                 troposphere.ec2.Route(
                     title="EC2NATRouteAZ"+str(az_idx),

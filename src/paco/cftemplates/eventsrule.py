@@ -53,17 +53,13 @@ class EventsRule(CFTemplate):
             name = 'ScheduleExpression',
             description = 'ScheduleExpression for the Event Rule.',
             value = eventsrule.schedule_expression,
-            use_troposphere = True
         )
-        self.template.add_parameter(schedule_expression_param)
         description_param = self.create_cfn_parameter(
             param_type = 'String',
             name = 'EventDescription',
             description = 'Description for the Event Rule.',
             value = eventsrule.description,
-            use_troposphere = True
         )
-        self.template.add_parameter(description_param)
 
         # Targets
         targets = []
@@ -72,21 +68,17 @@ class EventsRule(CFTemplate):
             # Target Parameters
             target_name = 'Target{}'.format(index)
             self.target_params[target_name + 'Arn'] = self.create_cfn_parameter(
-                param_type = 'String',
-                name = target_name + 'Arn',
-                description = target_name + 'Arn for the Events Rule.',
-                value = eventsrule.targets[index] + '.arn',
-                use_troposphere = True
+                param_type='String',
+                name=target_name + 'Arn',
+                description=target_name + 'Arn for the Events Rule.',
+                value=eventsrule.targets[index] + '.arn',
             )
-            self.template.add_parameter(self.target_params[target_name + 'Arn'])
             self.target_params[target_name] = self.create_cfn_parameter(
-                param_type = 'String',
-                name = target_name,
-                description = target_name + ' for the Event Rule.',
-                value = target_name,
-                use_troposphere = True
+                param_type='String',
+                name=target_name,
+                description=target_name + ' for the Event Rule.',
+                value=target_name,
             )
-            self.template.add_parameter(self.target_params[target_name])
 
             # Events Rule Targets
             targets.append(

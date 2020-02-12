@@ -54,27 +54,21 @@ class ALB(CFTemplate):
             param_type='String',
             name='ALBEnabled',
             description='Enable the ALB in this template',
-            value=alb_enable,
-            use_troposphere=True,
-            troposphere_template=self.template
+            value=alb_enable
         )
         vpc_stack = self.env_ctx.get_vpc_stack()
         vpc_param = self.create_cfn_parameter(
             param_type='String',
             name='VPC',
             description='VPC ID',
-            value=StackOutputParam('VPC', vpc_stack, 'VPC', self),
-            use_troposphere=True,
-            troposphere_template=self.template
+            value=StackOutputParam('VPC', vpc_stack, 'VPC', self)
         )
         alb_region = env_ctx.region
         alb_hosted_zone_id_param = self.create_cfn_parameter(
             param_type='String',
             name='ALBHostedZoneId',
             description='The Regonal AWS Route53 Hosted Zone ID',
-            value=self.lb_hosted_zone_id('alb', alb_region),
-            use_troposphere=True,
-            troposphere_template=self.template
+            value=self.lb_hosted_zone_id('alb', alb_region)
         )
 
         # 32 Characters max
@@ -93,9 +87,7 @@ class ALB(CFTemplate):
             param_type='String',
             name='LoadBalancerName',
             description='The name of the load balancer',
-            value=load_balancer_name,
-            use_troposphere=True,
-            troposphere_template=self.template
+            value=load_balancer_name
         )
         scheme_param = self.create_cfn_parameter(
             param_type='String',
@@ -103,9 +95,7 @@ class ALB(CFTemplate):
             max_length=128,
             name='Scheme',
             description='Specify internal to create an internal load balancer with a DNS name that resolves to private IP addresses or internet-facing to create a load balancer with a publicly resolvable DNS name, which resolves to public IP addresses.',
-            value=alb_config.scheme,
-            use_troposphere=True,
-            troposphere_template=self.template
+            value=alb_config.scheme
         )
 
         # Segment SubnetList is a Segment stack Output based on availability zones
@@ -114,26 +104,20 @@ class ALB(CFTemplate):
             param_type='List<AWS::EC2::Subnet::Id>',
             name='SubnetList',
             description='A list of subnets where the ALBs instances will be provisioned',
-            value=StackOutputParam('SubnetList', segment_stack, subnet_list_key, self),
-            use_troposphere=True,
-            troposphere_template=self.template
+            value=StackOutputParam('SubnetList', segment_stack, subnet_list_key, self)
         )
         security_group_list_param = self.create_cfn_ref_list_param(
             param_type='List<AWS::EC2::SecurityGroup::Id>',
             name='SecurityGroupList',
             description='A List of security groups to attach to the ALB',
             value=alb_config.security_groups,
-            ref_attribute='id',
-            use_troposphere=True,
-            troposphere_template=self.template
+            ref_attribute='id'
         )
         idle_timeout_param = self.create_cfn_parameter(
             param_type='String',
             name='IdleTimeoutSecs',
             description='The idle timeout value, in seconds.',
-            value=alb_config.idle_timeout_secs,
-            use_troposphere=True,
-            troposphere_template=self.template
+            value=alb_config.idle_timeout_secs
         )
 
         # Conditions
@@ -268,9 +252,7 @@ class ALB(CFTemplate):
                         param_type='String',
                         name='SSLCertificateIdL%sC%d' % (listener_name, ssl_cert_idx),
                         description='The Arn of the SSL Certificate to associate with this Load Balancer',
-                        value=listener.ssl_certificates[ssl_cert_idx] + ".arn",
-                        use_troposphere=True,
-                        troposphere_template=self.template
+                        value=listener.ssl_certificates[ssl_cert_idx] + ".arn"
                     )
                     if ssl_cert_idx == 0:
                         cfn_export_dict['Certificates'] = [ {
@@ -336,9 +318,7 @@ class ALB(CFTemplate):
                     hosted_zone_param = self.create_cfn_parameter(
                         param_type='String',
                         name='HostedZoneID%d' % (record_set_index),
-                        value=alb_dns.hosted_zone+'.id',
-                        use_troposphere=True,
-                        troposphere_template=self.template
+                        value=alb_dns.hosted_zone+'.id'
                     )
                     cfn_export_dict = {}
                     cfn_export_dict['HostedZoneId'] = troposphere.Ref(hosted_zone_param)
