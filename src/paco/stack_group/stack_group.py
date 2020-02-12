@@ -811,12 +811,14 @@ class Stack():
             break
 
 class StackGroup():
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 group_name,
-                 aws_name,
-                 controller):
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        group_name,
+        aws_name,
+        controller
+    ):
         self.paco_ctx = paco_ctx
         self.account_ctx = account_ctx
         self.controller = controller
