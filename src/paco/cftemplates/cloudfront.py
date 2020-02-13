@@ -11,35 +11,36 @@ from enum import Enum
 from io import StringIO
 
 class CloudFront(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 app_id,
-                 grp_id,
-                 res_id,
-                 factory_name,
-                 cloudfront_config,
-                 config_ref):
-
-        # Super Init:
-        super().__init__(paco_ctx,
-                         account_ctx,
-                         aws_region,
-                         enabled=cloudfront_config.is_enabled(),
-                         config_ref=config_ref,
-                         stack_group=stack_group,
-                         stack_tags=stack_tags,
-                         change_protected=cloudfront_config.change_protected)
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
+        app_id,
+        grp_id,
+        res_id,
+        factory_name,
+        cloudfront_config,
+        config_ref
+    ):
+        super().__init__(
+            paco_ctx,
+            account_ctx,
+            aws_region,
+            enabled=cloudfront_config.is_enabled(),
+            config_ref=config_ref,
+            stack_group=stack_group,
+            stack_tags=stack_tags,
+            change_protected=cloudfront_config.change_protected
+        )
         self.set_aws_name('CloudFront', grp_id, res_id, factory_name)
         origin_access_id_enabled = False
 
-        template = troposphere.Template(
-            Description = 'CloudFront Distribution',
-        )
-        template.set_version()
+        self.init_template('CloudFront Distribution')
+        template = self.template
+
         template.add_resource(
             troposphere.cloudformation.WaitConditionHandle(title="EmptyTemplatePlaceholder")
         )

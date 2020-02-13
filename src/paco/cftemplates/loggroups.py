@@ -38,10 +38,9 @@ class LogGroups(CFTemplate):
         self.resource = resource
 
         # Troposphere Template Initialization
-        template = troposphere.Template(
-            Description = 'LogGroups',
-        )
-        template.set_version()
+        self.init_template('LogGroups')
+        template = self.template
+
         template.add_resource(
             troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
         )

@@ -45,10 +45,9 @@ class SNSTopics(CFTemplate):
         self.config = config
 
         # Troposphere Template Initialization
-        template = troposphere.Template(
-            Description = 'SNS Topics',
-        )
-        template.set_version()
+        self.init_template('SNS Topics')
+        template = self.template
+
         template.add_resource(
             troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
         )
