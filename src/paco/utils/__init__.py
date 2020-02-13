@@ -138,11 +138,16 @@ def prefixed_name(resource, name, legacy_flag):
     if legacy_flag('netenv_loggroup_name_2019_10_13') == False:
         netenv_name = get_parent_by_interface(resource, schemas.INetworkEnvironment).name
         str_list.append(netenv_name)
-    env_name = get_parent_by_interface(resource, schemas.IEnvironment).name
+
     app_name = get_parent_by_interface(resource, schemas.IApplication).name
     group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
 
-    str_list.extend([env_name, app_name, group_name, resource.name, name])
+    env = get_parent_by_interface(resource, schemas.IEnvironment)
+    # Services do not have an environment
+    if env != None:
+        str_list.extend([env.name, app_name, group_name, resource.name, name])
+    else:
+        str_list.extend([app_name, group_name, resource.name, name])
 
     return '-'.join(str_list)
 

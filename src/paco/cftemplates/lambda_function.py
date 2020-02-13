@@ -1,16 +1,17 @@
-from awacs.aws import Action, Allow, PolicyDocument, Principal, Statement
+from awacs.aws import Action, Allow, PolicyDocument, Principal, Statement, Policy
 from paco.cftemplates.cftemplates import CFTemplate
 from paco.models.locations import get_parent_by_interface
 from paco.models.loader import get_all_nodes
 from paco.models.references import resolve_ref, get_model_obj_from_ref, Reference
 from paco.models import schemas
-from paco.utils import hash_smaller
+from paco.utils import hash_smaller, prefixed_name
 from io import StringIO
 from enum import Enum
 import awacs.sdb
 import os
 import troposphere
 import troposphere.awslambda
+import troposphere.iam
 
 
 class Lambda(CFTemplate):
@@ -36,6 +37,7 @@ class Lambda(CFTemplate):
             stack_tags=stack_tags,
         )
         self.set_aws_name('Lambda', grp_id, res_id)
+        self.awslambda = awslambda
         self.init_template('Lambda Function')
 
         # if disabled on leave an empty placeholder and finish
@@ -183,16 +185,25 @@ class Lambda(CFTemplate):
                 awslambda.add_environment_variable(
                     'SDB_CACHE_DOMAIN', troposphere.Ref('LambdaSDBCacheDomain')
                 )
+            if len(awslambda.log_group_names) > 0:
+                # Add PACO_LOG_GROUPS Environment Variable
+                awslambda.add_environment_variable(
+                    'PACO_LOG_GROUPS',
+                    ','.join(
+                        [prefixed_name(awslambda, loggroup_name, self.paco_ctx.legacy_flag) for loggroup_name in awslambda.log_group_names]
+                    )
+                )
             for var in awslambda.environment.variables:
                 var_export[var.key] = var.value
+
         cfn_export_dict['Environment'] = { 'Variables': var_export }
 
         # Lambda resource
-        awslambda_resource = troposphere.awslambda.Function.from_dict(
+        self.awslambda_resource = troposphere.awslambda.Function.from_dict(
             'Function',
             cfn_export_dict
         )
-        self.template.add_resource(awslambda_resource)
+        self.template.add_resource(self.awslambda_resource)
 
         # SDB Cache with SDB Domain and SDB Domain Policy resources
         if awslambda.sdb_cache == True:
@@ -223,7 +234,7 @@ class Lambda(CFTemplate):
                 )
             )
             sdb_policy.DependsOn = sdb_domain_resource
-            awslambda_resource.DependsOn = sdb_domain_resource
+            self.awslambda_resource.DependsOn = sdb_domain_resource
 
         # Permissions
         # SNS Topic Lambda permissions and subscription
@@ -243,7 +254,7 @@ class Lambda(CFTemplate):
                 title=param_name + 'Permission',
                 template=self.template,
                 Action="lambda:InvokeFunction",
-                FunctionName=troposphere.GetAtt(awslambda_resource, 'Arn'),
+                FunctionName=troposphere.GetAtt(self.awslambda_resource, 'Arn'),
                 Principal='sns.amazonaws.com',
                 SourceArn=troposphere.Ref(param_name),
             )
@@ -253,7 +264,7 @@ class Lambda(CFTemplate):
             troposphere.sns.SubscriptionResource(
                 title=param_name + 'Subscription',
                 template=self.template,
-                Endpoint=troposphere.GetAtt(awslambda_resource, 'Arn'),
+                Endpoint=troposphere.GetAtt(self.awslambda_resource, 'Arn'),
                 Protocol='lambda',
                 TopicArn=troposphere.Ref(param_name),
                 Region=sns_topic.region_name
@@ -278,7 +289,7 @@ class Lambda(CFTemplate):
                                         title='S3Bucket' + s3_logical_name,
                                         template=self.template,
                                         Action="lambda:InvokeFunction",
-                                        FunctionName=troposphere.GetAtt(awslambda_resource, 'Arn'),
+                                        FunctionName=troposphere.GetAtt(self.awslambda_resource, 'Arn'),
                                         Principal='s3.amazonaws.com',
                                         SourceArn='arn:aws:s3:::' + obj.get_bucket_name(),
                                     )
@@ -310,24 +321,99 @@ class Lambda(CFTemplate):
                                 title='EventsRule' + eventsrule_logical_name,
                                 template=self.template,
                                 Action="lambda:InvokeFunction",
-                                FunctionName=troposphere.GetAtt(awslambda_resource, 'Arn'),
+                                FunctionName=troposphere.GetAtt(self.awslambda_resource, 'Arn'),
                                 Principal='events.amazonaws.com',
                                 SourceArn=source_arn,
                             )
                             seen[eventsrule_logical_name] = True
 
+        # Log group(s)
+        loggroup_function_name = troposphere.Join(
+            '', [
+                '/aws/lambda/',
+                troposphere.Select(
+                    6, troposphere.Split(':', troposphere.GetAtt(self.awslambda_resource, 'Arn'))
+                )
+            ]
+        )
+        loggroup_resources = []
+        if len(awslambda.log_group_names) > 0:
+            loggroup_resources.append(
+                self.add_log_group(loggroup_function_name, 'lambda')
+            )
+            # Additional App-specific LogGroups
+            for loggroup_name in awslambda.log_group_names:
+                # Add LogGroup to the template
+                prefixed_loggroup_name = prefixed_name(awslambda, loggroup_name, self.paco_ctx.legacy_flag)
+                loggroup_resources.append(
+                    self.add_log_group(prefixed_loggroup_name)
+                )
+
+        # LogGroup permissions
+        log_group_arns = [
+            troposphere.Join(':', [
+                f'arn:aws:logs:{self.aws_region}:{self.account_ctx.id}:log-group',
+                loggroup_function_name,
+                '*'
+            ])
+        ]
+        log_stream_arns = [
+            troposphere.Join(':', [
+                f'arn:aws:logs:{self.aws_region}:{self.account_ctx.id}:log-group',
+                loggroup_function_name,
+                'log-stream',
+                '*'
+            ])
+        ]
+        for loggroup_name in awslambda.log_group_names:
+            prefixed_loggroup_name = prefixed_name(awslambda, loggroup_name, self.paco_ctx.legacy_flag)
+            log_group_arns.append(
+                f'arn:aws:logs:{self.aws_region}:{self.account_ctx.id}:log-group:{prefixed_loggroup_name}:*'
+            )
+            log_stream_arns.append(
+                f'arn:aws:logs:{self.aws_region}:{self.account_ctx.id}:log-group:{prefixed_loggroup_name}:log-stream:*'
+            )
+
+        loggroup_policy_resource = troposphere.iam.ManagedPolicy(
+            title='LogGroupManagedPolicy',
+            PolicyDocument=Policy(
+                Version='2012-10-17',
+                Statement=[
+                    Statement(
+                        Sid='AllowLambdaCreateLogStream',
+                        Effect=Allow,
+                        Action=[
+                            Action("logs","CreateLogStream"),
+                        ],
+                        Resource=log_group_arns,
+                    ),
+                    Statement(
+                        Sid='AllowLambdaPutLogEvents',
+                        Effect=Allow,
+                        Action=[
+                            Action("logs","PutLogEvents"),
+                        ],
+                        Resource=log_stream_arns,
+                    ),
+                ],
+            ),
+            Roles=[troposphere.Ref(role_name_param)],
+        )
+        loggroup_policy_resource.DependsOn = loggroup_resources
+        self.template.add_resource(loggroup_policy_resource)
+
         # Outputs
         self.template.add_output(
             troposphere.Output(
                 title='FunctionName',
-                Value=troposphere.Ref(awslambda_resource)
+                Value=troposphere.Ref(self.awslambda_resource)
             )
         )
         self.register_stack_output_config(awslambda.paco_ref_parts + '.name', 'FunctionName')
         self.template.add_output(
             troposphere.Output(
                 title='FunctionArn',
-                Value=troposphere.GetAtt(awslambda_resource, 'Arn')
+                Value=troposphere.GetAtt(self.awslambda_resource, 'Arn')
             )
         )
         self.register_stack_output_config(awslambda.paco_ref_parts + '.arn', 'FunctionArn')
@@ -335,27 +421,30 @@ class Lambda(CFTemplate):
         # Finished
         self.set_template(self.template.to_yaml())
 
-"""
+    def add_log_group(self, loggroup_name, logical_name=None):
+        "Add a LogGroup resource to the template"
+        if not logical_name:
+            logical_name = loggroup_name
+        cfn_export_dict = {
+            'LogGroupName': loggroup_name,
+        }
+        if self.awslambda.expire_events_after_days != 'Never' and self.awslambda.expire_events_after_days != '':
+            cfn_export_dict['RetentionInDays'] = int(self.awslambda.expire_events_after_days)
+        loggroup_logical_id = self.create_cfn_logical_id('LogGroup' + logical_name)
+        loggroup_resource = troposphere.logs.LogGroup.from_dict(
+            loggroup_logical_id,
+            cfn_export_dict
+        )
+        loggroup_resource.DependsOn = self.awslambda_resource
+        self.template.add_resource(loggroup_resource)
 
-def add_loggroup(template, loggroup_name, expire_events_after_days):
-    cfn_export_dict = {
-        'LogGroupName': loggroup_name,
-    }
-    if expire_events_after_days != 'Never' and expire_events_after_days != '':
-        cfn_export_dict['RetentionInDays'] = int(expire_events_after_days)
-    loggroup_logical_id = 'LogGroup'
-    loggroup_resource = troposphere.logs.LogGroup.from_dict(
-        loggroup_logical_id,
-        cfn_export_dict
-    )
-    template.add_resource(loggroup_resource)
-
-    # LogGroup Output
-    self.register_stack_output_config(log_group.paco_ref_parts + '.arn', loggroup_logical_id + 'Arn')
-    loggroup_output = troposphere.Output(
-        loggroup_logical_id + 'Arn',
-        Value=troposphere.GetAtt(loggroup_resource, "Arn")
-    )
-    template.add_output(loggroup_output)
-
-"""
+        # LogGroup Output
+        self.register_stack_output_config(
+            '{}.log_groups.{}.arn'.format(self.awslambda.paco_ref_parts, logical_name), loggroup_logical_id + 'Arn'
+        )
+        loggroup_output = troposphere.Output(
+            loggroup_logical_id + 'Arn',
+            Value=troposphere.GetAtt(loggroup_resource, "Arn")
+        )
+        self.template.add_output(loggroup_output)
+        return loggroup_resource

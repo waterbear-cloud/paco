@@ -10,6 +10,14 @@ Changelog for Paco
 
 ### Changed
 
+- Breaking: Lamdba now creates it's Log Group in the CloudFormation. It also allows for additional
+  app-specific Log Groups. Lambda's execution role now restricts Log Group permissions to just the
+  Log Groups it needs.
+
+  If you have existing Lambdas, you will need to delete the Log Group and then re-provision the
+  Lambda (and ensrue the Lambda isn't invoked after the Log Group is deleted or it will re-create it).
+  This will allow the Lambda Log Groups to be under CloudFormation state.
+
 - EventsRules are named with a random suffix instead of a prefix. This makes it easier to
   use the --name-prefix option for list-rules in the AWS CLI and API.
 
