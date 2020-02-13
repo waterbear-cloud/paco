@@ -33,12 +33,8 @@ class VPCPeering(CFTemplate):
         self.set_aws_name('VPCPeering')
 
         vpc_config = network_config.vpc
-        template = troposphere.Template()
-        template.add_version('2010-09-09')
-        template.add_description('VPC Peering')
-        template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
-        )
+        self.init_template('VPC Peering')
+        template = self.template
 
         # VPC Peering
         vpc_id_param = self.create_cfn_parameter(

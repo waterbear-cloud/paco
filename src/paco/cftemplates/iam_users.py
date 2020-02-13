@@ -40,13 +40,8 @@ class IAMUsers(CFTemplate):
 
         # ---------------------------------------------------------------------------
         # Troposphere Template Initialization
-
-        self.template = troposphere.Template()
-        self.template.add_version('2010-09-09')
-        self.template.add_description('IAM Users')
-        self.template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
-        )
+        self.init_template('IAM Users')
+        template = self.template
 
         # IAM Users
         for user_name in iam_users_config.keys():

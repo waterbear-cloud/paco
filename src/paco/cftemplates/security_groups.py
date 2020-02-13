@@ -46,13 +46,8 @@ class SecurityGroups(CFTemplate):
         self.source_group_param_cache = {}
 
         # Troposphere Template Initialization
-        template = troposphere.Template()
-        template.set_version('2010-09-09')
-        template.set_description('Security Groups')
-
-        template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
-        )
+        self.init_template('Security Groups')
+        template = self.template
 
         # VPC Id
         vpc_id_param = self.create_cfn_parameter(

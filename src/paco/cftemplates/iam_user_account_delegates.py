@@ -61,14 +61,8 @@ class IAMUserAccountDelegates(CFTemplate):
 
         # ---------------------------------------------------------------------------
         # Troposphere Template Initialization
-
-        self.template = troposphere.Template()
-        self.template.add_version('2010-09-09')
-        self.template.add_description('IAM User Account Delegate Permissions')
-
-        self.template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
-        )
+        self.init_template('IAM User Account Delegate Permissions')
+        template = self.template
 
         # Restrict account access here so that we can create an empty CloudFormation
         # template which will then delete permissions that have been revoked.

@@ -20,7 +20,8 @@ class CloudTrail(CFTemplate):
             stack_tags=stack_tags
         )
         self.set_aws_name('CloudTrail')
-        template = troposphere.Template()
+        self.init_template('CloudTrail')
+        template = self.template
 
         # create Trail resource
         trail_dict = {

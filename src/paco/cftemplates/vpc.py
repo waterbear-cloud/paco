@@ -29,9 +29,8 @@ class VPC(CFTemplate):
             stack_tags=stack_tags
         )
         self.set_aws_name('VPC')
-        template = troposphere.Template()
-        template.add_version('2010-09-09')
-        template.add_description('Virtual Private Network')
+        self.init_template('Virtual Private Cloud')
+        template = self.template
 
         # VPC
         cidr_block_param = self.create_cfn_parameter(
