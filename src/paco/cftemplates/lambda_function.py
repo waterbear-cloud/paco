@@ -337,10 +337,10 @@ class Lambda(CFTemplate):
             ]
         )
         loggroup_resources = []
+        loggroup_resources.append(
+            self.add_log_group(loggroup_function_name, 'lambda')
+        )
         if len(awslambda.log_group_names) > 0:
-            loggroup_resources.append(
-                self.add_log_group(loggroup_function_name, 'lambda')
-            )
             # Additional App-specific LogGroups
             for loggroup_name in awslambda.log_group_names:
                 # Add LogGroup to the template
@@ -428,6 +428,9 @@ class Lambda(CFTemplate):
         cfn_export_dict = {
             'LogGroupName': loggroup_name,
         }
+        if not hasattr(self.awslambda, 'expire_events_after_days'):
+            self.awslambda.expire_events_after_days = 'Never'
+
         if self.awslambda.expire_events_after_days != 'Never' and self.awslambda.expire_events_after_days != '':
             cfn_export_dict['RetentionInDays'] = int(self.awslambda.expire_events_after_days)
         loggroup_logical_id = self.create_cfn_logical_id('LogGroup' + logical_name)

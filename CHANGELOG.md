@@ -4,11 +4,7 @@ Changelog for Paco
 4.1.0 (unreleased)
 ------------------
 
-### Added
-
-- EventRules can be in the State=ENABLED or State=DISABLED set by the ``enabled_state`` boolean field.
-
-### Changed
+### Breaking
 
 - Breaking: Lamdba now creates it's Log Group in the CloudFormation. It also allows for additional
   app-specific Log Groups. Lambda's execution role now restricts Log Group permissions to just the
@@ -18,6 +14,12 @@ Changelog for Paco
   Lambda (and ensrue the Lambda isn't invoked after the Log Group is deleted or it will re-create it).
   This will allow the Lambda Log Groups to be under CloudFormation state.
 
+### Added
+
+- EventRules can be in the State=ENABLED or State=DISABLED set by the ``enabled_state`` boolean field.
+
+### Changed
+
 - EventsRules are named with a random suffix instead of a prefix. This makes it easier to
   use the --name-prefix option for list-rules in the AWS CLI and API.
 
@@ -25,17 +27,17 @@ Changelog for Paco
 4.0.0 (2020-02-05)
 ------------------
 
+### Breaking
+
+- Breaking: This will change the secrets for any secret that was created by ``generate_secret_string``.
+  Completed full implementation of ``secrets.generate_secret_string``, every property in the CloudFormation
+  resource is represented so that expressing defaults won't trigger new secret created.
+
 ### Added
 
 - New ``warn_template_changes`` method for CFTemplate. This is a hook that allows
   templates to print a warning about potential unintended side-effects of the change.
   The SecretsManager template is the first to implement this warning hook.
-
-### Changed
-
-- Breaking: This will change the secrets for any secret that was created by ``generate_secret_string``.
-  Completed full implementation of ``secrets.generate_secret_string``, every property in the CloudFormation
-  resource is represented so that expressing defaults won't trigger new secret created.
 
 ### Docs
 
