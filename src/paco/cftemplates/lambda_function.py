@@ -380,10 +380,11 @@ class Lambda(CFTemplate):
                 Version='2012-10-17',
                 Statement=[
                     Statement(
-                        Sid='AllowLambdaCreateLogStream',
+                        Sid='AllowLambdaModifyLogStreams',
                         Effect=Allow,
                         Action=[
                             Action("logs","CreateLogStream"),
+                            Action("logs","DescribeLogStreams"),
                         ],
                         Resource=log_group_arns,
                     ),

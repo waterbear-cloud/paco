@@ -53,6 +53,19 @@ class ASG(CFTemplate):
         self.init_template('AutoScalingGroup: ' + self.ec2_manager_cache_id)
         template = self.template
 
+        # InstanceAMI Parameter is preserved in disabled templates so it can be smoothly disabled/enabled
+        if self.asg_config.instance_ami_ignore_changes:
+            ignore_changes = True
+        else:
+            ignore_changes = False
+        instance_ami_param = self.create_cfn_parameter(
+            param_type='String',
+            name='InstanceAMI',
+            description='The Amazon Machine Image Id to launch instances with.',
+            value=asg_config.instance_ami,
+            ignore_changes=ignore_changes
+        )
+
         # if the network for the ASG is disabled, only use an empty placeholder
         env_region = get_parent_by_interface(asg_config, schemas.IEnvironmentRegion)
         if not env_region.network.is_enabled():
@@ -71,17 +84,6 @@ class ASG(CFTemplate):
             name='InstanceKeyPair',
             description='The EC2 SSH KeyPair to assign each ASG instance.',
             value=asg_config.instance_key_pair+'.keypair_name',
-        )
-        if self.asg_config.instance_ami_ignore_changes:
-            ignore_changes = True
-        else:
-            ignore_changes = False
-        instance_ami_param = self.create_cfn_parameter(
-            param_type='String',
-            name='InstanceAMI',
-            description='The Amazon Machine Image Id to launch instances with.',
-            value=asg_config.instance_ami,
-            ignore_changes=ignore_changes
         )
         launch_config_dict = {
             'AssociatePublicIpAddress': asg_config.associate_public_ip_address,

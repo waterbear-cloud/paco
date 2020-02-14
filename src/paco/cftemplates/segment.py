@@ -1,27 +1,25 @@
-import os
-from paco.cftemplates.cftemplates import CFTemplate
-
-from paco.cftemplates.cftemplates import StackOutputParam
-from io import StringIO
 from enum import Enum
+from io import StringIO
+from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackOutputParam
+import os
+
 
 class Segment(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 stack_order,
-                 env_ctx,
-                 segment_id,
-                 segment_config,
-                 segment_config_ref):
-
-        #paco_ctx.log("Segment CF Template init")
+    def __init__(
+      self,
+      paco_ctx,
+      account_ctx,
+      aws_region,
+      stack_group,
+      stack_tags,
+      stack_order,
+      env_ctx,
+      segment_id,
+      segment_config,
+      segment_config_ref
+    ):
         self.env_ctx = env_ctx
-
-        # Super
         super().__init__(
             paco_ctx,
             account_ctx,
