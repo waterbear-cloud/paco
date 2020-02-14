@@ -37,7 +37,8 @@ class StackOutputParam():
         param_key,
         stack=None,
         stack_output_key=None,
-        param_template=None
+        param_template=None,
+        ignore_changes=False
     ):
         self.key = param_key
         self.entry_list = []
@@ -45,6 +46,7 @@ class StackOutputParam():
         self.resolved_value = ""
         self.stack = stack
         self.param_template = param_template
+        self.ignore_changes = False
         if stack !=None and stack_output_key !=None:
             self.add_stack_output( stack, stack_output_key)
 
@@ -84,7 +86,13 @@ class StackOutputParam():
         parameter as a single value
         """
         param_value = self.gen_parameter_value()
-        return Parameter(self.param_template, self.key, param_value, self.use_previous_value, self.resolved_value)
+        return Parameter(
+            self.param_template,
+            self.key, param_value,
+            self.use_previous_value,
+            self.resolved_value,
+            self.ignore_changes
+        )
 
 
 class StackOutputConfig():
@@ -129,12 +137,14 @@ class Parameter():
         key,
         value,
         use_previous_value=False,
-        resolved_value=""
+        resolved_value="",
+        ignore_changes=False
     ):
         self.key = key
         self.value = marshal_value_to_cfn_yaml(value)
         self.use_previous_value = use_previous_value
         self.resolved_value = resolved_value
+        self.ignore_changes = ignore_changes
 
     def gen_parameter_value(self):
         return self.value
@@ -449,8 +459,16 @@ class CFTemplate():
         with open(param_applied_file_path, 'r') as stream:
             applied_parameter_list = yaml.load(stream)
 
-        # No changes detected
-        if parameter_list == applied_parameter_list:
+        # Detect changes. Ignore changes where ignore_updates is True
+        unchanged = True
+        for parameter, applied in zip(parameter_list, applied_parameter_list):
+            if parameter['UsePreviousValue'] == True:
+                continue
+            if parameter != applied:
+                unchanged = False
+                break
+
+        if unchanged == True:
             return
 
         print("--------------------------------------------------------")
@@ -548,19 +566,26 @@ class CFTemplate():
             sys.exit(1)
         print()
 
-    def generate_stack_parameters(self):
+    def generate_stack_parameters(self, action=None):
         """Sets Scheduled output parameters to be collected from one stacks Outputs.
         This is called after a stacks status has been polled.
         """
         parameter_list = []
         for param_entry in self.parameters:
             parameter = param_entry.gen_parameter()
-            stack_param_entry = {
-                'ParameterKey': parameter.key,
-                'ParameterValue': parameter.value,
-                'UsePreviousValue': parameter.use_previous_value,
-                'ResolvedValue': parameter.resolved_value  # For resolving SSM Parameters
-            }
+            # Do not update Parameters which have indicated they can be externally updated
+            if action == "update" and parameter.ignore_changes == True:
+                stack_param_entry = {
+                    'ParameterKey': parameter.key,
+                    'UsePreviousValue': True,
+                }
+            else:
+                stack_param_entry = {
+                    'ParameterKey': parameter.key,
+                    'ParameterValue': parameter.value,
+                    'UsePreviousValue': parameter.use_previous_value,
+                    'ResolvedValue': parameter.resolved_value  # For resolving SSM Parameters
+                }
             parameter_list.append(stack_param_entry)
 
         return parameter_list
@@ -570,7 +595,8 @@ class CFTemplate():
         param_key,
         param_value=None,
         use_previous_param_value=False,
-        resolved_ssm_value=""
+        resolved_ssm_value="",
+        ignore_changes=False
     ):
         """Adds a parameter to the template's stack.
         If param_key is a string, grabs the value of the key from the stack outputs,
@@ -613,10 +639,20 @@ class CFTemplate():
                 stack_output_key = self.get_stack_outputs_key_from_ref(ref, ref_value)
                 param_entry = StackOutputParam(param_key, ref_value, stack_output_key, self)
             else:
-                param_entry = Parameter(self, param_key, ref_value)
+                param_entry = Parameter(
+                    self,
+                    param_key,
+                    ref_value,
+                    ignore_changes=ignore_changes
+                )
 
         if param_entry == None:
-            param_entry = Parameter(self, param_key, param_value)
+            param_entry = Parameter(
+                self,
+                param_key,
+                param_value,
+                ignore_changes=ignore_changes
+            )
             if param_entry == None:
                 raise StackException(PacoErrorCode.Unknown, message = "set_parameter says NOOOOOOOOOO")
         # Append the parameter to our list
@@ -960,22 +996,20 @@ class CFTemplate():
         value,
         default=None,
         noecho=False,
-        use_troposphere=False,
-        troposphere_template=None,
         min_length=None,
-        max_length=None
+        max_length=None,
+        ignore_changes=False
     ):
-        """Return a CloudFormation Parameter
-        """
+        "Create a Troposphere Parameter and add it to the template"
         if default == '':
             default = "''"
         if value == None:
             value = default
         else:
             if type(value) == StackOutputParam:
-                self.set_parameter(value)
+                self.set_parameter(value, ignore_changes=ignore_changes)
             else:
-                self.set_parameter(name, value)
+                self.set_parameter(name, value, ignore_changes=ignore_changes)
         other_yaml = ""
         if default != None:
             other_yaml += '\n    Default: {}'.format(default)
@@ -1025,8 +1059,6 @@ class CFTemplate():
         ref_attribute=None,
         default=None,
         noecho=False,
-        use_troposphere=False,
-        troposphere_template=None
     ):
         "Create a CloudFormation Parameter from a list of refs"
         stack_output_param = StackOutputParam(name, param_template=self)
@@ -1046,8 +1078,6 @@ class CFTemplate():
             stack_output_param,
             default,
             noecho,
-            use_troposphere,
-            troposphere_template
         )
 
     def gen_output(self, name, value):

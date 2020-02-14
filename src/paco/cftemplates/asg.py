@@ -72,11 +72,16 @@ class ASG(CFTemplate):
             description='The EC2 SSH KeyPair to assign each ASG instance.',
             value=asg_config.instance_key_pair+'.keypair_name',
         )
+        if self.asg_config.instance_ami_ignore_changes:
+            ignore_changes = True
+        else:
+            ignore_changes = False
         instance_ami_param = self.create_cfn_parameter(
             param_type='String',
             name='InstanceAMI',
             description='The Amazon Machine Image Id to launch instances with.',
             value=asg_config.instance_ami,
+            ignore_changes=ignore_changes
         )
         launch_config_dict = {
             'AssociatePublicIpAddress': asg_config.associate_public_ip_address,

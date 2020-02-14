@@ -525,7 +525,7 @@ class Stack():
             self.log_action("Provision", "Protected")
             return
         self.action = "update"
-        stack_parameters = self.template.generate_stack_parameters()
+        stack_parameters = self.template.generate_stack_parameters(action=self.action)
         self.template.confirm_stack_parameter_changes(stack_parameters)
         self.template.validate_template_changes()
         self.log_action("Provision", "Update")

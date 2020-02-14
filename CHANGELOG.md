@@ -16,6 +16,12 @@ Changelog for Paco
 
 ### Added
 
+- Ability for a template Parameter to ignore_changes. If this is True then the Parameter will not
+  be changed during stack updates.
+
+- ASG has a new instance_ami_ignore_changes field which will mark the InstanceAMI Parameter with
+  ignore_changes.
+
 - EventRules can be in the State=ENABLED or State=DISABLED set by the ``enabled_state`` boolean field.
 
 ### Changed
