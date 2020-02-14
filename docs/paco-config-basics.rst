@@ -315,7 +315,15 @@ to control which account an environment should be deployed to:
 paco.ref function
 -----------------
 
-A reference dynamically resolved at runtime. For example:
+A reference to an imperatively generated value that is dynamically resolved at runtime. For example:
+
+``paco.ref function.mypackage.mymodule.myfunction``
+
+This must be an importable Python function that accepts three arguements: reference, project, account_ctx.
+
+This function must return a value that is compatable with the fields data type (e.g. typically a string).
+
+There is one built-in function:
 
 ``paco.ref function.aws.ec2.ami.latest.amazon-linux-2``
 
