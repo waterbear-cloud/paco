@@ -17,3 +17,4 @@ from paco.application.reseng_eip import EIPResourceEngine
 from paco.application.reseng_ebs import EBSResourceEngine
 from paco.application.reseng_codedeployapplication import CodeDeployApplicationResourceEngine
 from paco.application.reseng_dashboard import DashboardResourceEngine
+from paco.application.reseng_elasticsearch import ElasticsearchDomainResourceEngine

@@ -712,10 +712,13 @@ class CFTemplate():
         return template_md5+outputs_md5
 
 
-    def set_template(self, template_body):
+    def set_template(self, template_body=None):
         """Sets the template and if there is not already a stack_group,
         creates a Stack and adds it to the stack_group."""
-        self.body = template_body
+        if template_body == None:
+            self.body = self.template.to_yaml()
+        else:
+            self.body = template_body
         if self.stack_group != None:
             self.stack = Stack(
                 self.paco_ctx,

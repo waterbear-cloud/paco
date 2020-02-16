@@ -42,21 +42,23 @@ class StackException(PacoException):
         return error_str
 
 
-class PacoBucketExists(Exception):
-    title = "S3 Bucket already exists"
-
-class UnsupportedCloudFormationParameterType(Exception):
-    title = "Unsupported CloudFormation Parameter Type"
-
-class InvalidLogSetConfiguration(Exception):
-    title = "Invalid Log Set configuration in YAML"
-
-class PacoUnsupportedFeature(Exception):
-    title = "Feature does not yet exist"
-
-
 class PacoBaseException(Exception):
     title = "Generic Paco Error"
+
+class PacoBucketExists(PacoBaseException):
+    title = "S3 Bucket already exists"
+
+class UnsupportedCloudFormationParameterType(PacoBaseException):
+    title = "Unsupported CloudFormation Parameter Type"
+
+class InvalidLogSetConfiguration(PacoBaseException):
+    title = "Invalid Log Set configuration in YAML"
+
+class PacoUnsupportedFeature(PacoBaseException):
+    title = "Feature does not yet exist"
+
+class InvalidPacoHome(PacoBaseException):
+    title = "Paco did not get a valid PACO_HOME path to a Paco project"
 
 class InvalidPacoScope(PacoBaseException):
     title = "Invalid CONFIG_SCOPE argument"

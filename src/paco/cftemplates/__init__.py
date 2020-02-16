@@ -5,8 +5,9 @@ from paco.cftemplates.security_groups import SecurityGroups
 from paco.cftemplates.elb import ELB
 from paco.cftemplates.alb import ALB
 from paco.cftemplates.asg import ASG
-from paco.cftemplates.iam_roles import IAMRoles
 from paco.cftemplates.iam_managed_policies import IAMManagedPolicies
+from paco.cftemplates.iam_roles import IAMRoles
+from paco.cftemplates.iam_sl_roles import IAMSLRoles
 from paco.cftemplates.s3 import S3
 from paco.cftemplates.codecommit import CodeCommit
 from paco.cftemplates.codedeploy import CodeDeploy
@@ -40,3 +41,4 @@ from paco.cftemplates.ebs import EBS
 from paco.cftemplates.codedeployapplication import CodeDeployApplication
 from paco.cftemplates.backup import BackupVault
 from paco.cftemplates.dashboard import CloudWatchDashboard
+from paco.cftemplates.elasticsearch import ElasticsearchDomain

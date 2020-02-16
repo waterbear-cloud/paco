@@ -40,7 +40,7 @@ setup(
         'Setuptools',
         'tldextract',
         'pexpect',
-        'troposphere',
+        'troposphere >= 2.5.2',
         'awacs',
         'deepdiff'
     ],

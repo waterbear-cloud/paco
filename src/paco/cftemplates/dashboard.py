@@ -64,6 +64,7 @@ class CloudWatchDashboard(CFTemplate):
         # Dashboard resource
         dashboard_logical_id = 'Dashboard'
         body = troposphere.Sub(dashboard.dashboard_file)
+        breakpoint()
         cfn_export_dict = {
             'DashboardBody': body,
             'DashboardName': dashboard.title_or_name

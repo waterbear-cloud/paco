@@ -204,6 +204,7 @@ class Stack():
         self.tags.add_tag('Paco-Stack-Name', self.get_name())
 
         self.outputs_value_cache = {}
+        self.singleton = False
 
         if hooks == None:
             self.hooks = StackHooks(self.paco_ctx)
@@ -909,7 +910,8 @@ class StackGroup():
             # Exact match or append '.' otherwise we might match
             # foo.bar wtih foo.bar_bad
             if stack.template.config_ref == self.filter_config or \
-                stack.template.config_ref.startswith(self.filter_config+'.'):
+                stack.template.config_ref.startswith(self.filter_config+'.') or \
+                stack.singleton:
                 action_method()
             else:
                 stack.log_action(

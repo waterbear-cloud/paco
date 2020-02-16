@@ -2,7 +2,7 @@ import click
 import os
 import time
 import paco
-from paco.cftemplates import IAMRoles, IAMManagedPolicies,IAMUsers, IAMUserAccountDelegates
+from paco.cftemplates import IAMRoles, IAMManagedPolicies,IAMUsers, IAMUserAccountDelegates, IAMSLRoles
 from paco.controllers.controllers import Controller
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
@@ -88,6 +88,34 @@ class PolicyContext():
         self.arn = "arn:aws:iam::{0}:policy/{1}".format(self.account_ctx.get_id(), self.name)
         self.policy_context[self.policy_ref] = policy_context
         self.stack_group.add_stack_order(policy_context['stack'])
+
+class SLRoleContext():
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        region,
+        stack_group,
+        servicename
+    ):
+        self.paco_ctx = paco_ctx
+        self.account_ctx = account_ctx
+        self.region = region
+        self.stack_group = stack_group
+        self.servicename = servicename
+        self.sl_role_template = IAMSLRoles(
+            paco_ctx,
+            account_ctx,
+            region,
+            stack_group,
+            servicename
+        )
+        self.sl_role_stack = self.sl_role_template.stack
+        self.sl_role_stack.singleton = True
+        self.stack_group.add_stack_order(self.sl_role_stack)
+
+    def aws_name(self):
+        return self.servicename
 
 
 class RoleContext():
@@ -243,17 +271,18 @@ class RoleContext():
 
 class IAMController(Controller):
     def __init__(self, paco_ctx):
-        super().__init__(paco_ctx,
-                         "Resource",
-                         "IAM")
-
+        super().__init__(
+            paco_ctx,
+            "Resource",
+            "IAM"
+        )
         self.role_context = {}
+        self.sl_role_context = {}
         self.policy_context = {}
         self.iam_config = self.paco_ctx.project['resource']['iam']
         self.iam_user_stack_groups = {}
         self.iam_user_access_keys_sdb_domain = 'Paco-IAM-Users-Access-Keys-Meta'
         self.init_done = False
-        #self.paco_ctx.log("IAM Service: Configuration: %s" % (name))
 
     # Administrator
     def init_custompolicy_permission(self, permission_config, permissions_by_account):
@@ -665,6 +694,34 @@ class IAMController(Controller):
 
     def add_managed_policy(self, role_ref, *args, **kwargs):
         return self.role_context[role_ref].add_managed_policy(*args, **kwargs)
+
+    def add_service_linked_role(
+        self,
+        paco_ctx,
+        account_ctx,
+        region,
+        stack_group,
+        resource,
+        servicename
+    ):
+        "Add a ServiceLinked Role for this account and region if it doesn't already exist"
+        # ToDo: Each service-linked role can only be enabled once in each account/region?
+        # These roles can be created by different resources, each request to
+        # add a SL Role should check if the Role already exists, rather than creating it again
+        sl_id = f"{account_ctx.id}-{region}-{servicename}"
+        breakpoint()
+        if sl_id not in self.sl_role_context.keys():
+            self.sl_role_context[sl_id] = SLRoleContext(
+                paco_ctx,
+                account_ctx,
+                region,
+                stack_group,
+                servicename
+            )
+            breakpoint()
+        # If a ServiceLinked Role has already been added, simply ignore it
+        # These only need to be created maximum once per account/region, but can
+        # be depended upon by multiple resources.
 
     def add_role(
         self,
