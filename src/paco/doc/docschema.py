@@ -675,6 +675,18 @@ applications.
 {IElastiCacheRedis}
 
 
+{IElasticsearchDomain}
+
+{IElasticsearchCluster}
+
+{IEBSOptions}
+
+ESAdvancedOptions
+^^^^^^^^^^^^^^^^^
+
+An unconstrainted set of key-value pairs used to set advanced options for Elasticsearch.
+
+
 {IEventsRule}
 
 
@@ -1310,6 +1322,9 @@ MINOR_SCHEMAS = {
     'IRDSMysql': None,
     'IRDSAurora': None,
     'IElastiCacheRedis': None,
+    'IElasticsearchCluster': None,
+    'IEBSOptions': None,
+    'IESAdvancedOptions': None,
     'ICodeDeployDeploymentGroups': None,
     'ICodeDeployDeploymentGroup': None,
     'IIAMResource': None,

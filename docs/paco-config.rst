@@ -2997,6 +2997,11 @@ for that ASG.
       - Instance AMI
       - Paco Reference to `Function`_. String Ok.
       - 
+    * - instance_ami_ignore_changes
+      - Boolean
+      - Do not update the instance_ami after creation.
+      - 
+      - False
     * - instance_ami_type
       - String
       - The AMI Operating System family
@@ -5543,6 +5548,211 @@ Redis ElastiCache Interface
       - 
 
 *Base Schemas* `ElastiCache`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
+
+
+
+ElasticsearchDomain
+--------------------
+
+
+Amazon Elasticsearch Service (Amazon ES) is a managed service for Elasticsearch clusters.
+An Amazon ES domain is synonymous with an Elasticsearch cluster. Domains are clusters with the
+settings, instance types, instance counts, and storage resources that you specify.
+
+.. sidebar:: Prescribed Automation
+
+    ``segment``: Including the segment will place the Elasticsearch cluster within the Availability
+    Zones for that segment. If an Elasticsearch ServiceLinkedRole is not already provisioned for that
+    account and region, Paco will create it for you. This role is used by AWS to place the Elasticsearch
+    cluster within the subnets that belong that segment and VPC.
+
+    If segment is not set, then you will have a public Elasticsearch cluster with an endpoint.
+
+.. code-block:: yaml
+    :caption: example Elasticsearch configuration
+
+    type: ElasticsearchDomain
+    order: 10
+    title: "Elasticsearch Domain"
+    enabled: true
+    access_policies_json: ./es-config/es-access.json
+    advanced_options:
+      indices.fielddata.cache.size: ""
+      rest.action.multi.allow_explicit_index: "true"
+    cluster:
+      instance_count: 2
+      zone_awareness_enabled: false
+      instance_type: "t2.micro.elasticsearch"
+      dedicated_master_enabled: true
+      dedicated_master_type: "t2.micro.elasticsearch"
+      dedicated_master_count: 2
+    ebs_volumes:
+      enabled: true
+      iops: 0
+      volume_size_gb: 10
+      volume_type: 'gp2'
+    segment: web
+    security_groups:
+      - paco.ref netenv.mynet.network.vpc.security_groups.app.search
+
+    
+
+.. _ElasticsearchDomain:
+
+.. list-table:: :guilabel:`ElasticsearchDomain`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - access_policies_json
+      - StringFileReference
+      - Policy document that specifies who can access the Amazon ES domain and their permissions.
+      - 
+      - 
+    * - advanced_options
+      - Container<ESAdvancedOptions_>
+      - Advanced Options
+      - 
+      - 
+    * - cluster
+      - Object<ElasticsearchCluster_>
+      - Elasticsearch Cluster configuration
+      - 
+      - 
+    * - ebs_volumes
+      - Object<EBSOptions_>
+      - EBS volumes that are attached to data nodes in the Amazon ES domain.
+      - 
+      - 
+    * - elasticsearch_version
+      - String
+      - The version of Elasticsearch to use, such as 2.3.
+      - 
+      - 1.5
+    * - node_to_node_encryption
+      - Boolean
+      - Enable node-to-node encryption
+      - 
+      - 
+    * - security_groups
+      - List<PacoReference>
+      - List of Security Groups
+      - Paco Reference to `SecurityGroup`_.
+      - 
+    * - segment
+      - String
+      - Segment
+      - 
+      - 
+    * - snapshot_start_hour
+      - Int
+      - The hour in UTC during which the service takes an automated daily snapshot of the indices in the Amazon ES domain.
+      - 
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
+
+ElasticsearchCluster
+^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _ElasticsearchCluster:
+
+.. list-table:: :guilabel:`ElasticsearchCluster`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - dedicated_master_count
+      - Int
+      - The number of instances to use for the master node.
+      - If you specify this field, you must specify true for the dedicated_master_enabled field.
+      - 
+    * - dedicated_master_enabled
+      - Boolean
+      - Indicates whether to use a dedicated master node for the Amazon ES domain.
+      - 
+      - 
+    * - dedicated_master_type
+      - String
+      - The hardware configuration of the computer that hosts the dedicated master node
+      - Valid Elasticsearch instance type, such as m3.medium.elasticsearch. See https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/aes-supported-instance-types.html
+      - 
+    * - instance_count
+      - Int
+      - The number of data nodes (instances) to use in the Amazon ES domain.
+      - 
+      - 
+    * - instance_type
+      - String
+      - The instance type for your data nodes.
+      - Valid Elasticsearch instance type, such as m3.medium.elasticsearch. See https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/aes-supported-instance-types.html
+      - 
+    * - zone_awareness_availability_zone_count
+      - Int
+      - If you enabled multiple Availability Zones (AZs), the number of AZs that you want the domain to use.
+      - 
+      - 2
+    * - zone_awareness_enabled
+      - Boolean
+      - Enable zone awareness for the Amazon ES domain.
+      - 
+      - 
+
+
+
+EBSOptions
+^^^^^^^^^^^
+
+
+
+.. _EBSOptions:
+
+.. list-table:: :guilabel:`EBSOptions`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - enabled
+      - Boolean
+      - Specifies whether Amazon EBS volumes are attached to data nodes in the Amazon ES domain.
+      - 
+      - 
+    * - iops
+      - Int
+      - The number of I/O operations per second (IOPS) that the volume supports.
+      - 
+      - 
+    * - volume_size_gb
+      - Int
+      - The size (in GiB) of the EBS volume for each data node.
+      - The minimum and maximum size of an EBS volume depends on the EBS volume type and the instance type to which it is attached.
+      - 
+    * - volume_type
+      - String
+      - The EBS volume type to use with the Amazon ES domain.
+      - Must be one of: standard, gp2, io1, st1, or sc1
+      - 
+
+
+ESAdvancedOptions
+^^^^^^^^^^^^^^^^^
+
+An unconstrainted set of key-value pairs used to set advanced options for Elasticsearch.
 
 
 
