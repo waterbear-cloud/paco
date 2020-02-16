@@ -709,7 +709,6 @@ class IAMController(Controller):
         # These roles can be created by different resources, each request to
         # add a SL Role should check if the Role already exists, rather than creating it again
         sl_id = f"{account_ctx.id}-{region}-{servicename}"
-        breakpoint()
         if sl_id not in self.sl_role_context.keys():
             self.sl_role_context[sl_id] = SLRoleContext(
                 paco_ctx,
@@ -718,7 +717,6 @@ class IAMController(Controller):
                 stack_group,
                 servicename
             )
-            breakpoint()
         # If a ServiceLinked Role has already been added, simply ignore it
         # These only need to be created maximum once per account/region, but can
         # be depended upon by multiple resources.
