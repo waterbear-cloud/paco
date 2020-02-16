@@ -3,7 +3,7 @@ import os
 import sys
 import ruamel.yaml.constructor
 from paco.config.paco_context import PacoContext, AccountContext
-from paco.core.exception import PacoException, StackException, InvalidPacoScope, PacoBaseException
+from paco.core.exception import PacoException, StackException, InvalidPacoScope, PacoBaseException, InvalidPacoHome
 from paco.models.exceptions import InvalidPacoProjectFile, UnusedPacoProjectField, InvalidPacoReference
 from paco.models.references import get_model_obj_from_ref
 from boto3.exceptions import Boto3Error
@@ -46,7 +46,7 @@ def init_cloud_command(
     paco_ctx.command = command_name
     init_paco_home_option(paco_ctx, home)
     if not paco_ctx.home:
-        raise PacoException('Paco configuration directory needs to be specified with either --home or PACO_HOME environment variable.')
+        raise InvalidPacoHome('Paco configuration directory needs to be specified with either --home or PACO_HOME environment variable.')
 
     # Inform about invalid scopes before trying to load the Paco project
     scopes = config_scope.split('.')
@@ -278,6 +278,8 @@ def handle_exceptions(func):
             # generically catch new-style exceptions last
             elif isinstance(error, PacoBaseException):
                 click.echo(error)
+            elif isinstance(error, PacoException):
+                click.echo(error.code)
             else:
                 if hasattr(error, 'message'):
                     click.echo(error.message)

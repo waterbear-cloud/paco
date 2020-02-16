@@ -16,6 +16,11 @@ Changelog for Paco
 
 ### Added
 
+- ServiceLinkedRoles for IAM. New IAM controller method ``add_service_linked_role`` which can be
+  used to add a SerivceLinkedRole.
+
+- ElasticsearchDomain resource.
+
 - Ability for a template Parameter to ignore_changes. If this is True then the Parameter will not
   be changed during stack updates.
 

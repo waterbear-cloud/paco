@@ -182,5 +182,7 @@ class ApplicationEngine():
             return self.stack_group.get_stack_from_ref(ref)
         elif schemas.ICodeDeployApplication.providedBy(ref.resource):
             return self.stack_group.get_stack_from_ref(ref)
+        elif schemas.IElasticsearchDomain.providedBy(ref.resource):
+            return self.stack_group.get_stack_from_ref(ref)
 
         return None
