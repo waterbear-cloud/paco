@@ -96,24 +96,22 @@ class SLRoleContext():
         account_ctx,
         region,
         stack_group,
-        resource,
         servicename
     ):
         self.paco_ctx = paco_ctx
         self.account_ctx = account_ctx
         self.region = region
         self.stack_group = stack_group
-        self.resource = resource
         self.servicename = servicename
         self.sl_role_template = IAMSLRoles(
             paco_ctx,
             account_ctx,
             region,
             stack_group,
-            resource,
             servicename
         )
         self.sl_role_stack = self.sl_role_template.stack
+        self.sl_role_stack.singleton = True
         self.stack_group.add_stack_order(self.sl_role_stack)
 
     def aws_name(self):
@@ -706,20 +704,21 @@ class IAMController(Controller):
         resource,
         servicename
     ):
-        "Add a ServiceLinked Role for this account and region"
+        "Add a ServiceLinked Role for this account and region if it doesn't already exist"
         # ToDo: Each service-linked role can only be enabled once in each account/region?
         # These roles can be created by different resources, each request to
         # add a SL Role should check if the Role already exists, rather than creating it again
         sl_id = f"{account_ctx.id}-{region}-{servicename}"
+        breakpoint()
         if sl_id not in self.sl_role_context.keys():
             self.sl_role_context[sl_id] = SLRoleContext(
                 paco_ctx,
                 account_ctx,
                 region,
                 stack_group,
-                resource,
                 servicename
             )
+            breakpoint()
         # If a ServiceLinked Role has already been added, simply ignore it
         # These only need to be created maximum once per account/region, but can
         # be depended upon by multiple resources.

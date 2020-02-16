@@ -9,11 +9,10 @@ class IAMSLRoles(CFTemplate):
         account_ctx,
         aws_region,
         stack_group,
-        resource,
         servicename
     ):
         normalized_servicename = servicename.replace('.','')
-        config_ref = resource.paco_ref_parts + '.' + normalized_servicename
+        config_ref = 'resource.iam.servicelinkedrole' + '.' + normalized_servicename
         super().__init__(
             paco_ctx,
             account_ctx,
