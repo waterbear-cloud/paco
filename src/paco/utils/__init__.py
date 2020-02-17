@@ -134,11 +134,11 @@ def prefixed_name(resource, name, legacy_flag):
     """Returns a name prefixed to be unique:
     e.g. netenv_name-env_name-app_name-group_name-resource_name-name"""
     str_list = []
-    # currently ony works for resources in an environment
+    # currently only works for resources in an environment
     if legacy_flag('netenv_loggroup_name_2019_10_13') == False:
-        netenv_name = get_parent_by_interface(resource, schemas.INetworkEnvironment).name
-        str_list.append(netenv_name)
-
+        netenv = get_parent_by_interface(resource, schemas.INetworkEnvironment)
+        if netenv != None:
+            str_list.append(netenv.name)
     app_name = get_parent_by_interface(resource, schemas.IApplication).name
     group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
 
