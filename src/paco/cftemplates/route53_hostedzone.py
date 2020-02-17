@@ -12,8 +12,8 @@ class Route53HostedZone(CFTemplate):
         stack_group,
         stack_tags,
         zone_config,
-        config_ref):
-        #paco_ctx.log("Route53 CF Template init")
+        config_ref
+    ):
         super().__init__(
             paco_ctx,
             account_ctx,
@@ -31,7 +31,7 @@ class Route53HostedZone(CFTemplate):
         self.paco_ctx.log_action_col("Init", "Route53", "Hosted Zone", "{}".format(zone_config.domain_name))
 
         if zone_config.external_resource != None and zone_config.external_resource.is_enabled():
-            hosetd_zone_id_output_value = zone_config.external_resource.hosted_zone_id
+            hosted_zone_id_output_value = zone_config.external_resource.hosted_zone_id
             nameservers_output_value = ','.join(zone_config.external_resource.nameservers)
         else:
             hosted_zone_res = troposphere.route53.HostedZone(
@@ -39,24 +39,19 @@ class Route53HostedZone(CFTemplate):
                 template=self.template,
                 Name=zone_config.domain_name
             )
-            hosetd_zone_id_output_value = troposphere.Ref(hosted_zone_res)
+            hosted_zone_id_output_value = troposphere.Ref(hosted_zone_res)
             nameservers_output_value = troposphere.Join(',', troposphere.GetAtt(hosted_zone_res, 'NameServers'))
 
-
-        self.template.add_output(
-            troposphere.Output(
-                title = 'HostedZoneId',
-                Value = hosetd_zone_id_output_value
-            )
+        self.create_output(
+            title='HostedZoneId',
+            value=hosted_zone_id_output_value,
+            ref=config_ref+'.id'
         )
-        self.template.add_output(
-            troposphere.Output(
-                title = 'HostedZoneNameServers',
-                Value = nameservers_output_value
-            )
+        self.create_output(
+            title='HostedZoneNameServers',
+            value=nameservers_output_value,
+            ref=config_ref+'.name_servers'
         )
-        self.register_stack_output_config(config_ref+'.id', 'HostedZoneId')
-        self.register_stack_output_config(config_ref+'.name_servers', 'HostedZoneNameServers')
 
         if len(zone_config.record_sets) > 0:
             record_set_list = []
@@ -78,6 +73,6 @@ class Route53HostedZone(CFTemplate):
             group_res.DependsOn = hosted_zone_res
 
 
-        self.set_template(self.template.to_yaml())
+        self.set_template()
 
 

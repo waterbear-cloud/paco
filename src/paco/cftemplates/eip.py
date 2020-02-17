@@ -45,23 +45,18 @@ class EIP(CFTemplate):
         )
 
         # Outputs
-        eip_address_output = troposphere.Output(
+        self.create_output(
             title='ElasticIPAddress',
-            Description="The Elastic IP Address.",
-            Value=troposphere.Ref(eip_res)
+            description="The Elastic IP Address.",
+            value=troposphere.Ref(eip_res),
+            ref=config_ref + ".address",
         )
-        template.add_output(eip_address_output)
-
-        eip_alloc_id_output = troposphere.Output(
+        self.create_output(
             title='ElasticIPAllocationId',
-            Description="The Elastic IPs allocation id.",
-            Value=troposphere.GetAtt(eip_res, 'AllocationId')
+            description="The Elastic IPs allocation id.",
+            value=troposphere.GetAtt(eip_res, 'AllocationId'),
+            ref=config_ref + ".allocation_id"
         )
-        template.add_output(eip_alloc_id_output)
-
-        # Paco Stack Output Registration
-        self.register_stack_output_config(config_ref + ".address", eip_address_output.title)
-        self.register_stack_output_config(config_ref + ".allocation_id", eip_alloc_id_output.title)
 
         if self.paco_ctx.legacy_flag('route53_record_set_2019_10_16') == True:
             if eip_config.is_dns_enabled():
@@ -85,7 +80,7 @@ class EIP(CFTemplate):
                     )
 
         # Generate the Template
-        self.set_template(template.to_yaml())
+        self.set_template()
 
         if self.paco_ctx.legacy_flag('route53_record_set_2019_10_16') == False:
             route53_ctl = self.paco_ctx.get_controller('route53')

@@ -32,8 +32,7 @@ class EFS(CFTemplate):
 
         self.init_template('Elastic Filesystem')
         if not efs_config.is_enabled():
-            self.set_template(self.template.to_yaml())
-            return
+            return self.set_template()
 
         # Parameters
         sg_list_param = self.create_cfn_ref_list_param(
@@ -56,23 +55,20 @@ class EFS(CFTemplate):
             template = self.template,
             Encrypted=troposphere.Ref(encrypted_param)
         )
-        efs_id_output_logical_id = efs_res.title+'Id'
-        troposphere.Output(
-            title=efs_id_output_logical_id,
-            template=self.template,
-            Description="Elastic File System ID.",
-            Value=troposphere.Ref(efs_res)
+        self.create_output(
+            title=efs_res.title + 'Id',
+            description="Elastic File System ID.",
+            value=troposphere.Ref(efs_res),
+            ref=config_ref + ".id"
         )
-        # Paco Stack Output Registration
-        self.register_stack_output_config(config_ref + ".id", efs_id_output_logical_id)
 
         # Mount Targets
         availability_zones = env_ctx.config.network.availability_zones
         for az_idx in range(1, availability_zones+1):
             subnet_id_ref = env_ctx.env_ref_prefix(
                 segment_id=efs_config.segment,
-                attribute='az{}.subnet_id'.format(az_idx))
-
+                attribute='az{}.subnet_id'.format(az_idx)
+            )
             subnet_param = self.create_cfn_parameter(
                 name='SubnetIdAZ{}'.format(az_idx),
                 param_type='String',
@@ -89,5 +85,5 @@ class EFS(CFTemplate):
             )
 
         # Generate the Template
-        self.set_template(self.template.to_yaml())
+        self.set_template()
 

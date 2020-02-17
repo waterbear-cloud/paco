@@ -1,10 +1,8 @@
-import os
-import troposphere
-#import troposphere.<resource>
-
 from paco.cftemplates.cftemplates import CFTemplate
 from paco.models import references
 from paco import utils
+import os
+import troposphere
 
 
 class Route53RecordSet(CFTemplate):
@@ -15,15 +13,13 @@ class Route53RecordSet(CFTemplate):
         aws_region,
         stack_group,
         stack_tags,
-
         record_set_name,
         record_set_config,
-        config_ref):
-
+        config_ref
+    ):
         if references.is_ref(record_set_name) == True:
             record_set_name = paco_ctx.get_ref(record_set_name)
 
-        # ---------------------------------------------------------------------------
         # CFTemplate Initialization
         super().__init__(
             paco_ctx,
@@ -37,11 +33,9 @@ class Route53RecordSet(CFTemplate):
         )
         self.set_aws_name('RecordSet', record_set_name)
 
-        # ---------------------------------------------------------------------------
         # Troposphere Template Initialization
         self.init_template('Route53 RecordSet: ' + record_set_name)
 
-        # ---------------------------------------------------------------------------
         # Parameters
         hosted_zone_id = record_set_config['dns'].hosted_zone
         if references.is_ref(record_set_config['dns'].hosted_zone):
@@ -105,5 +99,5 @@ class Route53RecordSet(CFTemplate):
         self.template.add_resource(record_set_res)
 
         # Generate the Template
-        self.set_template(self.template.to_yaml())
+        self.set_template()
 

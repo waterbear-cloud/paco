@@ -1,10 +1,4 @@
-import base64
-import boto3
-import os
-import pathlib
-import random, re
-import string, sys
-import troposphere
+from botocore.exceptions import ClientError
 from enum import Enum
 from paco import utils
 from paco.core.yaml import YAML
@@ -13,9 +7,14 @@ from paco.models import references
 from paco.models.references import Reference
 from paco.stack_group import Stack, StackOrder
 from paco.utils import dict_of_dicts_merge, md5sum, big_join, list_to_comma_string
-from botocore.exceptions import ClientError
 from pprint import pprint
 from shutil import copyfile
+import base64
+import os
+import pathlib
+import random, re
+import string, sys
+import troposphere
 
 # deepdiff turns on Deprecation warnings, we need to turn them back off
 # again right after import, otherwise 3rd libs spam dep warnings all over the place
@@ -731,7 +730,6 @@ class CFTemplate():
                 update_only=self.update_only,
                 change_protected=self.change_protected,
             )
-
             self.stack_group.add_stack_order(self.stack, self.stack_order)
 
     def get_stack_outputs_key_from_ref(self, ref, stack=None):
@@ -1082,6 +1080,33 @@ class CFTemplate():
             default,
             noecho,
         )
+
+    def create_output(
+        self,
+        title=None,
+        description=None,
+        value=None,
+        ref=None,
+    ):
+        "Convenience method to create a Troposphere output, add it to the template and register the Stack Output(s)"
+        if description != None:
+            troposphere.Output(
+                title=title,
+                template=self.template,
+                Value=value,
+                Description=description
+            )
+        else:
+            troposphere.Output(
+                title=title,
+                template=self.template,
+                Value=value,
+            )
+        if type(ref) == list:
+            for ref_item in ref:
+                self.register_stack_output_config(ref_item, title)
+        elif type(ref) == str:
+            self.register_stack_output_config(ref, title)
 
     def gen_output(self, name, value):
         "Return name and value as a CFN YAML formatted string"

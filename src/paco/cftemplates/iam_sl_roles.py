@@ -35,4 +35,4 @@ class IAMSLRoles(CFTemplate):
         )
 
         # All Done
-        self.set_template(self.template.to_yaml())
+        self.set_template()

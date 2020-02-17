@@ -141,19 +141,15 @@ class EventsRule(CFTemplate):
         self.template.add_resource(event_rule_resource)
 
         # Outputs
-        self.template.add_output(
-            troposphere.Output(
-                "EventRuleId",
-                Value=troposphere.Ref(event_rule_resource)
-            )
+        self.create_output(
+            title="EventRuleId",
+            value=troposphere.Ref(event_rule_resource),
+            ref=config_ref + '.id',
         )
-        self.template.add_output(
-            troposphere.Output(
-                "EventRuleArn",
-                Value=troposphere.GetAtt(event_rule_resource, "Arn")
-            )
+        self.create_output(
+            title="EventRuleArn",
+            value=troposphere.GetAtt(event_rule_resource, "Arn"),
+            ref=config_ref + '.arn',
         )
-        self.register_stack_output_config(config_ref + '.id', 'EventRuleId')
-        self.register_stack_output_config(config_ref + '.arn', 'EventRuleArn')
 
-        self.set_template(self.template.to_yaml())
+        self.set_template()

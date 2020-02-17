@@ -141,7 +141,7 @@ class CWAlarms(CFBaseAlarm):
                 alarm_set_id,
             )
         self.template.enabled = alarms_are_enabled
-        self.set_template(template.to_yaml())
+        self.set_template()
 
     def add_alarms(
             self,
@@ -251,11 +251,11 @@ HINT: Ensure that the monitoring.log_sets for the resource is enabled and that t
 
             # Alarm Output
             output_ref = '.'.join([res_config_ref, 'monitoring', 'alarm_sets', alarm_set_id, alarm_id])
-            self.register_stack_output_config(output_ref, alarm.cfn_resource_name)
-            alarm_output = troposphere.Output(
-                alarm.cfn_resource_name,
-                Value=troposphere.Ref(alarm_resource)
+            self.create_output(
+                title=alarm.cfn_resource_name,
+                value=troposphere.Ref(alarm_resource),
+                ref=output_ref,
             )
-            template.add_output(alarm_output)
+
         return alarms_are_enabled
 

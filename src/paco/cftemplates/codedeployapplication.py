@@ -137,4 +137,4 @@ class CodeDeployApplication(CFTemplate):
                 deploy_group_resource.DependsOn = policy_resource
 
         # All done, let's go home!
-        self.set_template(self.template.to_yaml())
+        self.set_template()

@@ -71,7 +71,7 @@ class IAMUserAccountDelegates(CFTemplate):
                 self.user_delegate_role_and_policies(user_config, permissions_list)
 
         # Generate the Template
-        self.set_template(self.template.to_yaml())
+        self.set_template()
 
     def user_delegate_role_and_policies(self, user_config, permissions_list):
         user_arn = 'arn:aws:iam::{}:user/{}'.format(self.master_account_id, user_config.username)
@@ -280,18 +280,3 @@ class IAMUserAccountDelegates(CFTemplate):
             Roles=[ troposphere.Ref(assume_role_res) ]
         )
         self.template.add_resource(managed_policy_res)
-
-
-        # ---------------------------------------------------------------------------
-        # Outputs
-        #example_output = troposphere.Output(
-        #    title='ExampleResourceId',
-        #    Description="Example resource Id.",
-        #    Value=troposphere.Ref(example_res)
-        #)
-        #self.template.add_output(example_output)
-
-        # Paco Stack Output Registration
-        #self.register_stack_output_config(self.config_ref + ".id", example_output.title)
-
-

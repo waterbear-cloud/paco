@@ -1,4 +1,3 @@
-import boto3
 from botocore.config import Config
 import tldextract
 from . import aws_helpers

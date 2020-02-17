@@ -1,20 +1,22 @@
-import os
 from paco.stack_grps.grp_route53 import Route53StackGroup
 from paco.stack_group import StackGroup
 from paco.cftemplates import Route53RecordSet
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
 from paco.controllers.controllers import Controller
+import os
+
 
 class Route53RecordSetStackGroup(StackGroup):
     def __init__(self, paco_ctx, account_ctx, controller):
         aws_name = account_ctx.get_name()
-        super().__init__(paco_ctx,
-                         account_ctx,
-                         'Route53',
-                         aws_name,
-                         controller)
-
+        super().__init__(
+            paco_ctx,
+            account_ctx,
+            'Route53',
+            aws_name,
+            controller
+        )
         # Initialize config with a deepcopy of the project defaults
         self.account_ctx = account_ctx
         self.stack_list = []
@@ -25,20 +27,17 @@ class Route53Controller(Controller):
             controller_type = 'Service'
         else:
             controller_type = 'Resource'
-
-        super().__init__(paco_ctx,
-                         controller_type,
-                         "Route53")
-
+        super().__init__(
+            paco_ctx,
+            controller_type,
+            "Route53"
+        )
         if not 'route53' in self.paco_ctx.project['resource'].keys():
             self.init_done = True
             return
         self.config = self.paco_ctx.project['resource']['route53']
         if self.config != None:
             self.config.resolve_ref_obj = self
-
-        #self.paco_ctx.log("Route53 Service: Configuration: %s" % (name))
-
         self.stack_grps = []
         self.second = False
         self.init_done = False
@@ -59,10 +58,12 @@ class Route53Controller(Controller):
         self.second = True
         for account_name in self.config.get_hosted_zones_account_names():
             account_ctx = self.paco_ctx.get_account_context(account_name=account_name)
-            route53_stack_grp = Route53StackGroup(self.paco_ctx,
-                                                  account_ctx,
-                                                  self.config,
-                                                  self)
+            route53_stack_grp = Route53StackGroup(
+                self.paco_ctx,
+                account_ctx,
+                self.config,
+                self
+            )
             self.stack_grps.append(route53_stack_grp)
 
     def add_record_set(self,

@@ -705,11 +705,28 @@ class IAMController(Controller):
         servicename
     ):
         "Add a ServiceLinked Role for this account and region if it doesn't already exist"
-        # ToDo: Each service-linked role can only be enabled once in each account/region?
+        # ToDo: Each service-linked role can only be enabled once in each account/region.
         # These roles can be created by different resources, each request to
         # add a SL Role should check if the Role already exists, rather than creating it again
         sl_id = f"{account_ctx.id}-{region}-{servicename}"
-        if sl_id not in self.sl_role_context.keys():
+
+        # SericeLinked Role already created/seen
+        if sl_id in self.sl_role_context.keys():
+            return
+
+        # check if the role already exists
+        client = account_ctx.get_aws_client(
+            'iam',
+            aws_region=region
+        )
+        roles = client.list_roles(
+            PathPrefix=f"/aws-service-role/{servicename}/",
+        )
+        if len(roles["Roles"]) > 0:
+            # cache result
+            if sl_id not in self.sl_role_context:
+                self.sl_role_context[sl_id] = True
+        else:
             self.sl_role_context[sl_id] = SLRoleContext(
                 paco_ctx,
                 account_ctx,
@@ -717,9 +734,6 @@ class IAMController(Controller):
                 stack_group,
                 servicename
             )
-        # If a ServiceLinked Role has already been added, simply ignore it
-        # These only need to be created maximum once per account/region, but can
-        # be depended upon by multiple resources.
 
     def add_role(
         self,

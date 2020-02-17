@@ -41,10 +41,6 @@ class LogGroups(CFTemplate):
         self.init_template('LogGroups')
         template = self.template
 
-        template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
-        )
-
         cw_logging = get_parent_by_interface(resource, schemas.IProject)['cw_logging']
         default_retention = cw_logging.expire_events_after_days
         for log_group in self.resource.monitoring.log_sets.get_all_log_groups():
@@ -113,4 +109,4 @@ class LogGroups(CFTemplate):
                 template.add_resource(metric_filter_resource)
 
         # Generate the Template
-        self.set_template(template.to_yaml())
+        self.set_template()

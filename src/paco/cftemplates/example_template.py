@@ -33,7 +33,7 @@ class Example(CFTemplate):
         # Troposphere Template Initialization
         self.init_template('Example Template')
         if not example_config.is_enabled():
-            return self.set_template(self.template.to_yaml())
+            return self.set_template()
 
         # Parameters
         example_param = self.create_cfn_parameter(
@@ -54,16 +54,13 @@ class Example(CFTemplate):
         self.template.add_resource( example_res )
 
         # Outputs
-        example_output = troposphere.Output(
+        self.create_output(
             title='ExampleResourceId',
-            Description="Example resource Id.",
-            Value=troposphere.Ref(example_res)
+            description="Example resource Id.",
+            value=troposphere.Ref(example_res),
+            ref=config_ref + ".id"
         )
-        self.template.add_output(example_output)
-
-        # Paco Stack Output Registration
-        self.register_stack_output_config(config_ref + ".id", example_output.title)
 
         # Generate the Template
-        self.set_template(self.template.to_yaml())
+        self.set_template()
 

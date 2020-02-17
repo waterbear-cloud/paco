@@ -13,19 +13,17 @@ from awacs.sts import AssumeRole
 
 
 class IAMUsers(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 stack_hooks,
-
-                 iam_users_config,
-                 config_ref):
-
-        # ---------------------------------------------------------------------------
-        # CFTemplate Initialization
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
+        stack_hooks,
+        iam_users_config,
+        config_ref
+    ):
         super().__init__(
             paco_ctx,
             account_ctx,
@@ -38,7 +36,6 @@ class IAMUsers(CFTemplate):
         )
         self.set_aws_name('Accounts')
 
-        # ---------------------------------------------------------------------------
         # Troposphere Template Initialization
         self.init_template('IAM Users')
         template = self.template
@@ -51,12 +48,10 @@ class IAMUsers(CFTemplate):
             self.add_iam_user(iam_user_config)
 
         # Generate the Template
-        self.set_template(self.template.to_yaml())
+        self.set_template()
 
     def add_iam_user(self, iam_user_config):
-        # ---------------------------------------------------------------------------
         # Parameters
-
         username_param = self.create_cfn_parameter(
             name=self.create_cfn_logical_id('Username'+utils.md5sum(str_data=iam_user_config.username)),
             param_type='String',
@@ -77,10 +72,7 @@ class IAMUsers(CFTemplate):
                 value=user_password,
             )
 
-        # ---------------------------------------------------------------------------
-        # Resources
-
-        # IAMUser
+        # IAMUser Resource
         iam_user_dict = {
             'UserName': troposphere.Ref(username_param),
         }
@@ -197,16 +189,3 @@ class IAMUsers(CFTemplate):
                 user_policy_dict
             )
             self.template.add_resource(user_policy_res)
-
-        # ---------------------------------------------------------------------------
-        # Outputs
-        #example_output = troposphere.Output(
-        #    title='ExampleResourceId',
-        #    Description="Example resource Id.",
-        #    Value=troposphere.Ref(example_res)
-        #)
-        #self.template.add_output(example_output)
-
-        # Paco Stack Output Registration
-        #self.register_stack_output_config(self.config_ref + ".id", example_output.title)
-

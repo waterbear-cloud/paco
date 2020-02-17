@@ -318,15 +318,12 @@ class ASG(CFTemplate):
             )
         )
 
-        troposphere.Output(
+        self.create_output(
             title='ASGName',
-            template=template,
-            Value=troposphere.Ref(asg_res),
-            Description='Auto Scaling Group Name'
+            value=troposphere.Ref(asg_res),
+            description='Auto Scaling Group Name',
+            ref=[asg_config_ref, asg_config_ref+'.name']
         )
-
-        self.register_stack_output_config(asg_config_ref, 'ASGName')
-        self.register_stack_output_config(asg_config_ref+'.name', 'ASGName')
 
         # CPU Scaling Policy
         if asg_config.scaling_policy_cpu_average > 0:
@@ -418,4 +415,4 @@ class ASG(CFTemplate):
                     NotificationTargetARN=lifecycle_hook.notification_target_arn
                 )
 
-        self.set_template(template.to_yaml())
+        self.set_template()

@@ -74,7 +74,9 @@ class CodeBuild(CFTemplate):
             action_config,
             config_ref
         )
-        self.set_template(template.to_yaml())
+
+        # All done
+        self.set_template()
 
     def create_codebuild_cfn(
         self,
@@ -249,14 +251,12 @@ class CodeBuild(CFTemplate):
             )
         )
 
-        troposphere.Output(
+        self.create_output(
             title='ProjectArn',
-            template=template,
-            Value=troposphere.GetAtt(project_res, 'Arn'),
-            Description='CodeBuild Project Arn'
+            value=troposphere.GetAtt(project_res, 'Arn'),
+            description='CodeBuild Project Arn',
+            ref=config_ref+'.project.arn'
         )
-
-        self.register_stack_output_config(config_ref+'.project.arn', 'ProjectArn')
 
         return project_res
 

@@ -57,18 +57,15 @@ class VPC(CFTemplate):
             'EnableDnsHostnames': troposphere.Ref(enable_dns_hostname_param)
         }
         vpc_res = troposphere.ec2.VPC.from_dict('VPC', vpc_dict)
-        vpc_output = troposphere.Output(
-            'VPC',
-            Value=troposphere.Ref(vpc_res)
-        )
         template.add_resource(vpc_res)
-        template.add_output(vpc_output)
 
-        self.register_stack_output_config(vpc_config_ref, vpc_output.title)
-        self.register_stack_output_config(vpc_config_ref + '.id', vpc_output.title)
+        # Output
+        self.create_output(
+            title=vpc_res.title,
+            value=troposphere.Ref(vpc_res),
+            ref=[vpc_config_ref, vpc_config_ref + '.id']
+        )
 
-
-        #---------------------------------------------------------------------
         # Internet gateway
         if vpc_config.enable_internet_gateway == True:
             # Gateway
@@ -82,18 +79,16 @@ class VPC(CFTemplate):
                 'InternetGatewayAttachment',
                 igw_attachment_dict
             )
-            # Output
-            igw_output = troposphere.Output(
-                'InternetGateway',
-                Value=troposphere.Ref(igw_res)
-            )
-
             template.add_resource(igw_res)
             template.add_resource(igw_attachment_res)
-            template.add_output(igw_output)
-            self.register_stack_output_config(vpc_config_ref + ".internet_gateway", igw_output.title)
 
-        #---------------------------------------------------------------------
+            # Output
+            self.create_output(
+                title='InternetGateway',
+                value=troposphere.Ref(igw_res),
+                ref=vpc_config_ref + ".internet_gateway"
+            )
+
         # Private Hosted Zone
         if vpc_config.private_hosted_zone.enabled == True:
             internal_domain_name_param = self.create_cfn_parameter(
@@ -118,15 +113,13 @@ class VPC(CFTemplate):
                 Name=troposphere.Ref(internal_domain_name_param),
                 VPCs=private_zone_vpcs
             )
-            private_zone_id_output = troposphere.Output(
-                'PrivateHostedZoneId',
-                Description="Private Hosted Zone Id",
-                Value=troposphere.Ref(private_zone_res)
-            )
             template.add_resource(private_zone_res)
-            template.add_output(private_zone_id_output)
-
-            self.register_stack_output_config(vpc_config_ref + ".private_hosted_zone.id", private_zone_id_output.title)
+            self.create_output(
+                title='PrivateHostedZoneId',
+                description="Private Hosted Zone Id",
+                value=troposphere.Ref(private_zone_res),
+                ref=vpc_config_ref + ".private_hosted_zone.id"
+            )
 
         # Define the Template
-        self.set_template(template.to_yaml())
+        self.set_template()

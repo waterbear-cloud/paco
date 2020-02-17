@@ -42,7 +42,7 @@ class Lambda(CFTemplate):
 
         # if disabled on leave an empty placeholder and finish
         if not awslambda.is_enabled():
-            return self.set_template(self.template.to_yaml())
+            return self.set_template()
 
         # Parameters
         sdb_cache_param = self.create_cfn_parameter(
@@ -404,23 +404,19 @@ class Lambda(CFTemplate):
         self.template.add_resource(loggroup_policy_resource)
 
         # Outputs
-        self.template.add_output(
-            troposphere.Output(
-                title='FunctionName',
-                Value=troposphere.Ref(self.awslambda_resource)
-            )
+        self.create_output(
+            title='FunctionName',
+            value=troposphere.Ref(self.awslambda_resource),
+            ref=awslambda.paco_ref_parts + '.name',
         )
-        self.register_stack_output_config(awslambda.paco_ref_parts + '.name', 'FunctionName')
-        self.template.add_output(
-            troposphere.Output(
-                title='FunctionArn',
-                Value=troposphere.GetAtt(self.awslambda_resource, 'Arn')
-            )
+        self.create_output(
+            title='FunctionArn',
+            value=troposphere.GetAtt(self.awslambda_resource, 'Arn'),
+            ref=awslambda.paco_ref_parts + '.arn',
         )
-        self.register_stack_output_config(awslambda.paco_ref_parts + '.arn', 'FunctionArn')
 
         # Finished
-        self.set_template(self.template.to_yaml())
+        self.set_template()
 
     def add_log_group(self, loggroup_name, logical_name=None):
         "Add a LogGroup resource to the template"

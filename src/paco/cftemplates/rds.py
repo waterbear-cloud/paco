@@ -95,11 +95,7 @@ class RDS(CFTemplate):
 
         if not rds_config.is_enabled():
             # Remove RDS resource and leave a dummy template is not enabled
-            self.template.add_resource(
-                troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
-            )
-            self.set_template(template.to_yaml())
-            return
+            return self.set_template()
 
         rds_logical_id = 'PrimaryDBInstance'
 
@@ -276,21 +272,18 @@ class RDS(CFTemplate):
             template.add_resource(db_instance_res)
 
             # Outputs
-            dbname_output = troposphere.Output(
+            self.create_output(
                 title='DBInstanceName',
-                Description='DB Instance Name',
-                Value=troposphere.Ref(db_instance_res)
+                description='DB Instance Name',
+                value=troposphere.Ref(db_instance_res),
+                ref=config_ref + ".name",
             )
-            template.add_output(dbname_output)
-            self.register_stack_output_config(config_ref + ".name", dbname_output.title)
-
-            endpoint_address_output = troposphere.Output(
+            self.create_output(
                 title='RDSEndpointAddress',
-                Description='RDS Endpoint URL',
-                Value=troposphere.GetAtt(db_instance_res, 'Endpoint.Address')
+                description='RDS Endpoint URL',
+                value=troposphere.GetAtt(db_instance_res, 'Endpoint.Address'),
+                ref=config_ref + ".endpoint.address",
             )
-            template.add_output(endpoint_address_output)
-            self.register_stack_output_config(config_ref + ".endpoint.address", endpoint_address_output.title)
 
             if self.paco_ctx.legacy_flag('route53_record_set_2019_10_16') == True:
                 if rds_config.is_dns_enabled() == True:
@@ -314,7 +307,7 @@ class RDS(CFTemplate):
                         )
                         record_set_res.DependsOn = db_instance_res
 
-        self.set_template(template.to_yaml())
+        self.set_template()
 
         if self.paco_ctx.legacy_flag('route53_record_set_2019_10_16') == False:
             if rds_config.is_dns_enabled() == True:
@@ -327,5 +320,6 @@ class RDS(CFTemplate):
                         dns=dns_config,
                         record_set_type='CNAME',
                         resource_records=[ 'paco.ref '+config_ref+'.endpoint.address' ],
-                        stack_group = self.stack_group,
-                        config_ref = rds_config.paco_ref_parts+'.dns')
+                        stack_group=self.stack_group,
+                        config_ref=rds_config.paco_ref_parts+'.dns'
+                    )

@@ -16,15 +16,12 @@ class EBS(CFTemplate):
         aws_region,
         stack_group,
         stack_tags,
-
         app_id,
         grp_id,
         res_id,
         ebs_config,
-        config_ref):
-
-        # ---------------------------------------------------------------------------
-        # CFTemplate Initialization
+        config_ref
+    ):
         super().__init__(
             paco_ctx,
             account_ctx,
@@ -37,34 +34,28 @@ class EBS(CFTemplate):
         )
         self.set_aws_name('EBS', grp_id, res_id)
 
-        # ---------------------------------------------------------------------------
         # Troposphere Template Initialization
         self.init_template('Elastic Block Store Volume')
 
+        # EBS Resource
         ebs_dict = {
             'Size': ebs_config.size_gib,
             'VolumeType': ebs_config.volume_type,
             'AvailabilityZone': vocabulary.aws_regions[aws_region]['zones'][ebs_config.availability_zone-1]
         }
-
         ebs_res = troposphere.ec2.Volume.from_dict(
             'EBS',
             ebs_dict
         )
         self.template.add_resource(ebs_res)
 
-        # ---------------------------------------------------------------------------
         # Outputs
-        ebs_volume_id_output = troposphere.Output(
+        self.create_output(
             title='EBSVolumeId',
-            Description="The EBS Volume Id.",
-            Value=troposphere.Ref(ebs_res)
+            description="The EBS Volume Id.",
+            value=troposphere.Ref(ebs_res),
+            ref=config_ref + ".id",
         )
-        self.template.add_output(ebs_volume_id_output)
-
-        # Paco Stack Output Registration
-        self.register_stack_output_config(config_ref + ".id", ebs_volume_id_output.title)
 
         # Generate the Template
-        self.set_template(self.template.to_yaml())
-
+        self.set_template()

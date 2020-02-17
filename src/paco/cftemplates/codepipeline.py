@@ -75,7 +75,7 @@ class CodePipeline(CFTemplate):
             template,
             res_config,
         )
-        self.set_template(template.to_yaml())
+        self.set_template()
 
     def create_codepipeline_cfn(
         self,

@@ -30,8 +30,7 @@ class CloudWatchDashboard(CFTemplate):
         self.init_template('CloudWatch Dashboard')
 
         if not dashboard.is_enabled():
-            self.set_template(self.template.to_yaml())
-            return
+            return self.set_template()
 
         # Parameters for variables
         if dashboard.variables and dashboard.is_enabled():
@@ -75,4 +74,4 @@ class CloudWatchDashboard(CFTemplate):
         self.template.add_resource(dashboard_resource)
 
         # Generate the Template
-        self.set_template(self.template.to_yaml())
+        self.set_template()

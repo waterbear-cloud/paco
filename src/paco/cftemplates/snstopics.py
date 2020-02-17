@@ -48,10 +48,6 @@ class SNSTopics(CFTemplate):
         self.init_template('SNS Topics')
         template = self.template
 
-        template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
-        )
-
         # Topic Resources and Outputs
         any_topic_enabled = False
         topics_ref_cross_list = []
@@ -98,19 +94,16 @@ class SNSTopics(CFTemplate):
 
             # Topic Outputs
             output_ref = '.'.join([res_config_ref, topic.name])
-            topic_output_arn = troposphere.Output(
-                'SNSTopicArn' + topic_logical_id,
-                Value=troposphere.Ref(topic_resource)
+            self.create_output(
+                title='SNSTopicArn' + topic_logical_id,
+                value=troposphere.Ref(topic_resource),
+                ref=output_ref + '.arn'
             )
-            template.add_output(topic_output_arn)
-            self.register_stack_output_config(output_ref + '.arn', 'SNSTopicArn' + topic_logical_id)
-            topic_output_name = troposphere.Output(
-                'SNSTopicName' + topic_logical_id,
-                Value=troposphere.GetAtt(topic_resource, "TopicName")
+            self.create_output(
+                title='SNSTopicName' + topic_logical_id,
+                value=troposphere.GetAtt(topic_resource, "TopicName"),
+                ref=output_ref + '.name',
             )
-            template.add_output(topic_output_name)
-            self.register_stack_output_config(output_ref + '.name', 'SNSTopicName' + topic_logical_id)
-
 
         # Cross-account access policy
         if len(topics_ref_cross_list) > 0:
@@ -143,4 +136,4 @@ class SNSTopics(CFTemplate):
         self.enabled = any_topic_enabled
 
         # Generate the Template
-        self.set_template(template.to_yaml())
+        self.set_template()

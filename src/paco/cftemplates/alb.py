@@ -41,8 +41,7 @@ class ALB(CFTemplate):
         # Init Troposphere template
         self.init_template('Application Load Balancer')
         if not alb_config.is_enabled():
-            self.set_template(self.template.to_yaml())
-            return
+            return self.set_template()
 
         # Parameters
         if alb_config.is_enabled():
@@ -196,29 +195,26 @@ class ALB(CFTemplate):
             self.template.add_resource(target_group_resource)
 
             # Target Group Outputs
-            target_group_arn_output = troposphere.Output(
-                title='TargetGroupArn' + target_group_id,
-                Value=troposphere.Ref(target_group_resource)
-            )
-            self.template.add_output(target_group_arn_output)
             target_group_ref = '.'.join([alb_config.paco_ref_parts, 'target_groups', target_group_name])
             target_group_arn_ref = '.'.join([target_group_ref, 'arn'])
-            self.register_stack_output_config(target_group_arn_ref, 'TargetGroupArn' + target_group_id)
-
-            target_group_name_output = troposphere.Output(
-                title='TargetGroupName' + target_group_id,
-                Value=troposphere.GetAtt(target_group_resource, 'TargetGroupName')
+            self.create_output(
+                title='TargetGroupArn' + target_group_id,
+                value=troposphere.Ref(target_group_resource),
+                ref=target_group_arn_ref
             )
-            self.template.add_output(target_group_name_output)
+
             target_group_name_ref = '.'.join([target_group_ref, 'name'])
-            self.register_stack_output_config(target_group_name_ref, 'TargetGroupName' + target_group_id)
-
-            target_group_fullname_output = troposphere.Output(
-                title='TargetGroupFullName' + target_group_id,
-                Value=troposphere.GetAtt(target_group_resource, 'TargetGroupFullName')
+            self.create_output(
+                title='TargetGroupName' + target_group_id,
+                value=troposphere.GetAtt(target_group_resource, 'TargetGroupName'),
+                ref=target_group_name_ref
             )
-            self.template.add_output(target_group_fullname_output)
-            self.register_stack_output_config(target_group_ref + '.fullname', 'TargetGroupFullName' + target_group_id)
+
+            self.create_output(
+                title='TargetGroupFullName' + target_group_id,
+                value=troposphere.GetAtt(target_group_resource, 'TargetGroupFullName'),
+                ref=target_group_ref + '.fullname'
+            )
 
         # Listeners
         for listener_name, listener in alb_config.listeners.items():
@@ -337,42 +333,32 @@ class ALB(CFTemplate):
                     record_set_index += 1
 
         if self.enabled == True:
-            self.template.add_output(
-                troposphere.Output(
-                    title='LoadBalancerArn',
-                    Value=troposphere.Ref(alb_resource)
-                )
+            self.create_output(
+                title='LoadBalancerArn',
+                value=troposphere.Ref(alb_resource),
+                ref=alb_config.paco_ref_parts + '.arn'
             )
-            self.register_stack_output_config(alb_config.paco_ref_parts + '.arn', 'LoadBalancerArn')
-            self.template.add_output(
-                troposphere.Output(
-                    title='LoadBalancerName',
-                    Value=troposphere.GetAtt(alb_resource, 'LoadBalancerName')
-                )
+            self.create_output(
+                title='LoadBalancerName',
+                value=troposphere.GetAtt(alb_resource, 'LoadBalancerName'),
+                ref=alb_config.paco_ref_parts + '.name'
             )
-            self.register_stack_output_config(alb_config.paco_ref_parts + '.name', 'LoadBalancerName')
-            self.template.add_output(
-                troposphere.Output(
-                    title='LoadBalancerFullName',
-                    Value=troposphere.GetAtt(alb_resource, 'LoadBalancerFullName')
-                )
+            self.create_output(
+                title='LoadBalancerFullName',
+                value=troposphere.GetAtt(alb_resource, 'LoadBalancerFullName'),
+                ref=alb_config.paco_ref_parts + '.fullname'
             )
-            self.register_stack_output_config(alb_config.paco_ref_parts + '.fullname', 'LoadBalancerFullName')
-            self.template.add_output(
-                troposphere.Output(
-                    title='LoadBalancerCanonicalHostedZoneID',
-                    Value=troposphere.GetAtt(alb_resource, 'CanonicalHostedZoneID')
-                )
+            self.create_output(
+                title='LoadBalancerCanonicalHostedZoneID',
+                value=troposphere.GetAtt(alb_resource, 'CanonicalHostedZoneID'),
+                ref=alb_config.paco_ref_parts + '.canonicalhostedzoneid'
             )
-
-            self.register_stack_output_config(alb_config.paco_ref_parts + '.canonicalhostedzoneid', 'LoadBalancerCanonicalHostedZoneID')
-            self.template.add_output(
-                troposphere.Output(
-                    title='LoadBalancerDNSName',
-                    Value=troposphere.GetAtt(alb_resource, 'DNSName')
-                )
+            self.create_output(
+                title='LoadBalancerDNSName',
+                value=troposphere.GetAtt(alb_resource, 'DNSName'),
+                ref=alb_config.paco_ref_parts + '.dnsname',
             )
-            self.register_stack_output_config(alb_config.paco_ref_parts + '.dnsname', 'LoadBalancerDNSName')
+            self.set_template()
 
             if self.paco_ctx.legacy_flag('route53_record_set_2019_10_16') == False:
                 route53_ctl = self.paco_ctx.get_controller('route53')
@@ -394,4 +380,4 @@ class ALB(CFTemplate):
                             config_ref=alb_config.paco_ref_parts + '.dns'
                         )
 
-        self.set_template(self.template.to_yaml())
+

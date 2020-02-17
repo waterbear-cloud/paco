@@ -86,5 +86,5 @@ class VPCPeering(CFTemplate):
         self.enabled = any_peering_enabled
 
         # Define the Template
-        self.set_template(template.to_yaml())
+        self.set_template()
 

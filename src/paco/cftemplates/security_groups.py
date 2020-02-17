@@ -1,13 +1,12 @@
-import os
-import troposphere
+from enum import Enum
+from io import StringIO
 from paco import utils
 from paco.cftemplates.cftemplates import CFTemplate
-
 from paco.models import references
 from paco.models.references import Reference
 from paco.core.exception import StackException, PacoErrorCode
-from io import StringIO
-from enum import Enum
+import os
+import troposphere
 
 
 class SecurityGroups(CFTemplate):
@@ -70,7 +69,7 @@ class SecurityGroups(CFTemplate):
                 self.create_group_rules(sg_group_id, sg_name, sg_config, template)
 
         self.enabled = is_sg_enabled
-        self.set_template(template.to_yaml())
+        self.set_template()
         if template_type == 'Rules':
             self.stack.wait_for_delete = True
 
@@ -104,14 +103,13 @@ class SecurityGroups(CFTemplate):
             )
         )
 
-        group_output_logical_id = group_logical_id + 'Id'
-        group_output = troposphere.Output(
-            title = group_output_logical_id,
-            Value = troposphere.Ref(group_res)
-        )
-        template.add_output(group_output)
+        # Output
         group_config_ref = '.'.join([self.config_ref, sg_name])
-        self.register_stack_output_config(group_config_ref + '.id', group_output_logical_id)
+        self.create_output(
+            title=group_logical_id + 'Id',
+            value=troposphere.Ref(group_res),
+            ref=group_config_ref + '.id'
+        )
 
     def create_group_rules(self, sg_group_id, sg_name, sg_config, template):
         sg_group_config_ref = 'paco.ref ' + '.'.join([self.config_ref, sg_name])

@@ -31,7 +31,7 @@ class ElasticsearchDomain(CFTemplate):
         self.esdomain = esdomain
         self.init_template('Elasticsearch Domain')
 
-        # if disabled on leave an empty placeholder and finish
+        # if disabled then leave an empty placeholder and finish
         if not esdomain.is_enabled():
             return self.set_template()
 
@@ -92,29 +92,24 @@ class ElasticsearchDomain(CFTemplate):
         self.template.add_resource(esdomain_resource)
 
         # Outputs
-        troposphere.Output(
+        self.create_output(
             title='Arn',
-            template=self.template,
-            Value=troposphere.GetAtt(esdomain_resource, 'Arn'),
-            Description='Arn of the domain. The same value as DomainArn.'
+            description='Arn of the domain. The same value as DomainArn.',
+            value=troposphere.GetAtt(esdomain_resource, 'Arn'),
+            ref=esdomain.paco_ref_parts,
         )
-        self.register_stack_output_config(esdomain.paco_ref_parts, 'Arn')
-
-        troposphere.Output(
+        self.create_output(
             title='DomainArn',
-            template=self.template,
-            Value=troposphere.GetAtt(esdomain_resource, "DomainArn"),
-            Description='DomainArn of the domain. The same value as Arn.'
+            description='DomainArn of the domain. The same value as Arn.',
+            value=troposphere.GetAtt(esdomain_resource, "DomainArn"),
+            ref=esdomain.paco_ref_parts,
         )
-        self.register_stack_output_config(esdomain.paco_ref_parts, 'DomainArn')
-
-        troposphere.Output(
+        self.create_output(
             title='DomainEndpoint',
-            template=self.template,
-            Value=troposphere.GetAtt(esdomain_resource, 'DomainEndpoint'),
-            Description="The domain-specific endpoint that's used to submit index, search, and data upload requests to an Amazon ES domain.",
+            description="The domain-specific endpoint that's used to submit index, search, and data upload requests to an Amazon ES domain.",
+            value=troposphere.GetAtt(esdomain_resource, 'DomainEndpoint'),
+            ref=esdomain.paco_ref_parts,
         )
-        self.register_stack_output_config(esdomain.paco_ref_parts, 'DomainEndpoint')
 
         # Let's go home
         self.set_template()

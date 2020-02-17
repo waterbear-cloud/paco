@@ -28,8 +28,7 @@ class BackupVault(CFTemplate):
         self.paco_ctx.log_action_col("Init", "Backup", "Vault")
         is_enabled = vault.is_enabled()
         if not is_enabled:
-            self.set_template(self.template.to_yaml())
-            return
+            return self.set_template()
 
         # Service Role ARN parameter
         if role != None:
@@ -68,28 +67,15 @@ class BackupVault(CFTemplate):
         self.template.add_resource(vault_resource)
 
         # BackupVault Outputs
-        vault_name_output_logical_id = 'BackupVaultName'
-        self.template.add_output(
-            troposphere.Output(
-                title=vault_name_output_logical_id,
-                Value=troposphere.GetAtt(vault_resource, 'BackupVaultName')
-            )
+        self.create_output(
+            title='BackupVaultName',
+            value=troposphere.GetAtt(vault_resource, 'BackupVaultName'),
+            ref=vault.paco_ref_parts + '.name',
         )
-        self.register_stack_output_config(
-            vault.paco_ref_parts + '.name',
-            vault_name_output_logical_id
-        )
-
-        vault_arn_output_logical_id = 'BackupVaultArn'
-        self.template.add_output(
-            troposphere.Output(
-                title=vault_arn_output_logical_id,
-                Value=troposphere.GetAtt(vault_resource, 'BackupVaultArn')
-            )
-        )
-        self.register_stack_output_config(
-            vault.paco_ref_parts + '.arn',
-            vault_arn_output_logical_id
+        self.create_output(
+            title='BackupVaultArn',
+            value=troposphere.GetAtt(vault_resource, 'BackupVaultArn'),
+            ref=vault.paco_ref_parts + '.arn'
         )
 
         # BackupPlans
@@ -168,4 +154,4 @@ class BackupVault(CFTemplate):
                 idx += 1
 
         self.enabled = is_enabled
-        self.set_template(self.template.to_yaml())
+        self.set_template()

@@ -200,4 +200,4 @@ class ApiGatewayRestApi(CFTemplate):
             template.add_resource(stage_resource)
 
         # Generate the Template
-        self.set_template(template.to_yaml())
+        self.set_template()

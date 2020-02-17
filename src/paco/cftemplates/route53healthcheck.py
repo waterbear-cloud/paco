@@ -112,4 +112,4 @@ class Route53HealthCheck(CFBaseAlarm):
             self.template.add_resource(alarm_resource)
 
         # Generate the Template
-        self.set_template(self.template.to_yaml())
+        self.set_template()

@@ -41,10 +41,6 @@ class CloudFront(CFTemplate):
         self.init_template('CloudFront Distribution')
         template = self.template
 
-        template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="EmptyTemplatePlaceholder")
-        )
-
         target_origin_param = self.create_cfn_parameter(
             param_type='String',
             name='TargetOrigin',
@@ -153,8 +149,6 @@ class CloudFront(CFTemplate):
 
             distribution_config_dict['CacheBehaviors'] = cache_behaviors_list
 
-
-
         # Origin Access Identity
         if cloudfront_config.s3_origin_exists() == True:
             origin_id_res = troposphere.cloudfront.CloudFrontOriginAccessIdentity(
@@ -241,7 +235,6 @@ class CloudFront(CFTemplate):
         distribution_dict = {
             'DistributionConfig': distribution_config_dict
         }
-
         distribution_res = troposphere.cloudfront.Distribution.from_dict(
             'Distribution', distribution_dict )
 
@@ -269,21 +262,20 @@ class CloudFront(CFTemplate):
                     )
                     record_set_res.DependsOn = distribution_res
 
-        troposphere.Output(
-            title = 'CloudFrontURL',
-            template = template,
-            Value = troposphere.GetAtt('Distribution', 'DomainName')
+        self.create_output(
+            title='CloudFrontURL',
+            value=troposphere.GetAtt('Distribution', 'DomainName'),
+            ref=self.config_ref + '.domain_name'
         )
-        self.register_stack_output_config(self.config_ref+'.domain_name', 'CloudFrontURL')
-        troposphere.Output(
-            title = 'CloudFrontId',
-            template = template,
-            Value = troposphere.Ref(distribution_res)
+        self.create_output(
+            title='CloudFrontId',
+            value=troposphere.Ref(distribution_res),
+            ref=self.config_ref + '.id'
         )
 
         template.add_resource(distribution_res)
 
-        self.set_template(template.to_yaml())
+        self.set_template()
         if origin_access_id_enabled:
           self.stack.wait_for_delete = True
 
@@ -299,5 +291,6 @@ class CloudFront(CFTemplate):
                         record_set_type='Alias',
                         alias_dns_name = 'paco.ref '+self.config_ref+'.domain_name',
                         alias_hosted_zone_id = 'Z2FDTNDATAQYW2',
-                        stack_group = self.stack_group,
-                        config_ref = self.config_ref+'.record_set')
+                        stack_group=self.stack_group,
+                        config_ref=self.config_ref+'.record_set'
+                    )

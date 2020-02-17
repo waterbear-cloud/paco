@@ -96,14 +96,13 @@ class S3(CFTemplate):
             s3_resource = troposphere.s3.Bucket.from_dict(s3_logical_id, cfn_export_dict)
             s3_resource.DeletionPolicy = 'Retain' # We always retain. Bucket cleanup is handled by Stack hooks.
             template.add_resource(s3_resource)
-            bucket_name_output_id = s3_logical_id + 'Name'
-            template.add_output(
-                troposphere.Output(
-                    bucket_name_output_id,
-                    Value=troposphere.Ref(s3_resource)
-                )
+
+            # Output
+            self.create_output(
+                title=s3_logical_id + 'Name',
+                value=troposphere.Ref(s3_resource),
+                ref=config_ref + '.name'
             )
-            self.register_stack_output_config(config_ref + '.name', bucket_name_output_id)
 
         # Bucket Policy
         policy_statements = []
@@ -148,13 +147,11 @@ class S3(CFTemplate):
             #template.add_resource(bucket_policy_resource)
 
             # Output CloudFrontOriginAccessIdentity
-            template.add_output(
-                troposphere.Output(
-                    'CloudFrontOriginAccessIdentity',
-                    Value=troposphere.Ref(cloudfront_origin_resource)
-                )
+            self.create_output(
+                title='CloudFrontOriginAccessIdentity',
+                value=troposphere.Ref(cloudfront_origin_resource),
+                ref=config_ref + '.origin_id',
             )
-            self.register_stack_output_config(config_ref + '.origin_id', 'CloudFrontOriginAccessIdentity')
 
         if len(bucket.policy) > 0:
             # Bucket Policy
@@ -229,7 +226,7 @@ class S3(CFTemplate):
             bucket_policy_resource.DependsOn = depends_on
 
         # Generate the Template
-        self.set_template(template.to_yaml())
+        self.set_template()
 
 
     def delete(self):
