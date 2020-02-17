@@ -4,7 +4,13 @@ Changelog for Paco
 5.0.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Added
+
+- ASG has new field desirec_capacity_ignore_changes that can be set.
+
+### Fixed
+
+- If ignore_changes was set for a CloudFormation Parameter it was breaking the Confirm Changes CLI.
 
 
 5.0.0 (2020-02-17)

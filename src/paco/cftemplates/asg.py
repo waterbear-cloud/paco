@@ -63,7 +63,7 @@ class ASG(CFTemplate):
             name='InstanceAMI',
             description='The Amazon Machine Image Id to launch instances with.',
             value=asg_config.instance_ami,
-            ignore_changes=ignore_changes
+            ignore_changes=ignore_changes,
         )
 
         # if the network for the ASG is disabled, only use an empty placeholder
@@ -168,9 +168,16 @@ class ASG(CFTemplate):
 
         min_instances = asg_config.min_instances if asg_config.is_enabled() else 0
         desired_capacity = asg_config.desired_capacity if asg_config.is_enabled() else 0
+        desired_capacity_param = self.create_cfn_parameter(
+            param_type='String',
+            name='DesiredCapacity',
+            description='The desired capacity of instances to run in the ASG.',
+            value=desired_capacity,
+            ignore_changes=self.asg_config.desired_capacity_ignore_changes,
+        )
         asg_dict = {
             'AutoScalingGroupName': asg_config.get_aws_name(),
-            'DesiredCapacity': desired_capacity,
+            'DesiredCapacity': troposphere.Ref(desired_capacity_param),
             'HealthCheckGracePeriod': asg_config.health_check_grace_period_secs,
             'LaunchConfigurationName': troposphere.Ref(launch_config_res),
             'MaxSize': asg_config.max_instances,

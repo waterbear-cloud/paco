@@ -489,6 +489,8 @@ class CFTemplate():
                 if col_3_size < key_len: col_3_size = key_len
 
         for new_param in parameter_list:
+            if 'UsePreviousValue' in new_param and new_param['UsePreviousValue'] == True:
+                continue
             col_2_size = 12
             if new_param in applied_parameter_list:
                 applied_parameter_list.remove(new_param)
