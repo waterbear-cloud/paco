@@ -77,7 +77,7 @@ by avoiding the need to type out the `--home` option for every command:
 Create a User and Role in your AWS account
 ------------------------------------------
 
-When you run Paco it will requrie access to your AWS account.
+When you run Paco it will require access to your AWS account.
 
 Paco requires access key credentials for an IAM User that has permissions to switch
 to an IAM Role that delegates full Administrator access.
