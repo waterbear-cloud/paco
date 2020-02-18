@@ -509,7 +509,7 @@ Finally the ``services:`` section is used to ensure that services are started an
 you might want to replace Apache (httpd) with another web server, but will want to leave CodeDeploy as-is.
 
 
-.. _CloudFormation Init: ./paco-config.html#cloudformationinit
+.. _CloudFormation Init: ./yaml-app-resources.html#cloudformationinit
 
 
 Working with Regions
@@ -836,8 +836,8 @@ selections, you are recommended to review your BackupVault in the AWS Console an
 
 .. _Managing IAM Users with Paco: ./paco-users.html
 
-.. _SNS Topics docs: ./paco-config.html#sns-topics
+.. _SNS Topics docs: yaml-app-resources.html#sns-topics
 
-.. _EC2 Key pairs: ./paco-config.html#ec2-keypairs
+.. _EC2 Key pairs: yaml-global-resources.html#ec2-keypairs
 
-.. _CodeCommit docs: ./paco-config.html#codecommit
+.. _CodeCommit docs: yaml-global-resources.html#codecommit

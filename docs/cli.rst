@@ -104,7 +104,7 @@ in the ``accounts/master.yaml`` file. Typically you will create new accounts by 
 in the ``organization_account_ids:`` list and then running ``paco provision accounts`` to create them.
 
 There are no validate or delete commands for the accounts scope. If you need to delete an account, you should
-`follow AWS steps to close an account`_ and then delete the appropriate ``accounts/<account-name>.yaml`` file.
+`follow the AWS steps to close an account`_ and then delete the appropriate ``accounts/<account-name>.yaml`` file.
 
 .. _follow the AWS steps to close an account: https://aws.amazon.com/premiumsupport/knowledge-center/close-aws-account/
 

@@ -42,7 +42,7 @@ and note that there is an **admin** group with one email subscription.
 This group is configured to recieve any alarm notifications. You can add as many subscriptions
 to this group as you want. See the `SNS Topics docs`_ for examples of all protocols.
 
-.. _SNS Topics docs: ./paco-config.html#sns-topics
+.. _SNS Topics docs: ./yaml-global-resources.html#sns-topics
 
 Customize and Provision Environments
 ------------------------------------

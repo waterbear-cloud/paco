@@ -9,9 +9,8 @@ import zope.schema
 from paco.models import schemas
 from zope.interface.common.mapping import IMapping
 
-
-paco_config_template = """
-.. _paco-config:
+yaml_base = """
+.. _yaml-base:
 
 *****************
 YAML File Schemas
@@ -58,23 +57,56 @@ Function
 
 A callable function that returns a value.
 
+.. _alarmsets: yaml-monitoring.html#alarmsets
 
-Accounts: accounts/\*.yaml
-==========================
+.. _healthchecks: yaml-monitoring.html#healthchecks
 
-AWS account information is kept in the ``accounts/`` directory.
-Each file in this directory will define one AWS account, the filename
-will be the ``name`` of the account, with a .yml or .yaml extension.
+.. _cloudwatchlogsets: yaml-monitoring.html#cloudwatchlogsets
+
+.. _resourcegroups: yaml-netenv.html#resourcegroups
+
+.. _metric: yaml-monitoring.html#metric
+
+.. _alarmnotifications: yaml-monitoring.html#alarmnotifications
+
+"""
+
+yaml_accounts = """
+.. _yaml-accounts:
+
+Accounts
+========
+
+AWS account information is kept in the ``accounts/`` directory. Each file in this directory
+defines one AWS account, the filename is the ``name`` of the account, with a .yml or .yaml extension.
+
+.. code-block:: yaml
+    :caption: Typical accounts directory
+
+    accounts/
+      dev.yaml
+      master.yaml
+      prod.yaml
+      tools.yaml
+
 
 {IAccount}
 
 {IAdminIAMUser}
 
-Global Resources: resource/\*.yaml
-==================================
+"""
 
-CloudTrail: resource/cloudtrail.yaml
-------------------------------------
+yaml_global_resources = """
+.. _yaml-global-resources:
+
+Global Resources
+================
+
+Global Resources are defined in the top-level ``resource/`` directory. They define cloud resources
+which do not belong to an environment or other logical grouping.
+
+CloudTrail
+----------
 
 The ``resource/cloudtrail.yaml`` file contains CloudTrails.
 
@@ -100,8 +132,8 @@ The ``resource/cloudtrail.yaml`` file contains CloudTrails.
         s3_bucket_account: 'paco.ref accounts.security'
         s3_key_prefix: 'cloudtrails'
 
-CodeCommit: resource/codecommit.yaml
--------------------------------------
+CodeCommit
+----------
 
 The ``resource/codecommit.yaml`` file manages CodeCommit repositories and users.
 The top-level of the file is CodeCommitRepositoryGroups, and each group contains a set
@@ -187,8 +219,8 @@ to deal with multiple SSH keys on your workstation:
 
 {ICodeCommitUser}
 
-EC2 Keypairs: resource/ec2.yaml
---------------------------------
+EC2 Keypairs
+------------
 
 The ``resource/ec2.yaml`` file manages AWS EC2 Keypairs.
 
@@ -216,8 +248,8 @@ The ``resource/ec2.yaml`` file manages AWS EC2 Keypairs.
 
 {IEC2KeyPair}
 
-IAM: resource/iam.yaml
-----------------------
+IAM
+---
 
 The ``resource/iam.yaml`` file contains IAM Users. Each user account can be given
 different levels of access a set of AWS accounts. For more information on how
@@ -248,8 +280,8 @@ IAM Users can be managed, see `Managing IAM Users with Paco`_.
 
 {IStatement}
 
-Route 53: resource/route53.yaml
--------------------------------
+Route 53
+--------
 
 {IRoute53Resource}
 
@@ -260,8 +292,8 @@ Route 53: resource/route53.yaml
 {IRoute53RecordSet}
 
 
-SNS Topics: resource/snstopics.yaml
------------------------------------
+SNS Topics
+----------
 
 The ``resource/snstopics.yaml`` file manages AWS Simple Notification Service (SNS) resources.
 SNS has only two resources: SNS Topics and SNS Subscriptions.
@@ -308,9 +340,15 @@ SNS has only two resources: SNS Topics and SNS Subscriptions.
     You will need this if you want to send CloudWatch Alarms from multiple accounts to the same
     SNS Topic(s) in one account.
 
+"""
 
-NetworkEnvironments: netenv/\*.yaml
-====================================
+yaml_netenv = """
+.. _yaml-netenv:
+
+NetworkEnvironments
+===================
+
+NetworkEnvironments are files in the top-level ``netenv/`` directory.
 
 NetworkEnvironments are the core of any Paco project. Every .yaml file in the
 ``netenv`` directory contains information about networks, applications and environments.
@@ -357,8 +395,8 @@ In environments, any field from the default configuration being referenced can b
 This could be used for running a smaller instance size in the dev environment, enabling monitoring only in a production environment,
 or specifying a different git branch name for a CI/CD for each environment.
 
-NetEnv - network:
-=================
+Network
+-------
 
 The network config type defines a complete logical network: VPCs, Subnets, Route Tables, Network Gateways. The applications
 defined later in this file will be deployed into networks that are built from this network template.
@@ -380,46 +418,44 @@ Networks have the following hierarchy:
             security_groups:
                 # security groups here ...
 
-.. Attention:: SecurityGroups is a special two level container. The first key will match the name of an application defined
-    in the ``applications:`` section. The second key must match the name of a resource defined in the application.
-    In addition, a SecurityGroup has egress and ingress rules that are a list of rules.
+SecurityGroups have two level nested names. These can be any names, but typically the first name is the name
+of an application and the second name is for a resource in that application. However, other name schemes are possible to
+support workloads sharing the same Security Groups.
 
-    The following example has two SecurityGroups for the application named ``my-web-app``: ``lb`` which will apply to the load
-    balancer and ``webapp`` which will apply to the web server AutoScalingGroup.
+.. code-block:: yaml
+  :caption: Example security_groups configuration
 
-    .. code-block:: yaml
-
-        network:
-            vpc:
-                security_groups:
-                    my-web-app:
-                        lb:
-                            egress:
-                                - cidr_ip: 0.0.0.0/0
-                                  name: ANY
-                                  protocol: "-1"
-                            ingress:
-                                - cidr_ip: 128.128.255.255/32
-                                  from_port: 443
-                                  name: HTTPS
-                                  protocol: tcp
-                                  to_port: 443
-                                - cidr_ip: 128.128.255.255/32
-                                  from_port: 80
-                                  name: HTTP
-                                  protocol: tcp
-                                  to_port: 80
-                        webapp:
-                            egress:
-                                - cidr_ip: 0.0.0.0/0
-                                  name: ANY
-                                  protocol: "-1"
-                            ingress:
-                                - from_port: 80
-                                  name: HTTP
-                                  protocol: tcp
-                                  source_security_group: paco.ref netenv.my-paco-example.network.vpc.security_groups.app.lb
-                                  to_port: 80
+    network:
+      vpc:
+        security_groups:
+          myapp:
+            lb:
+              egress:
+                - cidr_ip: 0.0.0.0/0
+                  name: ANY
+                  protocol: "-1"
+              ingress:
+                - cidr_ip: 128.128.255.255/32
+                  from_port: 443
+                  name: HTTPS
+                  protocol: tcp
+                  to_port: 443
+                - cidr_ip: 128.128.255.255/32
+                  from_port: 80
+                  name: HTTP
+                  protocol: tcp
+                  to_port: 80
+            web:
+              egress:
+                - cidr_ip: 0.0.0.0/0
+                  name: ANY
+                  protocol: "-1"
+              ingress:
+                - from_port: 80
+                  name: HTTP
+                  protocol: tcp
+                  source_security_group: paco.ref netenv.my-paco-example.network.vpc.security_groups.app.lb
+                  to_port: 80
 
 {INetworkEnvironment}
 
@@ -445,8 +481,8 @@ Networks have the following hierarchy:
 
 {IIngressRule}
 
-NetEnv - applications:
-======================
+Applications
+------------
 
 Applications define a collection of AWS resources that work together to support a workload.
 
@@ -509,12 +545,154 @@ In turn, each ResourceGroup contains ``resources:`` with names such as ``cpbd``,
 
 {IResources}
 
+Environments
+------------
 
-NetEnv - resources:
-===================
+Environments define where actual cloud resources are to be provisioned.
+As Environments copy all of the defaults from ``network``, ``applications``, ``backups`` and ``secrets_manager`` config
+in the same NetworkEnvironment file.
 
-At it's heart, an Application is a collection of Resources. These are the Resources available for
-applications.
+The top level ``environments:`` container is simply a name and a title. This defines logical
+names for each environment.
+
+.. code-block:: yaml
+
+    environments:
+
+        dev:
+            title: Development
+
+        staging:
+            title: Staging and QA
+
+        prod:
+            title: Production
+
+
+Environments contain EnvironmentRegions. The name of an EnvironmentRegion must match
+a valid AWS region name. The special ``default`` name is also available, which can be used to
+override config for a whole environment, regardless of region.
+
+The following example enables the applications named ``marketing-app`` and
+``sales-app`` into all dev environments by default. In ``us-west-2`` this is
+overridden and only the ``sales-app`` would be deployed there.
+
+.. code-block:: yaml
+
+    environments:
+
+        dev:
+            title: Development
+            default:
+                applications:
+                    marketing-app:
+                        enabled: true
+                    sales-app:
+                        enabled: true
+            us-west-2:
+                applications:
+                    marketing-app:
+                        enabled: false
+            ca-central-1:
+                enabled: true
+
+{IEnvironment}
+
+{IEnvironmentDefault}
+
+{IEnvironmentRegion}
+
+Secrets
+-------
+
+{ISecretsManager}
+
+{ISecretsManagerApplication}
+
+{ISecretsManagerGroup}
+
+{ISecretsManagerSecret}
+
+{IGenerateSecretString}
+
+
+Backups
+-------
+
+`AWS Backup`_ can be provisioned with the ``backup_vaults:``. This is a container of BackupVaults.
+Each BackupVault can contain BackupPlans which are further composed of a BackupRules and BackupSelections.
+
+.. code-block:: yaml
+
+    backup_vaults:
+      accounting:
+        enabled: false
+        plans:
+          ebs_daily:
+            title: EBS Daily Backups
+            enabled: true
+            plan_rules:
+              - title: Backup EBS volumes once a day
+                schedule_expression: cron(0 8 ? * * *)
+                lifecycle_delete_after_days: 14
+            selections:
+              - title: EBS volumes tagged with "backup-accounting: daily"
+                tags:
+                  - condition_type: STRINGEQUALS
+                    condition_key: backup-accounting
+                    condition_value: daily
+          database_weekly:
+            title: Weekly MySQL Backups
+            enabled: true
+            plan_rules:
+              - title: Rule for Weekly MySQL Backups
+                schedule_expression: cron(0 10 ? * 1 *)
+                lifecycle_delete_after_days: 150
+            selections:
+              - title: Database resource selection
+                resources:
+                  - paco.ref netenv.mynet.applications.accounting.groups.app.resources.database
+
+BackupVaults must be explicity referenced in an environment for them to be provisioned.
+
+.. code-block:: yaml
+
+    environmnets:
+      prod:
+        ca-central-1:
+          backup_vaults:
+            accounting:
+              enabled: true
+
+
+.. _AWS Backup: https://aws.amazon.com/backup/
+
+{IBackupVaults}
+
+{IBackupVault}
+
+{IBackupPlans}
+
+{IBackupPlan}
+
+{IBackupPlanRule}
+
+{IBackupPlanSelection}
+
+{IBackupSelectionConditionResourceType}
+
+.. _ec2keypair: yaml-global-resources.html#ec2keypair
+
+"""
+
+yaml_app_resources = """
+.. _yaml-resources:
+
+Application Resources
+=====================
+
+An Application is a collection of Resources. These are the Resources which can exist
+as part of an Application.
 
 {IApiGatewayRestApi}
 
@@ -720,24 +898,6 @@ An unconstrainted set of key-value pairs used to set advanced options for Elasti
 
 {IManagedPolicy}
 
-
-{IRoute53HealthCheck}
-
-
-{IS3Bucket}
-
-{IS3BucketPolicy}
-
-{IS3LambdaConfiguration}
-
-{IS3NotificationConfiguration}
-
-
-{ISNSTopic}
-
-{ISNSTopicSubscription}
-
-
 RDS
 ---
 
@@ -819,7 +979,6 @@ Console to switch between performance and debug configuration quickl in an emerg
   parameter_group: paco.ref netenv.mynet.applications.app.groups.web.resources.dbparams_performance
 
 
-
 {IRDSOptionConfiguration}
 
 {INameValuePair}
@@ -835,145 +994,52 @@ DBParameters
 
 A unconstrainted set of key-value pairs.
 
-
-NetEnv - secrets_manager:
-=========================
-
-{ISecretsManager}
-
-{ISecretsManagerApplication}
-
-{ISecretsManagerGroup}
-
-{ISecretsManagerSecret}
-
-{IGenerateSecretString}
+{IRoute53HealthCheck}
 
 
-NetEnv - backup_vaults:
-=======================
+{IS3Bucket}
 
-`AWS Backup`_ can be provisioned with the ``backup_vaults:``. This is a container of BackupVaults.
-Each BackupVault can contain BackupPlans which are further composed of a BackupRules and BackupSelections.
+{IS3BucketPolicy}
 
-.. code-block:: yaml
+{IS3LambdaConfiguration}
 
-    backup_vaults:
-      accounting:
-        enabled: false
-        plans:
-          ebs_daily:
-            title: EBS Daily Backups
-            enabled: true
-            plan_rules:
-              - title: Backup EBS volumes once a day
-                schedule_expression: cron(0 8 ? * * *)
-                lifecycle_delete_after_days: 14
-            selections:
-              - title: EBS volumes tagged with "backup-accounting: daily"
-                tags:
-                  - condition_type: STRINGEQUALS
-                    condition_key: backup-accounting
-                    condition_value: daily
-          database_weekly:
-            title: Weekly MySQL Backups
-            enabled: true
-            plan_rules:
-              - title: Rule for Weekly MySQL Backups
-                schedule_expression: cron(0 10 ? * 1 *)
-                lifecycle_delete_after_days: 150
-            selections:
-              - title: Database resource selection
-                resources:
-                  - paco.ref netenv.mynet.applications.accounting.groups.app.resources.database
-
-BackupVaults must be explicity referenced in an environment for them to be provisioned.
-
-.. code-block:: yaml
-
-    environmnets:
-      prod:
-        ca-central-1:
-          backup_vaults:
-            accounting:
-              enabled: true
+{IS3NotificationConfiguration}
 
 
-.. _AWS Backup: https://aws.amazon.com/backup/
+{ISNSTopic}
 
-{IBackupVaults}
-
-{IBackupVault}
-
-{IBackupPlans}
-
-{IBackupPlan}
-
-{IBackupPlanRule}
-
-{IBackupPlanSelection}
-
-{IBackupSelectionConditionResourceType}
-
-NetEnv - environments:
-======================
-
-Environments define where actual cloud resources are to be provisioned.
-As Environments copy all of the defaults from ``network``, ``applications``, ``backups`` and ``secrets_manager`` config
-in the same NetworkEnvironment file.
-
-The top level ``environments:`` container is simply a name and a title. This defines logical
-names for each environment.
-
-.. code-block:: yaml
-
-    environments:
-
-        dev:
-            title: Development
-
-        staging:
-            title: Staging and QA
-
-        prod:
-            title: Production
+{ISNSTopicSubscription}
 
 
-Environments contain EnvironmentRegions. The name of an EnvironmentRegion must match
-a valid AWS region name. The special ``default`` name is also available, which can be used to
-override config for a whole environment, regardless of region.
+.. _role: yaml-global-resources.html#role
 
-The following example enables the applications named ``marketing-app`` and
-``sales-app`` into all dev environments by default. In ``us-west-2`` this is
-overridden and only the ``sales-app`` would be deployed there.
+.. _ec2keypair: yaml-global-resources.html#ec2keypair
 
-.. code-block:: yaml
+.. _secretsmanagersecret: yaml-netenv#secretsmanagersecret
 
-    environments:
+.. _securitygroup: yaml-netenv#securitygroup
 
-        dev:
-            title: Development
-            default:
-                applications:
-                    marketing-app:
-                        enabled: true
-                    sales-app:
-                        enabled: true
-            us-west-2:
-                applications:
-                    marketing-app:
-                        enabled: false
-            ca-central-1:
-                enabled: true
+.. _simplecloudwatchalarm: yaml-monitoring.html#simplecloudwatchalarm
 
-{IEnvironment}
+.. _route53hostedzone: yaml-global-resources.html#route53hostedzone
 
-{IEnvironmentDefault}
+.. _policy: yaml-global-resources.html#policy
 
-{IEnvironmentRegion}
+.. _codecommitrepository: yaml-global-resources.html#codecommitrepository
 
-Monitoring: monitor/\*.yaml
-============================
+.. _segment: yaml-netenv.html#segment
+
+.. _cloudwatchlogretention: yaml-monitoring.html#cloudwatchlogretention
+
+.. _statement: yaml-global-resources.html#statement
+
+"""
+
+
+yaml_monitoring = """
+
+Monitoring
+==========
 
 The ``monitor`` directory can contain two files: ``monitor/alarmsets.yaml`` and ``monitor/logging.yaml``. These files
 contain CloudWatch Alarm and CloudWatch Agent Log Source configuration. These alarms and log sources
@@ -1023,6 +1089,11 @@ in the future.
 
 
 {IHealthChecks}
+
+.. _application: yaml-netenv.html#application
+
+.. _route53healthcheck: yaml-app-resources.html#route53healthcheck
+
 
 """
 
@@ -1397,6 +1468,38 @@ MINOR_SCHEMAS = {
     'ICloudWatchLogGroup': None,
     'ICloudWatchLogSources': None,
     'ICloudWatchLogSource': None,
+    'INetworkEnvironment': None,
+    'INetwork': None,
+    'IVPC': None,
+    'IVPCPeering': None,
+    'IVPCPeeringRoute': None,
+    'INATGateway': None,
+    'IVPNGateway': None,
+    'IPrivateHostedZone': None,
+    'ISegment': None,
+    'ISecurityGroup': None,
+    'IEgressRule': None,
+    'IIngressRule': None,
+    'IApplicationEngines': None,
+    'IApplication': None,
+    'IResourceGroups': None,
+    'IResourceGroup': None,
+    'IResources': None,
+    'IEnvironment': None,
+    'IEnvironmentDefault': None,
+    'IEnvironmentRegion': None,
+    'ISecretsManager': None,
+    'ISecretsManagerApplication': None,
+    'ISecretsManagerGroup': None,
+    'ISecretsManagerSecret': None,
+    'IGenerateSecretString': None,
+    'IBackupVaults': None,
+    'IBackupVault': None,
+    'IBackupPlans': None,
+    'IBackupPlan': None,
+    'IBackupPlanRule': None,
+    'IBackupPlanSelection': None,
+    'IBackupSelectionConditionResourceType': None,
 }
 
 def create_tables_from_schema():
@@ -1413,14 +1516,64 @@ def create_tables_from_schema():
             result[obj.__name__] = convert_schema_to_list_table(obj, level=level, header=header)
     return result
 
+doc_files = {
+    'yaml_base': ('yaml-base.rst', yaml_base),
+    'yaml_accounts': ('yaml-accounts.rst', yaml_accounts),
+    'yaml_netenv': ('yaml-netenv.rst', yaml_netenv),
+    'yaml_global_resources': ('yaml-global-resources.rst', yaml_global_resources),
+    'yaml_app_resources': ('yaml-app-resources.rst', yaml_app_resources),
+    'yaml_monitoring': ('yaml-monitoring.rst', yaml_monitoring),
+}
+
+yaml_base_links = """
+.. _Named: yaml-base.html#Named
+
+.. _Name: yaml-base.html#Name
+
+.. _Title: yaml-base.html#Title
+
+.. _Deployable: yaml-base.html#Deployable
+
+.. _SecurityGroupRule: yaml-base.html#SecurityGroupRule
+
+.. _ApplicationEngine: yaml-base.html#ApplicationEngine
+
+.. _DnsEnablable: yaml-base.html#ApplicationEngine
+
+.. _monitorable: yaml-base.html#monitorable
+
+.. _notifiable: yaml-base.html#notifiable
+
+.. _resource: yaml-base.html#resource
+
+.. _type: yaml-base.html#type
+
+.. _interface: yaml-base.html#interface
+
+.. _regioncontainer: yaml-base.html#regioncontainer
+
+.. _function: yaml-base.html#function
+
+"""
+
+yaml_account_links = """
+
+.. _account: yaml-accounts.html#account
+
+"""
+
 def paco_schema_generate():
-    paco_doc = os.path.abspath(os.path.dirname(__file__)).split(os.sep)[:-3]
-    paco_doc.append('docs')
-    paco_doc.append('paco-config.rst')
-    paco_config_doc = os.sep.join(paco_doc)
     tables_dict = create_tables_from_schema()
+    for filename, docstring in doc_files.values():
+        doc = os.path.abspath(os.path.dirname(__file__)).split(os.sep)[:-3]
+        doc.append('docs')
+        doc.append(filename)
+        doc_file = os.sep.join(doc)
+        if filename != 'yaml-base.rst':
+            docstring += yaml_base_links
+        if filename != 'yaml-accounts.rst':
+            docstring += yaml_account_links
+        with open(doc_file, 'w') as f:
+            f.write(docstring.format(**tables_dict))
 
-    with open(paco_config_doc, 'w') as f:
-        f.write(paco_config_template.format(**tables_dict))
-
-    print('Wrote to {}'.format(paco_config_doc))
+        print('Wrote to {}'.format(doc_file))
