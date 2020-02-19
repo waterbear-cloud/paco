@@ -7,11 +7,13 @@ from paco.core.exception import PacoErrorCode
 class Route53StackGroup(StackGroup):
     def __init__(self, paco_ctx, account_ctx, route53_config, controller):
         aws_name = account_ctx.get_name()
-        super().__init__(paco_ctx,
-                         account_ctx,
-                         'Route53',
-                         aws_name,
-                         controller)
+        super().__init__(
+            paco_ctx,
+            account_ctx,
+            'Route53',
+            aws_name,
+            controller
+        )
 
         # Initialize config with a deepcopy of the project defaults
         self.config = route53_config
@@ -28,6 +30,7 @@ class Route53StackGroup(StackGroup):
             route53_template = paco.cftemplates.Route53HostedZone(
                 self.paco_ctx,
                 self.account_ctx,
+                # this should come from config, maybe project.yaml?
                 self.paco_ctx.project['credentials'].aws_default_region,
                 self, # stack_group
                 None, # stack_tags
@@ -40,14 +43,15 @@ class Route53StackGroup(StackGroup):
 
     def init_legacy(self):
         config_ref = 'resource.route53'
-        route53_template = paco.cftemplates.Route53(self.paco_ctx,
-                                                self.account_ctx,
-                                                self.paco_ctx.project['credentials'].aws_default_region,
-                                                self, # stack_group
-                                                None, # stack_tags
-                                                self.config,
-                                                config_ref)
-
+        route53_template = paco.cftemplates.Route53(
+            self.paco_ctx,
+            self.account_ctx,
+            self.paco_ctx.project['credentials'].aws_default_region,
+            self, # stack_group
+            None, # stack_tags
+            self.config,
+            config_ref
+        )
         route53_stack = route53_template.stack
         route53_stack.set_termination_protection(True)
         self.zone_stack_map['legacy'] = route53_stack

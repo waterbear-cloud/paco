@@ -3,7 +3,7 @@ import os
 import sys
 import ruamel.yaml.constructor
 from paco.config.paco_context import PacoContext, AccountContext
-from paco.core.exception import PacoException, StackException, InvalidPacoScope, PacoBaseException, InvalidPacoHome
+from paco.core.exception import PacoException, StackException, InvalidPacoScope, PacoBaseException, InvalidPacoHome, InvalidVersionControl
 from paco.models.exceptions import InvalidPacoProjectFile, UnusedPacoProjectField, InvalidPacoReference
 from paco.models.references import get_model_obj_from_ref
 from boto3.exceptions import Boto3Error
@@ -148,6 +148,55 @@ See the Paco CLI config scope docs at https://www.paco-cloud.io/en/latest//cli.h
     import warnings
     warnings.simplefilter("ignore")
     paco_ctx.load_project()
+
+    # Perform VCS checks if enforce_branch_environments is enabled
+    if paco_ctx.project.version_control.enforce_branch_environments:
+        vc_config = paco_ctx.project.version_control
+        # Import git and test if it can find a valid git
+        try:
+            from git import Repo as GitRepo
+            from git.exc import InvalidGitRepositoryError
+        except ImportError:
+            raise InvalidVersionControl("""This Paco project has version_control.enforce_branch_environments enabled in it's project.yaml file.
+Could not find a git executable. Either disable or git must be included in your $PATH or set via $GIT_PYTHON_GIT_EXECUTABLE.""")
+
+        try:
+            repo = GitRepo(paco_ctx.home, search_parent_directories=False)
+            branch_name =  repo.active_branch.name
+        except InvalidGitRepositoryError:
+            raise InvalidVersionControl("""This Paco project has version_control.enforce_branch_environments enabled in it's project.yaml file.
+This Paco project is not under version control? Either put the project into a git repo or disable enforce_branch_environments.""")
+        except TypeError:
+            raise InvalidVersionControl("""This Paco project has version_control.enforce_branch_environments enabled in it's project.yaml file.
+Unable to retrieve the current git branch name. This can occur when git is in a detached-head state. Either disable enforce_branch_environments or change your git state.""")
+
+        # set-up override mappings
+        mappings = {}
+        for mapping in vc_config.git_branch_environment_mappings:
+            environment, branch = mapping.split(':')
+            mappings[environment]= branch
+
+        # check branch vs netenv environment to see if they match
+        if config_scope.startswith('netenv.'):
+            env_name = config_scope.split('.')[2]
+            if env_name in mappings:
+                expected_branch_name = mappings[env_name]
+            else:
+                expected_branch_name = vc_config.environment_branch_prefix + env_name
+            if expected_branch_name != branch_name:
+                raise InvalidVersionControl("""This Paco project has version_control.enforce_branch_environments enabled in it's project.yaml file.
+Expected to be on branch named '{}' for environment '{}', but the active branch is '{}'.""".format(
+                    expected_branch_name, env_name, branch_name
+                )
+            )
+        # or if outside a netenv check against the global environment name
+        else:
+            expected_branch_name = vc_config.environment_branch_prefix + vc_config.global_environment_name
+            if branch_name != expected_branch_name:
+                raise InvalidVersionControl("""This Paco project has version_control.enforce_branch_environments enabled in it's project.yaml file.
+Expected to be on branch named '{}' for a change with a global scope of '{}', but the active branch is '{}'.""".format(
+                    expected_branch_name, config_scope, branch_name
+                ))
 
     # resource.snstopics is an alias for resource.notificationgroups
     if config_scope.startswith('resource.snstopics'):

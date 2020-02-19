@@ -42,7 +42,8 @@ setup(
         'pexpect',
         'troposphere >= 2.5.2',
         'awacs',
-        'deepdiff'
+        'deepdiff',
+        'gitpython',
     ],
     packages=[
         'paco.adapters',

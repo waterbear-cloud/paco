@@ -2034,7 +2034,7 @@ CloudFront CDN Configuration
       - String
       - The default path to load from the origin.
       - 
-      - index.html
+      - 
     * - domain_aliases
       - List<DNS_>
       - List of DNS for the Distribution
@@ -2260,7 +2260,7 @@ CloudFrontCustomOriginConfig
       - 
       - 5
     * - protocol_policy
-      - String
+      - String |star|
       - Protocol Policy
       - 
       - 
@@ -2270,7 +2270,7 @@ CloudFrontCustomOriginConfig
       - 
       - 30
     * - ssl_protocols
-      - List<String>
+      - List<String> |star|
       - List of SSL Protocols
       - 
       - 

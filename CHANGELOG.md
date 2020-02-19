@@ -1,11 +1,13 @@
 Changelog for Paco
 ==================
 
-5.0.2 (unreleased)
+5.1.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Added
 
+- Ability to enforce that you need to be on a specific git branch to change a specific environment.
+  Documentation for this was added to a new Paco Workflows page.
 
 5.0.1 (2020-02-17)
 ------------------

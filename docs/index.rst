@@ -117,6 +117,7 @@ PACO is developed by Waterbear Cloud. Contact us about our `support and consulti
    :maxdepth: 3
 
    cli
+   workflow
 
 .. toctree::
    :caption: Starter Projects

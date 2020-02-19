@@ -68,3 +68,6 @@ class MissingAccountId(PacoBaseException):
 
 class InvalidAccountName(PacoBaseException):
     title = "Invalid AWS account name"
+
+class InvalidVersionControl(PacoBaseException):
+    title = "Invalid version control"
