@@ -1,4 +1,5 @@
 from paco.cftemplates.cftemplates import CFTemplate
+from paco.models.references import Reference
 import json
 import troposphere
 import troposphere.elasticsearch
@@ -64,13 +65,19 @@ class ElasticsearchDomain(CFTemplate):
                 )
 
         if esdomain.security_groups:
-            security_group_list_param = self.create_cfn_ref_list_param(
-                param_type='List<AWS::EC2::SecurityGroup::Id>',
-                name='SecurityGroupList',
-                description='List of security group ids for the Elasticsearch Domain.',
-                value=esdomain.security_groups,
-                ref_attribute='id',
-            )
+            sg_params = []
+            vpc_sg_list = []
+            for sg_ref in esdomain.security_groups:
+                ref = Reference(sg_ref)
+                sg_param_name = 'SecurityGroupId' + ref.parts[-2] + ref.parts[-1]
+                sg_param = self.create_cfn_parameter(
+                    name=sg_param_name,
+                    param_type='String',
+                    description='Security Group Id',
+                    value=sg_ref + '.id',
+                )
+                sg_params.append(sg_param)
+                vpc_sg_list.append(troposphere.Ref(sg_param))
 
         # ElasticsearchDomain resource
         esdomain_logical_id = 'ElasticsearchDomain'
@@ -83,7 +90,8 @@ class ElasticsearchDomain(CFTemplate):
         if esdomain.segment != None:
             cfn_export_dict['VPCOptions'] = {'SubnetIds': [troposphere.Ref(param) for param in subnet_params] }
             if esdomain.security_groups:
-                cfn_export_dict['VPCOptions']['SecurityGroupIds'] = troposphere.Ref(security_group_list_param)
+                cfn_export_dict['VPCOptions']['SecurityGroupIds'] = vpc_sg_list
+
 
         esdomain_resource = troposphere.elasticsearch.ElasticsearchDomain.from_dict(
             esdomain_logical_id,
