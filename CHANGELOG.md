@@ -9,6 +9,10 @@ Changelog for Paco
 - Ability to enforce that you need to be on a specific git branch to change a specific environment.
   Documentation for this was added to a new Paco Workflows page.
 
+## Fixed
+
+- Added proper names to Elasticsearch output refs.
+
 5.0.1 (2020-02-17)
 ------------------
 

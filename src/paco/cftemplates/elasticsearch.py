@@ -96,19 +96,19 @@ class ElasticsearchDomain(CFTemplate):
             title='Arn',
             description='Arn of the domain. The same value as DomainArn.',
             value=troposphere.GetAtt(esdomain_resource, 'Arn'),
-            ref=esdomain.paco_ref_parts,
+            ref=esdomain.paco_ref_parts  + '.arn',
         )
         self.create_output(
             title='DomainArn',
             description='DomainArn of the domain. The same value as Arn.',
             value=troposphere.GetAtt(esdomain_resource, "DomainArn"),
-            ref=esdomain.paco_ref_parts,
+            ref=esdomain.paco_ref_parts + '.domainarn',
         )
         self.create_output(
             title='DomainEndpoint',
             description="The domain-specific endpoint that's used to submit index, search, and data upload requests to an Amazon ES domain.",
             value=troposphere.GetAtt(esdomain_resource, 'DomainEndpoint'),
-            ref=esdomain.paco_ref_parts,
+            ref=esdomain.paco_ref_parts + '.domainendpoint',
         )
 
         # Let's go home
