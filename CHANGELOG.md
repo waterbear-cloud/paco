@@ -4,7 +4,9 @@ Changelog for Paco
 5.1.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Fixed
+
+- Fixed security_group field for ElasticsearchDomain.
 
 
 5.1.0 (2020-02-19)
