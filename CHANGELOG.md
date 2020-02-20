@@ -4,7 +4,10 @@ Changelog for Paco
 5.1.2 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Added
+
+- Integrated the Parliment library to lint/validate the IAM Policies used for all Roles.
+  https://github.com/duo-labs/parliament
 
 
 5.1.1 (2020-02-19)

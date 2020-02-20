@@ -1,24 +1,25 @@
-import os
+from enum import Enum
+from io import StringIO
+from paco import utils
 from paco.cftemplates.cftemplates import CFTemplate, Parameter
 from paco.utils import md5sum
-from paco import utils
-from io import StringIO
-from enum import Enum
+import os
 import sys
 
 
 class IAMManagedPolicies(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 policy_context,
-                 grp_id,
-                 res_id,
-                 change_protected):
-
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
+        policy_context,
+        grp_id,
+        res_id,
+        change_protected
+    ):
         super().__init__(
             paco_ctx,
             account_ctx,

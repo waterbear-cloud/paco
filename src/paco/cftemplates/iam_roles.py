@@ -1,26 +1,27 @@
-import os
-import sys
-from paco.cftemplates.cftemplates import CFTemplate, Parameter
-from paco import utils
-from paco.utils import md5sum
 from enum import Enum
 from io import StringIO
+from paco import utils
+from paco.cftemplates.cftemplates import CFTemplate, Parameter
+from paco.utils import md5sum
+import os
+import sys
 
 
 class IAMRoles(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 role_ref,
-                 grp_id,
-                 role_id,
-                 role_config,
-                 template_params,
-                 change_protected):
-
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        aws_region,
+        stack_group,
+        stack_tags,
+        role_ref,
+        grp_id,
+        role_id,
+        role_config,
+        template_params,
+        change_protected
+    ):
         super().__init__(
             paco_ctx,
             account_ctx,
@@ -33,7 +34,6 @@ class IAMRoles(CFTemplate):
             change_protected=change_protected
         )
         self.set_aws_name('Role', grp_id, role_id)
-
         self.role_ref = role_ref
 
         # Define the Template

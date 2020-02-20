@@ -1,22 +1,23 @@
-import click
-import os
-import time
-import paco
 from paco.cftemplates import IAMRoles, IAMManagedPolicies,IAMUsers, IAMUserAccountDelegates, IAMSLRoles
 from paco.controllers.controllers import Controller
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
 from paco.core.yaml import YAML, Ref, Sub
 from paco.models.references import Reference
+from paco.models.locations import get_parent_by_interface
+from paco.models import schemas
 from paco.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackTags, StackHooks
 from paco.utils import md5sum
+from parliament import analyze_policy_string
+import click
+import json
+import os
+import paco
+import time
+
 
 yaml=YAML(typ='safe')
-#yaml.register_class(Ref)
-#yaml.register_class(Sub)
-#yaml.preserve_quotes = True
-#yaml=YAML(typ="safe", pure=True)
-#yaml.default_flow_sytle = False
+
 
 class IAMUserStackGroup(StackGroup):
     def __init__(self, paco_ctx, account_ctx, group_name, controller):
@@ -749,6 +750,35 @@ class IAMController(Controller):
         stack_tags,
         change_protected=False
     ):
+
+        for policy in role_config.policies:
+            policy_json = policy.export_as_json()
+            policy_analysis = analyze_policy_string(policy_json)
+
+            # Possible Findings:
+            # UNKNOWN_ACTION
+            # UNKNOWN_PREFIX
+            # UNKNOWN_PRINCIPAL
+            # UNKNOWN_FEDERATION_SOURCE
+            # UNKNOWN_OPERATOR
+            # MISMATCHED_TYPE_OPERATION_TO_NULL
+            # BAD_PATTERN_FOR_MFA
+            # MISMATCHED_TYPE
+            # UNKNOWN_CONDITION_FOR_ACTION
+            # MALFORMED
+            # INVALID_ARN
+            # RESOURCE_MISMATCH
+
+            if len(policy_analysis.findings) > 0:
+                print("\nWARNING: Problems detected for IAM Policy for Role named {}.".format(role_config.name))
+                print("  Role paco.ref     : {}".format(role_config.paco_ref_parts))
+                resource = get_parent_by_interface(role_config, schemas.IResource)
+                if resource != None:
+                    print("  Role for Resource : {} ({})".format(resource.name, resource.type))
+                for finding in policy_analysis.findings:
+                    print("  {} - {}".format(finding.issue, finding.detail))
+                    print()
+                print()
         if role_ref not in self.role_context.keys():
             self.role_context[role_ref] = RoleContext(
                 paco_ctx=self.paco_ctx,
