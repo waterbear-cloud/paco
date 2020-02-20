@@ -61,25 +61,6 @@ users:
                 change_protected=False
             )
 
-            # Account Stack
-            #
-            # The Account template creates Admin IAM users.
-            # Since we add the .credentials master admin iam user name to this list automatically,
-            # we do not want to recreate it here until we have a cloudformation custom resource
-            # that can handle existing users.
-            # TODO: Switch to CustomResource to allow for existing users
-            #custom_resource_complete = False
-            #if custom_resource_complete:
-            #    account_template = paco.cftemplates.Account(self.paco_ctx,
-            #                                            self.account_ctx,
-            #                                            self,
-            #                                            self.stack_hooks,
-            #                                            self.account_id,
-            #                                            self.account_config,
-            #                                            self.account_config_ref)
-
-            #    self.account_stack = account_template.stack
-
         print("Account Group Init: %s: Completed" % self.account_id)
 
     def resolve_ref(self, ref):

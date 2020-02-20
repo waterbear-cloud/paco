@@ -1,32 +1,33 @@
-import os
 from paco.cftemplates.cftemplates import CFTemplate
-
 from io import StringIO
 from enum import Enum
+import os
 
 
 class KMS(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 grp_id,
-                 res_id,
-                 res_config,
-                 kms_config_ref,
-                 kms_config_dict):
-
-        #paco_ctx.log("S3 CF Template init")
-        super().__init__(paco_ctx,
-                         account_ctx,
-                         aws_region,
-                         enabled=res_config.is_enabled(),
-                         config_ref=kms_config_ref,
-                         iam_capabilities=["CAPABILITY_NAMED_IAM"],
-                         stack_group=stack_group,
-                         stack_tags=stack_tags)
+    def __init__(
+      self,
+      paco_ctx,
+      account_ctx,
+      aws_region,
+      stack_group,
+      stack_tags,
+      grp_id,
+      res_id,
+      res_config,
+      kms_config_ref,
+      kms_config_dict
+    ):
+        super().__init__(
+          paco_ctx,
+          account_ctx,
+          aws_region,
+          enabled=res_config.is_enabled(),
+          config_ref=kms_config_ref,
+          iam_capabilities=["CAPABILITY_NAMED_IAM"],
+          stack_group=stack_group,
+          stack_tags=stack_tags
+        )
         self.set_aws_name('KMS', grp_id, res_id)
 
         # Define the Template
