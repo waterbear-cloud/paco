@@ -254,11 +254,12 @@ class ALB(CFTemplate):
                         cfn_export_dict['Certificates'] = [ {
                             'CertificateArn': troposphere.Ref(ssl_cert_param)
                         } ]
-                    ssl_cert_param_obj_list.append(
-                        troposphere.elasticloadbalancingv2.Certificate(
-                            CertificateArn=troposphere.Ref(ssl_cert_param)
+                    else:
+                        ssl_cert_param_obj_list.append(
+                            troposphere.elasticloadbalancingv2.Certificate(
+                                CertificateArn=troposphere.Ref(ssl_cert_param)
+                            )
                         )
-                    )
 
 
             listener_resource = troposphere.elasticloadbalancingv2.Listener.from_dict(
