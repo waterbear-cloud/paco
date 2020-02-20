@@ -19,7 +19,6 @@ from paco.cftemplates.nat_gateway import NATGateway
 from paco.cftemplates.kms import KMS
 from paco.cftemplates.cw_alarms import CWAlarms
 from paco.cftemplates.lambda_function import Lambda
-from paco.cftemplates.account import Account
 from paco.cftemplates.eventsrule import EventsRule
 from paco.cftemplates.snstopics import SNSTopics
 from paco.cftemplates.loggroups import LogGroups
