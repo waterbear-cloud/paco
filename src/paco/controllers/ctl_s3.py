@@ -1,4 +1,3 @@
-import os
 from paco.core.exception import StackException, PacoBucketExists
 from paco.core.exception import PacoErrorCode
 from paco.models import schemas
@@ -8,27 +7,32 @@ from paco.stack_group import StackGroup
 from paco.controllers.controllers import Controller
 from botocore.exceptions import ClientError
 from paco.models import vocabulary
-import paco.cftemplates
 from paco.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks, StackTags
-import copy
 import botocore
+import copy
+import os
+import paco.cftemplates
+
 
 class S3StackGroup(StackGroup):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 region,
-                 group_name,
-                 controller,
-                 resource_ref,
-                 stack_hooks=None):
-        #print("S3 Group Name: " + group_name)
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        region,
+        group_name,
+        controller,
+        resource_ref,
+        stack_hooks=None
+    ):
         aws_name = group_name
-        super().__init__(paco_ctx,
-                         account_ctx,
-                         group_name,
-                         aws_name,
-                         controller)
+        super().__init__(
+            paco_ctx,
+            account_ctx,
+            group_name,
+            aws_name,
+            controller
+        )
         self.stack_hooks = stack_hooks
 
 class S3Context():

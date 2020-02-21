@@ -45,12 +45,8 @@ class EnvironmentContext():
             self.env_id,
             self.region
         )
-        self.resource_yaml_path = os.path.join(
-            self.paco_ctx.project_folder,
-            'Outputs',
-            'NetworkEnvironments'
-        )
-        self.resource_yaml = os.path.join(self.resource_yaml_path, self.resource_yaml_filename)
+        self.resource_yaml_path = self.paco_ctx.outputs_path / 'NetworkEnvironments'
+        self.resource_yaml = self.resource_yaml_path / self.resource_yaml_filename
         self.stack_tags = StackTags()
         self.stack_tags.add_tag('paco.netenv.name', self.netenv_id)
         self.stack_tags.add_tag('paco.env.name', self.env_id)
@@ -234,7 +230,7 @@ class EnvironmentContext():
 
         # Save merged_config to yaml file
         if 'netenv' in merged_config.keys():
-            pathlib.Path(self.resource_yaml_path).mkdir(parents=True, exist_ok=True)
+            self.resource_yaml_path.mkdir(parents=True, exist_ok=True)
             with open(self.resource_yaml, "w") as output_fd:
                 yaml.dump(data=merged_config['netenv'][self.netenv_id][self.env_id][self.region],
                         stream=output_fd)
