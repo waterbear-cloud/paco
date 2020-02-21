@@ -44,7 +44,7 @@ setup(
         'awacs',
         'deepdiff',
         'gitpython',
-        'parliment',
+        'parliament',
     ],
     packages=[
         'paco.adapters',
