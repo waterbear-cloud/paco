@@ -1,13 +1,24 @@
 Changelog for Paco
 ==================
 
-5.1.2 (unreleased)
+5.2.0 (unreleased)
 ------------------
 
 ### Added
 
 - Integrated the Parliment library to lint/validate the IAM Policies used for all Roles.
   https://github.com/duo-labs/parliament
+
+### Changed
+
+- Consolidated the Paco work directories into a single ``.paco-work`` directory.
+  Documented them on a new Paco Internals doc page. To migrate an existing Paco project
+  to this new structure:
+
+      cd <my-paco-project>
+      mv aimdata .paco-work
+      mv Outputs .paco-work/outpus
+      mv build .paco-work/build
 
 
 5.1.1 (2020-02-19)

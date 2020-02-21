@@ -162,7 +162,7 @@ class EC2LaunchManager():
         self.ec2lm_buckets = {}
         self.launch_bundle_names = ['EIP', 'CloudWatchAgent', 'EFS', 'EBS', 'cfn-init']
         self.build_path = os.path.join(
-            self.paco_ctx.build_folder,
+            self.paco_ctx.build_path,
             'EC2LaunchManager',
             self.config_ref,
             self.account_ctx.get_name(),

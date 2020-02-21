@@ -10,7 +10,6 @@ from paco.utils import dict_of_dicts_merge, md5sum, big_join, list_to_comma_stri
 from pprint import pprint
 from shutil import copyfile
 import base64
-import os
 import pathlib
 import random, re
 import string, sys
@@ -175,7 +174,7 @@ class CFTemplate():
         self.paco_ctx = paco_ctx
         self.account_ctx = account_ctx
         self.aws_region = aws_region
-        self.build_folder = os.path.join(paco_ctx.build_folder, "templates")
+        self.build_folder = paco_ctx.build_path / "templates"
         self.yaml_path = None
         self.applied_yaml_path = None
         self.parameters = []
@@ -244,9 +243,8 @@ class CFTemplate():
         self.dependency_template = template
         self.dependency_group = True
         if template.dependency_template == None:
-            template.set_template_file_id('parent-'+dependency_name)
+            template.set_template_file_id('parent-' + dependency_name)
             template.dependency_group = True
-
 
     def get_yaml_path(self, applied=False):
         if self.yaml_path and applied == False:
@@ -260,17 +258,17 @@ class CFTemplate():
         yaml_filename += ".yaml"
 
         if applied == False:
-            yaml_path = os.path.join(self.build_folder, self.account_ctx.get_name())
+            yaml_path = self.build_folder / self.account_ctx.get_name()
         else:
-            yaml_path = os.path.join(self.paco_ctx.home, 'aimdata', 'applied', 'cloudformation', self.account_ctx.get_name())
+            yaml_path = self.paco_ctx.applied_path / 'cloudformation' / self.account_ctx.get_name()
 
         if self.stack.aws_region != None:
-            yaml_path = os.path.join(yaml_path, self.stack.aws_region)
+            yaml_path = yaml_path / self.stack.aws_region
         else:
             raise StackException(PacoErrorCode.Unknown, message = "AWS region is unavailable: {}".format(yaml_path))
 
         pathlib.Path(yaml_path).mkdir(parents=True, exist_ok=True)
-        yaml_path = os.path.join(yaml_path, yaml_filename)
+        yaml_path = yaml_path / yaml_filename
 
         if applied == True:
             self.applied_yaml_path = yaml_path
@@ -385,7 +383,6 @@ class CFTemplate():
         self.validate_template_changes()
 
     def provision(self):
-        #print("cftemplate: provision: " + self.get_yaml_path())
         self.generate_template()
 
     def delete(self):
@@ -404,11 +401,11 @@ class CFTemplate():
             pass
 
         # The template itself
-        short_yaml_path = self.get_yaml_path().replace(self.paco_ctx.home, '')
+        short_yaml_path = str(self.get_yaml_path()).replace(self.paco_ctx.home, '')
         if self.paco_ctx.verbose == True:
             self.paco_ctx.log_action_col('Delete', 'Template', 'Build', short_yaml_path)
         try:
-            pathlib.Path(self.get_yaml_path()).unlink()
+            self.get_yaml_path().unlink()
         except FileNotFoundError:
             pass
         pass
@@ -417,12 +414,12 @@ class CFTemplate():
         "Write template to the filesystem"
         self.paco_sub()
         # Create folder and write template body to file
-        pathlib.Path(self.build_folder).mkdir(parents=True, exist_ok=True)
+        self.build_folder.mkdir(parents=True, exist_ok=True)
         stream = open(self.get_yaml_path(), 'w')
         stream.write(self.body)
         stream.close()
 
-        yaml_path = pathlib.Path(self.get_yaml_path())
+        yaml_path = self.get_yaml_path()
         # Template size limit is 51,200 bytes
         # Start warning if the template size gets close
         warning_size_limite_bytes = 41200
@@ -699,7 +696,7 @@ class CFTemplate():
 
     def gen_cache_id(self):
         "Create and return an MD5 cache id of the template"
-        yaml_path = pathlib.Path(self.get_yaml_path())
+        yaml_path = self.get_yaml_path()
         if yaml_path.exists() == False:
             return None
         template_md5 = md5sum(self.get_yaml_path())

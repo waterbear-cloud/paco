@@ -230,7 +230,6 @@ class PacoContext(object):
         self.yes = False
         self.quiet_changes_only = False
         self.paco_path = os.getcwd()
-        self.build_folder = None
         self.aws_name = "Paco"
         self.controllers = {}
         self.services = {}
@@ -272,6 +271,35 @@ class PacoContext(object):
             return None
         return region
 
+    @property
+    def paco_work_path(self):
+        """Return the path to the Paco work directory
+
+This directory contains several sub-directories that Paco uses:
+
+  .paco-work/
+    build/
+    outputs/
+    applied/
+
+"""
+        return pathlib.Path(self.home + os.sep + '.paco-work')
+
+    @property
+    def outputs_path(self):
+        "Return the path to the Paco outputs directory"
+        return self.paco_work_path / 'outputs'
+
+    @property
+    def applied_path(self):
+        "Return the path to the Paco applied directory"
+        return self.paco_work_path / 'applied'
+
+    @property
+    def build_path(self):
+        "Return the path to the Paco applied directory"
+        return self.paco_work_path / 'build'
+
     def load_project(self, project_init=False, project_only=False, master_only=False):
         "Load a Paco Project from YAML, initialize settings and controllers, and load Service plug-ins."
         self.project_folder = self.home
@@ -285,7 +313,6 @@ class PacoContext(object):
             return
 
         # Settings
-        self.build_folder = os.path.join(self.home, "build", self.project.name)
         self.master_account = AccountContext(
             paco_ctx=self,
             name='master',
@@ -466,12 +493,7 @@ class PacoContext(object):
             model_obj = model_obj.__parent__
 
         changed_file_path = project_folder_path.joinpath(model_obj._read_file_path)
-        applied_file_path = project_folder_path.joinpath(
-            'aimdata',
-            'applied',
-            'model',
-            model_obj._read_file_path
-        )
+        applied_file_path = self.applied_path / 'model' / model_obj._read_file_path
         applied_file_path.parent.mkdir(parents=True, exist_ok=True)
 
         return (applied_file_path, changed_file_path)

@@ -230,4 +230,6 @@ a.icon-home {
 .rst-content dl.simple dt {
   border-top: none;
   color: black;
+  background: none;
 }
+

@@ -1,8 +1,3 @@
-import boto3
-import os
-import pathlib
-import sys
-import time
 from paco import utils
 from paco.core.exception import StackException
 from paco.core.exception import PacoException, PacoErrorCode
@@ -11,6 +6,13 @@ from enum import Enum
 from paco.core.yaml import YAML
 from paco.utils import md5sum, dict_of_dicts_merge
 from copy import deepcopy
+import boto3
+import os
+import pathlib
+import ruamel.yaml.parser
+import sys
+import time
+
 
 log_next_header = None
 
@@ -28,35 +30,32 @@ class StackOutputsManager():
         self.outputs_path = {}
         self.outputs_dict = {}
 
-    def load(self, project_folder, key):
-        self.outputs_path[key] = pathlib.Path(
-            os.path.join(
-                project_folder,
-                'Outputs',
-                key+'.yaml'
-            ))
+    def load(self, outputs_path, key):
+        self.outputs_path[key] = (outputs_path / key).with_suffix('.yaml')
         if self.outputs_path[key].exists():
-            with open(self.outputs_path[key], "r") as output_fd:
-                self.outputs_dict[key] = yaml.load(output_fd)
+            try:
+                with open(self.outputs_path[key], "r") as output_fd:
+                    self.outputs_dict[key] = yaml.load(output_fd)
+            # this can happen if Paco is force quit while writing to this file
+            except ruamel.yaml.parser.ParserError:
+                self.outputs_dict[key] = {}
         else:
             self.outputs_dict[key] = {}
 
     def save(self, key):
         if self.outputs_path[key] == None:
             raise StackException(PacoErrorCode.Unknown, message="Outputs file has not been loaded.")
-
         self.outputs_path[key].parent.mkdir(parents=True, exist_ok=True)
-
         with open(self.outputs_path[key], "w") as output_fd:
             yaml.dump(self.outputs_dict[key], output_fd)
 
-    def add(self, project_folder, new_outputs_dict):
+    def add(self, outputs_path, new_outputs_dict):
         if len(new_outputs_dict.keys()) > 1:
             raise StackException(PacoErrorCode.Unknown, message="Outputs dict should only have one key. Investigate!")
         if len(new_outputs_dict.keys()) == 0:
             return
         key = list(new_outputs_dict.keys())[0]
-        self.load(project_folder, key)
+        self.load(outputs_path, key)
         self.outputs_dict[key] = dict_of_dicts_merge(self.outputs_dict[key], new_outputs_dict)
         self.save(key)
 
@@ -219,10 +218,10 @@ class Stack():
     # the set_template_file_id() method
     @property
     def cache_filename(self):
-        return self.template.get_yaml_path() + ".cache"
+        return self.template.get_yaml_path().with_suffix(".cache")
     @property
     def output_filename(self):
-        return self.template.get_yaml_path() + ".output"
+        return self.template.get_yaml_path().with_suffix(".output")
     @property
     def cfn_client(self):
         if hasattr(self, '_cfn_client') == False:
@@ -464,14 +463,12 @@ class Stack():
 
     def save_stack_outputs(self):
         self.output_config_dict = self.template.process_stack_output_config(self)
-
         with open(self.output_filename, "w") as output_fd:
             yaml.dump(
                 data=self.output_config_dict,
                 stream=output_fd
             )
-
-        stack_outputs_manager.add(self.paco_ctx.home, self.output_config_dict)
+        stack_outputs_manager.add(self.paco_ctx.outputs_path, self.output_config_dict)
 
     # Actions to perform when a stack has been successfully created or updated
     def stack_success(self):
@@ -833,7 +830,7 @@ class StackGroup():
         self.prev_state = None
         self.filter_config = controller.stack_group_filter
         self.state_filename = '-'.join([self.get_aws_name(), self.name, "StackGroup-State.yaml"])
-        self.state_filepath = os.path.join(self.paco_ctx.build_folder, self.state_filename)
+        self.state_filepath = self.paco_ctx.build_path / self.state_filename
 
     def add_stack_group(self, stack_group):
         self.add_stack_order(stack_group)
