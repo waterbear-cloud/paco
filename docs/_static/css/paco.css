@@ -233,3 +233,8 @@ a.icon-home {
   background: none;
 }
 
+.rst-content .section dl dt {
+  background: none;
+  border-top: none;
+  border-bottom: 1px dotted #aaaaaa;
+}
