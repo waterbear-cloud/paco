@@ -3,7 +3,7 @@ import os
 import pathlib
 from paco import utils
 from paco.controllers.controllers import Controller
-from paco.stack_group import StackGroup, Stack, StackTags
+from paco.stack import StackGroup, Stack, StackTags
 from paco.core.yaml import YAML
 from paco.core.exception import StackException
 
@@ -11,7 +11,7 @@ from paco.core.exception import StackException
 yaml=YAML()
 yaml.default_flow_sytle = False
 
-class NotificationGroupsStackGroup(StackGroup):
+class SNSTopicsStackGroup(StackGroup):
     def __init__(
         self,
         paco_ctx,
@@ -38,21 +38,16 @@ class NotificationGroupsStackGroup(StackGroup):
 
     def init(self):
         "init"
-        # create a template
         sns_topics_config = [topic for topic in self.config.values()]
-        paco.cftemplates.SNSTopics(
-            self.paco_ctx,
-            self.account_ctx,
+        stack = self.add_new_stack(
             self.region,
-            self,
-            StackTags(self.stack_tags),
-            'NG',
-            None,
-            sns_topics_config,
-            self.resource_ref
+            self.config,
+            paco.cftemplates.SNSTopics,
+            stack_tags=StackTags(self.stack_tags),
+            extra_context={'grp_id': 'NG'}
         )
 
-class NotificationGroupsController(Controller):
+class SNTopicsGroupsController(Controller):
     def __init__(self, paco_ctx):
         super().__init__(
             paco_ctx,
@@ -60,7 +55,7 @@ class NotificationGroupsController(Controller):
             None
         )
         try:
-            self.groups = self.paco_ctx.project['resource']['notificationgroups']
+            self.groups = self.paco_ctx.project['resource']['snstopics']
         except KeyError:
             self.init_done = True
             return
@@ -80,11 +75,11 @@ class NotificationGroupsController(Controller):
         else:
             self.active_regions = self.groups.regions
 
-        # create a NotificationGroup stack group for each active region
+        # create a SNSTopicsGroup stack group for each active region
         self.ng_stackgroups = {}
         for region in self.active_regions:
             config_ref = self.groups[region].paco_ref_parts
-            stackgroup = NotificationGroupsStackGroup(
+            stackgroup = SNSTopicsStackGroup(
                 self.paco_ctx,
                 self.account_ctx,
                 region,

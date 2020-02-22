@@ -6,7 +6,7 @@ from paco.core.yaml import YAML, Ref, Sub
 from paco.models.references import Reference
 from paco.models.locations import get_parent_by_interface
 from paco.models import schemas
-from paco.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackTags, StackHooks
+from paco.stack import StackOrder, Stack, StackGroup, StackTags, StackHooks
 from paco.utils import md5sum
 from parliament import analyze_policy_string
 import click
@@ -225,23 +225,19 @@ class RoleContext():
         self.stack_group.add_stack_order(policy_context['stack'])
 
     def init_role(self):
+        "Create a Role stack and add it to the StackGroup"
         role_stack_tags = StackTags(self.stack_tags)
         role_stack_tags.add_tag('Paco-IAM-Resource-Type', 'Role')
         self.role_config.resolve_ref_obj = self
-        self.role_template = IAMRoles(
-            self.paco_ctx,
-            self.account_ctx,
+        self.role_stack = self.stack_group.add_new_stack(
             self.region,
-            self.stack_group,
-            role_stack_tags,
-            self.role_ref,
-            self.group_id,
-            self.role_id,
             self.role_config,
-            self.template_params,
-            self.change_protected
+            IAMRoles,
+            stack_tags=role_stack_tags,
+            change_protected=self.change_protected,
+            extra_context={'template_params': self.template_params, 'role_id': self.role_id, 'group_id': self.group_id}
         )
-        self.role_stack = self.role_template.stack
+        self.role_template = self.role_stack.template
         self.role_name = self.role_template.gen_iam_role_name("Role", self.role_id)
         self.role_arn = "arn:aws:iam::{0}:role/{1}".format(self.account_ctx.get_id(), self.role_name)
         role_profile_name = self.role_template.gen_iam_role_name("Profile", self.role_id)

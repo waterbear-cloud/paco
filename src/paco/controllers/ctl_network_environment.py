@@ -11,7 +11,7 @@ from paco.stack_grps.grp_application import ApplicationStackGroup
 from paco.stack_grps.grp_network import NetworkStackGroup
 from paco.stack_grps.grp_secretsmanager import SecretsManagerStackGroup
 from paco.stack_grps.grp_backup import BackupVaultsStackGroup
-from paco.stack_group import StackTags, stack_group, StackGroup
+from paco.stack import StackTags, stack_group, StackGroup
 
 yaml=YAML(typ="safe", pure=True)
 yaml.default_flow_sytle = False

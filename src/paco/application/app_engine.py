@@ -10,7 +10,7 @@ from paco.application.ec2_launch_manager import EC2LaunchManager
 from paco.models import schemas
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
-from paco.stack_group import StackTags
+from paco.stack import StackTags
 
 
 class ApplicationEngine():
@@ -108,13 +108,14 @@ class ApplicationEngine():
                 health_check.resolve_ref_obj = self
                 # ToDo: enable other types when there is more than one
                 if health_check.type == 'Route53HealthCheck':
-                    paco.cftemplates.Route53HealthCheck(
-                        self.paco_ctx,
-                        self.account_ctx,
-                        self.aws_region,
-                        self.stack_group,
-                        stack_tags,
-                        health_check
+                    self.stack_group.create_stack(
+                        paco.cftemplates.Route53HealthCheck(
+                            self.paco_ctx,
+                            self.account_ctx,
+                            self.aws_region,
+                            health_check
+                        ),
+                        stack_tags=stack_tags,
                     )
 
         # If alarm_sets exist init alarms for them

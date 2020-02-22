@@ -45,7 +45,7 @@ class BackupVault(CFTemplate):
 
         # BackupVault Notifications
         if vault.notification_events:
-            notification_paco_ref = self.paco_ctx.project['resource']['notificationgroups'][aws_region][vault.notification_group].paco_ref + '.arn'
+            notification_paco_ref = self.paco_ctx.project['resource']['snstopics'][aws_region][vault.notification_group].paco_ref + '.arn'
             param_name = 'Notification{}'.format(utils.md5sum(str_data=notification_paco_ref))
             notification_param = self.create_cfn_parameter(
                 param_type='String',

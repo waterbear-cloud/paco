@@ -1,5 +1,5 @@
 from paco.stack_grps.grp_route53 import Route53StackGroup
-from paco.stack_group import StackGroup
+from paco.stack import StackGroup
 from paco.cftemplates import Route53RecordSet
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode

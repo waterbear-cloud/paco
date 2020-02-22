@@ -19,7 +19,7 @@ import os
 import pathlib
 import shutil
 import tarfile
-from paco.stack_group import StackHooks, Stack, StackTags
+from paco.stack import StackHooks, Stack, StackTags
 from paco import models
 from paco import utils
 from paco.models import schemas, vocabulary

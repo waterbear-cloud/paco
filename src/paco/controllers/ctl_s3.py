@@ -3,11 +3,11 @@ from paco.core.exception import PacoErrorCode
 from paco.models import schemas
 from paco.models import references
 from paco.models.locations import get_parent_by_interface
-from paco.stack_group import StackGroup
+from paco.stack import StackGroup
 from paco.controllers.controllers import Controller
 from botocore.exceptions import ClientError
 from paco.models import vocabulary
-from paco.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks, StackTags
+from paco.stack import StackOrder, Stack, StackGroup, StackHooks, StackTags
 import botocore
 import copy
 import os
@@ -64,22 +64,18 @@ class S3Context():
         stack_tags=None,
         change_protected=False
     ):
-        s3_template = paco.cftemplates.S3(
-            self.paco_ctx,
-            self.account_ctx,
+        stack = self.stack_group.add_new_stack(
             self.region,
-            self.stack_group,
-            stack_tags,
-            stack_hooks,
-            self.bucket_context,
-            bucket_policy_only,
-            self.resource_ref,
-            change_protected=change_protected
+            self.bucket_context['config'],
+            paco.cftemplates.S3,
+            stack_tags=stack_tags,
+            stack_hooks=stack_hooks,
+            extra_context={'bucket_context': self.bucket_context, 'bucket_policy_only': bucket_policy_only}
         )
         if bucket_policy_only == False:
             if self.bucket_context['stack'] != None:
                 raise StackException(PacoErrorCode.Unknown)
-            self.bucket_context['stack'] = s3_template.stack
+            self.bucket_context['stack'] = stack
 
     def add_bucket(
         self,

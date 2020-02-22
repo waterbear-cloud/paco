@@ -1,7 +1,7 @@
-import paco.cftemplates
+from paco import models
 from paco.application.res_engine import ResourceEngine
 from paco.core.yaml import YAML
-from paco import models
+import paco.cftemplates
 
 
 yaml=YAML()
@@ -71,13 +71,10 @@ statement:
             template_params=None,
             stack_tags=self.stack_tags
         )
-        paco.cftemplates.Lambda(
-            self.paco_ctx,
-            self.account_ctx,
+        stack = self.stack_group.add_new_stack(
             self.aws_region,
-            self.stack_group,
-            self.stack_tags,
-            self.grp_id,
-            self.res_id,
-            self.resource
+            self.resource,
+            paco.cftemplates.Lambda,
+            stack_tags=self.stack_tags
         )
+

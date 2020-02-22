@@ -1,4 +1,4 @@
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.cftemplates.vpc import VPC
 from paco.cftemplates.segment import Segment
 from paco.cftemplates.security_groups import SecurityGroups

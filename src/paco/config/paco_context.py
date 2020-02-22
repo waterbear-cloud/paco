@@ -327,7 +327,7 @@ This directory contains several sub-directories that Paco uses:
         self.get_controller('Route53')
         self.get_controller('CodeCommit')
         self.get_controller('S3').init({'name': 'buckets'})
-        self.get_controller('NotificationGroups')
+        self.get_controller('SNSTopics')
 
         # Load the Service plug-ins
         service_plugins = paco.models.services.list_service_plugins()

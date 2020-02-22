@@ -1,29 +1,15 @@
+from paco.cftemplates.cftemplates import StackTemplate
 import os
-from paco.cftemplates.cftemplates import CFTemplate
-
-from io import StringIO
-from enum import Enum
 
 
-class Route53(CFTemplate):
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        route53_config,
-        config_ref):
-        #paco_ctx.log("Route53 CF Template init")
+class Route53(StackTemplate):
+    def __init__(self, stack, paco_ctx):
+        route53_config = stack.resource
+        config_ref = route53_config.paco_ref_parts
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
-            config_ref=config_ref,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags
         )
         self.set_aws_name('HostedZones')
 
@@ -107,7 +93,7 @@ Resources:
         records_set_yaml = ""
 
         account_zones_enabled = False
-        for zone_id in route53_config.get_zone_ids(account_name=account_ctx.get_name()):
+        for zone_id in route53_config.get_zone_ids(account_name=stack.account_ctx.get_name()):
             zone_config = route53_config.hosted_zones[zone_id]
             if zone_config.is_enabled() == False:
                 continue
@@ -141,7 +127,7 @@ Resources:
 
             #    hosted_zone_table['record_set_group'] += record_set_fmt.format(record_sets_table)
             zone_config_ref = '.'.join([config_ref, zone_id])
-            self.register_stack_output_config(zone_config_ref+'.id', res_name_prefix+'HostedZoneId')
+            self.register_stack_output_config(zone_config_ref + '.id', res_name_prefix + 'HostedZoneId')
             resources_yaml += hosted_zone_fmt.format(hosted_zone_table)
             outputs_yaml += outputs_fmt.format(hosted_zone_table)
 

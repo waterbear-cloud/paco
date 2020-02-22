@@ -2,7 +2,7 @@
 CloudWatch Events Rule template
 """
 
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.models import vocabulary
 from paco.utils import hash_smaller
 from awacs.aws import Allow, Statement, Policy, Principal
@@ -17,32 +17,20 @@ import troposphere.events
 import troposphere.iam
 
 
-class EventsRule(CFTemplate):
+class EventsRule(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        env_ctx,
-        app_id,
-        grp_id,
-        res_id,
-        eventsrule,
-        config_ref,
     ):
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=eventsrule.is_enabled(),
-            config_ref=config_ref,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags
         )
-        self.set_aws_name('EventsRule', grp_id, res_id)
+        eventsrule = stack.resource
+        config_ref = eventsrule.paco_ref_parts
+        self.set_aws_name('EventsRule', self.resource_group_name, self.resource_name)
 
         # Init a Troposphere template
         self.init_template('CloudWatch EventsRule')
@@ -152,4 +140,3 @@ class EventsRule(CFTemplate):
             ref=config_ref + '.arn',
         )
 
-        self.set_template()

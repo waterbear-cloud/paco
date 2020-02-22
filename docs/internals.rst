@@ -41,41 +41,61 @@ Paco will go through the following steps:
      through their StackGroups and calling the cloud action on each StackGroup.
 
 
-StackGroups, Stacks, StackHooks and Templates
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Stacks and Templates
+--------------------
+
+AWS CloudFormation
+^^^^^^^^^^^^^^^^^^
 
 Paco uses the AWS CloudFormation service to provision AWS resources and maintain resource state. CloudFormation has two
 core concepts: a template and a stack. A template is a CloudFormation document the declares resources. A stack is when
 a template is uploaded to AWS to create those resources. A stack will always belong to a specific account and region.
 
+Stack
+^^^^^
+
+The ``paco.stack.Stack`` class defines a Paco Stack. A Stack is connected to an account and region, and
+can fetch the state of the Stack as well as create, update and delete a stack in AWS.
+
+Every Stack expects a StackTemplate object to be set on the .stack attribute. Stacks must be created first
+though and then a StackTemplate set on the Stack. This allows the StackTemplate to inspect and modify the Stack
+it belongs to.
+
+StackTemplate
+^^^^^^^^^^^^^
+
+The ``paco.cftemplates.StackTemplate`` class defines a Paco Template. A StackTemplate has a .body attribute which is
+a string of CloudFormation in YAML format.
+
+A StackTemplate requires a Stack object to be passed to the constructor. In Paco, a StackTemplate can provision
+a CloudFormation template in several different locations and potentially look different in each of those
+locations. The StackTemplate has access to the Stack. The StackTemplate typically sets Parameters on the Stack.
+It can also change the behaviour of Stack updates, for example, certain Parameters can be set to use the
+previously existing value of the Stack.
+
+A ``troposphere.Template`` class defines a StackTemplate's .template attribute. Troposphere is an external
+Python dependency of Paco. It's a great library with a complete and updated representation of CloudFormation objects.
+However a StackTemplatecan provide any kind of return string, so simple Python strings can also be constructed and
+set as the template body.
+
+When Paco uses a StackTemplate it never instantiates it directly. It's a base class that resource specific templates
+inherit from. These subclasses are responsible for creating the template.
+
+StackTemplates are also passed a Paco Project object, which contains a complete Paco model.
+
+ToDo: right now this is passed in through paco_ctx, but templates should only need access to the Project.
+
+
+StackGroup
+^^^^^^^^^^
+
 Paco organizes Stacks into StackGroups. A StackGroup is a logical collection of stacks that support a single concept.
 The ``paco.stack_group.stack_group.StackGroup`` class implements StackGroup which provides functionality to iterate
 through the Stacks that belong to it and validate, provision and delete them.
 
-It is a common pattern to subclass a StackGroup and include additional functionality. For example, a BackupVault needs
-an IAM Role to assume. The BackupVaultsStackGroup inherits from StackGroup, but also contains functionality to create a
-stack with that IAM Role.
-
-A Stack is a template that is sent to AWS. The ``paco.stack_group.stack_group.Stack`` class implements Stack and is
-responsible for creating, updating and deleting of actual AWS Stacks.
-
-Every Stack has a Template. The base class ``paco.cftemplates.cftemplates.CFTemplate`` defines core template functionality.
-This class isn't meant to be directly instantiated though, instead resource specific templates inherit from CFTemplate
-and are responsible for creating the template. The CFTemplate base class provides methods to create Parameters and Outputs
-more easily.
-
-Templates will have a .body attribute that contains the actual CloudFormation template as a string. However, Troposphere
-is used to construct that template body. Every template will have a .template attribute that is a troposphere.Template object.
-The ``.init_template(description)`` method of CFTemplate sets up an empty Troposphere template ready to be populated with
-Parameters, Resources and Outputs.
-
-
-Refactoring
-^^^^^^^^^^^
-
-The StackGroup/Stack/Template pattern works, but it currently requires passing a lot of arguments around.
-Templates know about stacks and stacks groups, which shouldn't be needed. This could be refactored to be
-cleaner without impacting the behaviour of how Paco works.
+StackGroups can contain logic. It is a common pattern to subclass a StackGroup and include additional functionality.
+For example, a BackupVault needs an IAM Role to assume. The BackupVaultsStackGroup inherits from StackGroup,
+but it also contains the ability to create a second Stack for that IAM Role.
 
 
 The .paco-work directory

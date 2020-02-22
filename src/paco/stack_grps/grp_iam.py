@@ -3,7 +3,7 @@ import copy
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
 from paco.cftemplates import IAMRoles, IAMManagedPolicies
-from paco.stack_group import StackEnum, StackOrder, Stack, StackGroup
+from paco.stack import StackOrder, Stack, StackGroup
 
 class IAMStackGroup(StackGroup):
     def __init__(self,

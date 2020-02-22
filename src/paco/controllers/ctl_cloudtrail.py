@@ -2,7 +2,7 @@ import paco.cftemplates
 import paco.models.applications
 import os
 from paco.controllers.controllers import Controller
-from paco.stack_group import Stack, StackGroup
+from paco.stack import Stack, StackGroup
 from paco.models.loader import apply_attributes_from_config
 from paco.core.exception import PacoBucketExists
 from paco.models.references import get_model_obj_from_ref

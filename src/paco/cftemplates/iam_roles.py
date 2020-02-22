@@ -1,40 +1,34 @@
 from enum import Enum
 from io import StringIO
 from paco import utils
-from paco.cftemplates.cftemplates import CFTemplate, Parameter
+from paco.cftemplates.cftemplates import StackTemplate
+from paco.stack import Parameter
 from paco.utils import md5sum
 import os
 import sys
 
 
-class IAMRoles(CFTemplate):
+class IAMRoles(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        role_ref,
-        grp_id,
-        role_id,
-        role_config,
         template_params,
-        change_protected
+        role_id,
+        group_id=None,
     ):
+        role_config = stack.resource
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
             enabled=role_config.is_enabled(),
-            config_ref=role_ref,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            change_protected=change_protected
         )
-        self.set_aws_name('Role', grp_id, role_id)
-        self.role_ref = role_ref
+        if group_id == None:
+            self.set_aws_name('Role', self.resource_group_name, role_id)
+        else:
+            self.set_aws_name('Role', group_id, role_id)
+        self.role_ref = stack.resource.paco_ref_parts
 
         # Define the Template
         template_fmt = """
@@ -184,7 +178,7 @@ Outputs:
         if role_config.instance_profile == True:
             outputs_yaml += iam_profile_outputs_fmt.format(iam_role_table)
         # Initialize Parameters
-        self.set_parameter(role_path_param_name, role_config.path)
+        self.stack.set_parameter(role_path_param_name, role_config.path)
 
         template_table['parameters_yaml'] = parameters_yaml
         template_table['resources_yaml'] = resources_yaml

@@ -3,28 +3,23 @@ import os
 import troposphere
 import troposphere.cloudfront
 import troposphere.s3
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.models import schemas
 from awacs.aws import Action, Allow, Statement, Policy, Principal, Condition, StringEquals
 from io import StringIO
 from enum import Enum
 
 
-class S3(CFTemplate):
+class S3(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        stack_hooks,
         bucket_context,
         bucket_policy_only,
-        config_ref,
-        change_protected
     ):
         bucket = bucket_context['config']
+        config_ref = bucket.paco_ref_parts
 
         # Application Group
         aws_name_list = []
@@ -44,16 +39,10 @@ class S3(CFTemplate):
             aws_name_list.append('policy')
 
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
             enabled=bucket_context['config'].is_enabled(),
-            config_ref=config_ref,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            stack_hooks=stack_hooks,
-            change_protected=change_protected
         )
         self.set_aws_name('S3', aws_name_list)
         self.s3_context_id = config_ref

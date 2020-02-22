@@ -1,7 +1,8 @@
 from enum import Enum
 from io import StringIO
 from paco import utils
-from paco.cftemplates.cftemplates import CFTemplate, Parameter
+from paco.cftemplates.cftemplates import CFTemplate
+from paco.stack import Parameter
 from paco.utils import md5sum
 import os
 import sys

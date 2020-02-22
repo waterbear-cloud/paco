@@ -1,4 +1,4 @@
-from paco.stack_group import StackGroup, StackTags
+from paco.stack import StackGroup, StackTags
 from paco.core.yaml import YAML
 from paco.application.app_engine import ApplicationEngine
 

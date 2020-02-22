@@ -109,7 +109,7 @@ See the Paco CLI config scope docs at https://www.paco-cloud.io/en/latest//cli.h
 """
             )
 
-    if config_scope.lower().startswith('resource.snstopics') or config_scope.lower().startswith('resource.notificationgroups'):
+    if config_scope.lower().startswith('resource.snstopics'):
         parts = config_scope.split('.')
         if len(parts) > 2:
             raise InvalidPacoScope(
@@ -197,10 +197,6 @@ Expected to be on branch named '{}' for environment '{}', but the active branch 
 Expected to be on branch named '{}' for a change with a global scope of '{}', but the active branch is '{}'.""".format(
                     expected_branch_name, config_scope, branch_name
                 ))
-
-    # resource.snstopics is an alias for resource.notificationgroups
-    if config_scope.startswith('resource.snstopics'):
-        config_scope = 'resource.notificationgroups' + config_scope[len('resource.snstopics'):]
 
     scope_parts = config_scope.split('.')
     if scope_parts[0] == 'resource':

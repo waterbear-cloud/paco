@@ -1,28 +1,21 @@
+from paco import utils
+from paco.cftemplates.cftemplates import StackTemplate
 import troposphere
 import troposphere.secretsmanager
 
-from paco import utils
-from paco.cftemplates.cftemplates import CFTemplate
 
-class SecretsManager(CFTemplate):
+class SecretsManager(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        secrets_config,
-        config_ref
     ):
+        secrets_config = stack.resource
+        config_ref = secrets_config.paco_ref_parts
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
-            config_ref=config_ref,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags
         )
         self.set_aws_name('SecretsManager')
         self.init_template('Secrets Manager')
@@ -60,8 +53,9 @@ class SecretsManager(CFTemplate):
                         ref=secret_config.paco_ref_parts + '.arn'
                     )
 
+        # ToDo: this needs to be set in two places :(
         self.enabled = is_enabled
-        self.set_template()
+        stack.enabled = is_enabled
 
     def warn_template_changes(self, deep_diff):
         """Inform the user about changes to generate_secret_string making new secrets"""

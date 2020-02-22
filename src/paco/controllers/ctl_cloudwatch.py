@@ -1,7 +1,7 @@
 import os
 import paco.cftemplates
 from paco.controllers.controllers import Controller
-from paco.stack_group import Stack, StackGroup
+from paco.stack import Stack, StackGroup
 
 
 class CloudWatchController(Controller):

@@ -3,7 +3,7 @@ import os, sys, time
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
 from paco.controllers.controllers import Controller
-from paco.stack_group import StackHooks
+from paco.stack import StackHooks
 from paco.stack_grps.grp_account import AccountStackGroup
 from paco.models import loader
 from botocore.exceptions import ClientError
