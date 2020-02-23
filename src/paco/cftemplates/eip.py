@@ -1,40 +1,19 @@
-import os
+from paco import utils
+from paco.cftemplates.cftemplates import StackTemplate
 import troposphere
 import troposphere.ec2
-from paco import utils
-from paco.cftemplates.cftemplates import CFTemplate
 
 
-class EIP(CFTemplate):
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        app_id,
-        grp_id,
-        res_id,
-        eip_config,
-        config_ref
-    ):
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=eip_config.is_enabled(),
-            config_ref=config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            change_protected=eip_config.change_protected
-        )
-        self.set_aws_name('EIP', grp_id, res_id)
+class EIP(StackTemplate):
+    def __init__(self, stack, paco_ctx,):
+        eip_config = stack.resource
+        config_ref = eip_config.paco_ref_parts
+        super().__init__(stack, paco_ctx)
+        self.set_aws_name('EIP', self.resource_group_name, self.resource.name)
 
         # Troposphere Template Initialization
         self.init_template('Elastic IP')
         if not eip_config.is_enabled():
-            self.set_template(self.template.to_yaml())
             return
 
         template = self.template
@@ -79,9 +58,6 @@ class EIP(CFTemplate):
                         ResourceRecords = [ troposphere.Ref(eip_res)]
                     )
 
-        # Generate the Template
-        self.set_template()
-
         if self.paco_ctx.legacy_flag('route53_record_set_2019_10_16') == False:
             route53_ctl = self.paco_ctx.get_controller('route53')
             if eip_config.is_dns_enabled() == True and eip_config.is_enabled() == True:
@@ -89,10 +65,11 @@ class EIP(CFTemplate):
                     route53_ctl.add_record_set(
                         self.account_ctx,
                         self.aws_region,
+                        eip_config,
                         enabled=eip_config.is_enabled(),
                         dns=dns_config,
                         record_set_type='A',
-                        resource_records=['paco.ref '+config_ref+'.address'],
-                        stack_group = self.stack_group,
-                        config_ref = eip_config.paco_ref_parts+'.dns')
-
+                        resource_records=['paco.ref ' + config_ref + '.address'],
+                        stack_group=self.stack.stack_group,
+                        config_ref=eip_config.paco_ref_parts + '.dns'
+                    )

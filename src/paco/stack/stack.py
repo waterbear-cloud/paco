@@ -1,8 +1,27 @@
-from enum import Enum
+from botocore.exceptions import ClientError
 from copy import deepcopy
+from enum import Enum
+from paco.core.yaml import YAML
 from paco.core.exception import StackException, PacoErrorCode, PacoException
 from paco.models import references
+from paco.models import schemas
+from paco.models.locations import get_parent_by_interface
+from paco.utils import md5sum, dict_of_dicts_merge
+from pprint import pprint
+from shutil import copyfile
+import os.path
 import pathlib
+
+
+# deepdiff turns on Deprecation warnings, we need to turn them back off
+# again right after import, otherwise 3rd libs spam dep warnings all over the place
+from deepdiff import DeepDiff
+import warnings
+warnings.simplefilter("ignore")
+
+
+yaml=YAML(typ="safe", pure=True)
+yaml.default_flow_sytle = False
 
 log_next_header = None
 
@@ -210,6 +229,41 @@ class StackHooks():
                         cache_id += hook['cache_method'](hook, hook['arg'])
         return cache_id
 
+class StackOutputsManager():
+    def __init__(self):
+        self.outputs_path = {}
+        self.outputs_dict = {}
+
+    def load(self, outputs_path, key):
+        self.outputs_path[key] = (outputs_path / key).with_suffix('.yaml')
+        if self.outputs_path[key].exists():
+            try:
+                with open(self.outputs_path[key], "r") as output_fd:
+                    self.outputs_dict[key] = yaml.load(output_fd)
+            # this can happen if Paco is force quit while writing to this file
+            except ruamel.yaml.parser.ParserError:
+                self.outputs_dict[key] = {}
+        else:
+            self.outputs_dict[key] = {}
+
+    def save(self, key):
+        if self.outputs_path[key] == None:
+            raise StackException(PacoErrorCode.Unknown, message="Outputs file has not been loaded.")
+        self.outputs_path[key].parent.mkdir(parents=True, exist_ok=True)
+        with open(self.outputs_path[key], "w") as output_fd:
+            yaml.dump(self.outputs_dict[key], output_fd)
+
+    def add(self, outputs_path, new_outputs_dict):
+        if len(new_outputs_dict.keys()) > 1:
+            raise StackException(PacoErrorCode.Unknown, message="Outputs dict should only have one key. Investigate!")
+        if len(new_outputs_dict.keys()) == 0:
+            return
+        key = list(new_outputs_dict.keys())[0]
+        self.load(outputs_path, key)
+        self.outputs_dict[key] = dict_of_dicts_merge(self.outputs_dict[key], new_outputs_dict)
+        self.save(key)
+
+stack_outputs_manager = StackOutputsManager()
 
 class Stack():
     def __init__(
@@ -225,6 +279,7 @@ class Stack():
         do_not_cache=False,
         stack_tags=None,
         change_protected=None,
+        support_resource_ref_ext=None,
     ):
         """A Stack represent a CloudFormation template that is provisioned in an account and region in AWS.
 A Stack is created empty and then has a template added to it. This allows the template to interact with the stack.
@@ -236,6 +291,7 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
         self.paco_ctx = paco_ctx
         self.account_ctx = account_ctx
         self.grp_ctx = stack_group
+        self.stack_group = stack_group
         self.resource = resource
         if change_protected == None:
             self.change_protected = getattr(resource, 'change_protected', False)
@@ -265,10 +321,10 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
         self.yaml_path = None
         self.applied_yaml_path = None
         self.parameters = []
-        self.environment_name = None
         self.template_file_id = None
         self.build_folder = paco_ctx.build_path / "templates"
         self.stack_output_config_list = []
+        self.support_resource_ref_ext = support_resource_ref_ext
 
         if hooks == None:
             self.hooks = StackHooks(self.paco_ctx)
@@ -296,7 +352,14 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
             self._cfn_client = self.account_ctx.get_aws_client('cloudformation', self.aws_region, force=force)
         return self._cfn_client
 
-    # Incoming from CFTemplate
+    @property
+    def stack_ref(self):
+        "The reference to the resource for the stack or a support resource"
+        if self.support_resource_ref_ext != None:
+            return self.resource.paco_ref_parts + '.' + self.support_resource_ref_ext
+        else:
+            return self.resource.paco_ref_parts
+
     def get_outputs_key_from_ref(self, ref):
         "Return a key for an output from a Reference object"
         for stack_output_config in self.stack_output_config_list:
@@ -311,13 +374,12 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
             message=message
         )
 
-    def process_stack_output_config(self, stack):
+    def process_stack_output_config(self):
         "Process stack output config"
         merged_config = {}
         for output_config in self.stack_output_config_list:
-            config_dict = output_config.get_config_dict(stack)
+            config_dict = output_config.get_config_dict(self)
             merged_config = dict_of_dicts_merge(merged_config, config_dict)
-
         return merged_config
 
     def init_template_store_paths(self):
@@ -381,11 +443,11 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
 
     def generate_template(self):
         "Write template to the filesystem"
-        self.paco_sub()
+        self.template.paco_sub()
         # Create folder and write template body to file
         self.build_folder.mkdir(parents=True, exist_ok=True)
         stream = open(self.get_yaml_path(), 'w')
-        stream.write(self.body)
+        stream.write(self.template.body)
         stream.close()
 
         yaml_path = self.get_yaml_path()
@@ -397,7 +459,7 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
             print("template: " + yaml_path)
 
     def validate(self):
-        "Validate the stack"
+        "Validate the Stack"
         applied_file_path, new_file_path = self.init_template_store_paths()
         short_yaml_path = str(new_file_path).replace(self.paco_ctx.home, '')
         if short_yaml_path[0] == '/':
@@ -416,7 +478,7 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
             new_str = ':new'
         self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name(), "Template"+new_str, short_yaml_path)
         try:
-            self.cfn_client.validate_template(TemplateBody=self.body)
+            self.cfn_client.validate_template(TemplateBody=self.template.body)
         except ClientError as e:
             if e.response['Error']['Code'] == 'ValidationError':
                 message = "Validation Error: {}\nStack: {}\nTemplate: {}\n".format(
@@ -609,12 +671,13 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
             param_entry = Parameter(self, param_key, list_to_comma_string(param_value))
         elif isinstance(param_value, str) and references.is_ref(param_value):
             param_value = param_value.replace("<account>", self.account_ctx.get_name())
-            if self.environment_name != None:
-                param_value = param_value.replace("<environment>", self.environment_name)
+            environment = get_parent_by_interface(self.resource, schemas.IEnvironment)
+            if environment != None:
+                param_value = param_value.replace("<environment>", environment.name)
             elif param_value.find('<environment>') != -1:
                 raise StackException(
                     PacoErrorCode.Unknown,
-                    message="cftemplate: set_parameter: <environment> tag exists but self.environment_name == None: " + param_value
+                    message="cftemplate: set_parameter: <environment> tag exists but no environment found: " + param_value
                 )
             param_value = param_value.replace("<region>", self.aws_region)
             ref = references.Reference(param_value)
@@ -705,21 +768,6 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
                 PacoErrorCode.Unknown,
                 message="Unable to find outputkey for ref: %s" % ref.raw)
         return output_key
-
-    def gen_cache_id(self):
-        "Create and return an MD5 cache id of the template"
-        yaml_path = self.get_yaml_path()
-        if yaml_path.exists() == False:
-            return None
-        template_md5 = md5sum(self.get_yaml_path())
-        outputs_str = ""
-        for param_entry in self.parameters:
-            param_value = param_entry.gen_parameter_value()
-            outputs_str += param_value
-
-        outputs_md5 = md5sum(str_data=outputs_str)
-
-        return template_md5+outputs_md5
 
     def getFromSquareBrackets(self, s):
         return re.findall(r"\['?([A-Za-z0-9_]+)'?\]", s)
@@ -897,9 +945,8 @@ to help identify the places where token expiry was failing."""
         return new_name
 
     def get_name(self):
-        "Name of the stack in AWS. This can not be called until after set_stack_template() is called."
-        name = '-'.join([ self.grp_ctx.get_aws_name(),
-                          self.template.aws_name])
+        "Name of the stack in AWS. This can not be called until after the StackTemplate has been set."
+        name = '-'.join([ self.grp_ctx.get_aws_name(), self.template.aws_name ])
         if self.stack_suffix != None:
             name = name + '-' + self.stack_suffix
         new_name = self.create_stack_name(name)
@@ -1010,8 +1057,18 @@ to help identify the places where token expiry was failing."""
         )
 
     def gen_cache_id(self):
-        # CloudFormation Template
-        new_cache_id = self.template.gen_cache_id()
+        "Create and return an MD5 cache id of the template"
+        yaml_path = self.get_yaml_path()
+        if yaml_path.exists() == False:
+            return None
+        template_md5 = md5sum(self.get_yaml_path())
+        outputs_str = ""
+        for param_entry in self.parameters:
+            param_value = param_entry.gen_parameter_value()
+            outputs_str += param_value
+        outputs_md5 = md5sum(str_data=outputs_str)
+        new_cache_id = template_md5 + outputs_md5
+
         if new_cache_id == None:
             return None
         # Termination Protection toggle
@@ -1064,11 +1121,10 @@ to help identify the places where token expiry was failing."""
                 pass
             return True
 
-
         return False
 
     def save_stack_outputs(self):
-        self.output_config_dict = self.template.process_stack_output_config(self)
+        self.output_config_dict = self.process_stack_output_config()
         with open(self.output_filename, "w") as output_fd:
             yaml.dump(
                 data=self.output_config_dict,
@@ -1087,12 +1143,12 @@ to help identify the places where token expiry was failing."""
 
             # Save stack outputs to yaml
             self.save_stack_outputs()
-            self.template.apply_template_changes()
-            self.template.apply_stack_parameters()
+            self.apply_template_changes()
+            self.apply_stack_parameters()
 
     def create_stack(self):
         "Create an AWS CloudFormation stack"
-        if not self.resource.is_enabled():
+        if not self.enabled:
             self.log_action("Provision", "Disabled")
             return
         self.action = "create"
@@ -1124,14 +1180,14 @@ to help identify the places where token expiry was failing."""
         )
 
     def update_stack(self):
-        "Update an AWS CloudFormation stack"
+        "Update an AWS CloudFormation stack. Provides CLI interaction on Stack update."
         if self.change_protected == True:
             self.log_action("Provision", "Protected")
             return
         self.action = "update"
-        stack_parameters = self.template.generate_stack_parameters(action=self.action)
-        self.template.confirm_stack_parameter_changes(stack_parameters)
-        self.template.validate_template_changes()
+        stack_parameters = self.generate_stack_parameters(action=self.action)
+        self.confirm_stack_parameter_changes(stack_parameters)
+        self.validate_template_changes()
         self.log_action("Provision", "Update")
 
         if True == False and self.paco_ctx.yes == False:

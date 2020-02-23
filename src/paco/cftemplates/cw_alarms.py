@@ -141,6 +141,7 @@ class CWAlarms(CFBaseAlarm):
                 # Primary node uses the aws name with '-001' appended to it
                 # ToDo: how to have Alarms for the read replica nodes?
                 value = resource.get_aws_name() + '-001'
+
             dimension_param = self.create_cfn_parameter(
                 name='DimensionResource',
                 param_type='String',

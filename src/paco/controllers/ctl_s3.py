@@ -98,7 +98,6 @@ class S3Context():
         self.bucket_context['ref'] = self.resource_ref
         bucket.resolve_ref_obj = self
 
-
         if bucket.external_resource == True:
             # if the bucket already exists, do not create a stack for it
             self.paco_ctx.log_action_col(
@@ -291,7 +290,7 @@ class S3Controller(Controller):
             self.contexts[resource_ref] = S3Context(self.paco_ctx, account_ctx, region, self, stack_group, resource_ref, stack_tags)
             # Add an 'paco.ref ' key here so that we can take paco.ref's from the yaml
             # and still do a lookup on them
-            self.contexts['paco.ref '+resource_ref] = self.contexts[resource_ref]
+            self.contexts['paco.ref ' + resource_ref] = self.contexts[resource_ref]
 
     def context_list(self):
         "Returns contexts that do not include the redundant 'paco.ref ' prefixed keys."
@@ -321,6 +320,7 @@ class S3Controller(Controller):
         return self.contexts[resource_ref].get_bucket_arn(*args, **kwargs)
 
     def get_bucket_name(self, resource_ref, *args, **kwargs):
+        self.contexts[resource_ref].bucket_context['config'].get_bucket_name()
         return self.contexts[resource_ref].bucket_context['config'].get_bucket_name()
 
     def empty_bucket(self, resource_ref, *args, **kwargs):

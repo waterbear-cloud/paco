@@ -4,20 +4,13 @@ from paco.core.exception import StackException, PacoErrorCode, PacoException
 from paco.models import schemas, references
 from paco.models.references import Reference
 from paco.models.locations import get_parent_by_interface
-from paco.stack import StackOutputParam
+from paco.stack import StackOutputParam, Stack
 from paco.utils import dict_of_dicts_merge, md5sum, big_join, list_to_comma_string
-from pprint import pprint
-from shutil import copyfile
 import base64
 import random, re
 import string, sys
 import troposphere
 
-# deepdiff turns on Deprecation warnings, we need to turn them back off
-# again right after import, otherwise 3rd libs spam dep warnings all over the place
-from deepdiff import DeepDiff
-import warnings
-warnings.simplefilter("ignore")
 
 class StackOutputConfig():
     def __init__(self, config_ref, key):
@@ -72,7 +65,7 @@ class StackTemplate():
         self._body = None
         self.aws_name = aws_name
         if config_ref == None:
-            config_ref = stack.resource.paco_ref_parts
+            config_ref = stack.stack_ref
         self.config_ref = config_ref
         self.template = None
         self.environment_name = environment_name
@@ -94,17 +87,41 @@ class StackTemplate():
 
     @property
     def resource_group_name(self):
-        return get_parent_by_interface(self.resource, schemas.IResourceGroup).name
+        return get_parent_by_interface(self.stack.resource, schemas.IResourceGroup).name
 
     @property
     def resource_name(self):
-        return get_parent_by_interface(self.resource, schemas.IResource).name
+        return self.stack.resource.name
 
     @property
     def cfn_client(self):
         if hasattr(self, '_cfn_client') == False:
             self._cfn_client = self.account_ctx.get_aws_client('cloudformation', self.aws_region)
         return self._cfn_client
+
+    def set_enabled(self, value):
+        "Sets the Enabled status for the Stack"
+        # ToDo: this is set on both stack and template - only needs to be on the stack though?
+        self.enabled = value
+        self.stack.enabled = value
+
+    def set_parameter(
+        self,
+        param_key,
+        param_value=None,
+        use_previous_param_value=False,
+        resolved_ssm_value="",
+        ignore_changes=False
+    ):
+        "Set a Parameter for this StackTemplate's Stack"
+        # convenience method - delegates to stack object
+        self.stack.set_parameter(
+            param_key,
+            param_value=param_value,
+            use_previous_param_value=use_previous_param_value,
+            resolved_ssm_value=resolved_ssm_value,
+            ignore_changes=ignore_changes
+        )
 
     def init_template(self, description):
         "Initializes a Troposphere template"
@@ -309,7 +326,6 @@ class StackTemplate():
                     ))
         return name
 
-
     def resource_char_filter(self, ch, filter_id, remove_invalids=False):
         # Duplicated in paco.models.base.Resource
         # Universal check
@@ -342,7 +358,6 @@ class StackTemplate():
 
         # By default return a '-' for invalid characters
         return '-'
-
 
     def create_resource_name(self, name, remove_invalids=False, filter_id=None, hash_long_names=False, camel_case=False):
         """
@@ -383,7 +398,6 @@ class StackTemplate():
             new_name = self.resource_name_filter(new_name, filter_id, hash_long_names)
 
         return new_name
-
 
     def create_resource_name_join(self, name_list, separator, camel_case=False, filter_id=None, hash_long_names=False):
         # Duplicated in paco.models.base.Resource
@@ -479,7 +493,7 @@ class StackTemplate():
             stack = self.paco_ctx.get_ref(item_ref)
             if isinstance(stack, Stack) == False:
                 raise PacoException(PacoErrorCode.Unknown, message="Reference must resolve to a stack")
-            stack_output_key = self.get_stack_outputs_key_from_ref(Reference(item_ref))
+            stack_output_key = self.stack.get_stack_outputs_key_from_ref(Reference(item_ref))
             stack_output_param.add_stack_output(stack, stack_output_key)
 
         return self.create_cfn_parameter(

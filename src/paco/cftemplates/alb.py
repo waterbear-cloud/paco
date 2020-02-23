@@ -1,42 +1,24 @@
-import os
-import troposphere
-import troposphere.elasticloadbalancingv2
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.cftemplates.cftemplates import StackOutputParam
 from paco.models.references import Reference, get_model_obj_from_ref
-from io import StringIO
-from enum import Enum
-from pprint import pprint
+import troposphere
+import troposphere.elasticloadbalancingv2
 
 
-class ALB(CFTemplate):
+class ALB(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
         env_ctx,
         app_id,
-        grp_id,
-        alb_config
     ):
+        alb_config = stack.resource
         self.env_ctx = env_ctx
         self.config_ref = alb_config.paco_ref_parts
         segment_stack = self.env_ctx.get_segment_stack(alb_config.segment)
-        super().__init__(
-            paco_ctx=paco_ctx,
-            account_ctx=account_ctx,
-            aws_region=aws_region,
-            enabled=alb_config.is_enabled(),
-            config_ref=alb_config.paco_ref_parts,
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            environment_name=self.env_ctx.env_id,
-            change_protected=alb_config.change_protected
-        )
-        self.set_aws_name('ALB', grp_id, alb_config.name)
+        super().__init__(stack, paco_ctx)
+        self.set_aws_name('ALB', self.resource_group_name, alb_config.name)
 
         # Init Troposphere template
         self.init_template('Application Load Balancer')
@@ -77,7 +59,7 @@ class ALB(CFTemplate):
         #   - Add a hash?
         #   - Check for duplicates with validating template
         load_balancer_name = self.create_resource_name_join(
-            name_list=[self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, grp_id, alb_config.name],
+            name_list=[self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, self.resource_group_name, alb_config.name],
             separator='',
             camel_case=True,
             filter_id='EC2.ElasticLoadBalancingV2.LoadBalancer.Name'
@@ -261,7 +243,6 @@ class ALB(CFTemplate):
                             )
                         )
 
-
             listener_resource = troposphere.elasticloadbalancingv2.Listener.from_dict(
                 logical_listener_name,
                 cfn_export_dict
@@ -359,7 +340,6 @@ class ALB(CFTemplate):
                 value=troposphere.GetAtt(alb_resource, 'DNSName'),
                 ref=alb_config.paco_ref_parts + '.dnsname',
             )
-            self.set_template()
 
             if self.paco_ctx.legacy_flag('route53_record_set_2019_10_16') == False:
                 route53_ctl = self.paco_ctx.get_controller('route53')
@@ -372,12 +352,13 @@ class ALB(CFTemplate):
                         route53_ctl.add_record_set(
                             account_ctx,
                             self.aws_region,
+                            alb_config,
                             enabled=alb_config.is_enabled(),
                             dns=alb_dns,
                             record_set_type='Alias',
                             alias_dns_name=alias_dns_ref,
                             alias_hosted_zone_id=alias_hosted_zone_ref,
-                            stack_group=self.stack_group,
+                            stack_group=self.stack.stack_group,
                             config_ref=alb_config.paco_ref_parts + '.dns'
                         )
 

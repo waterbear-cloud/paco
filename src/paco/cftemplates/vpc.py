@@ -1,36 +1,24 @@
-import os
+from paco.cftemplates.cftemplates import StackTemplate
 import troposphere
 import troposphere.ec2
 import troposphere.route53
-from paco.cftemplates.cftemplates import CFTemplate
-
-from io import StringIO
-from enum import Enum
 
 
-class VPC(CFTemplate):
+class VPC(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        vpc_config,
-        vpc_config_ref
     ):
         super().__init__(
-            paco_ctx=paco_ctx,
-            account_ctx=account_ctx,
-            aws_region=aws_region,
-            enabled=vpc_config.is_enabled(),
-            config_ref=vpc_config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags
+            stack,
+            paco_ctx,
         )
         self.set_aws_name('VPC')
         self.init_template('Virtual Private Cloud')
         template = self.template
+        vpc_config = stack.resource
+        vpc_config_ref = vpc_config.paco_ref_parts
 
         # VPC
         cidr_block_param = self.create_cfn_parameter(
@@ -56,36 +44,36 @@ class VPC(CFTemplate):
             'EnableDnsSupport': troposphere.Ref(enable_dns_support_param),
             'EnableDnsHostnames': troposphere.Ref(enable_dns_hostname_param)
         }
-        vpc_res = troposphere.ec2.VPC.from_dict('VPC', vpc_dict)
-        template.add_resource(vpc_res)
+        vpc_resource = troposphere.ec2.VPC.from_dict('VPC', vpc_dict)
+        template.add_resource(vpc_resource)
 
         # Output
         self.create_output(
-            title=vpc_res.title,
-            value=troposphere.Ref(vpc_res),
+            title=vpc_resource.title,
+            value=troposphere.Ref(vpc_resource),
             ref=[vpc_config_ref, vpc_config_ref + '.id']
         )
 
         # Internet gateway
         if vpc_config.enable_internet_gateway == True:
             # Gateway
-            igw_res = troposphere.ec2.InternetGateway('InternetGateway')
+            igw_resource = troposphere.ec2.InternetGateway('InternetGateway')
             # Attachment
             igw_attachment_dict = {
-                'VpcId': troposphere.Ref(vpc_res),
-                'InternetGatewayId': troposphere.Ref(igw_res)
+                'VpcId': troposphere.Ref(vpc_resource),
+                'InternetGatewayId': troposphere.Ref(igw_resource)
             }
-            igw_attachment_res = troposphere.ec2.VPCGatewayAttachment.from_dict(
+            igw_attachment_resource = troposphere.ec2.VPCGatewayAttachment.from_dict(
                 'InternetGatewayAttachment',
                 igw_attachment_dict
             )
-            template.add_resource(igw_res)
-            template.add_resource(igw_attachment_res)
+            template.add_resource(igw_resource)
+            template.add_resource(igw_attachment_resource)
 
             # Output
             self.create_output(
                 title='InternetGateway',
-                value=troposphere.Ref(igw_res),
+                value=troposphere.Ref(igw_resource),
                 ref=vpc_config_ref + ".internet_gateway"
             )
 
@@ -99,7 +87,7 @@ class VPC(CFTemplate):
             )
             private_zone_vpcs = []
             private_zone_vpcs.append(troposphere.route53.HostedZoneVPCs(
-                VPCId=troposphere.Ref(vpc_res),
+                VPCId=troposphere.Ref(vpc_resource),
                 VPCRegion=troposphere.Ref('AWS::Region')
             ))
 
@@ -120,6 +108,3 @@ class VPC(CFTemplate):
                 value=troposphere.Ref(private_zone_res),
                 ref=vpc_config_ref + ".private_hosted_zone.id"
             )
-
-        # Define the Template
-        self.set_template()

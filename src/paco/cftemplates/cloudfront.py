@@ -1,41 +1,17 @@
-import base64
-import os
+from paco import utils
+from paco.cftemplates.cftemplates import StackTemplate
+from paco.models.references import Reference, is_ref, resolve_ref
 import troposphere
 import troposphere.cloudfront
 import troposphere.route53
 
-from paco import utils
-from paco.cftemplates.cftemplates import CFTemplate
-from paco.models.references import Reference, is_ref, resolve_ref
-from enum import Enum
-from io import StringIO
 
-class CloudFront(CFTemplate):
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        app_id,
-        grp_id,
-        res_id,
-        factory_name,
-        cloudfront_config,
-        config_ref
-    ):
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=cloudfront_config.is_enabled(),
-            config_ref=config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            change_protected=cloudfront_config.change_protected
-        )
-        self.set_aws_name('CloudFront', grp_id, res_id, factory_name)
+class CloudFront(StackTemplate):
+    def __init__(self, stack, paco_ctx, factory_name):
+        cloudfront_config = stack.resource
+        config_ref = stack.stack_ref
+        super().__init__(stack, paco_ctx)
+        self.set_aws_name('CloudFront', self.resource_group_name, self.resource_name, factory_name)
         origin_access_id_enabled = False
 
         self.init_template('CloudFront Distribution')
@@ -60,7 +36,7 @@ class CloudFront(CFTemplate):
             },
             'PriceClass': 'PriceClass_'+cloudfront_config.price_class,
             'ViewerCertificate': {
-                'AcmCertificateArn': self.paco_ctx.get_ref('paco.ref '+self.config_ref+'.viewer_certificate.arn'),
+                'AcmCertificateArn': self.paco_ctx.get_ref('paco.ref ' + self.stack.stack_ref + '.viewer_certificate.arn'),
                 'SslSupportMethod': cloudfront_config.viewer_certificate.ssl_supported_method,
                 'MinimumProtocolVersion': cloudfront_config.viewer_certificate.minimum_protocol_version
             }
@@ -275,7 +251,6 @@ class CloudFront(CFTemplate):
 
         template.add_resource(distribution_res)
 
-        self.set_template()
         if origin_access_id_enabled:
           self.stack.wait_for_delete = True
 
@@ -286,11 +261,12 @@ class CloudFront(CFTemplate):
                     route53_ctl.add_record_set(
                         self.account_ctx,
                         self.aws_region,
+                        cloudfront_config,
                         enabled=cloudfront_config.is_enabled(),
                         dns=alias,
                         record_set_type='Alias',
-                        alias_dns_name = 'paco.ref '+self.config_ref+'.domain_name',
+                        alias_dns_name = 'paco.ref ' + self.stack.stack_ref + '.domain_name',
                         alias_hosted_zone_id = 'Z2FDTNDATAQYW2',
-                        stack_group=self.stack_group,
-                        config_ref=self.config_ref+'.record_set'
+                        stack_group=self.stack.stack_group,
+                        config_ref=config_ref+'.record_set'
                     )

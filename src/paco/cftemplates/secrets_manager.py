@@ -53,9 +53,7 @@ class SecretsManager(StackTemplate):
                         ref=secret_config.paco_ref_parts + '.arn'
                     )
 
-        # ToDo: this needs to be set in two places :(
-        self.enabled = is_enabled
-        stack.enabled = is_enabled
+        self.set_enabled(is_enabled)
 
     def warn_template_changes(self, deep_diff):
         """Inform the user about changes to generate_secret_string making new secrets"""

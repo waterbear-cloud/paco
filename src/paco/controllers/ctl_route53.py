@@ -66,18 +66,20 @@ class Route53Controller(Controller):
             )
             self.stack_grps.append(route53_stack_grp)
 
-    def add_record_set(self,
+    def add_record_set(
+        self,
         account_ctx,
         region,
+        resource,
         dns,
         record_set_type,
-        enabled = True,
-        resource_records = None,
-        alias_dns_name = None,
-        alias_hosted_zone_id = None,
-        stack_group = None,
-        config_ref = None):
-
+        enabled=True,
+        resource_records=None,
+        alias_dns_name=None,
+        alias_hosted_zone_id=None,
+        stack_group=None,
+        config_ref=None
+    ):
         record_set_config = {
             'enabled' : enabled,
             'change_protected': False,
@@ -87,22 +89,15 @@ class Route53Controller(Controller):
             'record_set_type': record_set_type,
             'resource_records': resource_records
         }
-        #config_ref = 'route53.record_set.dns.domain_name'
         record_set_stack_group = Route53RecordSetStackGroup(
             self.paco_ctx, account_ctx, self
         )
-        Route53RecordSet(
-            self.paco_ctx,
-            account_ctx,
+        record_set_stack_group.add_new_stack(
             region,
-            record_set_stack_group, # stack_group
-            None, # stack_tags
-
-            dns.domain_name,
-            record_set_config,
-            config_ref
+            resource,
+            Route53RecordSet,
+            extra_context={'record_set_config': record_set_config, 'record_set_name': dns.domain_name}
         )
-        stack_group.add_stack_group(record_set_stack_group)
 
     def validate(self):
         for stack_grp in self.stack_grps:

@@ -1,36 +1,21 @@
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.models import references
 from paco import utils
 import os
 import troposphere
 
 
-class Route53RecordSet(CFTemplate):
+class Route53RecordSet(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
         record_set_name,
         record_set_config,
-        config_ref
     ):
         if references.is_ref(record_set_name) == True:
             record_set_name = paco_ctx.get_ref(record_set_name)
-
-        # CFTemplate Initialization
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=record_set_config['enabled'],
-            config_ref=config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            change_protected=record_set_config['change_protected']
-        )
+        super().__init__(stack, paco_ctx)
         self.set_aws_name('RecordSet', record_set_name)
 
         # Troposphere Template Initialization
@@ -97,7 +82,3 @@ class Route53RecordSet(CFTemplate):
             record_set_dict
         )
         self.template.add_resource(record_set_res)
-
-        # Generate the Template
-        self.set_template()
-

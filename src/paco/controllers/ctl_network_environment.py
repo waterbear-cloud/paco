@@ -129,9 +129,6 @@ class EnvironmentContext():
     def get_vpc_stack(self):
         return self.network_stack_grp.get_vpc_stack()
 
-    def security_groups(self):
-        return self.config.network.vpc.security_groups
-
     def nat_gateway_ids(self):
         return self.config.network.vpc.nat_gateway.keys()
 
@@ -152,14 +149,6 @@ class EnvironmentContext():
 
     def peering_config(self):
         return self.config.network.vpc.peering
-
-    def segment_ids(self):
-        if self.config.network.vpc.segments != None:
-            return self.config.network.vpc.segments.keys()
-        return []
-
-    def segment_config(self, segment_id):
-        return self.config.network.vpc.segments[segment_id]
 
     def availability_zones(self):
         return self.config.network.availability_zones
@@ -352,14 +341,6 @@ class NetEnvController(Controller):
         resource_arg = None
         paco_command = command
         netenv_arg = model_obj.paco_ref_parts
-        if netenv_arg == None:
-            message = "Command: paco {} {}\n".format(paco_command, netenv_arg)
-            message += "Error:   Missing NetEnv argument:  netenv.<netenv>.<environment>[.<region>.<option>.<resource>.<path>]"
-            raise StackException(
-                PacoErrorCode.Unknown,
-                message = message
-            )
-
         netenv_parts = netenv_arg.split('.', 4)[1:]
         netenv_id = netenv_parts[0]
         if netenv_id in self.paco_ctx.project['netenv'].keys():

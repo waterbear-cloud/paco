@@ -1,5 +1,4 @@
 from paco.cftemplates.cftemplates import StackTemplate
-import os
 
 
 class Route53(StackTemplate):
@@ -29,13 +28,6 @@ Resources:
             'resources_yaml': "",
             'outputs_yaml': ""
         }
-
-
-#        params_fmt ="""
-#  {0[?_name]:s}:
-#    Type: String
-#    Description: 'The path associated with the {0[role_path_param_name]:s} IAM Role'
-#"""
 
         hosted_zone_fmt = """
   {0[cf_resource_name_prefix]:s}HostedZone:

@@ -19,41 +19,6 @@ yaml.default_flow_sytle = False
 
 StackOrder = Enum('StackOrder', 'PROVISION WAIT WAITLAST')
 
-class StackOutputsManager():
-    def __init__(self):
-        self.outputs_path = {}
-        self.outputs_dict = {}
-
-    def load(self, outputs_path, key):
-        self.outputs_path[key] = (outputs_path / key).with_suffix('.yaml')
-        if self.outputs_path[key].exists():
-            try:
-                with open(self.outputs_path[key], "r") as output_fd:
-                    self.outputs_dict[key] = yaml.load(output_fd)
-            # this can happen if Paco is force quit while writing to this file
-            except ruamel.yaml.parser.ParserError:
-                self.outputs_dict[key] = {}
-        else:
-            self.outputs_dict[key] = {}
-
-    def save(self, key):
-        if self.outputs_path[key] == None:
-            raise StackException(PacoErrorCode.Unknown, message="Outputs file has not been loaded.")
-        self.outputs_path[key].parent.mkdir(parents=True, exist_ok=True)
-        with open(self.outputs_path[key], "w") as output_fd:
-            yaml.dump(self.outputs_dict[key], output_fd)
-
-    def add(self, outputs_path, new_outputs_dict):
-        if len(new_outputs_dict.keys()) > 1:
-            raise StackException(PacoErrorCode.Unknown, message="Outputs dict should only have one key. Investigate!")
-        if len(new_outputs_dict.keys()) == 0:
-            return
-        key = list(new_outputs_dict.keys())[0]
-        self.load(outputs_path, key)
-        self.outputs_dict[key] = dict_of_dicts_merge(self.outputs_dict[key], new_outputs_dict)
-        self.save(key)
-
-stack_outputs_manager = StackOutputsManager()
 
 class StackOrderItem():
     def __init__(self, order, stack):
@@ -98,6 +63,7 @@ class StackGroup():
         stack_orders=None,
         change_protected=None,
         extra_context={},
+        support_resource_ref_ext=None,
     ):
         "Creates a Stack and adds it to the StackGroup"
         stack = Stack(
@@ -109,6 +75,7 @@ class StackGroup():
             stack_tags=stack_tags,
             hooks=stack_hooks,
             change_protected=change_protected,
+            support_resource_ref_ext=support_resource_ref_ext,
         )
         if stack_orders == None:
             stack.orders = [StackOrder.PROVISION, StackOrder.WAIT]
@@ -287,32 +254,31 @@ class StackGroup():
         self.stack_orders.remove(stack_order)
         return stack_order
 
-    def add_stack_order(self, stack):
+    def add_stack_order(self, stack, orders=[StackOrder.PROVISION, StackOrder.WAIT]):
         "Add Stack orders to the StackGroups orders"
         for order in stack.orders:
-            stack_order = self.pop_stack_order(
-                stack=stack,
-                order=order
-            )
+            stack_order = self.pop_stack_order(stack, order)
             self.stack_orders.append(stack_order)
         if not stack in self.stacks:
             self.stacks.append(stack)
 
     def get_aws_name(self):
-        name = '-'.join([self.controller.get_aws_name(),
-                         self.aws_name])
+        name = '-'.join([self.controller.get_aws_name(), self.aws_name])
         return name
 
     def get_stack_from_ref(self, ref):
+        "Recursively searches all StackGroups for a Stack whose resource.ref starts with the given ref"
         for stack_obj in self.stacks:
             if isinstance(stack_obj, StackGroup) == True:
+                # stack_obj is a StackGroup
                 stack = stack_obj.get_stack_from_ref(ref)
                 if stack != None:
                     return stack
-            elif stack_obj.template.config_ref and \
-                stack_obj.template.config_ref != '' and \
-                ref.raw.find(stack_obj.template.config_ref) != -1 and \
-                ( stack_obj.template.config_ref == ref.ref or ref.ref.startswith(stack_obj.template.config_ref+'.') ):
-                    return stack_obj
-
+            else:
+                # stack_obj is a Stack
+                stack_ref = stack_obj.stack_ref
+                if stack_ref and stack_ref != '' and ref.raw.find(stack_ref) != -1:
+                    if stack_ref == ref.ref or ref.ref.startswith(stack_ref + '.'):
+                        return stack_obj
+        # Nothing found, None returned
         return None

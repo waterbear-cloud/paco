@@ -1,40 +1,28 @@
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.models.references import Reference
 import json
 import troposphere
 import troposphere.elasticsearch
 
 
-class ElasticsearchDomain(CFTemplate):
+class ElasticsearchDomain(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
         env_ctx,
-        grp_id,
-        res_id,
-        esdomain
     ):
+        esdomain = stack.resource
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=esdomain.is_enabled(),
-            config_ref=esdomain.paco_ref_parts,
-            stack_group=stack_group,
-            stack_tags=stack_tags,
         )
-        self.env_ctx = env_ctx
-        self.set_aws_name('ESDomain', grp_id, res_id)
+        self.set_aws_name('ESDomain', self.resource_group_name, self.resource_name)
         self.esdomain = esdomain
         self.init_template('Elasticsearch Domain')
 
         # if disabled then leave an empty placeholder and finish
-        if not esdomain.is_enabled():
-            return self.set_template()
+        if not esdomain.is_enabled(): return
 
         # Parameters
         elasticsearch_version_param = self.create_cfn_parameter(
@@ -46,7 +34,7 @@ class ElasticsearchDomain(CFTemplate):
 
         if esdomain.segment != None:
             subnet_params = []
-            segment_stack = self.env_ctx.get_segment_stack(esdomain.segment)
+            segment_stack = env_ctx.get_segment_stack(esdomain.segment)
             if esdomain.cluster != None:
                 if esdomain.cluster.zone_awareness_enabled:
                     azs = esdomain.cluster.zone_awareness_availability_zone_count
@@ -92,7 +80,6 @@ class ElasticsearchDomain(CFTemplate):
             if esdomain.security_groups:
                 cfn_export_dict['VPCOptions']['SecurityGroupIds'] = vpc_sg_list
 
-
         esdomain_resource = troposphere.elasticsearch.ElasticsearchDomain.from_dict(
             esdomain_logical_id,
             cfn_export_dict,
@@ -118,6 +105,3 @@ class ElasticsearchDomain(CFTemplate):
             value=troposphere.GetAtt(esdomain_resource, 'DomainEndpoint'),
             ref=esdomain.paco_ref_parts + '.domainendpoint',
         )
-
-        # Let's go home
-        self.set_template()

@@ -1,39 +1,25 @@
-from enum import Enum
-from io import StringIO
 from paco import utils
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.stack import Parameter
 from paco.utils import md5sum
-import os
-import sys
 
 
-class IAMManagedPolicies(CFTemplate):
+class IAMManagedPolicies(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
         policy_context,
-        grp_id,
-        res_id,
-        change_protected
     ):
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=policy_context['config'].is_enabled(),
-            config_ref=policy_context['ref'],
-            iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            change_protected=change_protected
-        )
-        self.set_aws_name('Policy', grp_id, res_id)
+        policy_config = policy_context['config']
         self.policy_context = policy_context
+        super().__init__(
+            stack,
+            paco_ctx,
+            iam_capabilities=["CAPABILITY_NAMED_IAM"],
+        )
+        self.set_aws_name('Policy', self.resource_group_name, self.resource_name)
+
         # Define the Template
         template_fmt = """
 AWSTemplateFormatVersion: '2010-09-09'
@@ -105,7 +91,7 @@ Resources:
      Type: {0[type]:s}
      Description: {0[description]:s}
 """
-        policy_config = policy_context['config']
+
         if policy_config.is_enabled() == True:
             policy_table.clear()
             if policy_context['template_params']:

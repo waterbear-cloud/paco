@@ -207,22 +207,17 @@ class RoleContext():
         }
         policy_stack_tags = StackTags(self.stack_tags)
         policy_stack_tags.add_tag('Paco-IAM-Resource-Type', 'ManagedPolicy')
-        policy_context['template'] = IAMManagedPolicies(
-            self.paco_ctx,
-            self.account_ctx,
+        policy_context['stack'] = self.stack_group.add_new_stack(
             self.region,
-            self.stack_group,
-            policy_stack_tags,
-            policy_context,
-            self.group_id,
-            policy_id,
-            change_protected
+            policy_config,
+            IAMManagedPolicies,
+            stack_tags=policy_stack_tags,
+            extra_context={'policy_context': policy_context}
         )
-        policy_context['stack'] = policy_context['template'].stack
+        policy_context['template'] = policy_context['stack'].template
         self.policy_context['name'] = policy_context['template'].gen_policy_name(policy_id)
         self.policy_context['arn'] = "arn:aws:iam::{0}:policy/{1}".format(self.account_ctx.get_id(), self.policy_context['name'])
         self.policy_context[policy_ref] = policy_context
-        self.stack_group.add_stack_order(policy_context['stack'])
 
     def init_role(self):
         "Create a Role stack and add it to the StackGroup"

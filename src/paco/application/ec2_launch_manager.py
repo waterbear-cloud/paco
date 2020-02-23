@@ -25,6 +25,7 @@ from paco import utils
 from paco.models import schemas, vocabulary
 from paco.models.locations import get_parent_by_interface
 from paco.models.references import Reference
+from paco.models.base import Named
 from paco.utils import md5sum, prefixed_name
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
@@ -127,7 +128,6 @@ class LaunchBundle():
                     PacoErrorCode.Unknown,
                     message="ec2_launch_manager: LaunchBundle: build: Unable to locate value for ref: " + instance_iam_role_arn_ref
                 )
-
 
 class EC2LaunchManager():
     """
@@ -293,7 +293,9 @@ class EC2LaunchManager():
                 ]
             } ]
         }
-        bucket_config = models.applications.S3Bucket('ec2lm', resource)
+        # ec2lm buckets have the ref resource.ec2lm.bucket
+        container = Named('ec2lm', resource)
+        bucket_config = models.applications.S3Bucket('bucket', container)
         bucket_config.update(bucket_config_dict)
         bucket_config.resolve_ref_obj = self
         bucket_config.enabled = resource.is_enabled()
@@ -323,9 +325,9 @@ class EC2LaunchManager():
         )
         s3_ctl.add_bucket(
             bucket_config,
-            config_ref = s3_bucket_ref,
+            config_ref=s3_bucket_ref,
             stack_hooks=stack_hooks,
-            change_protected = resource.change_protected
+            change_protected=resource.change_protected
         )
         self.ec2lm_buckets[s3_bucket_ref] = bucket_config
 
@@ -557,7 +559,6 @@ statement:
             policy_id=policy_id,
             policy_ref=policy_ref,
             policy_config_yaml=policy_config_yaml,
-            change_protected=resource.change_protected
         )
 
     def user_data_script(self, app_id, grp_id, resource_id, resource, instance_iam_role_ref, stack_name):
@@ -698,7 +699,6 @@ statement:
             policy_ref=policy_ref,
             policy_config_yaml=policy_config_yaml.format(secret_arn_list_yaml),
             template_params=template_params,
-            change_protected=resource.change_protected
         )
 
         return secrets_script
@@ -873,7 +873,6 @@ statement:
             policy_id=policy_id,
             policy_ref=policy_ref,
             policy_config_yaml=policy_config_yaml,
-            change_protected=resource.change_protected
         )
 
         efs_lb.set_launch_script(launch_script)
@@ -1075,7 +1074,6 @@ statement:
             policy_id=policy_id,
             policy_ref=policy_ref,
             policy_config_yaml=policy_config_yaml,
-            change_protected=resource.change_protected
         )
 
         ebs_lb.set_launch_script(launch_script)
@@ -1167,7 +1165,6 @@ statement:
             policy_id=policy_id,
             policy_ref=policy_ref,
             policy_config_yaml=policy_config_yaml,
-            change_protected=resource.change_protected
         )
 
         eip_lb.set_launch_script(launch_script)
@@ -1379,7 +1376,6 @@ statement:
             policy_id=policy_id,
             policy_ref=policy_ref,
             policy_config_yaml=policy_config_yaml,
-            change_protected=resource.change_protected
         )
 
         # Set the launch script
@@ -1388,17 +1384,12 @@ statement:
 
         # Create the CloudWatch Log Groups so that Retention and MetricFilters can be set
         if monitoring.log_sets:
-            group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
-            log_groups_config_ref = resource.paco_ref_parts + '.log_groups'
-            paco.cftemplates.LogGroups(
-                self.paco_ctx,
-                self.account_ctx,
+            self.stack_group.add_new_stack(
                 self.aws_region,
-                self.stack_group,
-                None, # stack_tags
-                group_name,
                 resource,
-                log_groups_config_ref,
+                paco.cftemplates.LogGroups,
+                stack_tags=self.stack_tags,
+                support_resource_ref_ext='log_groups',
             )
 
         # Save Configuration
@@ -1457,7 +1448,6 @@ statement:
             policy_id=policy_id,
             policy_ref=policy_ref,
             policy_config_yaml=policy_config_yaml,
-            change_protected=res_config.change_protected
         )
 
         # Create the Launch Bundle and configure it

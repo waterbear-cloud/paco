@@ -46,5 +46,6 @@ class ResourceEngine():
                 self.aws_region,
                 self.resource,
                 paco.cftemplates.CWAlarms,
+                support_resource_ref_ext='alarms',
                 stack_tags=self.stack_tags
             )
