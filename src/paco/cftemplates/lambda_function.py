@@ -128,10 +128,10 @@ class Lambda(StackTemplate):
                 description='VPC Subnet Id List',
                 value=segment_ref
             )
-            cfn_export_dict['VpcConfig'] = troposphere.awslambda.VPCConfig(
-                SecurityGroupIds=troposphere.Ref(vpc_security_group),
-                SubnetIds=troposphere.Ref(subnet_list_param),
-            )
+            cfn_export_dict['VpcConfig'] = {
+                'SecurityGroupIds': troposphere.Ref(vpc_security_group),
+                'SubnetIds': troposphere.Ref(subnet_list_param),
+            }
 
         # Code object: S3 Bucket or inline ZipFile?
         if awslambda.code.s3_bucket:

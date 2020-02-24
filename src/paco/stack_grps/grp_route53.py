@@ -28,13 +28,21 @@ class Route53StackGroup(StackGroup):
             zone = self.config.hosted_zones[zone_id]
             # this should come from config, maybe project.yaml?
             aws_region = self.paco_ctx.project['credentials'].aws_default_region
-            route53_stack = self.add_new_stack(aws_region, zone, paco.cftemplates.Route53HostedZone)
+            route53_stack = self.add_new_stack(
+                aws_region,
+                zone,
+                paco.cftemplates.Route53HostedZone
+            )
             route53_stack.set_termination_protection(True)
             self.zone_stack_map[zone_id] = route53_stack
 
     def init_legacy(self):
         aws_region = self.paco_ctx.project['credentials'].aws_default_region
-        route53_stack = self.add_new_stack(aws_region, self.config, paco.cftemplates.Route53)
+        route53_stack = self.add_new_stack(
+            aws_region,
+            self.config,
+            paco.cftemplates.Route53
+        )
         route53_stack.set_termination_protection(True)
         self.zone_stack_map['legacy'] = route53_stack
 

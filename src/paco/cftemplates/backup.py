@@ -1,34 +1,18 @@
+from paco import utils
+from paco.cftemplates.cftemplates import StackTemplate
 import troposphere
 import troposphere.backup
 
-from paco import utils
-from paco.cftemplates.cftemplates import CFTemplate
 
-class BackupVault(CFTemplate):
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        vault,
-        role
-    ):
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            config_ref=vault.paco_ref_parts,
-            stack_group=stack_group,
-            stack_tags=stack_tags
-        )
+class BackupVault(StackTemplate):
+    def __init__(self, stack, paco_ctx, role):
+        vault = stack.resource
+        super().__init__(stack, paco_ctx)
         self.set_aws_name(vault.name)
         self.init_template('Backup Vault: ' + vault.name)
         self.paco_ctx.log_action_col("Init", "Backup", "Vault")
-        is_enabled = vault.is_enabled()
-        if not is_enabled:
-            return self.set_template()
+        if not vault.is_enabled():
+            return
 
         # Service Role ARN parameter
         if role != None:
@@ -152,6 +136,3 @@ class BackupVault(CFTemplate):
                 selection_resource.DependsOn = [plan_resource.title]
                 self.template.add_resource(selection_resource)
                 idx += 1
-
-        self.enabled = is_enabled
-        self.set_template()

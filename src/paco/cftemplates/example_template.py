@@ -1,46 +1,23 @@
-import os
+from paco.cftemplates.cftemplates import StackTemplate
 import troposphere
-#import troposphere.<resource>
-
-from paco.cftemplates.cftemplates import CFTemplate
 
 
-class Example(CFTemplate):
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        grp_id,
-        res_id,
-        example_config,
-        config_ref
-    ):
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=example_config.is_enabled(),
-            config_ref=config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            change_protected=example_config.change_protected
-        )
-        self.set_aws_name('Example', grp_id, res_id)
+class Example(StackTemplate):
+    def __init__(self, stack, paco_ctx)
+        super().__init__(stack, paco_ctx)
+        self.set_aws_name('Example', self.resource_group_name, self.resource.name)
 
         # Troposphere Template Initialization
         self.init_template('Example Template')
-        if not example_config.is_enabled():
-            return self.set_template()
+        if not self.resource.is_enabled():
+            return
 
         # Parameters
         example_param = self.create_cfn_parameter(
             name='ExampleParameterName',
             param_type='String',
             description='Example parameter.',
-            value=example_config.example_variable,
+            value=self.resource.example_variable,
         )
 
         # Resource
@@ -58,9 +35,5 @@ class Example(CFTemplate):
             title='ExampleResourceId',
             description="Example resource Id.",
             value=troposphere.Ref(example_res),
-            ref=config_ref + ".id"
+            ref=self.resource.paco_ref_parts + ".id"
         )
-
-        # Generate the Template
-        self.set_template()
-

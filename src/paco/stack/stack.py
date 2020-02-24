@@ -6,7 +6,7 @@ from paco.core.exception import StackException, PacoErrorCode, PacoException
 from paco.models import references
 from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
-from paco.utils import md5sum, dict_of_dicts_merge
+from paco.utils import md5sum, dict_of_dicts_merge, list_to_comma_string
 from pprint import pprint
 from shutil import copyfile
 import os.path
@@ -280,6 +280,7 @@ class Stack():
         stack_tags=None,
         change_protected=None,
         support_resource_ref_ext=None,
+        orders=None,
     ):
         """A Stack represent a CloudFormation template that is provisioned in an account and region in AWS.
 A Stack is created empty and then has a template added to it. This allows the template to interact with the stack.
@@ -315,9 +316,8 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
         self.wait_for_delete = False
         self.tags = StackTags(stack_tags)
         self.tags.add_tag('Paco-Stack', 'true')
-        self.orders = None
+        self.orders = orders
         self.outputs_value_cache = {}
-        self.singleton = False # temp experiment by SLRole - to be removed
         self.yaml_path = None
         self.applied_yaml_path = None
         self.parameters = []
@@ -366,7 +366,6 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
             if stack_output_config.config_ref == ref.ref:
                 return stack_output_config.key
         # raise an error if no key was found
-        breakpoint()
         message = self.get_stack_error_message()
         message += "Error: Unable to find outputs key for ref: {}\n".format(ref.raw)
         raise StackException(
@@ -397,18 +396,18 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
         self.yaml_path = None
         self.applied_yaml_path = None
 
-    def set_dependency(self, template, dependency_name):
+    def set_dependency(self, stack, dependency_name):
         """
-        Makes a template dependent on another.
-        This is used when a template needs to be created with an initial
+        Makes a stack dependent on another.
+        This is used when a stack needs to be created with an initial
         configuration, and then updated later when new information becomes
         available. This is used by KMS in the DeploymentPipeline app engine.
         """
-        self.dependency_template = template
+        self.dependency_stack = stack
         self.dependency_group = True
-        if template.dependency_template == None:
-            template.set_template_file_id('parent-' + dependency_name)
-            template.dependency_group = True
+        if stack.dependency_template == None:
+            stack.set_template_file_id('parent-' + dependency_name)
+            stack.dependency_group = True
 
     def get_yaml_path(self, applied=False):
         if self.yaml_path and applied == False:
@@ -658,8 +657,8 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
         ignore_changes=False
     ):
         """Adds a parameter to the stack.
-        If param_key is a string, grabs the value of the key from the stack outputs,
-        if a list, grabs the values of each key in the list and forms a single comma delimited string as the value.
+If param_key is a string, grabs the value of the key from the stack outputs,
+if a list, grabs the values of each key in the list and forms a single comma delimited string as the value.
         """
         param_entry = None
         if type(param_key) == StackOutputParam:

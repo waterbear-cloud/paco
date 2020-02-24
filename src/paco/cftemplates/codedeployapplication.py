@@ -1,6 +1,4 @@
-import troposphere
-import troposphere.codedeploy
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.models.references import get_model_obj_from_ref
 from paco.core.exception import PacoUnsupportedFeature
 from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action
@@ -11,37 +9,19 @@ import awacs.tag
 import awacs.sns
 import awacs.cloudwatch
 import awacs.elasticloadbalancing
+import troposphere
+import troposphere.codedeploy
 
 
-class CodeDeployApplication(CFTemplate):
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        env_ctx,
-        app_id,
-        grp_id,
-        cdapp,
-        role
-    ):
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=cdapp.is_enabled(),
-            config_ref=cdapp.paco_ref_parts,
-            iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags
-        )
+class CodeDeployApplication(StackTemplate):
+    def __init__(self, stack, paco_ctx, env_ctx, app_name, role):
+        cdapp = stack.resource
+        super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_NAMED_IAM"])
         self.env_ctx = env_ctx
-        self.set_aws_name('CodeDeployApplication', grp_id, cdapp.name)
+        self.set_aws_name('CodeDeployApplication', self.resource_group_name, cdapp.name)
         self.init_template('CodeDeploy Application')
         self.res_name_prefix = self.create_resource_name_join(
-            name_list=[self.env_ctx.get_aws_name(), app_id, grp_id, cdapp.name],
+            name_list=[self.env_ctx.get_aws_name(), app_name, self.resource_group_name, cdapp.name],
             separator='-',
             camel_case=True
         )
@@ -135,6 +115,3 @@ class CodeDeployApplication(CFTemplate):
                 )
                 self.template.add_resource(policy_resource)
                 deploy_group_resource.DependsOn = policy_resource
-
-        # All done, let's go home!
-        self.set_template()

@@ -1,44 +1,21 @@
-import os
+from paco.cftemplates.cftemplates import StackTemplate
+from paco.models.references import Reference
+from paco.models import vocabulary, schemas
 import troposphere
 import troposphere.elasticache
-from paco.cftemplates.cftemplates import CFTemplate
-from paco.models.references import Reference
-from io import StringIO
-from enum import Enum
-import base64
-from paco.models import vocabulary, schemas
 
 
-class ElastiCache(CFTemplate):
+class ElastiCache(StackTemplate):
     """
     Creates an Amazon ElastiCache Redis replication group (AWS::ElastiCache::ReplicationGroup).
     A replication group is a collection of cache clusters, where one of the clusters is a
     primary read-write cluster and the others are read-only replicas.
     """
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        app_id,
-        grp_id,
-        res_id,
-        elasticache_config,
-        config_ref=None
-    ):
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=elasticache_config.is_enabled(),
-            config_ref=config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            change_protected=elasticache_config.change_protected
-        )
-        self.set_aws_name('ElastiCache', grp_id, res_id, elasticache_config.engine )
+    def __init__(self, stack, paco_ctx):
+        elasticache_config = stack.resource
+        config_ref = elasticache_config.paco_ref_parts
+        super().__init__(stack, paco_ctx)
+        self.set_aws_name('ElastiCache', self.resource_group_name, self.resource.name, elasticache_config.engine )
 
         # Troposphere Template Generation
         self.init_template('ElastiCache: {} - {}'.format(
@@ -47,9 +24,7 @@ class ElastiCache(CFTemplate):
         ))
 
         # if disabled then leave an empty placeholder and finish
-        if not elasticache_config.is_enabled():
-            return self.set_template()
-
+        if not elasticache_config.is_enabled(): return
 
         # Security Groups
         sg_params = []
@@ -126,5 +101,3 @@ class ElastiCache(CFTemplate):
             value=troposphere.GetAtt(cache_cluster_res, 'ReadEndPoint.Ports'),
             ref=config_ref + ".readendpoint.ports",
         )
-
-        self.set_template()

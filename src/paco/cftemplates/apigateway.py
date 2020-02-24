@@ -1,52 +1,31 @@
 """
-CloudFormation templates for API Gateway
+CloudFormation template for API Gateway
 """
 
+from awacs.aws import Allow, Statement, Policy, Principal
+from paco.cftemplates.cftemplates import StackTemplate
+from paco.models import references
+from paco.models.references import Reference
 import awacs.sts
 import awacs.awslambda
 import troposphere
 import troposphere.apigateway
 import troposphere.awslambda
 import troposphere.iam
-from paco.cftemplates.cftemplates import CFTemplate
-from paco.models import references
-from paco.models.references import Reference
-from awacs.aws import Allow, Statement, Policy, Principal
 
 
-class ApiGatewayRestApi(CFTemplate):
+class ApiGatewayRestApi(StackTemplate):
     """
     CloudFormation template for ApiGatewayRestApi
     """
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        app_id,
-        grp_id,
-        res_id,
-        apigatewayrestapi,
-        config_ref=None,
-    ):
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            config_ref=config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            iam_capabilities=["CAPABILITY_IAM"],
-            enabled=apigatewayrestapi.is_enabled(),
-        )
-        self.apigatewayrestapi = apigatewayrestapi
-        self.set_aws_name('ApiGatewayRestApi', grp_id, res_id)
+    def __init__(self, stack, paco_ctx):
+        super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_IAM"])
+        self.apigatewayrestapi = apigatewayrestapi = stack.resource
+        self.set_aws_name('ApiGatewayRestApi', self.resource_group_name, self.resource.name)
 
         self.init_template('ApiGateway: {}'.format(apigatewayrestapi.title))
+        template = self.template
         if not self.apigatewayrestapi.is_enabled():
-            self.set_template(self.template.to_yaml())
             return
 
         # Parameters
@@ -198,6 +177,3 @@ class ApiGatewayRestApi(CFTemplate):
             cfn_export_dict["DeploymentId"] = troposphere.Ref(deployment_resource)
             stage_resource = troposphere.apigateway.Stage.from_dict(stage_id, cfn_export_dict)
             template.add_resource(stage_resource)
-
-        # Generate the Template
-        self.set_template()

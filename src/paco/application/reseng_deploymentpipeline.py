@@ -4,6 +4,7 @@ from paco.core.yaml import YAML
 from paco.models import schemas
 from paco import models
 
+
 yaml=YAML()
 yaml.default_flow_sytle = False
 
@@ -13,7 +14,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         super().__init__(app_engine, grp_id, res_id, resource, stack_tags)
         self.pipeline_account_ctx = None
         self.pipeline_config = resource
-        self.kms_template = None
+        self.kms_stack = None
         self.kms_crypto_principle_list = []
         self.artifacts_bucket_policy_resource_arns = []
         self.artifacts_bucket_meta = {
@@ -54,7 +55,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
 
         # CodeCommit Account(s)
         # ToDo: allows ALL CodeCommit accounts access, filter out non-CI/CD CodeCommit repos?
-        for subdict in self.paco_ctx.project['resource']['codecommit'].repository_groups.values():
+        for subdict in self.paco_ctx.project['resource']['codecommit'].values():
             for repo in subdict.values():
                 kms_refs[repo.account] = None
         for key in kms_refs.keys():
@@ -70,18 +71,14 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
                 'aws': self.kms_crypto_principle_list
             }
         }
-        kms_config_ref = self.pipeline_config.paco_ref_parts + '.kms'
-        self.kms_template = cftemplates.KMS(
-            self.paco_ctx,
-            self.pipeline_account_ctx,
+        self.kms_stack = self.stack_group.add_new_stack(
             self.aws_region,
-            self.stack_group,
-            self.stack_tags,
-            self.grp_id,
-            self.res_id,
             self.resource,
-            kms_config_ref,
-            kms_config_dict
+            cftemplates.KMS,
+            account_ctx=self.pipeline_account_ctx,
+            stack_tags=self.stack_tags,
+            support_resource_ref_ext='kms',
+            extra_context={'kms_config_dict': kms_config_dict}
         )
 
         # Stages
@@ -91,39 +88,37 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
 
         # CodePipeline
         codepipeline_config_ref = self.pipeline_config.paco_ref_parts + '.codepipeline'
-        self.pipeline_config._template = cftemplates.CodePipeline(
-            self.paco_ctx,
-            self.pipeline_account_ctx,
+        self.pipeline_config._stack = self.stack_group.add_new_stack(
             self.aws_region,
-            self.stack_group,
-            self.stack_tags,
-            self.env_ctx,
-            self.app_id,
-            self.grp_id,
-            self.res_id,
             self.resource,
-            self.artifacts_bucket_meta['name'],
-            codepipeline_config_ref
+            cftemplates.CodePipeline,
+            stack_tags=self.stack_tags,
+            extra_context={
+                'env_ctx': self.env_ctx,
+                'app_name': self.app_id,
+                'artifacts_bucket_name': self.artifacts_bucket_meta['name']
+            },
         )
 
         # Add CodeBuild Role ARN to KMS Key principal now that the role is created
         kms_config_dict['crypto_principal']['aws'] = self.kms_crypto_principle_list
-        kms_template = cftemplates.KMS(
-            self.paco_ctx,
-            self.pipeline_account_ctx,
-            self.aws_region,
-            self.stack_group,
-            self.stack_tags,
-            self.grp_id,
-            self.res_id,
-            self.resource,
-            kms_config_ref,
-            kms_config_dict
-        )
-        # Adding a file id allows us to generate a second template without overwritting
-        # the first one. This is needed as we need to update the KMS policy with the
-        # Codebuild Arn after the Codebuild has been created.
-        kms_template.set_dependency(self.kms_template, 'post-pipeline')
+        # XXX ToDo: figure out how this template dependency is supposed to work and fix
+        # kms_template = cftemplates.KMS(
+        #     self.paco_ctx,
+        #     self.pipeline_account_ctx,
+        #     self.aws_region,
+        #     self.stack_group,
+        #     self.stack_tags,
+        #     self.grp_id,
+        #     self.res_id,
+        #     self.resource,
+        #     kms_config_ref,
+        #     kms_config_dict
+        # )
+        # # Adding a file id allows us to generate a second template without overwritting
+        # # the first one. This is needed as we need to update the KMS policy with the
+        # # Codebuild Arn after the Codebuild has been created.
+        # kms_template.set_dependency(self.kms_stack, 'post-pipeline')
 
         # Get the ASG Instance Role ARN
         if not self.pipeline_config.is_enabled():
@@ -301,21 +296,17 @@ policies:
 
         self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (action_config.paco_ref + '.codedeploy_tools_delegate_role.arn'))
         self.artifacts_bucket_policy_resource_arns.append(self.paco_ctx.get_ref(action_config.auto_scaling_group+'.instance_iam_role.arn'))
-        codedeploy_config_ref = action_config.paco_ref_parts
-        action_config._template = cftemplates.CodeDeploy(
-            self.paco_ctx,
-            self.account_ctx,
+        action_config._stack = self.stack_group.add_new_stack(
             self.aws_region,
-            self.stack_group,
-            self.stack_tags,
-            self.env_ctx,
-            self.app_id,
-            self.grp_id,
-            self.res_id,
-            self.pipeline_config,
-            action_config,
-            self.artifacts_bucket_meta['name'],
-            codedeploy_config_ref
+            self.resource,
+            cftemplates.CodeDeploy,
+            stack_tags=self.stack_tags,
+            extra_context={
+                'env_ctx': self.env_ctx,
+                'app_name': self.app_id,
+                'action_config': action_config,
+                'artifacts_bucket_name': self.artifacts_bucket_meta['name'],
+            },
         )
 
     def init_stage_action_codebuild_build(self, action_config):
@@ -324,21 +315,18 @@ policies:
 
         self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (action_config.paco_ref + '.project_role.arn'))
         self.kms_crypto_principle_list.append("paco.sub '${%s}'" % (action_config.paco_ref+'.project_role.arn'))
-        codebuild_config_ref = action_config.paco_ref_parts
-        action_config._template = cftemplates.CodeBuild(
-            self.paco_ctx,
-            self.pipeline_account_ctx,
+        action_config._stack = self.stack_group.add_new_stack(
             self.aws_region,
-            self.stack_group,
-            self.stack_tags,
-            self.env_ctx,
-            self.app_id,
-            self.grp_id,
-            self.res_id,
-            self.pipeline_config,
-            action_config,
-            self.artifacts_bucket_meta['name'],
-            codebuild_config_ref
+            self.resource,
+            cftemplates.CodeBuild,
+            account_ctx=self.pipeline_account_ctx,
+            stack_tags=self.stack_tags,
+            extra_context={
+                'env_ctx': self.env_ctx,
+                'app_name': self.app_id,
+                'action_config': action_config,
+                'artifacts_bucket_name': self.artifacts_bucket_meta['name'],
+            }
         )
 
     def init_stage_action_manualapproval(self, action_config):
@@ -352,19 +340,19 @@ policies:
         if schemas.IDeploymentPipelineDeployCodeDeploy.providedBy(ref.resource):
             # CodeDeploy
             if ref.resource_ref == 'deployment_group.name':
-                return ref.resource._template.stack
+                return ref.resource._stack
             elif ref.resource_ref == 'codedeploy_tools_delegate_role.arn':
-                return ref.resource._template.get_tools_delegate_role_arn()
+                return ref.resource._stack.template.get_tools_delegate_role_arn()
             elif ref.resource_ref == 'codedeploy_application_name':
-                return ref.resource._template.get_application_name()
+                return ref.resource._stack.template.get_application_name()
             elif ref.resource_ref == 'deployment_group.name':
-                return ref.resource._template.stack
+                return ref.resource._stack
         elif schemas.IDeploymentPipeline.providedBy(ref.resource):
             # DeploymentPipeline
             if ref.resource_ref.startswith('kms.'):
-                return self.kms_template.stack
+                return self.kms_stack
             elif ref.resource_ref == 'codepipeline_role.arn':
-                return ref.resource._template.get_codepipeline_role_arn()
+                return ref.resource._stack.template.get_codepipeline_role_arn()
         elif schemas.IDeploymentPipelineSourceCodeCommit.providedBy(ref.resource):
             # CodeCommit
             if ref.resource_ref == self.codecommit_role_name+'.arn':
@@ -378,8 +366,8 @@ policies:
             if ref.resource_ref == 'project_role.arn':
                 # self.cpbd_codepipebuild_template will fail if there are two deployments
                 # this application... corner case, but might happen?
-                return ref.resource._template.get_project_role_arn()
+                return ref.resource._stack.template.get_project_role_arn()
             elif ref.resource_ref == 'project.arn':
                 # self.cpbd_codepipebuild_template will fail if there are two deployments
                 # this application... corner case, but might happen?
-                return ref.resource._template.get_project_arn()
+                return ref.resource._stack.template.get_project_arn()

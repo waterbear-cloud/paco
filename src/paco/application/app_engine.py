@@ -108,14 +108,15 @@ class ApplicationEngine():
                 health_check.resolve_ref_obj = self
                 # ToDo: enable other types when there is more than one
                 if health_check.type == 'Route53HealthCheck':
-                    self.stack_group.create_stack(
-                        paco.cftemplates.Route53HealthCheck(
-                            self.paco_ctx,
-                            self.account_ctx,
-                            self.aws_region,
-                            health_check
-                        ),
+                    self.stack_group.add_new_stack(
+                        'us-east-1', # Route53 Health Check only runs in us-east-1
+                        self.config,
+                        paco.cftemplates.Route53HealthCheck,
                         stack_tags=stack_tags,
+                        extra_context={
+                            'health_check': health_check,
+                            'app_aws_region': self.aws_region,
+                        },
                     )
 
         # If alarm_sets exist init alarms for them

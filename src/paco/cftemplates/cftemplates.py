@@ -5,7 +5,7 @@ from paco.models import schemas, references
 from paco.models.references import Reference
 from paco.models.locations import get_parent_by_interface
 from paco.stack import StackOutputParam, Stack
-from paco.utils import dict_of_dicts_merge, md5sum, big_join, list_to_comma_string
+from paco.utils import dict_of_dicts_merge, md5sum, big_join
 import base64
 import random, re
 import string, sys
@@ -28,9 +28,6 @@ class StackOutputConfig():
         last_dict[ref_part]['__name__'] = stack.get_outputs_value(self.key)
 
         return conf_dict
-
-class CFTemplate():
-    pass
 
 class StackTemplate():
     """A CloudFormation template with access to a Stack object and a Project object."""

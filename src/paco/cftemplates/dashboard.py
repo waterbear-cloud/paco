@@ -1,39 +1,19 @@
+from paco.cftemplates.cftemplates import StackTemplate
 import troposphere
 import troposphere.cloudwatch
-from paco.cftemplates.cftemplates import CFTemplate
-from paco.models import references
 
 
-class CloudWatchDashboard(CFTemplate):
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        app_id,
-        grp_id,
-        res_id,
-        dashboard,
-    ):
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=dashboard.is_enabled(),
-            config_ref=dashboard.paco_ref_parts,
-            stack_group=stack_group,
-            stack_tags=stack_tags
-        )
-        self.set_aws_name('Dashboard', grp_id, res_id)
+class CloudWatchDashboard(StackTemplate):
+    def __init__(self, stack, paco_ctx):
+        dashboard = stack.resource
+        super().__init__(stack, paco_ctx)
+        self.set_aws_name('Dashboard', self.resource_group_name, self.resource.name)
         self.init_template('CloudWatch Dashboard')
 
-        if not dashboard.is_enabled():
-            return self.set_template()
+        if not dashboard.is_enabled(): return
 
         # Parameters for variables
-        if dashboard.variables and dashboard.is_enabled():
+        if dashboard.variables:
             for key, value in dashboard.variables.items():
                 if type(value) == type(str()):
                     param_type = 'String'
@@ -57,7 +37,7 @@ class CloudWatchDashboard(CFTemplate):
             param_type='String',
             name='AwsRegion',
             description='Dashboard Region Variable',
-            value=aws_region
+            value=self.aws_region
         )
 
         # Dashboard resource
@@ -72,6 +52,3 @@ class CloudWatchDashboard(CFTemplate):
             cfn_export_dict
         )
         self.template.add_resource(dashboard_resource)
-
-        # Generate the Template
-        self.set_template()

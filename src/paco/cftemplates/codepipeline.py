@@ -1,44 +1,21 @@
-import os
-from paco.cftemplates.cftemplates import CFTemplate
+from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action
+from awacs.sts import AssumeRole
 from paco import utils
+from paco.cftemplates.cftemplates import StackTemplate
 import troposphere
 import troposphere.codepipeline
 import troposphere.codebuild
 import troposphere.sns
-from io import StringIO
-from enum import Enum
-from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action
-from awacs.sts import AssumeRole
 
 
-class CodePipeline(CFTemplate):
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        env_ctx,
-        app_id,
-        grp_id,
-        res_id,
-        res_config,
-        artifacts_bucket_name,
-        cpbd_config_ref
-    ):
+class CodePipeline(StackTemplate):
+    def __init__(self, stack, paco_ctx, env_ctx, app_name, artifacts_bucket_name):
+        res_config = stack.resource
         self.env_ctx = env_ctx
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=res_config.is_enabled(),
-            config_ref=cpbd_config_ref,
-            iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags
-        )
-        self.set_aws_name('CodePipeline', grp_id, res_id)
+        super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_NAMED_IAM"])
+        grp_name = self.resource_group_name
+        res_name = self.resource.name
+        self.set_aws_name('CodePipeline', grp_name, res_name)
 
         # Troposphere Template Initialization
         self.init_template('Deployment: CodePipeline')
@@ -48,10 +25,10 @@ class CodePipeline(CFTemplate):
             return
 
         self.res_name_prefix = self.create_resource_name_join(
-            name_list=[env_ctx.get_aws_name(), app_id, grp_id, res_id],
+            name_list=[env_ctx.get_aws_name(), app_name, grp_name, res_name],
             separator='-',
-            camel_case=True)
-
+            camel_case=True
+        )
         self.resource_name_prefix_param = self.create_cfn_parameter(
             param_type='String',
             name='ResourceNamePrefix',
@@ -71,17 +48,11 @@ class CodePipeline(CFTemplate):
             value=artifacts_bucket_name,
         )
         self.manual_approval_is_enabled = False
-        self.create_codepipeline_cfn(
-            template,
-            res_config,
-        )
-        self.set_template()
+        self.create_codepipeline_cfn()
 
-    def create_codepipeline_cfn(
-        self,
-        template,
-        res_config,
-    ):
+    def create_codepipeline_cfn(self):
+        template = self.template
+        res_config = self.stack.resource
         # CodePipeline
         # Source Actions
         source_stage_actions = []

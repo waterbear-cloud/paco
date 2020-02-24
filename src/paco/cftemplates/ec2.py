@@ -1,46 +1,26 @@
-import os
-from paco.cftemplates.cftemplates import CFTemplate
-
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.cftemplates.cftemplates import StackOutputParam
 from paco.models.references import Reference
-from io import StringIO
-from enum import Enum
 
 
-class EC2(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 env_id,
-                 app_id,
-                 grp_id,
-                 ec2_id,
-                 ec2_config,
-                 ec2_config_ref):
-        #paco_ctx.log("EC2 CF Template init")
-
-        super().__init__(paco_ctx,
-                         account_ctx,
-                         aws_region,
-                         enabled=ec2_config.is_enabled(),
-                         config_ref=ec2_config_ref,
-                         stack_group=stack_group,
-                         stack_tags=stack_tags)
-        self.set_aws_name('EC2', grp_id, ec2_id)
+# ToDo: this template is old, early code and hasn't been tested in forever
+# and it's API calls are really old school
+class EC2(StackTemplate):
+    def __init__(self, stack, paco_ctx, netenv_name, env_name, app_name):
+        ec2_config = stack.resource
+        super().__init__(stack, paco_ctx)
+        self.set_aws_name('EC2', self.resource_group_name, self.resource.name)
 
         # Initialize Parameters
-        instance_name = self.create_resource_name_join([self.env_ctx.netenv_id, env_id, app_id, ec2_id],
-                                                     '-',
-                                                     True)
+        instance_name = self.create_resource_name_join(
+            [netenv_name, env_name, app_name, self.resource.name],
+            '-',
+            True
+        )
         self.set_parameter('InstanceName', instance_name)
         self.set_parameter('AssociatePublicIpAddress', ec2_config.associate_public_ip_address)
         self.set_parameter('InstanceAMI', ec2_config.instance_ami)
         self.set_parameter('KeyName', ec2_config.instance_key_pair)
-
-        #self.set_parameter('SubnetId', ec2_config['?'])
 
         # Segment SubnetList is a Segment stack Output based on availability zones
         segment_stack = self.env_ctx.get_segment_stack(ec2_config.segment)
@@ -161,7 +141,7 @@ Outputs:
   InstanceId:
     Value: !Ref Instance
 """
-        self.register_stack_output_config(ec2_config_ref+'.id', 'InstanceId')
+        self.register_stack_output_config(ec2_config.paco_ref_parts + '.id', 'InstanceId')
 
         self.set_template(template_fmt)
 

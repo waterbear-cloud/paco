@@ -30,9 +30,7 @@ class CloudTrailStackGroup(StackGroup):
 
             # Create an S3 bucket to store the CloudTrail in
             s3_ctl = self.paco_ctx.get_controller('S3')
-            s3_config_ref = trail.paco_ref + '.s3bucket'
             # ToDo: StackTags is None
-            s3_ctl.init_context(account_ctx, region, s3_config_ref, self, None)
             put_suffixes = []
             for account in accounts:
                 if trail.s3_key_prefix:
@@ -59,31 +57,27 @@ class CloudTrailStackGroup(StackGroup):
                     'condition': {"StringEquals": {"s3:x-amz-acl": "bucket-owner-full-control"}}
                 } ],
             }
-            global_buckets = project['resource']['s3']
+            global_buckets = project['resource']['s3'].buckets
             s3bucket = paco.models.applications.S3Bucket(trail.name, global_buckets)
             apply_attributes_from_config(s3bucket, bucket_config_dict, read_file_path = 'dynamically generated in code paco.controllers.ctl_cloudtrail')
-            global_buckets.buckets[trail.name] = s3bucket
+            global_buckets[trail.name] = s3bucket
             s3bucket.resolve_ref_object = self
             s3bucket.enabled = trail.is_enabled()
             try:
-                s3_ctl.add_bucket(
-                    s3bucket,
-                    config_ref=s3_config_ref,
-                )
+                s3_config_ref = s3bucket.paco_ref_parts
+                s3_ctl.init_context(account_ctx, region, s3_config_ref, self, None)
+                s3_ctl.add_bucket(s3bucket, config_ref=s3_config_ref)
             except PacoBucketExists:
                 # for multiple accounts there is only one bucket needed
                 pass
             # Create the CloudTrail stack and prepare it
-            cloudtrail_template = paco.cftemplates.CloudTrail(
-                self.paco_ctx,
-                self.account_ctx,
+            stack = self.add_new_stack(
                 region,
-                self,
-                None, #stack_tags
                 trail,
-                s3bucket.get_bucket_name()
+                paco.cftemplates.CloudTrail,
+                extra_context={'s3_bucket_name': s3bucket.get_bucket_name()}
             )
-            self.stack_list.append(cloudtrail_template.stack)
+            self.stack_list.append(stack)
 
 
 class CloudTrailController(Controller):

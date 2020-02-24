@@ -104,6 +104,10 @@ class SLRoleContext():
         self.region = region
         self.stack_group = stack_group
         self.servicename = servicename
+        self.stack_group.add_new_stack(
+            self.region,
+
+        )
         self.sl_role_template = IAMSLRoles(
             paco_ctx,
             account_ctx,
@@ -581,16 +585,14 @@ class IAMController(Controller):
                     hook_arg=user_config
                 )
 
-        config_ref = 'resource.iam.users'
-        IAMUsers(
-            self.paco_ctx,
-            master_account_ctx,
+        # stack for the IAM User - this only exists in the Master account
+        # and delegate roles are provisioned in accounts
+        self.iam_user_stack_groups['master'].add_new_stack(
             master_account_ctx.config.region,
-            self.iam_user_stack_groups['master'],
-            None, # stack_tags,
-            stack_hooks,
             self.iam_config.users,
-            config_ref
+            IAMUsers,
+            account_ctx=master_account_ctx,
+            stack_hooks=stack_hooks,
         )
 
         for user_name in self.iam_config.users.keys():
@@ -612,34 +614,19 @@ class IAMController(Controller):
             for account_name in self.paco_ctx.project['accounts'].keys():
                 account_ctx = self.paco_ctx.get_account_context('paco.ref accounts.'+account_name)
                 config_ref = 'resource.iam.users.'+user_name
-                # Template and stack
-                IAMUserAccountDelegates(
-                    self.paco_ctx,
-                    account_ctx,
+                # IAM User delegate stack
+                self.iam_user_stack_groups[account_name].add_new_stack(
                     master_account_ctx.config.region,
-                    self.iam_user_stack_groups[account_name],
-                    None, # stack_tags
-                    [StackOrder.PROVISION ,StackOrder.WAITLAST],
                     user_config,
-                    permissions_by_account[account_name],
-                    config_ref
+                    IAMUserAccountDelegates,
+                    stack_orders=[StackOrder.PROVISION ,StackOrder.WAITLAST],
+                    account_ctx=account_ctx,
+                    extra_context={
+                        'permissions_list': permissions_by_account[account_name],
+                        'account_id': account_ctx.id,
+                        'master_account_id': master_account_ctx.id,
+                    }
                 )
-
-
-        # Create the IAM Users
-        #iam_user(self.iam_config.users)
-            # Create IAMUser
-            #   - Access Key
-            #   - Console Access: Enough to be able to login and set MFA
-            #   - user_config.accounts: Create cross account access roles
-            #   - Prompt for and set password
-            #
-            # Iterate through permissions
-            #   - CodeCommit
-            #     - Get repository account and create a policy and attach
-            #       it to the user's account delegatge role
-            #     - Manage SSH keys
-
 
     def init(self, command=None, model_obj=None):
         if model_obj == None:

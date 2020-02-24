@@ -78,15 +78,11 @@ class BackupVaultsStackGroup(StackGroup):
         role = self.create_iam_role()
         for backup_vault in self.config.values():
             backup_vault.resolve_ref_obj = self
-            backup_vault_template = paco.cftemplates.BackupVault(
-                self.paco_ctx,
-                self.account_ctx,
+            stack = self.add_new_stack(
                 self.region,
-                self, # stack_group
-                StackTags(self.stack_tags),
                 backup_vault,
-                role
+                paco.cftemplates.BackupVault,
+                stack_tags=StackTags(self.stack_tags),
+                extra_context={'role': role}
             )
-            self.stack_list.append(
-                backup_vault_template.stack
-            )
+            self.stack_list.append(stack)

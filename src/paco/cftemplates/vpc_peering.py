@@ -13,7 +13,7 @@ class VPCPeering(StackTemplate):
         paco_ctx,
     ):
         vpc_config = stack.resource
-        network_conifg = get_parent_by_interface(vpc_config, schemas.INetwork)
+        network_config = get_parent_by_interface(vpc_config, schemas.INetwork)
         env_name = get_parent_by_interface(vpc_config, schemas.IEnvironment).name
         netenv_name = get_parent_by_interface(vpc_config, schemas.INetworkEnvironment).name
         super().__init__(

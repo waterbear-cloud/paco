@@ -1,25 +1,19 @@
-import paco.cftemplates
 from paco.application.res_engine import ResourceEngine
-from paco.core.yaml import YAML
+import paco.cftemplates
 
-yaml=YAML()
-yaml.default_flow_sytle = False
 
 class LBClassicResourceEngine(ResourceEngine):
 
     def init_resource(self):
         elb_config = self.resource[res_id]
         aws_name = '-'.join([self.grp_id, self.res_id])
-        paco.cftemplates.ELB(
-            self.paco_ctx,
-            self.account_ctx,
+        self.stack_group.add_new_stack(
             self.aws_region,
-            self.stack_group,
-            self.stack_tags,
-            self.env_ctx,
-            self.app_id,
-            self.grp_id,
-            self.res_id,
-            elb_config,
-            self.resource.paco_ref_parts
+            self.resource,
+            paco.cftemplates.ELB,
+            stack_tags=self.stack_tags,
+            extra_context={
+                'env_ctx': self.env_ctx,
+                'app_name': self.app_id,
+            }
         )

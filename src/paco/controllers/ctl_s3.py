@@ -219,11 +219,7 @@ class S3Context():
 
 class S3Controller(Controller):
     def __init__(self, paco_ctx):
-        super().__init__(
-            paco_ctx,
-            "S3",
-            "Resource"
-        )
+        super().__init__(paco_ctx, "S3", "Resource")
         self.contexts = {}
         self.init_s3_resource_done = False
 
@@ -256,8 +252,9 @@ class S3Controller(Controller):
         self.paco_ctx.log_action_col("Init", "S3")
         self.init_s3_resource_done = True
         s3_env_map = {}
+        s3resource = self.paco_ctx.project['resource']['s3']
         for bucket_id in bucket_list:
-            bucket_config = self.paco_ctx.project['resource']['s3'].buckets[bucket_id]
+            bucket_config = s3resource.buckets[bucket_id]
             account_ctx = self.paco_ctx.get_account_context(account_ref=bucket_config.account)
             region = bucket_config.region
             s3_env_id = '-'.join([account_ctx.get_name(), region])
@@ -274,6 +271,11 @@ class S3Controller(Controller):
         self.init_bucket_environments(s3_env_map, stack_tags)
         self.paco_ctx.log_action_col("Init", "S3", "Completed")
 
+    def resolve_ref(self, ref):
+        # find the bucket then call resolve_ref on it
+        buckets = self.paco_ctx.project['resource']['s3'].buckets
+        return buckets[ref.parts[3]].resolve_ref(ref)
+
     def init(self, command=None, model_obj=None):
         if model_obj != None:
             bucket_list = []
@@ -282,6 +284,8 @@ class S3Controller(Controller):
             else:
                 bucket_list.append(model_obj.name)
             self.init_s3_resource(bucket_list, stack_tags=None)
+        s3resource = self.paco_ctx.project['resource']['s3']
+        s3resource.resolve_ref_obj = self
 
     def init_context(self, account_ctx, region, resource_ref, stack_group, stack_tags):
         if resource_ref.startswith('paco.ref '):

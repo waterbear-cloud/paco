@@ -45,15 +45,14 @@ class CodeDeployApplicationResourceEngine(ResourceEngine):
         )
 
         # CodeDeploy Application
-        paco.cftemplates.CodeDeployApplication(
-            self.paco_ctx,
-            self.account_ctx,
+        self.stack_group.add_new_stack(
             self.aws_region,
-            self.stack_group,
-            self.stack_tags,
-            self.env_ctx,
-            self.app_id,
-            self.grp_id,
             self.resource,
-            role
+            paco.cftemplates.CodeDeployApplication,
+            stack_tags=self.stack_tags,
+            extra_context={
+                'env_ctx': self.env_ctx,
+                'app_name': self.app_id,
+                'role': role,
+            }
         )
