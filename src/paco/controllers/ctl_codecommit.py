@@ -123,7 +123,7 @@ policies:
         # codecommit.example.app1.name
         group_id = ref.parts[2]
         repo_id = ref.parts[3]
-        repo_config = self.stack_grps[0].config.repository_groups[group_id][repo_id]
+        repo_config = self.stack_grps[0].config[group_id][repo_id]
         if ref.last_part == "name":
             return repo_config.name
         if ref.last_part == "arn":
