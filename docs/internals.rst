@@ -97,6 +97,17 @@ is created with the stack object passed in the constructor, after the new StackT
 ``.template`` attribute any commands that need to happen after are applied and the stack is given orders
 to the StackGroup.
 
+Every Stack is created with a ``.resource`` attribute. This is the model object which contains the configuration
+for that Stacks template. The ``IResource`` interface in the models provides an ``is_enabled()`` method, and
+a ``.order`` and ``.change_protected`` attributes. This helps inform the stack if it should be modified,
+and in which order, or if it shouldn't be touched at all.
+
+Every Stack as a ``stack_ref`` property. This is normally the paco.ref for the ``.resource`` but it can also
+be extended with a ``support_resource_ref_ext`` when the Stack is created. For example, an ASG resource needs
+a LogGroup stack where it will log to. This is a supporting resource that isn't explicitly declared in the
+configuration. The same happens for Alarms, which add a '.alarms' extension to the ref.
+
+
 StackTemplate
 ^^^^^^^^^^^^^
 
