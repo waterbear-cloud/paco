@@ -6,9 +6,6 @@ from paco.models.references import Reference
 from paco.models.locations import get_parent_by_interface
 from paco.stack import StackOutputParam, Stack
 from paco.utils import dict_of_dicts_merge, md5sum, big_join
-import base64
-import random, re
-import string, sys
 import troposphere
 
 

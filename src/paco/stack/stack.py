@@ -1,6 +1,7 @@
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, WaiterError
 from copy import deepcopy
 from enum import Enum
+from paco import utils
 from paco.core.yaml import YAML
 from paco.core.exception import StackException, PacoErrorCode, PacoException
 from paco.models import references
@@ -9,8 +10,11 @@ from paco.models.locations import get_parent_by_interface
 from paco.utils import md5sum, dict_of_dicts_merge, list_to_comma_string
 from pprint import pprint
 from shutil import copyfile
+import base64
 import os.path
 import pathlib
+import re
+import sys
 
 
 # deepdiff turns on Deprecation warnings, we need to turn them back off
@@ -482,7 +486,7 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
             if e.response['Error']['Code'] == 'ValidationError':
                 message = "Validation Error: {}\nStack: {}\nTemplate: {}\n".format(
                     e.response['Error']['Message'],
-                    self.stack.get_name(),
+                    self.get_name(),
                     self.get_yaml_path()
                 )
                 raise StackException(PacoErrorCode.TemplateValidationError, message=message)
@@ -528,9 +532,9 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
             return
 
         print("--------------------------------------------------------")
-        print("Confirm changes to Parameters for CloudFormation Stack: " + self.stack.get_name())
+        print("Confirm changes to Parameters for CloudFormation Stack: " + self.get_name())
         print()
-        print("{}".format(self.stack.get_name()))
+        print("{}".format(self.get_name()))
         if self.paco_ctx.verbose:
             print()
             print("Model: {}".format(self.config_ref))
@@ -616,7 +620,7 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
             print("Removed Parameter: {} = {}".format(applied_param['ParameterKey'], applied_param['ParameterValue']))
 
         print("--------------------------------------------------------")
-        print("Stack: " + self.stack.get_name())
+        print("Stack: " + self.get_name())
         print("")
         answer = self.paco_ctx.input_confirm_action("\nAre these changes acceptable?")
         if answer == False:
@@ -862,9 +866,9 @@ if a list, grabs the values of each key in the list and forms a single comma del
         if len(deep_diff.keys()) == 0:
             return
         print("--------------------------------------------------------")
-        print("Confirm template changes to CloudFormation Stack: " + self.stack.get_name())
+        print("Confirm template changes to CloudFormation Stack: " + self.get_name())
         print()
-        print("{}".format(self.stack.get_name()))
+        print("{}".format(self.get_name()))
         if self.paco_ctx.verbose:
             print()
             print("model: {}".format(self.config_ref))
@@ -895,7 +899,7 @@ if a list, grabs the values of each key in the list and forms a single comma del
             print("+++")
 
         print("\n--------------------------------------------------------")
-        print("Stack: " + self.stack.get_name())
+        print("Stack: " + self.get_name())
         print("")
         self.warn_template_changes(deep_diff)
         answer = self.paco_ctx.input_confirm_action("\nAre these changes acceptable?")
