@@ -63,6 +63,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
                 "paco.sub 'arn:aws:iam::${%s}:root'" % (key)
             )
 
+        # KMS stack
         kms_config_dict = {
             'admin_principal': {
                 'aws': [ "!Sub 'arn:aws:iam::${{AWS::AccountId}}:root'" ]

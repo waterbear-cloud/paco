@@ -287,12 +287,12 @@ class Stack():
         orders=None,
     ):
         """A Stack represent a CloudFormation template that is provisioned in an account and region in AWS.
-A Stack is created empty and then has a template added to it. This allows the template to interact with the stack.
-A Stack is provided a resource, a Paco model object that it is associated with - this model object can set attribtues
-such as change_protected that change if the Stack is provisioned or not.
-A Stack can interact with the CLI.
-A Stack can cache it's templates to the filesystem or check them against AWS and get their status.
-"""
+        A Stack is created empty and then has a template added to it. This allows the template to interact with the stack.
+        A Stack is provided a resource, a Paco model object that it is associated with - this model object can set attribtues
+        such as change_protected that change if the Stack is provisioned or not.
+        A Stack can interact with the CLI.
+        A Stack can cache it's templates to the filesystem or check them against AWS and get their status.
+        """
         self.paco_ctx = paco_ctx
         self.account_ctx = account_ctx
         self.grp_ctx = stack_group
@@ -336,16 +336,17 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
             self.hooks = hooks
             self.hooks.stack = self
 
-    #--------------------------------------------------------
     # Use properties here for just-in-time processing as the
     # template's yaml path may change if a template uses
     # the set_template_file_id() method
     @property
     def cache_filename(self):
         return self.get_yaml_path().with_suffix(".cache")
+
     @property
     def output_filename(self):
         return self.get_yaml_path().with_suffix(".output")
+
     @property
     def cfn_client(self):
         if hasattr(self, '_cfn_client') == False:
@@ -581,9 +582,6 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
                             col_4_size = 80
                             )
                         # Parameter Changes
-                        #print("Changed Parameter: " + new_param['ParameterKey'])
-                        #print("        old value: " + applied_param['ParameterValue'])
-                        #print("        new value: " + new_param['ParameterValue'])
                         if new_param['ParameterKey'] == 'UserDataScript':
                             old_decoded = base64.b64decode(applied_param['ParameterValue'])
                             new_decoded = base64.b64decode(new_param['ParameterValue'])
@@ -602,7 +600,6 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
 
                     else:
                         # New parameter
-                        #
                         self.paco_ctx.log_action_col(
                             '  ',
                             col_2 = 'New Param',
@@ -661,8 +658,8 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
         ignore_changes=False
     ):
         """Adds a parameter to the stack.
-If param_key is a string, grabs the value of the key from the stack outputs,
-if a list, grabs the values of each key in the list and forms a single comma delimited string as the value.
+        If param_key is a string, grabs the value of the key from the stack outputs,
+        if a list, grabs the values of each key in the list and forms a single comma delimited string as the value.
         """
         param_entry = None
         if type(param_key) == StackOutputParam:
@@ -696,7 +693,7 @@ if a list, grabs the values of each key in the list and forms a single comma del
             if isinstance(ref_value, Stack):
                 # If we need to query another stack, but that stack is not
                 # enabled, then avoid setting this parameter to avoid lookup errors later
-                if self.enabled == False and ref_value.template.enabled == False:
+                if self.enabled == False and ref_value.enabled == False:
                     return None
                 stack_output_key = self.get_stack_outputs_key_from_ref(ref, ref_value)
                 param_entry = StackOutputParam(param_key, ref_value, stack_output_key, self)
