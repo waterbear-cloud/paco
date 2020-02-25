@@ -16,8 +16,10 @@ class StackOrderItem():
 
 
 class StackGroup():
-    """A group of Stacks. A StackGroup is responsible for managing the order in which
-it's Stack orders are sent to AWS."""
+    """A group of Stacks.
+    A StackGroup is responsible for managing the order in which it's Stack
+    are modified in AWS.
+    """
     def __init__(
         self,
         paco_ctx,
