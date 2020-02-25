@@ -38,12 +38,13 @@ class IAMUsers(CFTemplate):
 
         # Troposphere Template Initialization
         self.init_template('IAM Users')
-        template = self.template
 
         # IAM Users
         for user_name in iam_users_config.keys():
             iam_user_config = iam_users_config[user_name]
             if iam_user_config.is_enabled() == False:
+                continue
+            if account_ctx.config.paco_ref != iam_user_config.account:
                 continue
             self.add_iam_user(iam_user_config)
 
@@ -51,6 +52,7 @@ class IAMUsers(CFTemplate):
         self.set_template()
 
     def add_iam_user(self, iam_user_config):
+
         # Parameters
         username_param = self.create_cfn_parameter(
             name=self.create_cfn_logical_id('Username'+utils.md5sum(str_data=iam_user_config.username)),
@@ -89,103 +91,126 @@ class IAMUsers(CFTemplate):
         )
         self.template.add_resource(iam_user_res)
 
-        # Account Delegate Assume Role
-        #   - A list of account delegate roles in each of the accounts
-        assume_role_arn_list = []
-        account_list = iam_user_config.account_whitelist
-        if iam_user_config.account_whitelist[0] == 'all':
-            account_list = self.paco_ctx.project['accounts'].keys()
-        for account_name in account_list:
-            account_ref = 'paco.ref accounts.'+account_name
-            account_id = self.paco_ctx.get_ref(account_ref+'.id')
-            delegate_role_arn = "arn:aws:iam::{}:role/IAM-User-Account-Delegate-Role-{}".format(
-                account_id,
-                self.create_resource_name(iam_user_config.name, filter_id='IAM.Role.RoleName')
-            )
-            assume_role_arn_list.append(delegate_role_arn)
+        if iam_user_config.assume_mfa_role_enabled == False:
+            # If assume_mfa_role_enabled is False, then we put the CustomPolicies
+            # inline
+            pass
+        else:
+            # Account Delegate Assume Role
+            #   - A list of account delegate roles in each of the accounts
+            assume_role_arn_list = []
+            account_list = iam_user_config.account_whitelist
+            if iam_user_config.account_whitelist[0] == 'all':
+                account_list = self.paco_ctx.project['accounts'].keys()
+            for account_name in account_list:
+                account_ref = 'paco.ref accounts.'+account_name
+                account_id = self.paco_ctx.get_ref(account_ref+'.id')
+                delegate_role_arn = "arn:aws:iam::{}:role/IAM-User-Account-Delegate-Role-{}".format(
+                    account_id,
+                    self.create_resource_name(iam_user_config.name, filter_id='IAM.Role.RoleName')
+                )
+                assume_role_arn_list.append(delegate_role_arn)
 
-        if len(assume_role_arn_list) > 0:
-            user_policy_dict = {
-                'ManagedPolicyName': 'IAM-User-AssumeRole-Policy-{}'.format(
+            if len(assume_role_arn_list) > 0:
+                assume_role_policy_dict = {
+                    'ManagedPolicyName': 'IAM-User-AssumeRole-Policy-{}'.format(
+                        self.create_resource_name(iam_user_config.name, '-').capitalize()
+                    ),
+                    'PolicyDocument': PolicyDocument(
+                            Version="2012-10-17",
+                            Statement=[
+                                Statement(
+                                    Effect=Allow,
+                                    Action=[AssumeRole],
+                                    Resource=assume_role_arn_list
+                                )
+                            ]
+                    ),
+                    'Users': [troposphere.Ref(iam_user_res)]
+                }
+                assume_role_policy_res = troposphere.iam.ManagedPolicy.from_dict(
+                    self.create_cfn_logical_id('IAMUserPolicy'+iam_user_config.name),
+                    assume_role_policy_dict
+                )
+                self.template.add_resource(assume_role_policy_res)
+
+        if iam_user_config.console_access_enabled == True:
+            console_policy_dict = {
+                'ManagedPolicyName': 'IAM-User-Console-Policy-{}'.format(
                     self.create_resource_name(iam_user_config.name, '-').capitalize()
                 ),
                 'PolicyDocument': PolicyDocument(
-                        Version="2012-10-17",
-                        Statement=[
-                            Statement(
-                                Effect=Allow,
-                                Action=[AssumeRole],
-                                Resource=assume_role_arn_list
-                            ),
-                            Statement(
-                                Sid='AllowViewAccountInfo',
-                                Effect=Allow,
-                                Action=[
-                                    Action('iam', 'GetAccountPasswordPolicy'),
-                                    Action('iam', 'GetAccountSummary'),
-                                    Action('iam', 'ListVirtualMFADevices'),
-                                    Action('iam', 'ListUsers'),
-                                ],
-                                Resource=['*']
-                            ),
-                            Statement(
-                                Sid='AllowManageOwnPasswords',
-                                Effect=Allow,
-                                Action=[
-                                    Action('iam', 'ChangePassword'),
-                                    Action('iam', 'GetUser'),
-                                ],
-                                Resource=['arn:aws:iam::*:user/{}'.format(iam_user_config.username)]
-                            ),
-                            Statement(
-                                Sid='AllowManageOwnVirtualMFADevice',
-                                Effect=Allow,
-                                Action=[
-                                    Action('iam', 'CreateVirtualMFADevice'),
-                                    Action('iam', 'DeleteVirtualMFADevice'),
-                                ],
-                                Resource=['arn:aws:iam::*:mfa/{}'.format(iam_user_config.username)]
-                            ),
-                            Statement(
-                                Sid='AllowManageOwnUserMFA',
-                                Effect=Allow,
-                                Action=[
-                                    Action('iam', 'DeactivateMFADevice'),
-                                    Action('iam', 'EnableMFADevice'),
-                                    Action('iam', 'ListMFADevices'),
-                                    Action('iam', 'ResyncMFADevice'),
-                                ],
-                                Resource=['arn:aws:iam::*:user/{}'.format(iam_user_config.username)]
-                            ),
-                            Statement(
-                                Sid='DenyAllExceptListedIfNoMFA',
-                                Effect=Deny,
-                                NotAction=[
-                                    Action('iam', 'CreateVirtualMFADevice'),
-                                    Action('iam', 'EnableMFADevice'),
-                                    Action('iam', 'ChangePassword'),
-                                    Action('iam', 'GetUser'),
-                                    Action('iam', 'ListMFADevices'),
-                                    Action('iam', 'ListVirtualMFADevices'),
-                                    Action('iam', 'ResyncMFADevice'),
-                                    Action('sts', 'GetSessionToken'),
-                                    Action('iam', 'ListUsers'),
-                                ],
-                                Resource=['*'],
-                                Condition=Condition(
-                                    [
-                                        AWACSBool({
-                                            MultiFactorAuthPresent: False
-                                        })
-                                    ]
-                                )
-                            ) ],
-                    ),
+                    Version="2012-10-17",
+                    Statement=[
+                        Statement(
+                            Sid='AllowViewAccountInfo',
+                            Effect=Allow,
+                            Action=[
+                                Action('iam', 'GetAccountPasswordPolicy'),
+                                Action('iam', 'GetAccountSummary'),
+                                Action('iam', 'ListVirtualMFADevices'),
+                                Action('iam', 'ListUsers'),
+                            ],
+                            Resource=['*']
+                        ),
+                        Statement(
+                            Sid='AllowManageOwnPasswords',
+                            Effect=Allow,
+                            Action=[
+                                Action('iam', 'ChangePassword'),
+                                Action('iam', 'GetUser'),
+                            ],
+                            Resource=['arn:aws:iam::*:user/{}'.format(iam_user_config.username)]
+                        ),
+                        Statement(
+                            Sid='AllowManageOwnVirtualMFADevice',
+                            Effect=Allow,
+                            Action=[
+                                Action('iam', 'CreateVirtualMFADevice'),
+                                Action('iam', 'DeleteVirtualMFADevice'),
+                            ],
+                            Resource=['arn:aws:iam::*:mfa/{}'.format(iam_user_config.username)]
+                        ),
+                        Statement(
+                            Sid='AllowManageOwnUserMFA',
+                            Effect=Allow,
+                            Action=[
+                                Action('iam', 'DeactivateMFADevice'),
+                                Action('iam', 'EnableMFADevice'),
+                                Action('iam', 'ListMFADevices'),
+                                Action('iam', 'ResyncMFADevice'),
+                            ],
+                            Resource=['arn:aws:iam::*:user/{}'.format(iam_user_config.username)]
+                        ),
+                        Statement(
+                            Sid='DenyAllExceptListedIfNoMFA',
+                            Effect=Deny,
+                            NotAction=[
+                                Action('iam', 'CreateVirtualMFADevice'),
+                                Action('iam', 'EnableMFADevice'),
+                                Action('iam', 'ChangePassword'),
+                                Action('iam', 'GetUser'),
+                                Action('iam', 'ListMFADevices'),
+                                Action('iam', 'ListVirtualMFADevices'),
+                                Action('iam', 'ResyncMFADevice'),
+                                Action('sts', 'GetSessionToken'),
+                                Action('iam', 'ListUsers'),
+                            ],
+                            Resource=['*'],
+                            Condition=Condition(
+                                [
+                                    AWACSBool({
+                                        MultiFactorAuthPresent: False
+                                    })
+                                ]
+                            )
+                        ) ],
+                ),
                 'Users': [troposphere.Ref(iam_user_res)]
             }
-            # Policy
-            user_policy_res = troposphere.iam.ManagedPolicy.from_dict(
+            # Console Policy
+            console_policy_res = troposphere.iam.ManagedPolicy.from_dict(
                 self.create_cfn_logical_id('IAMUserPolicy'+iam_user_config.name),
-                user_policy_dict
+                console_policy_dict
             )
-            self.template.add_resource(user_policy_res)
+            self.template.add_resource(console_policy_res)

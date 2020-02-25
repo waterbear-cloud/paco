@@ -1,4 +1,4 @@
-from paco.cftemplates import IAMRoles, IAMManagedPolicies,IAMUsers, IAMUserAccountDelegates, IAMSLRoles
+from paco.cftemplates import IAMRoles, IAMManagedPolicies, IAMUsers, IAMUserAccountDelegates, IAMSLRoles
 from paco.controllers.controllers import Controller
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
@@ -525,7 +525,8 @@ class IAMController(Controller):
                     'key_num': key_num
                 }
                 if old_keys[key_num] != None:
-                    print("Error: Cur keys have already been set.")
+                    print("Error: Cur keys have already been set: {}".format(key_num))
+                    breakpoint()
                     raise StackException(PacoErrorCode.Unknown, message='Cur keys have already been set')
                 old_keys[key_num] = key_config
 
@@ -571,10 +572,6 @@ class IAMController(Controller):
     def init_users(self, model_obj):
         self.stack_group_filter = model_obj.paco_ref_parts
         master_account_ctx = self.paco_ctx.get_account_context(account_ref='paco.ref accounts.master')
-        # StackGroup
-        for account_name in self.paco_ctx.project['accounts'].keys():
-            account_ctx = self.paco_ctx.get_account_context('paco.ref accounts.'+account_name)
-            self.iam_user_stack_groups[account_name] = IAMUserStackGroup(self.paco_ctx, account_ctx, account_name, self)
 
         stack_hooks = StackHooks(self.paco_ctx)
         for user_name in self.iam_config.users.keys():
@@ -590,20 +587,30 @@ class IAMController(Controller):
                     hook_arg=user_config
                 )
 
-        config_ref = 'resource.iam.users'
-        IAMUsers(
-            self.paco_ctx,
-            master_account_ctx,
-            master_account_ctx.config.region,
-            self.iam_user_stack_groups['master'],
-            None, # stack_tags,
-            stack_hooks,
-            self.iam_config.users,
-            config_ref
-        )
+        # StackGroup & Users Stack Template
+        for account_name in self.paco_ctx.project['accounts'].keys():
+            account_ctx = self.paco_ctx.get_account_context('paco.ref accounts.'+account_name)
+            self.iam_user_stack_groups[account_name] = IAMUserStackGroup(self.paco_ctx, account_ctx, account_name, self)
+            config_ref = 'resource.iam.users'
+
+            IAMUsers(
+                self.paco_ctx,
+                account_ctx,
+                account_ctx.config.region,
+                self.iam_user_stack_groups[account_name],
+                None, # stack_tags,
+                stack_hooks,
+                self.iam_config.users,
+                config_ref
+            )
 
         for user_name in self.iam_config.users.keys():
             user_config = self.iam_config.users[user_name]
+
+            # assume_mfa_role_enabled means the user has its policies
+            # created inline above in IAMUsers.
+            if user_config.assume_mfa_role_enabled == False:
+                continue
 
             # Build a list of permissions for each account
             permissions_by_account = {}
@@ -810,7 +817,7 @@ class IAMController(Controller):
         for account_name in self.iam_user_stack_groups.keys():
             if account_name == 'master':
                 continue
-            stack_group = self.iam_user_stack_groups[account_name].validate()
+            self.iam_user_stack_groups[account_name].validate()
 
     def provision(self):
         # Master first due to IAM Users needing to be created first
