@@ -329,7 +329,8 @@ class Stack():
         self.build_folder = paco_ctx.build_path / "templates"
         self.stack_output_config_list = []
         self.support_resource_ref_ext = support_resource_ref_ext
-
+        self.dependency_stack = None
+        self.dependency_group = False
         if hooks == None:
             self.hooks = StackHooks(self.paco_ctx)
         else:
@@ -403,14 +404,14 @@ class Stack():
 
     def set_dependency(self, stack, dependency_name):
         """
-        Makes a stack dependent on another.
+        Makes a Stack dependent on another Stack.
         This is used when a stack needs to be created with an initial
         configuration, and then updated later when new information becomes
         available. This is used by KMS in the DeploymentPipeline app engine.
         """
         self.dependency_stack = stack
         self.dependency_group = True
-        if stack.dependency_template == None:
+        if stack.dependency_stack == None:
             stack.set_template_file_id('parent-' + dependency_name)
             stack.dependency_group = True
 
@@ -1084,7 +1085,7 @@ to help identify the places where token expiry was failing."""
         if self.paco_ctx.nocache or self.do_not_cache:
             #return False
             # XXX: Make this work
-            if self.template.dependency_group == True:
+            if self.dependency_group == True:
                 self.get_status()
                 if self.status == StackStatus.DOES_NOT_EXIST:
                     return False

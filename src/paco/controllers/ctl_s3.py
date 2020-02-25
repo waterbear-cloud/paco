@@ -68,6 +68,7 @@ class S3Context():
             self.region,
             self.bucket_context['config'],
             paco.cftemplates.S3,
+            account_ctx=self.account_ctx,
             stack_tags=stack_tags,
             stack_hooks=stack_hooks,
             extra_context={'bucket_context': self.bucket_context, 'bucket_policy_only': bucket_policy_only}

@@ -65,8 +65,6 @@ class StackTemplate():
         self.environment_name = environment_name
         # propogate to stack where it's used in set_parameter
         self.stack.environment_name = environment_name
-        self.dependency_template = None
-        self.dependency_group = False
         self.change_protected = stack.change_protected
 
     @property

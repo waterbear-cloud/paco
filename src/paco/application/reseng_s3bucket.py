@@ -19,6 +19,6 @@ class S3BucketResourceEngine(ResourceEngine):
             self.aws_region,
             self.resource.paco_ref_parts,
             self.stack_group,
-            self.stack_tags
+            self.stack_tags,
         )
         s3_ctl.add_bucket(self.resource)

@@ -96,6 +96,7 @@ class SLRoleContext():
         paco_ctx,
         account_ctx,
         region,
+        resource,
         stack_group,
         servicename
     ):
@@ -104,20 +105,15 @@ class SLRoleContext():
         self.region = region
         self.stack_group = stack_group
         self.servicename = servicename
-        self.stack_group.add_new_stack(
+        self.resource= resource
+        self.sl_role_stack = self.stack_group.add_new_stack(
             self.region,
-
+            self.resource,
+            IAMSLRoles,
+            account_ctx=self.account_ctx,
+            extra_context={'servicename': servicename},
         )
-        self.sl_role_template = IAMSLRoles(
-            paco_ctx,
-            account_ctx,
-            region,
-            stack_group,
-            servicename
-        )
-        self.sl_role_stack = self.sl_role_template.stack
         self.sl_role_stack.singleton = True
-        self.stack_group.add_stack_order(self.sl_role_stack)
 
     def aws_name(self):
         return self.servicename
@@ -232,6 +228,7 @@ class RoleContext():
             self.region,
             self.role_config,
             IAMRoles,
+            account_ctx=self.account_ctx,
             stack_tags=role_stack_tags,
             change_protected=self.change_protected,
             extra_context={'template_params': self.template_params, 'role_id': self.role_id, 'group_id': self.group_id}
@@ -710,6 +707,7 @@ class IAMController(Controller):
                 paco_ctx,
                 account_ctx,
                 region,
+                resource,
                 stack_group,
                 servicename
             )

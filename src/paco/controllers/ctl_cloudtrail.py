@@ -75,6 +75,7 @@ class CloudTrailStackGroup(StackGroup):
                 region,
                 trail,
                 paco.cftemplates.CloudTrail,
+                account_ctx=self.account_ctx,
                 extra_context={'s3_bucket_name': s3bucket.get_bucket_name()}
             )
             self.stack_list.append(stack)

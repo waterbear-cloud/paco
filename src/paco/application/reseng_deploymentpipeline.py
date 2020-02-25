@@ -93,6 +93,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             self.aws_region,
             self.resource,
             cftemplates.CodePipeline,
+            account_ctx=self.pipeline_account_ctx,
             stack_tags=self.stack_tags,
             extra_context={
                 'env_ctx': self.env_ctx,
@@ -103,23 +104,16 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
 
         # Add CodeBuild Role ARN to KMS Key principal now that the role is created
         kms_config_dict['crypto_principal']['aws'] = self.kms_crypto_principle_list
-        # XXX ToDo: figure out how this template dependency is supposed to work and fix
-        # kms_template = cftemplates.KMS(
-        #     self.paco_ctx,
-        #     self.pipeline_account_ctx,
-        #     self.aws_region,
-        #     self.stack_group,
-        #     self.stack_tags,
-        #     self.grp_id,
-        #     self.res_id,
-        #     self.resource,
-        #     kms_config_ref,
-        #     kms_config_dict
-        # )
-        # # Adding a file id allows us to generate a second template without overwritting
-        # # the first one. This is needed as we need to update the KMS policy with the
-        # # Codebuild Arn after the Codebuild has been created.
-        # kms_template.set_dependency(self.kms_stack, 'post-pipeline')
+        kms_stack = self.stack_group.add_new_stack(
+            self.aws_region,
+            self.resource,
+            cftemplates.KMS,
+            account_ctx=self.pipeline_account_ctx,
+            stack_tags=self.stack_tags,
+            support_resource_ref_ext='kms',
+            extra_context={'kms_config_dict': kms_config_dict}
+        )
+        kms_stack.set_dependency(self.kms_stack, 'post-pipeline')
 
         # Get the ASG Instance Role ARN
         if not self.pipeline_config.is_enabled():
