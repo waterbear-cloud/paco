@@ -62,7 +62,6 @@ class S3Context():
         stack_hooks=None,
         new_stack=True,
         stack_tags=None,
-        change_protected=False
     ):
         stack = self.stack_group.add_new_stack(
             self.region,
@@ -120,7 +119,6 @@ class S3Context():
                     bucket_policy_only=False,
                     stack_hooks=stack_hooks,
                     stack_tags=self.stack_tags,
-                    change_protected=change_protected
                 )
 
     def add_bucket_policy(self, policy_dict, stack_hooks=None, new_stack=True):

@@ -54,17 +54,12 @@ role_name: %s""" % ("ASGInstance")
         role_config.enabled = self.resource.is_enabled()
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_role(
-            paco_ctx=self.paco_ctx,
-            account_ctx=self.account_ctx,
             region=self.aws_region,
-            group_id=self.grp_id,
-            role_id=instance_iam_role_id,
-            role_ref=instance_iam_role_ref,
-            role_config=role_config,
+            resource=self.resource,
+            role=role_config,
+            iam_role_id=instance_iam_role_id,
             stack_group=self.stack_group,
-            template_params=None,
             stack_tags=self.stack_tags,
-            change_protected=self.resource.change_protected
         )
         role_profile_arn = iam_ctl.role_profile_arn(instance_iam_role_ref)
 

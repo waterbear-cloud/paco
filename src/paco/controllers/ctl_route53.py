@@ -82,7 +82,6 @@ class Route53Controller(Controller):
     ):
         record_set_config = {
             'enabled' : enabled,
-            'change_protected': False,
             'dns': dns,
             'alias_dns_name': alias_dns_name,
             'alias_hosted_zone_id': alias_hosted_zone_id,

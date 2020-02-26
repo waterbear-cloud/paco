@@ -197,16 +197,14 @@ policies:
         codecommit_account_ctx = self.paco_ctx.get_account_context(codecommit_account_ref)
         codecommit_iam_role_ref = '{}.{}'.format(action_config.paco_ref_parts, self.codecommit_role_name)
         iam_ctl.add_role(
-            paco_ctx=self.paco_ctx,
             account_ctx=codecommit_account_ctx,
             region=self.aws_region,
-            group_id=self.grp_id,
-            role_id=codecommit_iam_role_id,
-            role_ref=codecommit_iam_role_ref,
-            role_config=codecommit_iam_role_config,
+            resource=self.resource,
+            role=codecommit_iam_role_config,
+            iam_role_id=codecommit_iam_role_id,
             stack_group=self.stack_group,
+            stack_tags=self.stack_tags,
             template_params=iam_role_params,
-            stack_tags=self.stack_tags
         )
 
     # S3 Deploy
@@ -257,7 +255,7 @@ policies:
         iam_ctl = self.paco_ctx.get_controller('IAM')
         # The ID to give this role is: group.resource.instance_iam_role
         role_id = self.gen_iam_role_id(self.res_id, 'delegate')
-        self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (action_config.paco_ref + '.delegate_role.arn'))
+        self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (action_config.paco_ref + '.delegate.arn'))
         # IAM Roles Parameters
         iam_role_params = [
             {
@@ -268,18 +266,16 @@ policies:
             }
         ]
         bucket_account_ctx = self.paco_ctx.get_account_context(bucket_config.account)
-        role_ref = '{}.delegate_role'.format(action_config.paco_ref_parts)
+        role_ref = '{}.delegate'.format(action_config.paco_ref_parts)
         iam_ctl.add_role(
-            paco_ctx=self.paco_ctx,
             account_ctx=bucket_account_ctx,
             region=self.aws_region,
-            group_id=self.grp_id,
-            role_id=role_id,
-            role_ref=role_ref,
-            role_config=role_config,
+            resource=self.resource,
+            role=role_config,
+            iam_role_id=role_id,
             stack_group=self.stack_group,
+            stack_tags=self.stack_tags,
             template_params=iam_role_params,
-            stack_tags=self.stack_tags
         )
         action_config._delegate_role_arn = iam_ctl.role_arn(role_ref)
 

@@ -60,15 +60,12 @@ class BackupVaultsStackGroup(StackGroup):
         iam_role_id = 'Backup-' + self.env_ctx.env_id + '-' + role_name
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_role(
-            paco_ctx=self.paco_ctx,
             account_ctx=self.account_ctx,
             region=self.env_ctx.region,
-            group_id='',
-            role_id=iam_role_id,
-            role_ref=iam_role_ref,
-            role_config=role,
+            resource=self.config,
+            role=role,
+            iam_role_id=iam_role_id,
             stack_group=self,
-            template_params=None,
             stack_tags=StackTags(self.stack_tags)
         )
         return role

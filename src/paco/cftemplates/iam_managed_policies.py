@@ -9,21 +9,21 @@ class IAMManagedPolicies(StackTemplate):
         self,
         stack,
         paco_ctx,
-        policy_context,
+        policy,
+        template_params,
     ):
-        policy_config = policy_context['config']
-        self.policy_context = policy_context
+        self.policy = policy
         super().__init__(
             stack,
             paco_ctx,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
         )
-        self.set_aws_name('Policy', self.resource_group_name, self.resource_name)
+        self.set_aws_name('Policy', self.resource_group_name, self.resource.name, policy.name)
 
         # Define the Template
         template_fmt = """
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'IAM Roles: Roles and Instance Profiles'
+Description: 'IAM: Managed Policy'
 
 {0[parameters_yaml]:s}
 
@@ -92,39 +92,39 @@ Resources:
      Description: {0[description]:s}
 """
 
-        if policy_config.is_enabled() == True:
+        if policy.is_enabled() == True:
             policy_table.clear()
-            if policy_context['template_params']:
-                for param_table in policy_context['template_params']:
+            if template_params:
+                for param_table in template_params:
                     self.set_parameter(param_table['key'], param_table['value'])
                     parameters_yaml += parameter_fmt.format(param_table)
 
-            policy_id = policy_context['id']
+            policy_id = policy.name
             # Name
             policy_table['name'] = self.gen_policy_name(policy_id)
             policy_table['cfn_logical_id_prefix'] = self.create_cfn_logical_id(policy_id)
             # Path
-            policy_table['path'] = policy_config.path
+            policy_table['path'] = policy.path
 
             # Policy Document
             # Roles
             policy_table['roles'] = ""
-            if policy_config.roles and len(policy_config.roles) > 0:
+            if policy.roles and len(policy.roles) > 0:
                 policy_table['roles'] = """      Roles:
     """
-                for role in policy_config.roles:
+                for role in policy.roles:
                     policy_table['roles'] += role_fmt % (role)
 
             # Users
             policy_table['users'] = ""
-            if policy_config.users and len(policy_config.users) > 0:
+            if policy.users and len(policy.users) > 0:
                 policy_table['users'] = "      Users:\n"
-                for user in policy_config.users:
+                for user in policy.users:
                     policy_table['users'] += user_fmt % (user)
 
             policy_table['policy_document'] = policy_document
             # Statement
-            policy_table['statement'] = self.gen_statement_yaml(policy_config.statement)
+            policy_table['statement'] = self.gen_statement_yaml(policy.statement)
 
             # Resources
             resources_yaml += policy_fmt.format(policy_table)
@@ -153,9 +153,9 @@ Resources:
 
     # Generate a name valid in CloudFormation
     def gen_policy_name(self, policy_id):
-        policy_context_hash = md5sum(str_data=self.policy_context['ref'])[:8].upper()
+        policy_ref_hash = md5sum(str_data=self.policy.paco_ref_parts)[:8].upper()
         policy_name = self.create_resource_name_join(
-            name_list=[policy_context_hash, policy_id],
+            name_list=[policy_ref_hash, policy_id],
             separator='-',
             camel_case=False,
             filter_id='IAM.ManagedPolicy.ManagedPolicyName'

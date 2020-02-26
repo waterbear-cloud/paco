@@ -16,6 +16,7 @@ class IAMUserAccountDelegates(StackTemplate):
     def __init__(self, stack, paco_ctx, master_account_id, account_id, permissions_list):
         user_config = stack.resource
         self.account_id = account_id
+        account_ctx = stack.account_ctx
         self.master_account_id = master_account_id
         super().__init__(stack, paco_ctx, iam_capabilities=['CAPABILITY_NAMED_IAM'])
 

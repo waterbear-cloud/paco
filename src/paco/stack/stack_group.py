@@ -61,6 +61,10 @@ class StackGroup():
             account_ctx = self.account_ctx
         if stack_orders == None:
             stack_orders = [StackOrder.PROVISION, StackOrder.WAIT]
+        # change_protected should come from resource.change_protected but it is
+        # used by ctl_role when making new Roles - these need to be refactored so that the Resource controlling
+        # the Role is available when a Role is being modified - then this code can be removed
+
         stack = Stack(
             self.paco_ctx,
             account_ctx,

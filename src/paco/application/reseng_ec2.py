@@ -10,7 +10,7 @@ class EC2ResourceEngine(ResourceEngine):
             self.resource,
             paco.cftemplates.EC2,
             stack_tags=self.stack_tags,
-            # ToDo: remove old-school usage opf env_ctx.netenv_id
+            # ToDo: remove old-school use of env_ctx.netenv_id
             extra_context={
                 'netenv_name': self.env_ctx.netenv_id,
                 'env_name': self.env_id,

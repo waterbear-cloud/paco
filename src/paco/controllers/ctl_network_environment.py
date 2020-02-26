@@ -76,21 +76,6 @@ class EnvironmentContext():
         self.stack_grps.append(self.network_stack_grp)
         self.network_stack_grp.init()
 
-        # IAM Stack
-        # XXX: This may come back later.
-        #for iam_group_id in self.iam_ids():
-        #    iam_roles_dict = self.iam_roles_dict(iam_group_id)
-        #    iam_stack_grp = IAMStackGroup(self.paco_ctx,
-        #                                  self.account_ctx,
-        #                                  self.get_aws_name(),
-        #                                  iam_roles_dict,
-        #                                  iam_group_id,
-        #                                  self.config_ref_prefix,
-        #                                  self)
-        #    self.iam_stack_grps[iam_group_id] = iam_stack_grp
-        #    self.stack_grps.append(iam_stack_grp)
-        #    iam_stack_grp.init()
-
         # Application Engine Stacks
         for app_id in self.application_ids():
             application_stack_grp = ApplicationStackGroup(

@@ -7,7 +7,7 @@ from paco.models.references import Reference
 from paco.models.locations import get_parent_by_interface
 from paco.models import schemas
 from paco.stack import StackOrder, Stack, StackGroup, StackTags, StackHooks
-from paco.utils import md5sum
+from paco.utils import md5sum, get_support_resource_ref_ext
 from parliament import analyze_policy_string
 import click
 import json
@@ -32,15 +32,17 @@ class IAMUserStackGroup(StackGroup):
 class PolicyContext():
     def __init__(
         self,
-        paco_ctx, account_ctx, region,
-        group_id, policy_id,
+        paco_ctx,
+        account_ctx,
+        region,
+        group_id,
+        policy_id,
         policy_ref,
         policy_config_yaml,
-        parent_config,
+        resource,
         stack_group,
         template_params,
         stack_tags,
-        change_protected = False
     ):
         self.paco_ctx = paco_ctx
         self.account_ctx = account_ctx
@@ -56,39 +58,31 @@ class PolicyContext():
         self.policy_template = None
         self.policy_stack = None
         self.template_params = template_params
-        self.change_protected = change_protected
+        self.resource = resource
         self.policy_context = {}
-        policy_config_dict = yaml.load(self.policy_config_yaml)
-        self.policy_config = paco.models.iam.ManagedPolicy(policy_id, parent_config)
-        paco.models.loader.apply_attributes_from_config(self.policy_config, policy_config_dict)
-        self.init_policy()
 
-    def init_policy(self):
-        self.policy_config.resolve_ref_obj = self
-        policy_context = {
-            'id': self.policy_id,
-            'config': self.policy_config,
-            'ref': self.policy_ref,
-            'template_params': self.template_params
-        }
+        # Create a Policy object from YAML and add it to the model
+        # policy_dict = yaml.load(self.policy_config_yaml)
+        # self.policy = paco.models.iam.ManagedPolicy(policy_id, resource)
+        # paco.models.loader.apply_attributes_from_config(self.policy, policy_dict)
+
+        # Create the Managed Policy stack
+        self.policy.resolve_ref_obj = self
         policy_stack_tags = StackTags(self.stack_tags)
         policy_stack_tags.add_tag('Paco-IAM-Resource-Type', 'ManagedPolicy')
-        policy_context['template'] = IAMManagedPolicies(
-            self.paco_ctx,
-            self.account_ctx,
+        policy_ext = get_support_resource_ref_ext(self.resource, self.policy)
+        policy_context['stack'] = self.stack_group.add_new_stack(
             self.region,
-            self.stack_group,
-            policy_stack_tags,
-            policy_context,
-            self.group_id,
-            self.policy_id,
-            change_protected=self.change_protected
+            self.resource,
+            IAMManagedPolicies,
+            stack_tags=policy_stack_tags,
+            extra_context={'policy': self.policy},
+            support_resource_ref_ext=policy_ext,
         )
-        policy_context['stack'] = policy_context['template'].stack
+        policy_context['template'] = policy_context['stack'].template
         self.name = policy_context['template'].gen_policy_name(self.policy_id)
         self.arn = "arn:aws:iam::{0}:policy/{1}".format(self.account_ctx.get_id(), self.name)
         self.policy_context[self.policy_ref] = policy_context
-        self.stack_group.add_stack_order(policy_context['stack'])
 
 class SLRoleContext():
     def __init__(
@@ -122,37 +116,61 @@ class SLRoleContext():
 class RoleContext():
     def __init__(
         self,
-        paco_ctx,
         account_ctx,
         region,
-        group_id,
+        resource,
         role_id,
-        role_ref,
-        role_config,
+        role,
         stack_group,
-        template_params,
         stack_tags,
-        change_protected=False
+        template_params,
     ):
-        self.paco_ctx = paco_ctx
         self.account_ctx = account_ctx
         self.region = region
-        self.group_id = group_id
-        self.role_name = None
+        self.resource = resource
         self.role_id = role_id
-        self.role_ref = role_ref
-        self.role_config = role_config
+        self.role = role
+        self.role_ref = role.paco_ref_parts
         self.stack_group = stack_group
         self.stack_tags = stack_tags
+        self.template_params = template_params
+        self.role_name = None
         self.role_template = None
         self.role_stack = None
-        self.template_params = template_params
-        self.change_protected = change_protected
         self.policy_context = {}
-        self.init_role()
+
+        # Create a Role stack and add it to the StackGroup
+        role_stack_tags = StackTags(self.stack_tags)
+        role_stack_tags.add_tag('Paco-IAM-Resource-Type', 'Role')
+
+        # set the resolve_ref_obj on the model
+        self.role.resolve_ref_obj = self
+
+        # Resources such as a service might not have change_protected
+        change_protected = getattr(self.resource, 'change_protected', False)
+        role_ext = get_support_resource_ref_ext(self.resource, self.role)
+        self.role_stack = self.stack_group.add_new_stack(
+            self.region,
+            self.resource,
+            IAMRoles,
+            account_ctx=self.account_ctx,
+            stack_tags=role_stack_tags,
+            change_protected=change_protected,
+            extra_context={
+                'template_params': self.template_params,
+                'role': self.role,
+            },
+            support_resource_ref_ext=role_ext,
+        )
+        self.role_template = self.role_stack.template
+        role_id = self.resource.name + '-' + self.role.name
+        self.role_name = self.role_template.gen_iam_role_name("Role", self.role.paco_ref_parts, role_id)
+        self.role_arn = "arn:aws:iam::{0}:role/{1}".format(self.account_ctx.get_id(), self.role_name)
+        role_profile_name = self.role_template.gen_iam_role_name("Profile", self.role.paco_ref_parts, role_id)
+        self.role_profile_arn = "arn:aws:iam::{0}:instance-profile/{1}".format(self.account_ctx.get_id(), role_profile_name)
 
     def aws_name(self):
-        return self.role_ref
+        return self.role.paco_ref_parts
 
     def get_aws_name(self):
         return self.aws_name()
@@ -182,63 +200,46 @@ class RoleContext():
 
     def add_managed_policy(
         self,
-        parent_config,
-        group_id,
-        policy_id,
-        policy_ref,
-        policy_config_yaml=None,
+        resource,
+        policy_name,
+        policy_config_yaml,
         template_params=None,
         change_protected=False
     ):
-        if policy_ref in self.policy_context.keys():
+        "Adds a Managed Policy stack that is attached to this Role"
+        # create a Policy object from YAML and add it to the model
+        policy_dict = yaml.load(policy_config_yaml)
+        policy_dict['roles'] = [self.role_name]
+        policy = paco.models.iam.ManagedPolicy(policy_name, resource)
+        paco.models.loader.apply_attributes_from_config(policy, policy_dict)
+
+        if policy.paco_ref_parts in self.policy_context.keys():
             print("Managed policy already exists: %s" % (policy_ref) )
             raise StackException(PacoErrorCode.Unknown)
 
-        policy_config_dict = yaml.load(policy_config_yaml)
-        policy_config_dict['roles'] = [self.role_name]
-        policy_config = paco.models.iam.ManagedPolicy(policy_id, parent_config)
-        paco.models.loader.apply_attributes_from_config(policy_config, policy_config_dict)
-        policy_config.resolve_ref_obj = self
+        # set the resolve_ref_obj to this RoleContext
+        policy.resolve_ref_obj = self
         policy_context = {
-            'id': policy_id,
-            'config': policy_config,
-            'ref': policy_ref,
-            'template_params': template_params
+            'id': policy_name,
+            'config': policy,
+            'ref': policy.paco_ref_parts,
+            'template_params': template_params,
         }
         policy_stack_tags = StackTags(self.stack_tags)
         policy_stack_tags.add_tag('Paco-IAM-Resource-Type', 'ManagedPolicy')
+        policy_ext = get_support_resource_ref_ext(resource, policy)
         policy_context['stack'] = self.stack_group.add_new_stack(
             self.region,
-            policy_config,
+            resource,
             IAMManagedPolicies,
             stack_tags=policy_stack_tags,
-            extra_context={'policy_context': policy_context}
+            extra_context={'policy': policy, 'template_params': template_params},
+            support_resource_ref_ext=policy_ext
         )
         policy_context['template'] = policy_context['stack'].template
-        self.policy_context['name'] = policy_context['template'].gen_policy_name(policy_id)
+        self.policy_context['name'] = policy_context['template'].gen_policy_name(policy.name)
         self.policy_context['arn'] = "arn:aws:iam::{0}:policy/{1}".format(self.account_ctx.get_id(), self.policy_context['name'])
-        self.policy_context[policy_ref] = policy_context
-
-    def init_role(self):
-        "Create a Role stack and add it to the StackGroup"
-        role_stack_tags = StackTags(self.stack_tags)
-        role_stack_tags.add_tag('Paco-IAM-Resource-Type', 'Role')
-        self.role_config.resolve_ref_obj = self
-        self.role_stack = self.stack_group.add_new_stack(
-            self.region,
-            self.role_config,
-            IAMRoles,
-            account_ctx=self.account_ctx,
-            stack_tags=role_stack_tags,
-            change_protected=self.change_protected,
-            extra_context={'template_params': self.template_params, 'role_id': self.role_id, 'group_id': self.group_id}
-        )
-        self.role_template = self.role_stack.template
-        self.role_name = self.role_template.gen_iam_role_name("Role", self.role_id)
-        self.role_arn = "arn:aws:iam::{0}:role/{1}".format(self.account_ctx.get_id(), self.role_name)
-        role_profile_name = self.role_template.gen_iam_role_name("Profile", self.role_id)
-        self.role_profile_arn = "arn:aws:iam::{0}:instance-profile/{1}".format(self.account_ctx.get_id(), role_profile_name)
-        self.stack_group.add_stack_order(self.role_stack)
+        self.policy_context[policy.paco_ref_parts] = policy_context
 
     def get_role_arn(self):
         return self.role_arn
@@ -639,15 +640,17 @@ class IAMController(Controller):
 
     def create_managed_policy(
         self,
-        paco_ctx, account_ctx, region,
-        group_id, policy_id,
+        paco_ctx,
+        account_ctx,
+        region,
+        group_id,
+        policy_id,
         policy_ref,
         policy_config_yaml,
-        parent_config,
+        resource,
         stack_group,
         template_params,
         stack_tags,
-        change_protected=False
     ):
         if policy_ref not in self.policy_context.keys():
             self.policy_context[policy_ref] = PolicyContext(
@@ -658,18 +661,17 @@ class IAMController(Controller):
                 policy_id=policy_id,
                 policy_ref=policy_ref,
                 policy_config_yaml=policy_config_yaml,
-                parent_config=parent_config,
+                resource=resource,
                 stack_group=stack_group,
                 template_params=template_params,
                 stack_tags=stack_tags,
-                change_protected=change_protected
             )
         else:
             print("Managed Policy already exists: %s" % (policy_ref))
             raise StackException(PacoErrorCode.Unknown)
 
-    def add_managed_policy(self, role_ref, *args, **kwargs):
-        return self.role_context[role_ref].add_managed_policy(*args, **kwargs)
+    def add_managed_policy(self, role, *args, **kwargs):
+        return self.role_context[role.paco_ref_parts].add_managed_policy(*args, **kwargs)
 
     def add_service_linked_role(
         self,
@@ -714,20 +716,20 @@ class IAMController(Controller):
 
     def add_role(
         self,
-        paco_ctx,
-        account_ctx,
         region,
-        group_id,
-        role_id,
-        role_ref,
-        role_config,
+        resource,
+        role,
+        iam_role_id,
         stack_group,
-        template_params,
-        stack_tags,
-        change_protected=False
+        stack_tags=None,
+        account_ctx=None,
+        template_params=None,
     ):
-
-        for policy in role_config.policies:
+        role_ref = role.paco_ref_parts
+        # default account_ctx is the StackGroup's account_ctx
+        if account_ctx == None:
+            account_ctx = stack_group.account_ctx
+        for policy in role.policies:
             policy_json = policy.export_as_json()
             policy_analysis = analyze_policy_string(policy_json)
 
@@ -746,9 +748,9 @@ class IAMController(Controller):
             # RESOURCE_MISMATCH
 
             if len(policy_analysis.findings) > 0:
-                print("\nWARNING: Problems detected for IAM Policy for Role named {}.".format(role_config.name))
-                print("  Role paco.ref     : {}".format(role_config.paco_ref_parts))
-                resource = get_parent_by_interface(role_config, schemas.IResource)
+                print("\nWARNING: Problems detected for IAM Policy for Role named {}.".format(role.name))
+                print("  Role paco.ref     : {}".format(role.paco_ref_parts))
+                resource = get_parent_by_interface(role, schemas.IResource)
                 if resource != None:
                     print("  Role for Resource : {} ({})".format(resource.name, resource.type))
                 for finding in policy_analysis.findings:
@@ -757,20 +759,18 @@ class IAMController(Controller):
                 print()
         if role_ref not in self.role_context.keys():
             self.role_context[role_ref] = RoleContext(
-                paco_ctx=self.paco_ctx,
                 account_ctx=account_ctx,
                 region=region,
-                group_id=group_id,
-                role_id=role_id,
-                role_ref=role_ref,
-                role_config=role_config,
+                resource=resource,
+                role_id=iam_role_id,
+                role=role,
                 stack_group=stack_group,
-                template_params=template_params,
                 stack_tags=stack_tags,
-                change_protected=change_protected
+                template_params=template_params,
             )
         else:
             print("Role already exists: %s" % (role_ref))
+            breakpoint()
             raise StackException(PacoErrorCode.Unknown)
 
     def role_arn(self, role_ref):

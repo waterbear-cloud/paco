@@ -521,8 +521,9 @@ function ec2lm_signal_asg_resource() {{
 }}
 """
         self.ec2lm_functions_script[ec2lm_bucket_name] = script_template.format(script_table)
+        iam_policy_name = '-'.join([resource.name, 'ec2lm'])
         policy_config_yaml = """
-name: 'DescribeTags'
+name: '{}'
 enabled: true
 statement:
   - effect: Allow
@@ -530,7 +531,7 @@ statement:
       - "ec2:DescribeTags"
     resource:
       - '*'
-"""
+""".format(iam_policy_name)
         # Signal Resource permissions if its needed
         if resource.rolling_update_policy != None and resource.rolling_update_policy.wait_on_resource_signals == True:
             rolling_update_policy_table = {
@@ -547,17 +548,12 @@ statement:
       - 'arn:aws:cloudformation:{0[region]}:{0[account]}:stack/{0[stack_name]}/*'
 """.format(rolling_update_policy_table)
 
-        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
-
-        policy_ref = '{}.{}.ec2lm.policy'.format(resource.paco_ref_parts, self.id)
-        policy_id = '-'.join([resource.name, 'ec2lm'])
+        policy_name = 'policy_ec2lm' # ec2lm.policy
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
-            role_ref=instance_iam_role_ref,
-            parent_config=resource,
-            group_id=group_name,
-            policy_id=policy_id,
-            policy_ref=policy_ref,
+            role=resource.instance_iam_role,
+            resource=resource,
+            policy_name=iam_policy_name,
             policy_config_yaml=policy_config_yaml,
         )
 
@@ -632,7 +628,7 @@ aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
             script_table['pre_script'] = resource.user_data_pre_script
 
         if resource.secrets != None and len(resource.secrets) > 0:
-            self.add_ec2lm_function_secrets(ec2lm_bucket_name, resource, grp_id, instance_iam_role_ref)
+            self.add_ec2lm_function_secrets(ec2lm_bucket_name, resource, instance_iam_role_ref)
 
         if resource.launch_options != None:
             if resource.launch_options.update_packages == True:
@@ -664,16 +660,7 @@ function ec2lm_replace_secret_in_file() {
     sed -i -e "s/$SED_PATTERN/$SECRET/" $REPLACE_FILE
 }
 """
-        policy_config_yaml = """
-name: 'Secrets'
-enabled: true
-statement:
-  - effect: Allow
-    action:
-      - secretsmanager:GetSecretValue
-    resource:
-{}
-"""
+        iam_policy_name = '-'.join([resource.name, 'secrets'])
         template_params = []
         secret_arn_list_yaml = ""
         for secret in resource.secrets:
@@ -687,20 +674,27 @@ statement:
             }
             template_params.append(param)
             secret_arn_list_yaml += "      - !Ref SecretArn" + secret_hash + "\n"
-        policy_ref = '{}.{}.secrets.policy'.format(resource.paco_ref_parts, self.id)
-        policy_id = '-'.join([resource.name, 'secrets'])
-        iam_ctl = self.paco_ctx.get_controller('IAM')
 
+        policy_config_yaml = """
+name: '{}'
+enabled: true
+statement:
+  - effect: Allow
+    action:
+      - secretsmanager:GetSecretValue
+    resource:
+{}
+""".format(iam_policy_name, secret_arn_list_yaml)
+
+        policy_name = 'policy_ec2lm_secrets'
+        iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
-            role_ref=instance_iam_role_ref,
-            parent_config=resource,
-            group_id=grp_id,
-            policy_id=policy_id,
-            policy_ref=policy_ref,
-            policy_config_yaml=policy_config_yaml.format(secret_arn_list_yaml),
+            role=resource.instance_iam_role,
+            resource=resource,
+            policy_name=iam_policy_name,
+            policy_config_yaml=policy_config_yaml,
             template_params=template_params,
         )
-
         return secrets_script
 
     def add_bundle(self, bundle):
@@ -852,8 +846,9 @@ function process_mount_target()
             process_mount_targets,
             vocabulary.user_data_script['mount_efs'][resource.instance_ami_type])
 
+        iam_policy_name = '-'.join([resource.name, 'efs'])
         policy_config_yaml = """
-name: 'DescribeTags'
+name: '{}'
 enabled: true
 statement:
   - effect: Allow
@@ -861,17 +856,13 @@ statement:
       - "ec2:DescribeTags"
     resource:
       - '*'
-"""
-
-        policy_ref = '{}.{}.efs.policy'.format(resource.paco_ref_parts, self.id)
-        policy_id = '-'.join([resource.name, 'efs'])
+""".format(iam_policy_name)
+        policy_name = 'policy_ec2lm_efs'
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
-            role_ref=instance_iam_role_ref,
-            parent_config=resource,
-            group_id=group_name,
-            policy_id=policy_id,
-            policy_ref=policy_ref,
+            role=resource.instance_iam_role,
+            resource=resource,
+            policy_name=iam_policy_name,
             policy_config_yaml=policy_config_yaml,
         )
 
@@ -1052,8 +1043,9 @@ function process_volume_mount()
         )
             #vocabulary.user_data_script['mount_efs'][resource.instance_ami_type])
 
+        iam_policy_name = '-'.join([resource.name, 'ebs'])
         policy_config_yaml = """
-name: 'AssociateVolume'
+name: '{}'
 enabled: true
 statement:
   - effect: Allow
@@ -1062,20 +1054,16 @@ statement:
     resource:
       - 'arn:aws:ec2:*:*:volume/*'
       - 'arn:aws:ec2:*:*:instance/*'
-"""
+""".format(iam_policy_name)
 
-        policy_ref = '{}.{}.ebs.policy'.format(resource.paco_ref_parts, self.id)
-        policy_id = '-'.join([resource.name, 'ebs'])
+        policy_name = 'policy_ec2lm_ebs'
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
-            role_ref=instance_iam_role_ref,
-            parent_config=resource,
-            group_id=group_name,
-            policy_id=policy_id,
-            policy_ref=policy_ref,
+            role=resource.instance_iam_role,
+            resource=resource,
+            policy_name=iam_policy_name,
             policy_config_yaml=policy_config_yaml,
         )
-
         ebs_lb.set_launch_script(launch_script)
 
         # Save Configuration
@@ -1142,9 +1130,9 @@ else
     echo "EC2LM: EIP: Error: $OUTPUT"
 fi
 """
-
+        iam_policy_name = '-'.join([resource.name, 'eip'])
         policy_config_yaml = """
-name: 'AssociateEIP'
+name: '{}'
 enabled: true
 statement:
   - effect: Allow
@@ -1153,17 +1141,13 @@ statement:
       - 'ec2:DescribeAddresses'
     resource:
       - '*'
-"""
-
-        policy_ref = '{}.{}.eip.policy'.format(resource.paco_ref_parts, self.id)
-        policy_id = '-'.join([resource.name, 'eip'])
+""".format(iam_policy_name)
+        policy_name = 'policy_ec2lm_eip'
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
-            role_ref=instance_iam_role_ref,
-            parent_config=resource,
-            group_id=group_name,
-            policy_id=policy_id,
-            policy_ref=policy_ref,
+            role=resource.instance_iam_role,
+            resource=resource,
+            policy_name=iam_policy_name,
             policy_config_yaml=policy_config_yaml,
         )
 
@@ -1328,8 +1312,9 @@ echo "EC2LM: CloudWatch: Done"
         agent_config = json.dumps(agent_config)
 
         # Create instance managed policy for the agent
+        iam_policy_name = '-'.join([resource.name, 'cloudwatchagent'])
         policy_config_yaml = """
-name: 'CloudWatchAgent'
+name: '{}'
 enabled: true
 statement:
   - effect: Allow
@@ -1338,7 +1323,7 @@ statement:
       - "cloudwatch:PutMetricData"
       - "autoscaling:Describe*"
       - "ec2:DescribeTags"
-"""
+""".format(iam_policy_name)
         if monitoring.log_sets:
             # append a logs:CreateLogGroup to the AllResources sid
             policy_config_yaml += """      - "logs:CreateLogGroup"\n"""
@@ -1366,15 +1351,12 @@ statement:
 {}
 """.format(log_group_resources, log_stream_resources)
 
-        policy_ref = '{}.{}.cloudwatchagent.policy'.format(resource.paco_ref_parts, self.id)
-        policy_id = '-'.join([resource.name, 'cloudwatchagent'])
+        policy_name = 'policy_ec2lm_cloudwatchagent'
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
-            role_ref=instance_iam_role_ref,
-            parent_config=resource,
-            group_id=group_name,
-            policy_id=policy_id,
-            policy_ref=policy_ref,
+            role=resource.instance_iam_role,
+            resource=resource,
+            policy_name=iam_policy_name,
             policy_config_yaml=policy_config_yaml,
         )
 
@@ -1413,8 +1395,9 @@ yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/li
 """
 
         # Create instance managed policy for the agent
+        iam_policy_name = '-'.join([resource_id, 'ssmagent-policy'])
         policy_config_yaml = """
-name: 'SSMAgent'
+name: '{}'
 statement:
   - effect: Allow
     action:
@@ -1437,16 +1420,13 @@ statement:
       - s3:GetEncryptionConfiguration
     resource:
       - '*'
-"""
-        policy_ref = '{}.{}.ssmagent.policy'.format(res_config.paco_ref_parts, self.id)
-        policy_id = '-'.join([resource_id, 'ssmagent-policy'])
+""".format(iam_policy_name)
+        policy_name = 'policy_ec2lm_ssmagent'
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
-            role_ref=instance_iam_role_ref,
-            parent_config=res_config,
-            group_id=group_id,
-            policy_id=policy_id,
-            policy_ref=policy_ref,
+            role=resource.instance_iam_role,
+            resource=resource,
+            policy_name=iam_policy_name,
             policy_config_yaml=policy_config_yaml,
         )
 

@@ -79,7 +79,13 @@ class StackTemplate():
 
     @property
     def resource_group_name(self):
-        return get_parent_by_interface(self.stack.resource, schemas.IResourceGroup).name
+        """The Resource Group name or None. Only Application resources have a Resource Group name,
+        e.g. BackupVault Resource does not.
+        """
+        resource_group = get_parent_by_interface(self.stack.resource, schemas.IResourceGroup)
+        if resource_group != None:
+            return resource_group.name
+        return None
 
     @property
     def resource_name(self):
