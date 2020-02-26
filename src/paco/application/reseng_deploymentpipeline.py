@@ -54,7 +54,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
 
         # CodeCommit Account(s)
         # ToDo: allows ALL CodeCommit accounts access, filter out non-CI/CD CodeCommit repos?
-        for subdict in self.paco_ctx.project['resource']['codecommit'].repository_groups.values():
+        for subdict in self.paco_ctx.project['resource']['codecommit'].values():
             for repo in subdict.values():
                 kms_refs[repo.account] = None
         for key in kms_refs.keys():
