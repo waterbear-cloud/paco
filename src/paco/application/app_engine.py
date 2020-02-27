@@ -119,18 +119,15 @@ class ApplicationEngine():
                         },
                     )
 
-        # If alarm_sets exist init alarms for them
+        # If alarm_sets exist init their alarms stack
         if getattr(self.config.monitoring, 'alarm_sets', None) != None and \
             len(self.config.monitoring.alarm_sets.values()) > 0:
-            paco.cftemplates.CWAlarms(
-                self.paco_ctx,
-                self.account_ctx,
+            stack = self.stack_group.add_new_stack(
                 self.aws_region,
-                self.stack_group,
-                self.stack_tags,
-                self.config.monitoring.alarm_sets,
-                self.config.paco_ref_parts,
                 self.config,
+                paco.cftemplates.CWAlarms,
+                support_resource_ref_ext='alarms',
+                stack_tags=self.stack_tags
             )
 
     def gen_iam_role_id(self, res_id, role_id):
