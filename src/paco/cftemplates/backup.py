@@ -113,7 +113,7 @@ class BackupVault(StackTemplate):
                 if tags_list:
                     cfn_export_dict['BackupSelection']['ListOfTags'] = tags_list
                 if selection.title:
-                    cfn_export_dict['BackupSelection']['SelectionName'] = selection.title
+                    cfn_export_dict['BackupSelection']['SelectionName'] = "Selection: " + selection.title
 
                 # Resource-based selections
                 if selection.resources:
@@ -128,7 +128,7 @@ class BackupVault(StackTemplate):
 
                 # Role
                 cfn_export_dict['BackupSelection']['IamRoleArn'] = troposphere.Ref(service_role_arn_param)
-                selection_logical_id = self.create_cfn_logical_id('Plan{}Selection{}'.format(plan.name, idx))
+                selection_logical_id = self.create_cfn_logical_id('BackupPlan{}Selection{}'.format(plan.name, idx))
                 selection_resource = troposphere.backup.BackupSelection.from_dict(
                     selection_logical_id,
                     cfn_export_dict

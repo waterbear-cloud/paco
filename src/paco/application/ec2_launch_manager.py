@@ -46,7 +46,6 @@ class LaunchBundle():
         group_id,
         resource_id,
         resource_config,
-        bucket_id
     ):
         self.paco_ctx = paco_ctx
         self.name = name
@@ -55,7 +54,6 @@ class LaunchBundle():
         self.group_id = group_id
         self.resource_id = resource_id
         self.resource_config = resource_config
-        self.bucket_id = bucket_id
         self.build_path = os.path.join(
             self.manager.build_path,
             self.group_id,
@@ -65,11 +63,6 @@ class LaunchBundle():
         self.package_path = None
         self.cache_id = ""
         self.s3_key = None
-        # EC2 Manager Bucket Reference
-        self.s3_bucket_ref = '.'.join([
-            self.resource_config.paco_ref_parts,
-            self.manager.id, 'bucket'
-        ])
         instance_iam_role_arn_ref = self.resource_config.paco_ref + '.instance_iam_role.arn'
         self.instance_iam_role_arn = self.paco_ctx.get_ref(instance_iam_role_arn_ref)
         self.bundles_path = os.path.join(self.build_path, 'LaunchBundles')
@@ -176,8 +169,7 @@ class EC2LaunchManager():
 
     def get_cache_id(self, resource, app_id, grp_id):
         cache_context = '.'.join([app_id, grp_id, resource.name])
-        #bucket_name = self.get_s3_bucket_name(app_id, grp_id, self.bucket_id(res_id))
-        bucket_name = self.get_ec2lm_bucket_name(resource)
+        bucket_name = self.get_ec2lm_bucket_name()
         ec2lm_functions_cache_id = ''
         if bucket_name in self.ec2lm_functions_script.keys():
             ec2lm_functions_cache_id = utils.md5sum(str_data=self.ec2lm_functions_script[bucket_name])
@@ -186,13 +178,10 @@ class EC2LaunchManager():
             return ec2lm_functions_cache_id
         return self.cache_id[cache_context]+ec2lm_functions_cache_id
 
-    def bucket_id(self, resource_id):
-        return '-'.join([resource_id, self.id])
-
     def upload_bundle_stack_hook(self, hook, bundle):
         "Uploads the launch bundle to an S3 bucket"
         s3_ctl = self.paco_ctx.get_controller('S3')
-        bucket_name = s3_ctl.get_bucket_name(bundle.s3_bucket_ref)
+        bucket_name = s3_ctl.get_bucket_name(self.bucket_ref)
         s3_client = self.account_ctx.get_aws_client('s3')
         bundle_s3_key = os.path.join("LaunchBundles", bundle.package_filename)
         s3_client.upload_file(bundle.package_path, bucket_name, bundle_s3_key)
@@ -200,7 +189,7 @@ class EC2LaunchManager():
     def remove_bundle_stack_hook(self, hook, bundle):
         "Remove the launch bundle from an S3 bucket"
         s3_ctl = self.paco_ctx.get_controller('S3')
-        bucket_name = s3_ctl.get_bucket_name(bundle.s3_bucket_ref)
+        bucket_name = s3_ctl.get_bucket_name(self.bucket_ref)
         s3_client = self.account_ctx.get_aws_client('s3')
         bundle_s3_key = os.path.join("LaunchBundles", bundle.package_filename)
         s3_client.delete_object(Bucket=bucket_name, Key=bundle_s3_key)
@@ -229,7 +218,7 @@ class EC2LaunchManager():
             self.upload_bundle_stack_hook, self.stack_hook_cache_id, bundle
         )
         s3_ctl = self.paco_ctx.get_controller('S3')
-        s3_ctl.add_stack_hooks(resource_ref=bundle.s3_bucket_ref, stack_hooks=stack_hooks)
+        s3_ctl.add_stack_hooks(resource_ref=self.bucket_ref, stack_hooks=stack_hooks)
 
     def remove_bundle_from_s3_bucket(self, bundle):
         """Adds stack hook which will remove a launch bundle from an S3 bucket when
@@ -252,7 +241,7 @@ class EC2LaunchManager():
             self.remove_bundle_stack_hook, self.stack_hook_cache_id, bundle
         )
         s3_ctl = self.paco_ctx.get_controller('S3')
-        s3_ctl.add_stack_hooks(resource_ref=bundle.s3_bucket_ref, stack_hooks=stack_hooks)
+        s3_ctl.add_stack_hooks(resource_ref=self.bucket_ref, stack_hooks=stack_hooks)
 
     def ec2lm_functions_hook_cache_id(self, hook, s3_bucket_ref):
         s3_ctl = self.paco_ctx.get_controller('S3')
@@ -270,12 +259,7 @@ class EC2LaunchManager():
         )
 
     def init_ec2lm_s3_bucket(self, resource, instance_iam_role_arn):
-        s3_bucket_ref = '.'.join([
-            resource.paco_ref_parts,
-            self.id, 'bucket'])
-        if s3_bucket_ref in self.ec2lm_buckets.keys():
-            return
-
+        "Initialize the EC2LM S3 Bucket stack if it does not already exist"
         bucket_config_dict = {
             'enabled': True,
             'bucket_name': 'lb',
@@ -293,12 +277,14 @@ class EC2LaunchManager():
                 ]
             } ]
         }
-        # ec2lm buckets have the ref resource.ec2lm.bucket
-        container = Named('ec2lm', resource)
-        bucket_config = models.applications.S3Bucket('bucket', container)
-        bucket_config.update(bucket_config_dict)
-        bucket_config.resolve_ref_obj = self
-        bucket_config.enabled = resource.is_enabled()
+        bucket = models.applications.S3Bucket('ec2lm', resource)
+        bucket.update(bucket_config_dict)
+        bucket.resolve_ref_obj = self
+        bucket.enabled = resource.is_enabled()
+
+        s3_bucket_ref = bucket.paco_ref_parts
+        if s3_bucket_ref in self.ec2lm_buckets.keys():
+            return
 
         # EC2LM Common Functions StackHooks
         stack_hooks = StackHooks(self.paco_ctx)
@@ -324,17 +310,21 @@ class EC2LaunchManager():
             StackTags(self.stack_tags)
         )
         s3_ctl.add_bucket(
-            bucket_config,
+            bucket,
             config_ref=s3_bucket_ref,
             stack_hooks=stack_hooks,
             change_protected=resource.change_protected
         )
-        self.ec2lm_buckets[s3_bucket_ref] = bucket_config
 
-    def get_ec2lm_bucket_name(self, resource):
-        bucket_ref = '.'.join([resource.paco_ref_parts, self.id, 'bucket'])
+        # save the bucket to the EC2LaunchManager
+        self.bucket = bucket
+        self.bucket_ref = bucket.paco_ref_parts
+        self.get_ec2lm_bucket_name()
+        self.ec2lm_buckets[s3_bucket_ref] = bucket
+
+    def get_ec2lm_bucket_name(self):
         s3_ctl = self.paco_ctx.get_controller('S3')
-        return s3_ctl.get_bucket_name(bucket_ref)
+        return s3_ctl.get_bucket_name(self.bucket_ref)
 
     def add_ec2lm_function_swap(self, ec2lm_bucket_name):
         self.ec2lm_functions_script[ec2lm_bucket_name] += """
@@ -523,7 +513,7 @@ function ec2lm_signal_asg_resource() {{
         self.ec2lm_functions_script[ec2lm_bucket_name] = script_template.format(script_table)
         iam_policy_name = '-'.join([resource.name, 'ec2lm'])
         policy_config_yaml = """
-name: '{}'
+policy_name: '{}'
 enabled: true
 statement:
   - effect: Allow
@@ -548,13 +538,13 @@ statement:
       - 'arn:aws:cloudformation:{0[region]}:{0[account]}:stack/{0[stack_name]}/*'
 """.format(rolling_update_policy_table)
 
-        policy_name = 'policy_ec2lm' # ec2lm.policy
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
             role=resource.instance_iam_role,
             resource=resource,
-            policy_name=iam_policy_name,
+            policy_name='policy',
             policy_config_yaml=policy_config_yaml,
+            extra_ref_names=['ec2lm','ec2lm'],
         )
 
     def user_data_script(self, app_id, grp_id, resource_id, resource, instance_iam_role_ref, stack_name):
@@ -594,16 +584,16 @@ aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
 
 {0[launch_bundles]}
 """
-        instance_iam_role_arn_ref = 'paco.ref '+instance_iam_role_ref + '.arn'
-        instance_iam_role_arn = self.paco_ctx.get_ref(instance_iam_role_arn_ref)
-        if instance_iam_role_arn == None:
-            raise StackException(
-                    PacoErrorCode.Unknown,
-                    message="ec2_launch_manager: user_data_script: Unable to locate value for ref: " + instance_iam_role_arn_ref
-                )
-        self.init_ec2lm_s3_bucket(resource, instance_iam_role_arn)
+        # instance_iam_role_arn_ref = 'paco.ref '+instance_iam_role_ref + '.arn'
+        # instance_iam_role_arn = self.paco_ctx.get_ref(instance_iam_role_arn_ref)
+        # if instance_iam_role_arn == None:
+        #     raise StackException(
+        #             PacoErrorCode.Unknown,
+        #             message="ec2_launch_manager: user_data_script: Unable to locate value for ref: " + instance_iam_role_arn_ref
+        #         )
+        #self.init_ec2lm_s3_bucket(resource, instance_iam_role_arn)
 
-        ec2lm_bucket_name = self.get_ec2lm_bucket_name(resource)
+        ec2lm_bucket_name = self.get_ec2lm_bucket_name()
 
         script_table = {
             'cache_id': None,
@@ -676,7 +666,7 @@ function ec2lm_replace_secret_in_file() {
             secret_arn_list_yaml += "      - !Ref SecretArn" + secret_hash + "\n"
 
         policy_config_yaml = """
-name: '{}'
+policy_name: '{}'
 enabled: true
 statement:
   - effect: Allow
@@ -686,31 +676,30 @@ statement:
 {}
 """.format(iam_policy_name, secret_arn_list_yaml)
 
-        policy_name = 'policy_ec2lm_secrets'
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
             role=resource.instance_iam_role,
             resource=resource,
-            policy_name=iam_policy_name,
+            policy_name='policy',
             policy_config_yaml=policy_config_yaml,
             template_params=template_params,
+            extra_ref_name=['ec2lm','secrets'],
         )
         return secrets_script
 
     def add_bundle(self, bundle):
         bundle.build()
-        if bundle.s3_bucket_ref not in self.launch_bundles:
-            self.init_ec2lm_s3_bucket(bundle.resource_config, bundle.instance_iam_role_arn)
-            self.launch_bundles[bundle.s3_bucket_ref] = []
-            # Initializes the CloudFormation for this S3 Context ID
+        if self.bucket_ref not in self.launch_bundles:
+            #self.init_ec2lm_s3_bucket(bundle.resource_config, bundle.instance_iam_role_arn)
+            self.launch_bundles[self.bucket_ref] = []
         # Add the bundle to the S3 Context ID bucket
         self.add_bundle_to_s3_bucket(bundle)
-        self.launch_bundles[bundle.s3_bucket_ref].append(bundle)
+        self.launch_bundles[self.bucket_ref].append(bundle)
 
     def remove_bundle(self, bundle):
-        if bundle.s3_bucket_ref not in self.launch_bundles:
-            self.init_ec2lm_s3_bucket(bundle.resource_config, bundle.instance_iam_role_arn)
-            self.launch_bundles[bundle.s3_bucket_ref] = []
+        if self.bucket_ref not in self.launch_bundles:
+            #self.init_ec2lm_s3_bucket(bundle.resource_config, bundle.instance_iam_role_arn)
+            self.launch_bundles[self.bucket_ref] = []
         self.remove_bundle_from_s3_bucket(bundle)
 
     def lb_add_cfn_init(self, bundle_name, instance_iam_role_ref, resource):
@@ -733,7 +722,6 @@ statement:
             group_name,
             resource.name,
             resource,
-            self.bucket_id(resource.name)
         )
 
         if resource.cfn_init == None or \
@@ -786,7 +774,6 @@ statement:
             group_name,
             resource.name,
             resource,
-            self.bucket_id(resource.name)
         )
 
         efs_enabled = False
@@ -848,7 +835,7 @@ function process_mount_target()
 
         iam_policy_name = '-'.join([resource.name, 'efs'])
         policy_config_yaml = """
-name: '{}'
+policy_name: '{}'
 enabled: true
 statement:
   - effect: Allow
@@ -857,13 +844,14 @@ statement:
     resource:
       - '*'
 """.format(iam_policy_name)
-        policy_name = 'policy_ec2lm_efs'
+
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
             role=resource.instance_iam_role,
             resource=resource,
-            policy_name=iam_policy_name,
+            policy_name='policy',
             policy_config_yaml=policy_config_yaml,
+            extra_ref_names=['ec2lm','efs']
         )
 
         efs_lb.set_launch_script(launch_script)
@@ -889,7 +877,6 @@ statement:
             group_name,
             resource.name,
             resource,
-            self.bucket_id(resource.name)
         )
 
         if len(resource.ebs_volume_mounts) == 0:
@@ -1045,7 +1032,7 @@ function process_volume_mount()
 
         iam_policy_name = '-'.join([resource.name, 'ebs'])
         policy_config_yaml = """
-name: '{}'
+policy_name: '{}'
 enabled: true
 statement:
   - effect: Allow
@@ -1056,13 +1043,13 @@ statement:
       - 'arn:aws:ec2:*:*:instance/*'
 """.format(iam_policy_name)
 
-        policy_name = 'policy_ec2lm_ebs'
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
             role=resource.instance_iam_role,
             resource=resource,
-            policy_name=iam_policy_name,
+            policy_name='policy',
             policy_config_yaml=policy_config_yaml,
+            extra_ref_names=['ec2lm','ebs'],
         )
         ebs_lb.set_launch_script(launch_script)
 
@@ -1084,7 +1071,6 @@ statement:
             group_name,
             resource.name,
             resource,
-            self.bucket_id(resource.name)
         )
 
         if resource.eip == None:
@@ -1132,7 +1118,7 @@ fi
 """
         iam_policy_name = '-'.join([resource.name, 'eip'])
         policy_config_yaml = """
-name: '{}'
+policy_name: '{}'
 enabled: true
 statement:
   - effect: Allow
@@ -1142,13 +1128,14 @@ statement:
     resource:
       - '*'
 """.format(iam_policy_name)
-        policy_name = 'policy_ec2lm_eip'
+
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
             role=resource.instance_iam_role,
             resource=resource,
-            policy_name=iam_policy_name,
+            policy_name='policy',
             policy_config_yaml=policy_config_yaml,
+            extra_ref_names=['ec2lm','eip'],
         )
 
         eip_lb.set_launch_script(launch_script)
@@ -1184,7 +1171,6 @@ statement:
             group_name,
             resource.name,
             resource,
-            self.bucket_id(resource.name)
         )
 
         if resource.monitoring == None or resource.monitoring.enabled == False:
@@ -1314,7 +1300,7 @@ echo "EC2LM: CloudWatch: Done"
         # Create instance managed policy for the agent
         iam_policy_name = '-'.join([resource.name, 'cloudwatchagent'])
         policy_config_yaml = """
-name: '{}'
+policy_name: '{}'
 enabled: true
 statement:
   - effect: Allow
@@ -1356,8 +1342,9 @@ statement:
         iam_ctl.add_managed_policy(
             role=resource.instance_iam_role,
             resource=resource,
-            policy_name=iam_policy_name,
+            policy_name='policy',
             policy_config_yaml=policy_config_yaml,
+            extra_ref_names=['ec2lm','cloudwatchagent'],
         )
 
         # Set the launch script
@@ -1397,7 +1384,7 @@ yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/li
         # Create instance managed policy for the agent
         iam_policy_name = '-'.join([resource_id, 'ssmagent-policy'])
         policy_config_yaml = """
-name: '{}'
+policy_name: '{}'
 statement:
   - effect: Allow
     action:
@@ -1421,23 +1408,32 @@ statement:
     resource:
       - '*'
 """.format(iam_policy_name)
-        policy_name = 'policy_ec2lm_ssmagent'
+
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
             role=resource.instance_iam_role,
             resource=resource,
             policy_name=iam_policy_name,
             policy_config_yaml=policy_config_yaml,
+            extra_ref_names=['ec2lm','ssmagent'],
         )
 
         # Create the Launch Bundle and configure it
-        ssm_lb = LaunchBundle(self.paco_ctx, "SSMAgent", self, app_id, group_id, resource_id, res_config, self.bucket_id(resource_id))
+        ssm_lb = LaunchBundle(self.paco_ctx, "SSMAgent", self, app_id, group_id, resource_id, res_config)
         ssm_lb.set_launch_script(launch_script)
 
         # Save Configuration
         self.add_bundle(ssm_lb)
 
     def process_bundles(self, resource, instance_iam_role_ref):
+        instance_iam_role_arn_ref = 'paco.ref ' + instance_iam_role_ref + '.arn'
+        instance_iam_role_arn = self.paco_ctx.get_ref(instance_iam_role_arn_ref)
+        if instance_iam_role_arn == None:
+            raise StackException(
+                    PacoErrorCode.Unknown,
+                    message="ec2_launch_manager: user_data_script: Unable to locate value for ref: " + instance_iam_role_arn_ref
+                )
+        self.init_ec2lm_s3_bucket(resource, instance_iam_role_arn)
         for bundle_name in self.launch_bundle_names:
             bundle_method = getattr(self, 'lb_add_' + bundle_name.replace('-', '_').lower())
             bundle_method(bundle_name, instance_iam_role_ref, resource)

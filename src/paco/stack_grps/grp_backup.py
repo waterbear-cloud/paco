@@ -1,3 +1,5 @@
+from paco.models import schemas
+from paco.models.locations import get_parent_by_interface
 from paco.stack import StackOrder, Stack, StackGroup, StackTags
 import paco.cftemplates
 
@@ -33,6 +35,9 @@ class BackupVaultsStackGroup(StackGroup):
     def create_iam_role(self):
         "Backup service Role"
         # if at least one vault is enabled, create an IAM Role
+        # BackupVault will create one IAM Role for each NetworkEnvironment/Environment combination,
+        # this way a netenv/env can be created, have it's own Role, then a different netenv/env with a second Role
+        # if the first netenv/env is deleted, the second one will not be impacted.
         vaults_enabled = False
         for vault in self.config.values():
             if vault.is_enabled():
@@ -40,27 +45,24 @@ class BackupVaultsStackGroup(StackGroup):
         if not vaults_enabled:
             return None
 
-        role_name = "BackupService"
+        netenv = get_parent_by_interface(self.config, schemas.INetworkEnvironment)
+        iam_role_id = 'Backup-{}-{}'.format(netenv.name, self.env_ctx.env_id)
         policy_arns = [
             'arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup',
             'arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores'
         ]
-
         role_dict = {
             'enabled': True,
             'path': '/',
-            'role_name': role_name,
+            'role_name': iam_role_id,
             'managed_policy_arns': policy_arns,
             'assume_role_policy': {'effect': 'Allow', 'service': ['backup.amazonaws.com']}
         }
-        role = paco.models.iam.Role(role_name, self.config)
+        role = paco.models.iam.Role(iam_role_id, self.config)
         role.apply_config(role_dict)
 
-        iam_role_ref = self.config.paco_ref_parts + '.' + role_name
-        iam_role_id = 'Backup-' + self.env_ctx.env_id + '-' + role_name
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_role(
-            account_ctx=self.account_ctx,
             region=self.env_ctx.region,
             resource=self.config,
             role=role,

@@ -6,6 +6,7 @@ from paco.core.yaml import YAML, Ref, Sub
 from paco.models.references import Reference
 from paco.models.locations import get_parent_by_interface
 from paco.models import schemas
+from paco.models.base import Named
 from paco.stack import StackOrder, Stack, StackGroup, StackTags, StackHooks
 from paco.utils import md5sum, get_support_resource_ref_ext
 from parliament import analyze_policy_string
@@ -204,13 +205,21 @@ class RoleContext():
         policy_name,
         policy_config_yaml,
         template_params=None,
-        change_protected=False
+        change_protected=False,
+        extra_ref_names=None,
     ):
         "Adds a Managed Policy stack that is attached to this Role"
         # create a Policy object from YAML and add it to the model
         policy_dict = yaml.load(policy_config_yaml)
         policy_dict['roles'] = [self.role_name]
-        policy = paco.models.iam.ManagedPolicy(policy_name, resource)
+        # extra_ref_names adds extra parts to the Policy paco.ref
+        # This is because the paco.ref is used to generate the a Policy hash used in the AWS
+        # Policy name. The ref should not change otherwise the Policy names change.
+        parent = resource
+        for name in extra_ref_names:
+            container = Named(name, parent)
+            parent = container
+        policy = paco.models.iam.ManagedPolicy(policy_name, parent)
         paco.models.loader.apply_attributes_from_config(policy, policy_dict)
 
         if policy.paco_ref_parts in self.policy_context.keys():

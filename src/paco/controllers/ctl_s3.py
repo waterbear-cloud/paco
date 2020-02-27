@@ -271,7 +271,7 @@ class S3Controller(Controller):
         self.paco_ctx.log_action_col("Init", "S3", "Completed")
 
     def resolve_ref(self, ref):
-        # find the bucket then call resolve_ref on it
+        "Find the bucket then call resolve_ref on it"
         buckets = self.paco_ctx.project['resource']['s3'].buckets
         return buckets[ref.parts[3]].resolve_ref(ref)
 

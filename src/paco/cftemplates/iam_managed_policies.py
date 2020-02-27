@@ -18,7 +18,10 @@ class IAMManagedPolicies(StackTemplate):
             paco_ctx,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
         )
-        self.set_aws_name('Policy', self.resource_group_name, self.resource.name, policy.name)
+        # existing Policy.policy_name's have been named in the format "<resource.name>-<policy.name>"
+        # however, the policy.name is actually just 'policy' and the name used was a parent container that
+        # contained the actual name for the policy.
+        self.set_aws_name('Policy', self.resource_group_name, policy.policy_name)
 
         # Define the Template
         template_fmt = """
@@ -99,10 +102,10 @@ Resources:
                     self.set_parameter(param_table['key'], param_table['value'])
                     parameters_yaml += parameter_fmt.format(param_table)
 
-            policy_id = policy.name
+            policy_name = policy.policy_name
             # Name
-            policy_table['name'] = self.gen_policy_name(policy_id)
-            policy_table['cfn_logical_id_prefix'] = self.create_cfn_logical_id(policy_id)
+            policy_table['name'] = self.gen_policy_name(policy_name)
+            policy_table['cfn_logical_id_prefix'] = self.create_cfn_logical_id(policy_name)
             # Path
             policy_table['path'] = policy.path
 
@@ -151,19 +154,17 @@ Resources:
         self.set_template(template_fmt.format(template_table))
 
 
-    # Generate a name valid in CloudFormation
-    def gen_policy_name(self, policy_id):
+    def gen_policy_name(self, policy_name):
+        "Generate a name valid in CloudFormation"
         policy_ref_hash = md5sum(str_data=self.policy.paco_ref_parts)[:8].upper()
         policy_name = self.create_resource_name_join(
-            name_list=[policy_ref_hash, policy_id],
+            name_list=[policy_ref_hash, policy_name],
             separator='-',
             camel_case=False,
             filter_id='IAM.ManagedPolicy.ManagedPolicyName'
         )
         return policy_name
 
-    # TODO: This shares the same code in iam_roles.py. This should
-    # be consolidated in cftemplates.py...
     def gen_statement_yaml(self, statements):
         statement_fmt = """
           - Effect: {0[effect]:s}
