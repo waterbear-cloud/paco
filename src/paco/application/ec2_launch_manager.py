@@ -65,6 +65,7 @@ class LaunchBundle():
         self.s3_key = None
         instance_iam_role_arn_ref = self.resource_config.paco_ref + '.instance_iam_role.arn'
         self.instance_iam_role_arn = self.paco_ctx.get_ref(instance_iam_role_arn_ref)
+        self.bucket_ref = resource_config.paco_ref_parts + '.ec2lm'
         self.bundles_path = os.path.join(self.build_path, 'LaunchBundles')
         self.bundle_folder = self.name
         self.package_filename = str.join('.', [self.bundle_folder, 'tgz'])
@@ -169,7 +170,7 @@ class EC2LaunchManager():
 
     def get_cache_id(self, resource, app_id, grp_id):
         cache_context = '.'.join([app_id, grp_id, resource.name])
-        bucket_name = self.get_ec2lm_bucket_name()
+        bucket_name = self.get_ec2lm_bucket_name(resource)
         ec2lm_functions_cache_id = ''
         if bucket_name in self.ec2lm_functions_script.keys():
             ec2lm_functions_cache_id = utils.md5sum(str_data=self.ec2lm_functions_script[bucket_name])
@@ -181,7 +182,7 @@ class EC2LaunchManager():
     def upload_bundle_stack_hook(self, hook, bundle):
         "Uploads the launch bundle to an S3 bucket"
         s3_ctl = self.paco_ctx.get_controller('S3')
-        bucket_name = s3_ctl.get_bucket_name(self.bucket_ref)
+        bucket_name = s3_ctl.get_bucket_name(bundle.bucket_ref)
         s3_client = self.account_ctx.get_aws_client('s3')
         bundle_s3_key = os.path.join("LaunchBundles", bundle.package_filename)
         s3_client.upload_file(bundle.package_path, bucket_name, bundle_s3_key)
@@ -189,7 +190,7 @@ class EC2LaunchManager():
     def remove_bundle_stack_hook(self, hook, bundle):
         "Remove the launch bundle from an S3 bucket"
         s3_ctl = self.paco_ctx.get_controller('S3')
-        bucket_name = s3_ctl.get_bucket_name(self.bucket_ref)
+        bucket_name = s3_ctl.get_bucket_name(bundle.bucket_ref)
         s3_client = self.account_ctx.get_aws_client('s3')
         bundle_s3_key = os.path.join("LaunchBundles", bundle.package_filename)
         s3_client.delete_object(Bucket=bucket_name, Key=bundle_s3_key)
@@ -218,7 +219,7 @@ class EC2LaunchManager():
             self.upload_bundle_stack_hook, self.stack_hook_cache_id, bundle
         )
         s3_ctl = self.paco_ctx.get_controller('S3')
-        s3_ctl.add_stack_hooks(resource_ref=self.bucket_ref, stack_hooks=stack_hooks)
+        s3_ctl.add_stack_hooks(resource_ref=bundle.bucket_ref, stack_hooks=stack_hooks)
 
     def remove_bundle_from_s3_bucket(self, bundle):
         """Adds stack hook which will remove a launch bundle from an S3 bucket when
@@ -241,7 +242,7 @@ class EC2LaunchManager():
             self.remove_bundle_stack_hook, self.stack_hook_cache_id, bundle
         )
         s3_ctl = self.paco_ctx.get_controller('S3')
-        s3_ctl.add_stack_hooks(resource_ref=self.bucket_ref, stack_hooks=stack_hooks)
+        s3_ctl.add_stack_hooks(resource_ref=bundle.bucket_ref, stack_hooks=stack_hooks)
 
     def ec2lm_functions_hook_cache_id(self, hook, s3_bucket_ref):
         s3_ctl = self.paco_ctx.get_controller('S3')
@@ -286,6 +287,15 @@ class EC2LaunchManager():
         if s3_bucket_ref in self.ec2lm_buckets.keys():
             return
 
+        s3_ctl = self.paco_ctx.get_controller('S3')
+        s3_ctl.init_context(
+            self.account_ctx,
+            self.aws_region,
+            s3_bucket_ref,
+            self.stack_group,
+            StackTags(self.stack_tags)
+        )
+
         # EC2LM Common Functions StackHooks
         stack_hooks = StackHooks(self.paco_ctx)
         stack_hooks.add(
@@ -297,18 +307,14 @@ class EC2LaunchManager():
             hook_arg=s3_bucket_ref
         )
         stack_hooks.add(
-            'EC2LaunchManager', 'update', 'post',
-            self.ec2lm_functions_hook, self.ec2lm_functions_hook_cache_id, s3_bucket_ref
+            name='EC2LaunchManager',
+            stack_action='update',
+            stack_timing='post',
+            hook_method=self.ec2lm_functions_hook,
+            cache_method=self.ec2lm_functions_hook_cache_id,
+            hook_arg=s3_bucket_ref
         )
 
-        s3_ctl = self.paco_ctx.get_controller('S3')
-        s3_ctl.init_context(
-            self.account_ctx,
-            self.aws_region,
-            s3_bucket_ref,
-            self.stack_group,
-            StackTags(self.stack_tags)
-        )
         s3_ctl.add_bucket(
             bucket,
             config_ref=s3_bucket_ref,
@@ -317,14 +323,11 @@ class EC2LaunchManager():
         )
 
         # save the bucket to the EC2LaunchManager
-        self.bucket = bucket
-        self.bucket_ref = bucket.paco_ref_parts
-        self.get_ec2lm_bucket_name()
         self.ec2lm_buckets[s3_bucket_ref] = bucket
 
-    def get_ec2lm_bucket_name(self):
+    def get_ec2lm_bucket_name(self, resource):
         s3_ctl = self.paco_ctx.get_controller('S3')
-        return s3_ctl.get_bucket_name(self.bucket_ref)
+        return s3_ctl.get_bucket_name(resource.paco_ref_parts + '.ec2lm')
 
     def add_ec2lm_function_swap(self, ec2lm_bucket_name):
         self.ec2lm_functions_script[ec2lm_bucket_name] += """
@@ -584,16 +587,17 @@ aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
 
 {0[launch_bundles]}
 """
-        # instance_iam_role_arn_ref = 'paco.ref '+instance_iam_role_ref + '.arn'
-        # instance_iam_role_arn = self.paco_ctx.get_ref(instance_iam_role_arn_ref)
-        # if instance_iam_role_arn == None:
-        #     raise StackException(
-        #             PacoErrorCode.Unknown,
-        #             message="ec2_launch_manager: user_data_script: Unable to locate value for ref: " + instance_iam_role_arn_ref
-        #         )
-        #self.init_ec2lm_s3_bucket(resource, instance_iam_role_arn)
 
-        ec2lm_bucket_name = self.get_ec2lm_bucket_name()
+        instance_iam_role_arn_ref = 'paco.ref ' + instance_iam_role_ref + '.arn'
+        instance_iam_role_arn = self.paco_ctx.get_ref(instance_iam_role_arn_ref)
+        if instance_iam_role_arn == None:
+            raise StackException(
+                    PacoErrorCode.Unknown,
+                    message="ec2_launch_manager: user_data_script: Unable to locate value for ref: " + instance_iam_role_arn_ref
+                )
+        self.init_ec2lm_s3_bucket(resource, instance_iam_role_arn)
+
+        ec2lm_bucket_name = self.get_ec2lm_bucket_name(resource)
 
         script_table = {
             'cache_id': None,
@@ -690,16 +694,16 @@ statement:
     def add_bundle(self, bundle):
         bundle.build()
         if self.bucket_ref not in self.launch_bundles:
-            #self.init_ec2lm_s3_bucket(bundle.resource_config, bundle.instance_iam_role_arn)
-            self.launch_bundles[self.bucket_ref] = []
+            self.init_ec2lm_s3_bucket(bundle.resource_config, bundle.instance_iam_role_arn)
+            self.launch_bundles[bundle.bucket_ref] = []
         # Add the bundle to the S3 Context ID bucket
         self.add_bundle_to_s3_bucket(bundle)
-        self.launch_bundles[self.bucket_ref].append(bundle)
+        self.launch_bundles[bundle.bucket_ref].append(bundle)
 
     def remove_bundle(self, bundle):
-        if self.bucket_ref not in self.launch_bundles:
-            #self.init_ec2lm_s3_bucket(bundle.resource_config, bundle.instance_iam_role_arn)
-            self.launch_bundles[self.bucket_ref] = []
+        if bundle.bucket_ref not in self.launch_bundles:
+            self.init_ec2lm_s3_bucket(bundle.resource_config, bundle.instance_iam_role_arn)
+            self.launch_bundles[bundle.bucket_ref] = []
         self.remove_bundle_from_s3_bucket(bundle)
 
     def lb_add_cfn_init(self, bundle_name, instance_iam_role_ref, resource):

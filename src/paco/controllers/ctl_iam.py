@@ -783,7 +783,6 @@ class IAMController(Controller):
             )
         else:
             print("Role already exists: %s" % (role_ref))
-            breakpoint()
             raise StackException(PacoErrorCode.Unknown)
 
     def role_arn(self, role_ref):

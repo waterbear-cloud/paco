@@ -372,7 +372,6 @@ class Stack():
             if stack_output_config.config_ref == ref.ref:
                 return stack_output_config.key
         # raise an error if no key was found
-        breakpoint()
         message = self.get_stack_error_message()
         message += "Error: Unable to find outputs key for ref: {}\n".format(ref.raw)
         raise StackException(
