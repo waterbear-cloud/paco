@@ -693,7 +693,7 @@ statement:
 
     def add_bundle(self, bundle):
         bundle.build()
-        if self.bucket_ref not in self.launch_bundles:
+        if bundle.bucket_ref not in self.launch_bundles:
             self.init_ec2lm_s3_bucket(bundle.resource_config, bundle.instance_iam_role_arn)
             self.launch_bundles[bundle.bucket_ref] = []
         # Add the bundle to the S3 Context ID bucket

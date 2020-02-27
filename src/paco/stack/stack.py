@@ -685,7 +685,8 @@ class Stack():
             ref_value = ref.resolve(self.paco_ctx.project, account_ctx=self.account_ctx)
             if ref_value == None:
                 message = "Error: Unable to locate value for ref: {}\n".format(param_value)
-                message += "Template: {}\n".format(self.aws_name)
+                if self.template != None:
+                    message += "Template: {}\n".format(self.template.aws_name)
                 message += "Parameter: {}\n".format(param_key)
                 raise StackException(
                     PacoErrorCode.Unknown,

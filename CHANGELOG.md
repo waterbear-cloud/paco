@@ -23,6 +23,10 @@ Changelog for Paco
   with new ones using the new Role. The AWS CloudFormation documentation states that a BackupSelection's
   SelectionName is a display name only, but this is incorrect.
 
+- Removed the ``Resource/NotificationGroups.yaml`` filename alias. This file is now only loaded using
+  the filename ``resoruce/snstopics.yaml``.
+
+
 ### Added
 
 - Integrated the Parliment library to lint/validate the IAM Policies used for all Roles.
