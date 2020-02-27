@@ -738,34 +738,38 @@ class IAMController(Controller):
         # default account_ctx is the StackGroup's account_ctx
         if account_ctx == None:
             account_ctx = stack_group.account_ctx
-        for policy in role.policies:
-            policy_json = policy.export_as_json()
-            policy_analysis = analyze_policy_string(policy_json)
 
-            # Possible Findings:
-            # UNKNOWN_ACTION
-            # UNKNOWN_PREFIX
-            # UNKNOWN_PRINCIPAL
-            # UNKNOWN_FEDERATION_SOURCE
-            # UNKNOWN_OPERATOR
-            # MISMATCHED_TYPE_OPERATION_TO_NULL
-            # BAD_PATTERN_FOR_MFA
-            # MISMATCHED_TYPE
-            # UNKNOWN_CONDITION_FOR_ACTION
-            # MALFORMED
-            # INVALID_ARN
-            # RESOURCE_MISMATCH
+        if self.paco_ctx.warn:
+            # lint all IAM Policies and report on complaints
+            for policy in role.policies:
+                policy_json = policy.export_as_json()
+                policy_analysis = analyze_policy_string(policy_json)
 
-            if len(policy_analysis.findings) > 0:
-                print("\nWARNING: Problems detected for IAM Policy for Role named {}.".format(role.name))
-                print("  Role paco.ref     : {}".format(role.paco_ref_parts))
-                resource = get_parent_by_interface(role, schemas.IResource)
-                if resource != None:
-                    print("  Role for Resource : {} ({})".format(resource.name, resource.type))
-                for finding in policy_analysis.findings:
-                    print("  {} - {}".format(finding.issue, finding.detail))
+                # Possible Findings:
+                # UNKNOWN_ACTION
+                # UNKNOWN_PREFIX
+                # UNKNOWN_PRINCIPAL
+                # UNKNOWN_FEDERATION_SOURCE
+                # UNKNOWN_OPERATOR
+                # MISMATCHED_TYPE_OPERATION_TO_NULL
+                # BAD_PATTERN_FOR_MFA
+                # MISMATCHED_TYPE
+                # UNKNOWN_CONDITION_FOR_ACTION
+                # MALFORMED
+                # INVALID_ARN
+                # RESOURCE_MISMATCH
+
+                if len(policy_analysis.findings) > 0:
+                    print("\nWARNING: Problems detected for IAM Policy for Role named {}.".format(role.name))
+                    print("  Role paco.ref     : {}".format(role.paco_ref_parts))
+                    resource = get_parent_by_interface(role, schemas.IResource)
+                    if resource != None:
+                        print("  Role for Resource : {} ({})".format(resource.name, resource.type))
+                    for finding in policy_analysis.findings:
+                        print("  {} - {}".format(finding.issue, finding.detail))
+                        print()
                     print()
-                print()
+
         if role_ref not in self.role_context.keys():
             self.role_context[role_ref] = RoleContext(
                 account_ctx=account_ctx,

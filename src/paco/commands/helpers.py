@@ -33,6 +33,7 @@ def init_cloud_command(
     verbose,
     nocache,
     yes,
+    warn,
     disable_validation,
     quiet_changes_only,
     config_scope,
@@ -41,6 +42,7 @@ def init_cloud_command(
     paco_ctx.verbose = verbose
     paco_ctx.nocache = nocache
     paco_ctx.yes = yes
+    paco_ctx.warn = warn
     paco_ctx.disable_validation = disable_validation
     paco_ctx.quiet_changes_only = quiet_changes_only
     paco_ctx.command = command_name
@@ -240,6 +242,12 @@ def cloud_options(func):
         is_flag=True,
         default=False,
         help='Responds "yes" to any Yes/No prompts.'
+    )(func)
+    func = click.option(
+        '-w', '--warn',
+        is_flag=True,
+        default=False,
+        help='Warn about potential problems, such as invalid IAM Policies.'
     )(func)
     func = click.option(
         '-d', '--disable-validation',

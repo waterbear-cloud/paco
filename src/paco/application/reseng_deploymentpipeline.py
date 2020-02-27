@@ -130,11 +130,10 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         s3_ctl.add_bucket_policy(self.artifacts_bucket_meta['ref'], cpbd_s3_bucket_policy)
 
     def init_stage_action_codecommit_source(self, action_config):
+        "Initialize an IAM Role for the CodeCommit action"
         if not action_config.is_enabled():
             return
 
-        # -------------------------------------------
-        # CodeCommit Delegate Role
         role_yaml = """
 assume_role_policy:
   effect: Allow
@@ -195,7 +194,6 @@ policies:
         ]
         codecommit_account_ref = self.paco_ctx.get_ref(action_config.codecommit_repository+'.account')
         codecommit_account_ctx = self.paco_ctx.get_account_context(codecommit_account_ref)
-        codecommit_iam_role_ref = '{}.{}'.format(action_config.paco_ref_parts, self.codecommit_role_name)
         iam_ctl.add_role(
             account_ctx=codecommit_account_ctx,
             region=self.aws_region,
@@ -207,8 +205,8 @@ policies:
             template_params=iam_role_params,
         )
 
-    # S3 Deploy
     def init_stage_action_s3_deploy(self, action_config):
+        "Initialize an IAM Role stack to allow access to the S3 Bucket for the action"
         # Create a role to allow access to the S3 Bucket
         role_yaml = """
 assume_role_policy:
@@ -280,8 +278,8 @@ policies:
         action_config._delegate_role_arn = iam_ctl.role_arn(role_ref)
 
 
-    # Code Deploy
     def init_stage_action_codedeploy_deploy(self, action_config):
+        "Initialize a CodeDeploy stack for the action"
         if not action_config.is_enabled():
             return
 
