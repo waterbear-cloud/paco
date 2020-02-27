@@ -461,7 +461,7 @@ class Stack():
         warning_size_limite_bytes = 41200
         if yaml_path.stat().st_size >= warning_size_limite_bytes:
             print("WARNING: Template is reaching size limit of 51,200 bytes: Current size: {} bytes ".format(yaml_path.stat().st_size))
-            print("template: " + yaml_path)
+            print("template: {}".format(yaml_path))
 
     def validate(self):
         "Validate the Stack"
