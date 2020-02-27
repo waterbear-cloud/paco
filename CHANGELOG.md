@@ -1,7 +1,7 @@
 Changelog for Paco
 ==================
 
-5.2.0 (unreleased)
+6.0.0 (unreleased)
 ------------------
 
 ### Breaking
@@ -17,9 +17,11 @@ Changelog for Paco
 
 - The IAM Roles for BackupVault had inconsistently named CloudFormation stacks ("BackupVaults--Backup").
   A new IAM Role will be created in a new stack. The old stack will remain but it can be safely deleted.
-  Each AWS::Backup::BackupSelection resource will have "Selection: " prefixed on the SelectionName, this will
-  replace the old BackupSelection resources with new ones using the new Role. The AWS CloudFormation
-  documentation states that a BackupSelection's SelectionName is a display name only, but this is incorrect.
+
+  There will be a stack UPDATE to the BackupVaults. Each AWS::Backup::BackupSelection resource will
+  have "Selection: " prefixed on the SelectionName, this will replace the old BackupSelection resources
+  with new ones using the new Role. The AWS CloudFormation documentation states that a BackupSelection's
+  SelectionName is a display name only, but this is incorrect.
 
 ### Added
 
