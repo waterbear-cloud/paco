@@ -622,7 +622,7 @@ aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
             script_table['pre_script'] = resource.user_data_pre_script
 
         if resource.secrets != None and len(resource.secrets) > 0:
-            self.add_ec2lm_function_secrets(ec2lm_bucket_name, resource, instance_iam_role_ref)
+            self.add_ec2lm_function_secrets(ec2lm_bucket_name, resource, grp_id, instance_iam_role_ref)
 
         if resource.launch_options != None:
             if resource.launch_options.update_packages == True:
