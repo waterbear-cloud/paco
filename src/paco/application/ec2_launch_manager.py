@@ -687,7 +687,7 @@ statement:
             policy_name='policy',
             policy_config_yaml=policy_config_yaml,
             template_params=template_params,
-            extra_ref_name=['ec2lm','secrets'],
+            extra_ref_names=['ec2lm','secrets'],
         )
         return secrets_script
 
