@@ -32,12 +32,6 @@ class EnvironmentContext():
         self.stack_grps = []
         env_account_ref = self.config.network.aws_account
         self.account_ctx = paco_ctx.get_account_context(account_ref=env_account_ref)
-        self.config_ref_prefix = '.'.join([
-            self.netenv_ctl.config_ref_prefix,
-            self.netenv_id,
-            self.env_id,
-            self.region
-        ])
         # Network Stack Group
         self.init_done = False
         self.resource_yaml_filename = "{}-{}-{}.yaml".format(
@@ -56,6 +50,8 @@ class EnvironmentContext():
             return
         self.init_done = True
         self.paco_ctx.log_action_col('Init', 'Environment', self.env_id+' '+self.region)
+
+        # Secrets Manager
         self.secrets_stack_grp = SecretsManagerStackGroup(
             self.paco_ctx,
             self.account_ctx,
@@ -114,35 +110,8 @@ class EnvironmentContext():
     def get_vpc_stack(self):
         return self.network_stack_grp.get_vpc_stack()
 
-    def nat_gateway_ids(self):
-        return self.config.network.vpc.nat_gateway.keys()
-
-    def nat_gateway_enabled(self, nat_id):
-        return self.config.network.vpc.nat_gateway[nat_id].enabled
-
-    def nat_gateway_az(self, nat_id):
-        return self.config.network.vpc.nat_gateway[nat_id].availability_zone
-
-    def nat_gateway_segment(self, nat_id):
-        return self.config.network.vpc.nat_gateway[nat_id].segment
-
-    def nat_gateway_default_route_segments(self, nat_id):
-        return self.config.network.vpc.nat_gateway[nat_id].default_route_segments
-
-    def vpc_config(self):
-        return self.config.network.vpc
-
-    def peering_config(self):
-        return self.config.network.vpc.peering
-
     def availability_zones(self):
         return self.config.network.availability_zones
-
-    def iam_ids(self):
-        return sorted(self.config['iam'].keys())
-
-    def iam_roles_dict(self, iam_roles_id):
-        return self.config['iam'][iam_roles_id].roles
 
     def application_ids(self):
         ordered_config_list = []
@@ -162,34 +131,6 @@ class EnvironmentContext():
 
         return ordered_id_list
 
-    def deployment_ids(self, app_id):
-        self.config.applications[app_id].resources.deployments()
-        #for resource in self.config.applications[app_id].resources:
-        #    if resource.is_deployment():
-
-        return sorted(self.config.applications[app_id].keys())
-
-    def app_services_config(self, app_id):
-        return self.config.applications[app_id].services
-
-    def app_group_items(self, app_id):
-        return self.config.applications[app_id].groups_ordered()
-
-    def app_resource_instance_iam_profile(self, app_id, resource_id):
-        return self.config.applications[app_id].resources[resource_id].instance_iam_profile
-
-    def app_deployment_type(self, app_id, resource_id):
-        return self.config.applications[app_id].resources[resource_id].type
-
-    def app_deployment_config(self, app_id, resource_id):
-        return self.config.applications[app_id].deployments[resource_id]
-
-    def app_deployment_artifacts_bucket_config(self, app_id, resource_id):
-        return self.config.applications[app_id].resources[resource_id].artifacts_bucket
-
-    def app_deployment_codecommit_repository(self, app_id, resource_id):
-        return self.config.applications[app_id].resources[resource_id].codecommit_repository
-
     def save_stack_output_config(self):
         merged_config = {}
         for stack_grp in self.stack_grps:
@@ -200,7 +141,6 @@ class EnvironmentContext():
                 if config_dict == None:
                     continue
                 merged_config = utils.dict_of_dicts_merge(merged_config, config_dict)
-
 
         # Save merged_config to yaml file
         if 'netenv' in merged_config.keys():
@@ -240,10 +180,10 @@ class EnvironmentContext():
         # Add permissions
         # Return AMI ID and image name
         ec2_client = self.account_ctx.get_aws_client('ec2')
-        ec2_client.create_image(InstanceId=instance_id,
-                                Name=image_name)
-
-
+        ec2_client.create_image(
+            InstanceId=instance_id,
+            Name=image_name
+        )
 
     def env_ref_prefix(
         self,
@@ -284,7 +224,6 @@ class NetEnvController(Controller):
         self.sub_envs = {}
         self.netenv_id = None
         self.config = None
-        self.config_ref_prefix = "netenv"
 
     def init_sub_env(self, env_id, region):
         if env_id in self.sub_envs.keys():

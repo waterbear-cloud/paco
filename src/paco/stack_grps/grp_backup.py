@@ -21,7 +21,6 @@ class BackupVaultsStackGroup(StackGroup):
             env_ctx
         )
         self.env_ctx = env_ctx
-        self.config_ref_prefix = self.env_ctx.config_ref_prefix
         self.region = self.env_ctx.region
         self.config = config
         self.config.resolve_ref_obj = self

@@ -50,15 +50,14 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         # KMS Key
         kms_refs = {}
         # Application Account
-        aws_account_ref = 'paco.ref ' + self.parent_config_ref + '.network.aws_account'
-        app_account = self.paco_ctx.get_ref(aws_account_ref)
-        kms_refs[app_account] = None
+        kms_refs['paco.ref accounts.{}'.format(self.account_ctx.name)] = None
 
         # CodeCommit Account(s)
         # ToDo: allows ALL CodeCommit accounts access, filter out non-CI/CD CodeCommit repos?
-        for subdict in self.paco_ctx.project['resource']['codecommit'].values():
-            for repo in subdict.values():
+        for codecommit_group in self.paco_ctx.project['resource']['codecommit'].values():
+            for repo in codecommit_group.values():
                 kms_refs[repo.account] = None
+
         for key in kms_refs.keys():
             self.kms_crypto_principle_list.append(
                 "paco.sub 'arn:aws:iam::${%s}:root'" % (key)

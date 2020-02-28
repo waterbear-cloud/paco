@@ -1,6 +1,5 @@
 from paco.stack import StackOrder, Stack, StackGroup, StackTags
 from paco.models import schemas
-from pprint import pprint
 import paco.cftemplates
 
 
@@ -14,7 +13,6 @@ class SecretsManagerStackGroup(StackGroup):
             env_ctx
         )
         self.env_ctx = env_ctx
-        self.config_ref_prefix = self.env_ctx.config_ref_prefix
         self.region = self.env_ctx.region
         self.config = config
         self.config.resolve_ref_obj = self
@@ -25,8 +23,6 @@ class SecretsManagerStackGroup(StackGroup):
         self.paco_ctx.log_action_col('Init', 'Secrets', name, description, enabled=is_enabled)
 
     def init(self):
-        # Network Stack Templates
-        # VPC Stack
         self.log_init_status('Secrets', '', True)
         # Initialize resolve_ref_obj
         for app_config in self.config.values():
@@ -44,12 +40,3 @@ class SecretsManagerStackGroup(StackGroup):
         if schemas.ISecretsManagerSecret.providedBy(ref.resource):
             return self.secrets_stack
         return None
-
-    def validate(self):
-        # Generate Stacks
-        # VPC Stack
-        super().validate()
-
-    def provision(self):
-        # self.validate()
-        super().provision()

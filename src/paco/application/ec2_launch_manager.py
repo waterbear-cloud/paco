@@ -132,19 +132,18 @@ class EC2LaunchManager():
         self,
         paco_ctx,
         app_engine,
-        app_id,
+        application,
         account_ctx,
         aws_region,
-        config_ref,
         stack_group,
         stack_tags
     ):
         self.paco_ctx = paco_ctx
         self.app_engine = app_engine
-        self.app_id = app_id
+        self.application = application
+        self.app_id = application.name
         self.account_ctx = account_ctx
         self.aws_region = aws_region
-        self.config_ref = '.'.join([config_ref, 'applications', app_id])
         self.stack_group = stack_group
         self.cloudwatch_agent = False
         self.cloudwatch_agent_config = None
@@ -158,7 +157,7 @@ class EC2LaunchManager():
         self.build_path = os.path.join(
             self.paco_ctx.build_path,
             'EC2LaunchManager',
-            self.config_ref,
+            self.application.paco_ref_parts,
             self.account_ctx.get_name(),
             self.aws_region,
             self.app_id

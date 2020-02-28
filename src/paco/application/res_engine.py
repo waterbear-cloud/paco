@@ -15,7 +15,6 @@ class ResourceEngine():
         self.resource = resource
         self.stack_tags = stack_tags
         self.paco_ctx = self.app_engine.paco_ctx
-        self.parent_config_ref = self.app_engine.parent_config_ref
         self.aws_region = self.app_engine.aws_region
         self.stack_group = self.app_engine.stack_group
         self.account_ctx = self.app_engine.account_ctx

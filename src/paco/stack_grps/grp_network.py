@@ -18,7 +18,6 @@ class NetworkStackGroup(StackGroup):
             env_ctx
         )
         self.env_ctx = env_ctx
-        self.config_ref_prefix = self.env_ctx.config_ref_prefix
         self.region = self.env_ctx.region
         self.stack_tags = stack_tags
 
@@ -29,7 +28,7 @@ class NetworkStackGroup(StackGroup):
     def init(self):
         # Network Stack Templates
         # VPC Stack
-        vpc_config = self.env_ctx.vpc_config()
+        vpc_config = self.env_ctx.config.network.vpc
         if vpc_config == None:
             # NetworkEnvironment with no network - serverless
             return
@@ -130,7 +129,6 @@ class NetworkStackGroup(StackGroup):
                     'SecurityGroup', 'rules: {}.{}'.format(sg_id, sg_obj_id),
                     sg_config[sg_id][sg_obj_id].is_enabled()
                 )
-            sg_groups_config_ref = '.'.join([self.config_ref_prefix, 'network.vpc.security_groups', sg_id])
             self.add_new_stack(
                 self.region,
                 sg_config[sg_id],
@@ -145,8 +143,7 @@ class NetworkStackGroup(StackGroup):
 
         # VPC Peering Stack
         if vpc_config.peering != None:
-            peering_config = self.env_ctx.peering_config()
-            peering_config_ref = '.'.join([self.config_ref_prefix, "network.vpc.peering"])
+            peering_config = self.env_ctx.config.network.vpc.peering
             for peer_id in peering_config.keys():
                 peer_config = vpc_config.peering[peer_id]
                 peer_config.resolve_ref_obj = self

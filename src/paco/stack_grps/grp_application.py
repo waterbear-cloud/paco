@@ -24,7 +24,6 @@ class ApplicationStackGroup(StackGroup):
         )
         self.env_ctx = env_ctx
         self.app_id = app_id
-        self.config_ref_prefix = self.env_ctx.config_ref_prefix
         self.aws_region = self.env_ctx.region
         self.env_id = self.env_ctx.env_id
         self.stack_tags = stack_tags
@@ -36,16 +35,12 @@ class ApplicationStackGroup(StackGroup):
             self.aws_region,
             self.app_id,
             self.env_ctx.config.applications[self.app_id],
-            self.config_ref_prefix,
             self,
             'netenv',
             stack_tags=self.stack_tags,
             env_ctx=self.env_ctx
         )
         self.app_engine.init()
-
-    def validate(self):
-        super().validate()
 
     def provision(self):
         # Provision any SSL Cerificates
@@ -54,8 +49,4 @@ class ApplicationStackGroup(StackGroup):
 
         # Provison Application Group
         super().provision()
-
-    def delete(self):
-        super().delete()
-
 

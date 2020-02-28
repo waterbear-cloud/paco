@@ -25,7 +25,6 @@ class CodeCommitStackGroup(StackGroup):
         # Initialize config with a deepcopy of the project defaults
         self.config = codecommit_config
         self.stack_list = []
-        self.config_ref_prefix = 'codecommit'
         self.account_ctx = account_ctx
         self.aws_region = aws_region
         self.repo_list = repo_list

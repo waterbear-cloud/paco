@@ -26,7 +26,6 @@ class ApplicationEngine():
         aws_region,
         app_id,
         config,
-        parent_config_ref,
         stack_group,
         ref_type,
         stack_tags=StackTags(),
@@ -35,7 +34,6 @@ class ApplicationEngine():
         self.paco_ctx = paco_ctx
         self.config = config
         self.app_id = app_id
-        self.parent_config_ref = parent_config_ref
         self.account_ctx = account_ctx
         self.aws_region = aws_region
         self.stack_group = stack_group
@@ -63,10 +61,9 @@ class ApplicationEngine():
         self.ec2_launch_manager = EC2LaunchManager(
             self.paco_ctx,
             self,
-            self.app_id,
+            self.config,
             self.account_ctx,
             self.aws_region,
-            self.parent_config_ref,
             self.stack_group,
             self.stack_tags
         )
