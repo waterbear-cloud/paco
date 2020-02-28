@@ -29,6 +29,8 @@ Changelog for Paco
 
 ### Added
 
+- DeploymentPipeline can now use GitHub.Source as a source.
+
 - Integrated the Parliment library to lint/validate the IAM Policies used for all Roles.
   https://github.com/duo-labs/parliament
 

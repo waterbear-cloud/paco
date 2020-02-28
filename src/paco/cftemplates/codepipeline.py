@@ -10,22 +10,23 @@ import troposphere.sns
 
 class CodePipeline(StackTemplate):
     def __init__(self, stack, paco_ctx, env_ctx, app_name, artifacts_bucket_name):
-        res_config = stack.resource
+        self.pipeline = stack.resource
         self.env_ctx = env_ctx
         super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_NAMED_IAM"])
-        grp_name = self.resource_group_name
-        res_name = self.resource.name
-        self.set_aws_name('CodePipeline', grp_name, res_name)
+        self.set_aws_name('CodePipeline', self.resource_group_name, self.resource.name)
 
         # Troposphere Template Initialization
         self.init_template('Deployment: CodePipeline')
-        template = self.template
 
-        if not res_config.is_enabled():
+        if not self.pipeline.is_enabled():
             return
 
+        # If a CodeCommit.Source action is enabled, it flips this flag so that the Role will have access
+        self.codecommit_source = False
+        self.github_source = False
+
         self.res_name_prefix = self.create_resource_name_join(
-            name_list=[env_ctx.get_aws_name(), app_name, grp_name, res_name],
+            name_list=[env_ctx.get_aws_name(), app_name, self.resource_group_name, self.resource.name],
             separator='-',
             camel_case=True
         )
@@ -39,7 +40,7 @@ class CodePipeline(StackTemplate):
             param_type='String',
             name='CMKArn',
             description='The KMS CMK Arn of the key used to encrypt deployment artifacts.',
-            value=res_config.paco_ref + '.kms.arn',
+            value=self.pipeline.paco_ref + '.kms.arn',
         )
         self.artifacts_bucket_name_param = self.create_cfn_parameter(
             param_type='String',
@@ -51,43 +52,103 @@ class CodePipeline(StackTemplate):
         self.create_codepipeline_cfn()
 
     def create_codepipeline_cfn(self):
-        template = self.template
-        res_config = self.stack.resource
         # CodePipeline
         # Source Actions
         source_stage_actions = []
         # Source Actions
-        for action_name in res_config.source.keys():
-            action_config = res_config.source[action_name]
+        for action in self.pipeline.source.values():
+            self.build_input_artifacts = []
+
             # Manual Approval Action
-            if action_config.type == 'ManualApproval':
-                manual_approval_action = self.init_manual_approval_action(template, action_config)
+            if action.type == 'ManualApproval':
+                manual_approval_action = self.init_manual_approval_action(action)
                 source_stage_actions.append(manual_approval_action)
+
+            # GitHub Action
+            elif action.type == 'GitHub.Source':
+                if action.is_enabled():
+                    self.github_source = True
+                github_token_param= self.create_cfn_parameter(
+                    param_type='AWS::SSM::Parameter::Value<String>',
+                    name='GitHubTokenSSMParameterName',
+                    description='The name of the SSM Parameter with the GitHub OAuth Token',
+                    value=action.github_token_parameter_name,
+                )
+                github_owner_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name='GitHubOwner',
+                    description='The name of the GitHub owner',
+                    value=action.github_owner,
+                )
+                github_repo_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name='GitHubRepository',
+                    description='The name of the GitHub Repository',
+                    value=action.github_repository,
+                )
+                github_deploy_branch_name_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name='GitHubDeploymentBranchName',
+                    description='The name of the branch where commits will trigger a build.',
+                    value=action.deployment_branch_name,
+                )
+
+                github_source_action = troposphere.codepipeline.Actions(
+                    Name='GitHub',
+                    ActionTypeId = troposphere.codepipeline.ActionTypeId(
+                        Category = 'Source',
+                        Owner = 'ThirdParty',
+                        Version = '1',
+                        Provider = 'GitHub'
+                    ),
+                    Configuration = {
+                        'Owner': troposphere.Ref(github_owner_param),
+                        'Repo': troposphere.Ref(github_repo_param),
+                        'Branch': troposphere.Ref(github_deploy_branch_name_param),
+                        'OAuthToken': troposphere.Ref(github_token_param),
+                        'PollForSourceChanges': False
+                    },
+                    OutputArtifacts = [
+                        troposphere.codepipeline.OutputArtifacts(
+                            Name = 'GitHubArtifact'
+                        )
+                    ],
+                    RunOrder = action.run_order,
+                )
+                source_stage_actions.append(github_source_action)
+                self.build_input_artifacts.append(
+                    troposphere.codepipeline.InputArtifacts(
+                        Name = 'GitHubArtifact'
+                    )
+                )
+
             # CodeCommit Action
-            if action_config.type == 'CodeCommit.Source':
+            elif action.type == 'CodeCommit.Source':
+                if action.is_enabled():
+                    self.codecommit_source = True
                 codecommit_repo_arn_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeCommitRepositoryArn',
                     description='The Arn of the CodeCommit repository',
-                    value='{}.codecommit.arn'.format(action_config.paco_ref),
+                    value='{}.codecommit.arn'.format(action.paco_ref),
                 )
                 codecommit_role_arn_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeCommitRoleArn',
                     description='The Arn of the CodeCommit Role',
-                    value='{}.codecommit_role.arn'.format(action_config.paco_ref),
+                    value='{}.codecommit_role.arn'.format(action.paco_ref),
                 )
                 codecommit_repo_name_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeCommitRepositoryName',
                     description='The name of the CodeCommit repository',
-                    value=action_config.codecommit_repository+'.name',
+                    value=action.codecommit_repository+'.name',
                 )
                 deploy_branch_name_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeCommitDeploymentBranchName',
                     description='The name of the branch where commits will trigger a build.',
-                    value=action_config.deployment_branch_name,
+                    value=action.deployment_branch_name,
                 )
 
                 codecommit_source_action = troposphere.codepipeline.Actions(
@@ -107,10 +168,15 @@ class CodePipeline(StackTemplate):
                             Name = 'CodeCommitArtifact'
                         )
                     ],
-                    RunOrder = action_config.run_order,
+                    RunOrder = action.run_order,
                     RoleArn = troposphere.Ref(codecommit_role_arn_param)
                 )
                 source_stage_actions.append(codecommit_source_action)
+                self.build_input_artifacts.append(
+                    troposphere.codepipeline.InputArtifacts(
+                        Name = 'CodeCommitArtifact'
+                    )
+                )
 
         source_stage = troposphere.codepipeline.Stages(
             Name="Source",
@@ -118,19 +184,20 @@ class CodePipeline(StackTemplate):
         )
         # Build Actions
         build_stage_actions = []
-        for action_name in res_config.build.keys():
-            action_config = res_config.build[action_name]
+        for action in self.pipeline.build.values():
+
             # Manual Approval Action
-            if action_config.type == 'ManualApproval':
-                manual_approval_action = self.init_manual_approval_action(template, action_config)
+            if action.type == 'ManualApproval':
+                manual_approval_action = self.init_manual_approval_action(action)
                 build_stage_actions.append(manual_approval_action)
+
             # CodeBuild Build Action
-            elif action_config.type == 'CodeBuild.Build':
+            elif action.type == 'CodeBuild.Build':
                 codebuild_project_arn_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeBuildProjectArn',
                     description='The arn of the CodeBuild project',
-                    value='{}.project.arn'.format(action_config.paco_ref),
+                    value='{}.project.arn'.format(action.paco_ref),
                 )
                 codebuild_build_action = troposphere.codepipeline.Actions(
                     Name='CodeBuild',
@@ -143,17 +210,13 @@ class CodePipeline(StackTemplate):
                     Configuration = {
                         'ProjectName': troposphere.Ref(self.resource_name_prefix_param),
                     },
-                    InputArtifacts = [
-                        troposphere.codepipeline.InputArtifacts(
-                            Name = 'CodeCommitArtifact'
-                        )
-                    ],
+                    InputArtifacts = self.build_input_artifacts,
                     OutputArtifacts = [
                         troposphere.codepipeline.OutputArtifacts(
                             Name = 'CodeBuildArtifact'
                         )
                     ],
-                    RunOrder = action_config.run_order
+                    RunOrder = action.run_order
                 )
                 build_stage_actions.append(codebuild_build_action)
         build_stage = troposphere.codepipeline.Stages(
@@ -163,7 +226,7 @@ class CodePipeline(StackTemplate):
         # Deploy Action
         [ deploy_stage,
           s3_deploy_assume_role_statement,
-          codedeploy_deploy_assume_role_statement ] = self.init_deploy_stage(res_config, template)
+          codedeploy_deploy_assume_role_statement ] = self.init_deploy_stage()
 
         # Manual Deploy Enabled/Disable
         manual_approval_enabled_param = self.create_cfn_parameter(
@@ -172,7 +235,7 @@ class CodePipeline(StackTemplate):
             description='Boolean indicating whether a manual approval is enabled or not.',
             value=self.manual_approval_is_enabled,
         )
-        template.add_condition(
+        self.template.add_condition(
             'ManualApprovalIsEnabled',
             troposphere.Equals(troposphere.Ref(manual_approval_enabled_param), 'true')
         )
@@ -184,7 +247,7 @@ class CodePipeline(StackTemplate):
         )
         pipeline_service_role_res = troposphere.iam.Role(
             title='CodePipelineServiceRole',
-            template = template,
+            template = self.template,
             RoleName=self.pipeline_service_role_name,
             AssumeRolePolicyDocument=PolicyDocument(
                 Version="2012-10-17",
@@ -198,20 +261,6 @@ class CodePipeline(StackTemplate):
             )
         )
         pipeline_policy_statement_list = [
-            Statement(
-                Sid='CodeCommitAccess',
-                Effect=Allow,
-                Action=[
-                    Action('codecommit', 'List*'),
-                    Action('codecommit', 'Get*'),
-                    Action('codecommit', 'GitPull'),
-                    Action('codecommit', 'UploadArchive'),
-                    Action('codecommit', 'CancelUploadArchive'),
-                ],
-                Resource=[
-                    troposphere.Ref(codecommit_repo_arn_param),
-                ]
-            ),
             Statement(
                 Sid='CodePipelineAccess',
                 Effect=Allow,
@@ -256,15 +305,53 @@ class CodePipeline(StackTemplate):
                 ],
                 Resource=[ troposphere.Ref(self.cmk_arn_param) ]
             ),
-            Statement(
-                Sid='CodeCommitAssumeRole',
-                Effect=Allow,
-                Action=[
-                    Action('sts', 'AssumeRole'),
-                ],
-                Resource=[ troposphere.Ref(codecommit_role_arn_param) ]
-            ),
         ]
+        if self.codecommit_source:
+            # Add Statements to allow CodeCommit if a CodeCommit.Source is enabled
+            pipeline_policy_statement_list.append(
+                Statement(
+                    Sid='CodeCommitAssumeRole',
+                    Effect=Allow,
+                    Action=[
+                        Action('sts', 'AssumeRole'),
+                    ],
+                    Resource=[ troposphere.Ref(codecommit_role_arn_param) ]
+                )
+            )
+            pipeline_policy_statement_list.append(
+                Statement(
+                    Sid='CodeCommitAccess',
+                    Effect=Allow,
+                    Action=[
+                        Action('codecommit', 'List*'),
+                        Action('codecommit', 'Get*'),
+                        Action('codecommit', 'GitPull'),
+                        Action('codecommit', 'UploadArchive'),
+                        Action('codecommit', 'CancelUploadArchive'),
+                    ],
+                    Resource=[
+                        troposphere.Ref(codecommit_repo_arn_param),
+                    ]
+                )
+            )
+        if self.github_source:
+            # Add Statement to allow GitHub if a GitHub.Source is enabled
+            cmk_arn_param = self.create_cfn_parameter(
+                param_type='String',
+                name='SourceCMKArn',
+                description='The CMK Arn',
+                value=self.pipeline.paco_ref + '.kms.arn',
+            )
+            pipeline_policy_statement_list.append(
+                Statement(
+                    Sid='CMK',
+                    Effect=Allow,
+                    Action=[
+                        Action('kms', '*'),
+                    ],
+                    Resource=[ troposphere.Ref(cmk_arn_param) ]
+                )
+            )
 
         if codedeploy_deploy_assume_role_statement != None:
             pipeline_policy_statement_list.append(codedeploy_deploy_assume_role_statement)
@@ -272,7 +359,7 @@ class CodePipeline(StackTemplate):
             pipeline_policy_statement_list.append(s3_deploy_assume_role_statement)
         troposphere.iam.PolicyType(
             title='CodePipelinePolicy',
-            template = template,
+            template = self.template,
             DependsOn = 'CodePipelineServiceRole',
             PolicyName=troposphere.Sub('${ResourceNamePrefix}-CodePipeline-Policy'),
             PolicyDocument=PolicyDocument(
@@ -288,7 +375,7 @@ class CodePipeline(StackTemplate):
 
         pipeline_res = troposphere.codepipeline.Pipeline(
             title = 'BuildCodePipeline',
-            template = template,
+            template = self.template,
             DependsOn='CodePipelinePolicy',
             RoleArn = troposphere.GetAtt(pipeline_service_role_res, 'Arn'),
             Name = troposphere.Ref(self.resource_name_prefix_param),
@@ -305,11 +392,11 @@ class CodePipeline(StackTemplate):
 
         return pipeline_res
 
-    def init_manual_approval_action(self, template, action_config):
-        self.manual_approval_is_enabled = action_config.is_enabled()
+    def init_manual_approval_action(self, action):
+        self.manual_approval_is_enabled = action.is_enabled()
         # Manual Approval Deploy Action
         subscription_list = []
-        for approval_email in action_config.manual_approval_notification_email:
+        for approval_email in action.manual_approval_notification_email:
             email_hash = utils.md5sum(str_data=approval_email)
             manual_approval_notification_email_param = self.create_cfn_parameter(
                 param_type='String',
@@ -326,7 +413,7 @@ class CodePipeline(StackTemplate):
 
         manual_approval_sns_res = troposphere.sns.Topic(
             title = 'ManualApprovalSNSTopic',
-            template=template,
+            template=self.template,
             Condition = 'ManualApprovalIsEnabled',
             TopicName = troposphere.Sub('${ResourceNamePrefix}-Approval'),
             Subscription = subscription_list
@@ -342,7 +429,7 @@ class CodePipeline(StackTemplate):
             Configuration = {
                 'NotificationArn': troposphere.Ref(manual_approval_sns_res),
             },
-            RunOrder = action_config.run_order
+            RunOrder = action.run_order
         )
         manual_deploy_action = troposphere.If(
             'ManualApprovalIsEnabled',
@@ -352,44 +439,43 @@ class CodePipeline(StackTemplate):
 
         return manual_deploy_action
 
-    def init_deploy_stage(self, res_config, template):
-        if res_config.deploy == None:
+    def init_deploy_stage(self):
+        if self.pipeline.deploy == None:
             return [None, None, None]
         deploy_stage_actions = []
-        for action_name in res_config.deploy.keys():
-            action_config = res_config.deploy[action_name]
-            if action_config.type == 'ManualApproval':
-                manual_approval_action = self.init_manual_approval_action(template, action_config)
+        for action in self.pipeline.deploy.values():
+            if action.type == 'ManualApproval':
+                manual_approval_action = self.init_manual_approval_action(action)
                 deploy_stage_actions.append(manual_approval_action)
 
             # S3.Deploy
             s3_deploy_assume_role_statement = None
-            if action_config.type == 'S3.Deploy':
+            if action.type == 'S3.Deploy':
                 s3_deploy_bucket_name_param = self.create_cfn_parameter(
                     param_type='String',
                     name='S3DeployBucketName',
                     description='The name of the S3 bucket to deploy to.',
-                    value=action_config.bucket+'.name',
+                    value=action.bucket+'.name',
                 )
                 s3_deploy_extract_param = self.create_cfn_parameter(
                     param_type='String',
                     name='S3DeployExtract',
                     description='Boolean indicating whether the deployment artifact will be extracted.',
-                    value=action_config.extract,
+                    value=action.extract,
                 )
                 s3_deploy_object_key_param = 'AWS::NoValue'
-                if action_config.object_key != None:
+                if action.object_key != None:
                     s3_deploy_object_key_param = self.create_cfn_parameter(
                         param_type='String',
                         name='S3DeployObjectKey',
                         description='S3 object key to store the deployment artifact as.',
-                        value=action_config.object_key,
+                        value=action.object_key,
                     )
                 s3_deploy_delegate_role_arn_param = self.create_cfn_parameter(
                     param_type='String',
                     name='S3DeployDelegateRoleArn',
                     description='The Arn of the IAM Role CodePipeline will assume to gain access to the deployment bucket.',
-                    value=action_config._delegate_role_arn,
+                    value=action._delegate_role_arn,
                 )
                 # CodeDeploy Deploy Action
                 s3_deploy_action = troposphere.codepipeline.Actions(
@@ -424,24 +510,24 @@ class CodePipeline(StackTemplate):
                 deploy_stage_actions.append(s3_deploy_action)
 
             codedeploy_deploy_assume_role_statement = None
-            if action_config.type == 'CodeDeploy.Deploy':
+            if action.type == 'CodeDeploy.Deploy':
                 codedeploy_tools_delegate_role_arn_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeDeployToolsDelegateRoleArn',
                     description='The Arn of the CodeDeploy Delegate Role',
-                    value=action_config.paco_ref + '.codedeploy_tools_delegate_role.arn',
+                    value=action.paco_ref + '.codedeploy_tools_delegate_role.arn',
                 )
                 codedeploy_application_name_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeDeployApplicationName',
                     description='The CodeDeploy Application name to deploy to.',
-                    value=action_config.paco_ref+'.codedeploy_application_name',
+                    value=action.paco_ref+'.codedeploy_application_name',
                 )
                 codedeploy_group_name_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeDeployGroupName',
                     description='The name of the CodeDeploy deployment group.',
-                    value=action_config.paco_ref + '.deployment_group.name',
+                    value=action.paco_ref + '.deployment_group.name',
                 )
                 codedeploy_region_param = self.create_cfn_parameter(
                     param_type='String',
@@ -491,4 +577,3 @@ class CodePipeline(StackTemplate):
             self.account_ctx.get_id(),
             self.pipeline_service_role_name
         )
-

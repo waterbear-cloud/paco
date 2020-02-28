@@ -23,6 +23,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             'name': None,
         }
         self.codecommit_role_name = 'codecommit_role'
+        self.github_role_name = 'github_role'
         self.source_stage = None
 
     def init_stage(self, stage_config):
@@ -129,6 +130,9 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         }
         s3_ctl.add_bucket_policy(self.artifacts_bucket_meta['ref'], cpbd_s3_bucket_policy)
 
+    def init_stage_action_github_source(self, action_config):
+        pass
+
     def init_stage_action_codecommit_source(self, action_config):
         "Initialize an IAM Role for the CodeCommit action"
         if not action_config.is_enabled():
@@ -184,15 +188,13 @@ policies:
         codecommit_iam_role_id = self.gen_iam_role_id(self.res_id, self.codecommit_role_name)
         self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s.%s.arn}'" % (action_config.paco_ref, self.codecommit_role_name))
         # IAM Roles Parameters
-        iam_role_params = [
-            {
-                'key': 'CMKArn',
-                'value': self.pipeline_config.paco_ref + '.kms.arn',
-                'type': 'String',
-                'description': 'DeploymentPipeline KMS Key Arn'
-            }
-        ]
-        codecommit_account_ref = self.paco_ctx.get_ref(action_config.codecommit_repository+'.account')
+        iam_role_params = [{
+            'key': 'CMKArn',
+            'value': self.pipeline_config.paco_ref + '.kms.arn',
+            'type': 'String',
+            'description': 'DeploymentPipeline KMS Key Arn'
+        }]
+        codecommit_account_ref = self.paco_ctx.get_ref(action_config.codecommit_repository + '.account')
         codecommit_account_ctx = self.paco_ctx.get_account_context(codecommit_account_ref)
         iam_ctl.add_role(
             account_ctx=codecommit_account_ctx,
@@ -255,14 +257,12 @@ policies:
         role_id = self.gen_iam_role_id(self.res_id, 'delegate')
         self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (action_config.paco_ref + '.delegate.arn'))
         # IAM Roles Parameters
-        iam_role_params = [
-            {
-                'key': 'CMKArn',
-                'value': self.pipeline_config.paco_ref + '.kms.arn',
-                'type': 'String',
-                'description': 'DeploymentPipeline KMS Key Arn'
-            }
-        ]
+        iam_role_params = [{
+            'key': 'CMKArn',
+            'value': self.pipeline_config.paco_ref + '.kms.arn',
+            'type': 'String',
+            'description': 'DeploymentPipeline KMS Key Arn'
+        }]
         bucket_account_ctx = self.paco_ctx.get_account_context(bucket_config.account)
         role_ref = '{}.delegate'.format(action_config.paco_ref_parts)
         iam_ctl.add_role(
@@ -350,6 +350,11 @@ policies:
             elif ref.resource_ref == 'codecommit.arn':
                 codecommit_ref = ref.resource.codecommit_repository
                 return self.paco_ctx.get_ref(codecommit_ref+".arn")
+        elif schemas.IDeploymentPipelineSourceGitHub.providedBy(ref.resource):
+            # GitHub
+            if ref.resource_ref == self.github_role_name + '.arn':
+                iam_ctl = self.paco_ctx.get_controller("IAM")
+                return iam_ctl.role_arn(ref.raw[:-4])
         elif schemas.IDeploymentPipelineBuildCodeBuild.providedBy(ref.resource):
             # CodeBuild
             if ref.resource_ref == 'project_role.arn':
