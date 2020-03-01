@@ -18,8 +18,10 @@ class ResourceEngine():
         self.aws_region = self.app_engine.aws_region
         self.stack_group = self.app_engine.stack_group
         self.account_ctx = self.app_engine.account_ctx
-        self.env_ctx = self.app_engine.env_ctx
-        self.app_id = self.app_engine.app_id
+        if self.app_engine.env_ctx != None:
+            self.env_ctx = self.app_engine.env_ctx
+            self.env = self.env_ctx.config
+        self.app_id = self.app_engine.app.name
         self.gen_iam_role_id = self.app_engine.gen_iam_role_id
 
     def init_resource(self):

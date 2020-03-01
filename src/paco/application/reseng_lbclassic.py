@@ -14,6 +14,6 @@ class LBClassicResourceEngine(ResourceEngine):
             stack_tags=self.stack_tags,
             extra_context={
                 'env_ctx': self.env_ctx,
-                'app_name': self.app_id,
+                'app_name': self.app.name,
             }
         )

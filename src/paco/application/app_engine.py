@@ -24,23 +24,22 @@ class ApplicationEngine():
         paco_ctx,
         account_ctx,
         aws_region,
-        app_id,
-        config,
+        app,
         stack_group,
         ref_type,
         stack_tags=StackTags(),
         env_ctx=None
     ):
         self.paco_ctx = paco_ctx
-        self.config = config
-        self.app_id = app_id
+        self.config = app
+        self.app = app
         self.account_ctx = account_ctx
         self.aws_region = aws_region
         self.stack_group = stack_group
         self.ref_type = ref_type
         self.env_ctx = env_ctx
         self.stack_tags = stack_tags
-        self.stack_tags.add_tag( 'Paco-Application-Name', self.app_id )
+        self.stack_tags.add_tag( 'Paco-Application-Name', self.app.name )
 
     def get_aws_name(self):
         return self.stack_group.get_aws_name()
@@ -57,7 +56,7 @@ class ApplicationEngine():
         typically creating a CFTemplate for the Resource and adding it to the Application's
         StackGroup, and any supporting CFTemplates needed such as Alarms or IAM Policies.
         """
-        self.paco_ctx.log_action_col('Init', 'Application', self.app_id, enabled=self.config.is_enabled())
+        self.paco_ctx.log_action_col('Init', 'Application', self.app.name, enabled=self.config.is_enabled())
         self.ec2_launch_manager = EC2LaunchManager(
             self.paco_ctx,
             self,
@@ -89,7 +88,7 @@ class ApplicationEngine():
                 resource_engine.init_monitoring()
 
         self.init_app_monitoring()
-        self.paco_ctx.log_action_col('Init', 'Application', self.app_id, 'Completed', enabled=self.config.is_enabled())
+        self.paco_ctx.log_action_col('Init', 'Application', self.app.name, 'Completed', enabled=self.config.is_enabled())
 
     def init_app_monitoring(self):
         "Application level Alarms are not specific to any Resource"

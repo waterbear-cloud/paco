@@ -97,7 +97,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             stack_tags=self.stack_tags,
             extra_context={
                 'env_ctx': self.env_ctx,
-                'app_name': self.app_id,
+                'app_name': self.app.name,
                 'artifacts_bucket_name': self.artifacts_bucket_meta['name']
             },
         )
@@ -291,7 +291,7 @@ policies:
             stack_tags=self.stack_tags,
             extra_context={
                 'env_ctx': self.env_ctx,
-                'app_name': self.app_id,
+                'app_name': self.app.name,
                 'action_config': action_config,
                 'artifacts_bucket_name': self.artifacts_bucket_meta['name'],
             },
@@ -311,7 +311,7 @@ policies:
             stack_tags=self.stack_tags,
             extra_context={
                 'env_ctx': self.env_ctx,
-                'app_name': self.app_id,
+                'app_name': self.app.name,
                 'action_config': action_config,
                 'artifacts_bucket_name': self.artifacts_bucket_meta['name'],
             }

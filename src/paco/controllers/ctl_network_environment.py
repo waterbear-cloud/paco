@@ -73,15 +73,15 @@ class EnvironmentContext():
         self.network_stack_grp.init()
 
         # Application Engine Stacks
-        for app_id in self.application_ids():
+        for app_name in self.ordered_application_names():
             application_stack_grp = ApplicationStackGroup(
                 self.paco_ctx,
                 self.account_ctx,
                 self,
-                app_id,
+                self.config['applications'][app_name],
                 StackTags(self.stack_tags)
             )
-            self.application_stack_grps[app_id] = application_stack_grp
+            self.application_stack_grps[app_name] = application_stack_grp
             self.stack_grps.append(application_stack_grp)
             application_stack_grp.init()
 
@@ -113,7 +113,8 @@ class EnvironmentContext():
     def availability_zones(self):
         return self.config.network.availability_zones
 
-    def application_ids(self):
+    def ordered_application_names(self):
+        "List of application names sorted according to their order"
         ordered_config_list = []
         ordered_id_list = []
         for app_id, app_config in self.config['applications'].items():
@@ -166,53 +167,6 @@ class EnvironmentContext():
     def delete(self):
         for stack_grp in reversed(self.stack_grps):
             stack_grp.delete()
-
-    def backup(self, resource_path):
-        # Get resource config
-        # applications.groups.compute.resources.cloud
-        res_ref = self.gen_ref() + '.' + resource_path
-        resource_config = self.paco_ctx.get_ref(res_ref)
-
-        # TODO
-        # Lookup ASG, if more than once instance error
-        # Get instance ID from ASG
-        # Generate image name
-        # Add permissions
-        # Return AMI ID and image name
-        ec2_client = self.account_ctx.get_aws_client('ec2')
-        ec2_client.create_image(
-            InstanceId=instance_id,
-            Name=image_name
-        )
-
-    def env_ref_prefix(
-        self,
-        app_id=None,
-        grp_id=None,
-        res_id=None,
-        iam_id=None,
-        role_id=None,
-        segment_id=None,
-        attribute=None,
-        seperator='.'
-    ):
-        netenv_ref = 'paco.ref netenv.{0}.{1}.{2}'.format(self.netenv_id, self.env_id, self.region)
-        if app_id != None:
-            netenv_ref = seperator.join([netenv_ref, 'applications', app_id])
-        if iam_id != None:
-            netenv_ref = seperator.join([netenv_ref, 'iam', app_id])
-        if role_id != None:
-            netenv_ref = seperator.join([netenv_ref, 'roles', app_id])
-        if grp_id != None:
-            netenv_ref = seperator.join([netenv_ref, 'groups', grp_id])
-        if res_id != None:
-            netenv_ref = seperator.join([netenv_ref, 'resources', res_id])
-        if segment_id != None:
-            netenv_ref = seperator.join([netenv_ref, 'network', 'vpc', 'segments', segment_id])
-        if attribute != None:
-            netenv_ref = seperator.join([netenv_ref, attribute])
-        return netenv_ref
-
 
 class NetEnvController(Controller):
     def __init__(self, paco_ctx):
@@ -350,10 +304,6 @@ class NetEnvController(Controller):
                 self.sub_envs[env_id][region].provision()
         self.apply_model_obj()
         self.paco_ctx.log_action_col("Provision", "NetEnv", self.netenv_id, "Completed")
-
-    def backup(self, config_arg):
-        env_ctx = self.sub_envs[config_arg['env_id']][config_arg['region']]
-        env_ctx.backup(config_arg['resource'])
 
     def delete(self):
         for env_id in self.sub_envs.keys():

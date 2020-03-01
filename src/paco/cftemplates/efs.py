@@ -4,7 +4,7 @@ import troposphere.efs
 
 
 class EFS(StackTemplate):
-    def __init__(self, stack, paco_ctx, env_ctx):
+    def __init__(self, stack, paco_ctx, network):
         efs_config = stack.resource
         super().__init__(stack, paco_ctx)
         self.set_aws_name('EFS', self.resource_group_name, self.resource.name)
@@ -41,12 +41,8 @@ class EFS(StackTemplate):
         )
 
         # Mount Targets
-        availability_zones = env_ctx.config.network.availability_zones
-        for az_idx in range(1, availability_zones+1):
-            subnet_id_ref = env_ctx.env_ref_prefix(
-                segment_id=efs_config.segment,
-                attribute='az{}.subnet_id'.format(az_idx)
-            )
+        for az_idx in range(1, network.availability_zones + 1):
+            subnet_id_ref = network.vpc.segments[efs_config.segment].paco_ref_parts + 'az{}.subnet_id'.format(az_idx)
             subnet_param = self.create_cfn_parameter(
                 name='SubnetIdAZ{}'.format(az_idx),
                 param_type='String',
