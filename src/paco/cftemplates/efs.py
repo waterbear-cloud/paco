@@ -42,12 +42,12 @@ class EFS(StackTemplate):
 
         # Mount Targets
         for az_idx in range(1, network.availability_zones + 1):
-            subnet_id_ref = network.vpc.segments[efs_config.segment].paco_ref_parts + 'az{}.subnet_id'.format(az_idx)
+            subnet_id_ref = network.vpc.segments[efs_config.segment].paco_ref_parts + '.az{}.subnet_id'.format(az_idx)
             subnet_param = self.create_cfn_parameter(
                 name='SubnetIdAZ{}'.format(az_idx),
                 param_type='String',
                 description='The SubnetId for AZ{}.'.format(az_idx),
-                value=subnet_id_ref,
+                value='paco.ref ' + subnet_id_ref,
             )
             efs_mount_logical_id = self.create_cfn_logical_id('EFSMountTargetAZ{}'.format(az_idx))
             troposphere.efs.MountTarget(

@@ -12,7 +12,7 @@ Changelog for Paco
 
       cd <my-paco-project>
       mv aimdata .paco-work
-      mv Outputs .paco-work/outpus
+      mv Outputs .paco-work/outputs
       mv build .paco-work/build
 
 - The IAM Roles for BackupVault had inconsistently named CloudFormation stacks ("BackupVaults--Backup").

@@ -37,7 +37,7 @@ class DBParameterGroup(StackTemplate):
             title='DBParameterGroupName',
             description='DB Parameter Group Name',
             value=troposphere.Ref(dbparametergroup_resource),
-            ref=[config_ref, config_ref + ".name"]
+            ref=[self.resource.paco_ref_parts, self.resource.paco_ref_parts + ".name"]
         )
 
 
