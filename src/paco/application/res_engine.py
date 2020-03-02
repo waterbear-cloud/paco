@@ -10,6 +10,7 @@ class ResourceEngine():
     def __init__(self, app_engine, grp_id, res_id, resource, stack_tags):
         "Save the ApplicationEngine object and make it's attributes available as ResourceEngine attributes for convenience"
         self.app_engine = app_engine
+        self.app = app_engine.app
         self.grp_id = grp_id
         self.res_id = res_id
         self.resource = resource
