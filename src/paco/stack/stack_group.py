@@ -83,8 +83,8 @@ class StackGroup():
 
         # now that the template has been created, post-template actions are possible
         # Add Paco-Stack-Name tag
-        if hasattr(self, 'tags'):
-            self.tags.add_tag('Paco-Stack-Name', self.get_name())
+        if hasattr(stack, 'tags'):
+            stack.tags.add_tag('Paco-Stack-Name', stack.get_name())
         # Log hooks
         stack.hooks.log_hooks()
 
