@@ -58,8 +58,8 @@ class EventsRule(StackTemplate):
             self.target_params[target_name + 'Arn'] = self.create_cfn_parameter(
                 param_type='String',
                 name=target_name + 'Arn',
-                description=target_name + 'Arn for the Events Rule.',
-                value=eventsrule.targets[index] + '.arn',
+                description=target_name + ' Arn for the Events Rule.',
+                value=eventsrule.targets[index].target + '.arn',
             )
             self.target_params[target_name] = self.create_cfn_parameter(
                 param_type='String',
@@ -67,13 +67,18 @@ class EventsRule(StackTemplate):
                 description=target_name + ' for the Event Rule.',
                 value=target_name,
             )
+            cfn_export_dict = {
+                'Arn': troposphere.Ref(self.target_params[target_name + 'Arn']),
+                'Id': troposphere.Ref(self.target_params[target_name]),
+            }
+            if eventsrule.targets[index].input_json != None:
+                cfn_export_dict['Input'] = eventsrule.targets[index].input_json
 
             # Events Rule Targets
             targets.append(
-                troposphere.events.Target(
+                troposphere.events.Target.from_dict(
                     target_name,
-                    Arn=troposphere.Ref(self.target_params[target_name + 'Arn']),
-                    Id=troposphere.Ref(self.target_params[target_name]),
+                    cfn_export_dict
                 )
             )
 

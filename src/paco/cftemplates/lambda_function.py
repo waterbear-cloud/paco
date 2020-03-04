@@ -290,7 +290,7 @@ class Lambda(StackTemplate):
             if schemas.IEventsRule.providedBy(obj):
                 seen = {}
                 for target in obj.targets:
-                    target_ref = Reference(target)
+                    target_ref = Reference(target.target)
                     target_ref.set_account_name(account_ctx.get_name())
                     target_ref.set_region(aws_region)
                     lambda_ref = Reference(awslambda.paco_ref)

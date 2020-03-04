@@ -26,6 +26,19 @@ Changelog for Paco
 - Removed the ``Resource/NotificationGroups.yaml`` filename alias. This file is now only loaded using
   the filename ``resoruce/snstopics.yaml``.
 
+- EventsRule type target field changed from a list of Targets to a list of IEventTarget objects. This allows
+  the ability to specify other information with the target such as the input_json field. Old was:
+
+    type: EventsRule
+    targets:
+      - paco.ref some.ref
+
+  New format is:
+
+    type: EventsRule
+    targets:
+      - target: paco.ref some.ref
+        input_json: '{"cat":"dog"}'
 
 ### Added
 
