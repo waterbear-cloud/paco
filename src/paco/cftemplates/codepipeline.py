@@ -276,7 +276,7 @@ class CodePipeline(StackTemplate):
                         Action('codebuild', 'BatchGetBuilds'),
                         Action('codebuild', 'StartBuild')
                     ],
-                    Resource=[ troposphere.Ref(codebuild_project_arn_param) ]
+                    Resource=[ troposphere.Ref(self.codebuild_project_arn_param) ]
                 )
             )
         if self.codecommit_source:
@@ -288,7 +288,7 @@ class CodePipeline(StackTemplate):
                     Action=[
                         Action('sts', 'AssumeRole'),
                     ],
-                    Resource=[ troposphere.Ref(codecommit_role_arn_param) ]
+                    Resource=[ troposphere.Ref(self.codecommit_role_arn_param) ]
                 )
             )
             pipeline_policy_statement_list.append(
@@ -303,7 +303,7 @@ class CodePipeline(StackTemplate):
                         Action('codecommit', 'CancelUploadArchive'),
                     ],
                     Resource=[
-                        troposphere.Ref(codecommit_repo_arn_param),
+                        troposphere.Ref(self.codecommit_repo_arn_param),
                     ]
                 )
             )
@@ -417,13 +417,13 @@ class CodePipeline(StackTemplate):
             elif action.type == 'CodeCommit.Source':
                 if action.is_enabled():
                     self.codecommit_source = True
-                codecommit_repo_arn_param = self.create_cfn_parameter(
+                self.codecommit_repo_arn_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeCommitRepositoryArn',
                     description='The Arn of the CodeCommit repository',
                     value='{}.codecommit.arn'.format(action.paco_ref),
                 )
-                codecommit_role_arn_param = self.create_cfn_parameter(
+                self.codecommit_role_arn_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeCommitRoleArn',
                     description='The Arn of the CodeCommit Role',
@@ -460,7 +460,7 @@ class CodePipeline(StackTemplate):
                         )
                     ],
                     RunOrder = action.run_order,
-                    RoleArn = troposphere.Ref(codecommit_role_arn_param)
+                    RoleArn = troposphere.Ref(self.codecommit_role_arn_param)
                 )
                 source_stage_actions.append(codecommit_source_action)
                 self.build_input_artifacts.append(
@@ -486,7 +486,7 @@ class CodePipeline(StackTemplate):
             # CodeBuild Build Action
             elif action.type == 'CodeBuild.Build':
                 self.codebuild_access = True
-                codebuild_project_arn_param = self.create_cfn_parameter(
+                self.codebuild_project_arn_param = self.create_cfn_parameter(
                     param_type='String',
                     name='CodeBuildProjectArn',
                     description='The arn of the CodeBuild project',
