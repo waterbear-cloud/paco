@@ -26,14 +26,21 @@ class NATGateway(StackTemplate):
         )
         self.set_aws_name('NGW', nat_config.name)
 
+        # empty template if not enabled
+        # ToDo: Once the Managed type is Troposphere this code can be simplified
+        if not nat_config.is_enabled():
+            if nat_config.type == 'Managed':
+                self.init_template('NAT Gateways')
+            else:
+                self.init_template('EC2 NAT Gateway')
+            return
+
         if nat_config.type == 'Managed':
             self.managed_nat_gateway(network_config, nat_config)
         else:
             self.init_template('EC2 NAT Gateway')
-            if nat_config.is_enabled() == True:
-                self.ec2_nat_gateway(network_config, nat_sg_config, nat_sg_config_ref, nat_config)
-            # Generate the Template
-            self.set_template(self.template.to_yaml())
+            self.ec2_nat_gateway(network_config, nat_sg_config, nat_sg_config_ref, nat_config)
+
 
     def ec2_nat_gateway(self, network_config, nat_sg_config, nat_sg_config_ref, nat_config):
 
