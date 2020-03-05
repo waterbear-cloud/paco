@@ -1,5 +1,6 @@
 from awacs.aws import Action, Allow, PolicyDocument, Principal, Statement, Policy
 from paco.cftemplates.cftemplates import StackTemplate
+from paco.cftemplates.eventsrule import create_event_rule_name
 from paco.models.locations import get_parent_by_interface
 from paco.models.loader import get_all_nodes
 from paco.models.references import resolve_ref, get_model_obj_from_ref, Reference
@@ -300,8 +301,9 @@ class Lambda(StackTemplate):
                         group = get_parent_by_interface(obj, schemas.IResourceGroup)
                         eventsrule_logical_name = self.gen_cf_logical_name(group.name + obj.name, '_')
                         if eventsrule_logical_name not in seen:
-                            rule_name = self.create_cfn_logical_id("EventsRule" + obj.paco_ref)
-                            rule_name = hash_smaller(rule_name, 64)
+                            rule_name = create_event_rule_name(obj)
+                            # rule_name = self.create_cfn_logical_id("EventsRule" + obj.paco_ref)
+                            # rule_name = hash_smaller(rule_name, 64)
                             source_arn = 'arn:aws:events:{}:{}:rule/{}'.format(
                                 aws_region,
                                 account_ctx.id,

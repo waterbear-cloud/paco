@@ -17,6 +17,12 @@ import troposphere.events
 import troposphere.iam
 
 
+def create_event_rule_name(eventsrule):
+    "Create an Events Rule name"
+    # also used by Lambda
+    name = eventsrule.create_resource_name_join(eventsrule.paco_ref_parts.split('.'), '-')
+    return hash_smaller(name, 64, suffix=True)
+
 class EventsRule(StackTemplate):
     def __init__(
         self,
@@ -117,8 +123,7 @@ class EventsRule(StackTemplate):
         # The Name is needed so that a Lambda can be created and it's Lambda ARN output
         # can be supplied as a Parameter to this Stack and a Lambda Permission can be
         # made with the Lambda. Avoids circular dependencies.
-        name = eventsrule.create_resource_name_join(eventsrule.paco_ref_parts.split('.'), '-')
-        name = hash_smaller(name, 64, suffix=True)
+        name = create_event_rule_name(eventsrule)
         if eventsrule.enabled_state:
             enabled_state = 'ENABLED'
         else:
