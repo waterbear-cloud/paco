@@ -30,61 +30,6 @@ class IAMUserStackGroup(StackGroup):
             controller
         )
 
-class PolicyContext():
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        region,
-        group_id,
-        policy_id,
-        policy_ref,
-        policy_config_yaml,
-        resource,
-        stack_group,
-        template_params,
-        stack_tags,
-    ):
-        self.paco_ctx = paco_ctx
-        self.account_ctx = account_ctx
-        self.region = region
-        self.group_id = group_id
-        self.name = None
-        self.arn = None
-        self.policy_id = policy_id
-        self.policy_ref = policy_ref
-        self.policy_config_yaml = policy_config_yaml
-        self.stack_group = stack_group
-        self.stack_tags = stack_tags
-        self.policy_template = None
-        self.policy_stack = None
-        self.template_params = template_params
-        self.resource = resource
-        self.policy_context = {}
-
-        # Create a Policy object from YAML and add it to the model
-        # policy_dict = yaml.load(self.policy_config_yaml)
-        # self.policy = paco.models.iam.ManagedPolicy(policy_id, resource)
-        # paco.models.loader.apply_attributes_from_config(self.policy, policy_dict)
-
-        # Create the Managed Policy stack
-        self.policy.resolve_ref_obj = self
-        policy_stack_tags = StackTags(self.stack_tags)
-        policy_stack_tags.add_tag('Paco-IAM-Resource-Type', 'ManagedPolicy')
-        policy_ext = get_support_resource_ref_ext(self.resource, self.policy)
-        policy_context['stack'] = self.stack_group.add_new_stack(
-            self.region,
-            self.resource,
-            IAMManagedPolicies,
-            stack_tags=policy_stack_tags,
-            extra_context={'policy': self.policy},
-            support_resource_ref_ext=policy_ext,
-        )
-        policy_context['template'] = policy_context['stack'].template
-        self.name = policy_context['template'].gen_policy_name(self.policy_id)
-        self.arn = "arn:aws:iam::{0}:policy/{1}".format(self.account_ctx.get_id(), self.name)
-        self.policy_context[self.policy_ref] = policy_context
-
 class SLRoleContext():
     def __init__(
         self,
@@ -646,38 +591,6 @@ class IAMController(Controller):
         if len(model_obj.paco_ref_list) == 2 or model_obj.paco_ref_list[2] == 'users':
             self.stack_group_filter = model_obj.paco_ref_parts
             self.init_users(model_obj)
-
-    def create_managed_policy(
-        self,
-        paco_ctx,
-        account_ctx,
-        region,
-        group_id,
-        policy_id,
-        policy_ref,
-        policy_config_yaml,
-        resource,
-        stack_group,
-        template_params,
-        stack_tags,
-    ):
-        if policy_ref not in self.policy_context.keys():
-            self.policy_context[policy_ref] = PolicyContext(
-                paco_ctx=self.paco_ctx,
-                account_ctx=account_ctx,
-                region=region,
-                group_id=group_id,
-                policy_id=policy_id,
-                policy_ref=policy_ref,
-                policy_config_yaml=policy_config_yaml,
-                resource=resource,
-                stack_group=stack_group,
-                template_params=template_params,
-                stack_tags=stack_tags,
-            )
-        else:
-            print("Managed Policy already exists: %s" % (policy_ref))
-            raise StackException(PacoErrorCode.Unknown)
 
     def add_managed_policy(self, role, *args, **kwargs):
         return self.role_context[role.paco_ref_parts].add_managed_policy(*args, **kwargs)
