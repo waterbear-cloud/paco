@@ -216,7 +216,7 @@ class ALB(StackTemplate):
             else:
                 action = {
                     'Type': 'forward',
-                    'TargetGroupArn': troposphere.Ref('TargetGroup' + listener.target_group)
+                    'TargetGroupArn': troposphere.Ref('TargetGroup' + rule.target_group)
                 }
             cfn_export_dict['DefaultActions'] = [action]
             cfn_export_dict['LoadBalancerArn'] = troposphere.Ref(alb_resource)
