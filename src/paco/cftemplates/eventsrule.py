@@ -2,7 +2,7 @@
 CloudWatch Events Rule template
 """
 
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.models import vocabulary
 from paco.utils import hash_smaller
 from awacs.aws import Allow, Statement, Policy, Principal
@@ -17,32 +17,26 @@ import troposphere.events
 import troposphere.iam
 
 
-class EventsRule(CFTemplate):
+def create_event_rule_name(eventsrule):
+    "Create an Events Rule name"
+    # also used by Lambda
+    name = eventsrule.create_resource_name_join(eventsrule.paco_ref_parts.split('.'), '-')
+    return hash_smaller(name, 64, suffix=True)
+
+class EventsRule(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        env_ctx,
-        app_id,
-        grp_id,
-        res_id,
-        eventsrule,
-        config_ref,
     ):
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=eventsrule.is_enabled(),
-            config_ref=config_ref,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags
         )
-        self.set_aws_name('EventsRule', grp_id, res_id)
+        eventsrule = stack.resource
+        config_ref = eventsrule.paco_ref_parts
+        self.set_aws_name('EventsRule', self.resource_group_name, self.resource_name)
 
         # Init a Troposphere template
         self.init_template('CloudWatch EventsRule')
@@ -70,8 +64,8 @@ class EventsRule(CFTemplate):
             self.target_params[target_name + 'Arn'] = self.create_cfn_parameter(
                 param_type='String',
                 name=target_name + 'Arn',
-                description=target_name + 'Arn for the Events Rule.',
-                value=eventsrule.targets[index] + '.arn',
+                description=target_name + ' Arn for the Events Rule.',
+                value=eventsrule.targets[index].target + '.arn',
             )
             self.target_params[target_name] = self.create_cfn_parameter(
                 param_type='String',
@@ -79,13 +73,18 @@ class EventsRule(CFTemplate):
                 description=target_name + ' for the Event Rule.',
                 value=target_name,
             )
+            cfn_export_dict = {
+                'Arn': troposphere.Ref(self.target_params[target_name + 'Arn']),
+                'Id': troposphere.Ref(self.target_params[target_name]),
+            }
+            if eventsrule.targets[index].input_json != None:
+                cfn_export_dict['Input'] = eventsrule.targets[index].input_json
 
             # Events Rule Targets
             targets.append(
-                troposphere.events.Target(
+                troposphere.events.Target.from_dict(
                     target_name,
-                    Arn=troposphere.Ref(self.target_params[target_name + 'Arn']),
-                    Id=troposphere.Ref(self.target_params[target_name]),
+                    cfn_export_dict
                 )
             )
 
@@ -124,8 +123,7 @@ class EventsRule(CFTemplate):
         # The Name is needed so that a Lambda can be created and it's Lambda ARN output
         # can be supplied as a Parameter to this Stack and a Lambda Permission can be
         # made with the Lambda. Avoids circular dependencies.
-        name = eventsrule.create_resource_name_join(eventsrule.paco_ref_parts.split('.'), '-')
-        name = hash_smaller(name, 64, suffix=True)
+        name = create_event_rule_name(eventsrule)
         if eventsrule.enabled_state:
             enabled_state = 'ENABLED'
         else:
@@ -152,4 +150,3 @@ class EventsRule(CFTemplate):
             ref=config_ref + '.arn',
         )
 
-        self.set_template()

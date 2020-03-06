@@ -1,5 +1,6 @@
 from awacs.aws import Action, Allow, PolicyDocument, Principal, Statement, Policy
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
+from paco.cftemplates.eventsrule import create_event_rule_name
 from paco.models.locations import get_parent_by_interface
 from paco.models.loader import get_all_nodes
 from paco.models.references import resolve_ref, get_model_obj_from_ref, Reference
@@ -14,35 +15,25 @@ import troposphere.awslambda
 import troposphere.iam
 
 
-class Lambda(CFTemplate):
+class Lambda(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        grp_id,
-        res_id,
-        awslambda
     ):
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=awslambda.is_enabled(),
-            config_ref=awslambda.paco_ref_parts,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags,
         )
-        self.set_aws_name('Lambda', grp_id, res_id)
-        self.awslambda = awslambda
+        account_ctx = stack.account_ctx
+        aws_region = stack.aws_region
+        self.set_aws_name('Lambda', self.resource_group_name, self.resource_name)
+        awslambda = self.awslambda = self.stack.resource
         self.init_template('Lambda Function')
 
-        # if disabled on leave an empty placeholder and finish
-        if not awslambda.is_enabled():
-            return self.set_template()
+        # if not enabled finish with only empty placeholder
+        if not awslambda.is_enabled(): return
 
         # Parameters
         sdb_cache_param = self.create_cfn_parameter(
@@ -138,10 +129,10 @@ class Lambda(CFTemplate):
                 description='VPC Subnet Id List',
                 value=segment_ref
             )
-            cfn_export_dict['VpcConfig'] = troposphere.awslambda.VPCConfig(
-                SecurityGroupIds=troposphere.Ref(vpc_security_group),
-                SubnetIds=troposphere.Ref(subnet_list_param),
-            )
+            cfn_export_dict['VpcConfig'] = {
+                'SecurityGroupIds': troposphere.Ref(vpc_security_group),
+                'SubnetIds': troposphere.Ref(subnet_list_param),
+            }
 
         # Code object: S3 Bucket or inline ZipFile?
         if awslambda.code.s3_bucket:
@@ -300,8 +291,8 @@ class Lambda(CFTemplate):
             if schemas.IEventsRule.providedBy(obj):
                 seen = {}
                 for target in obj.targets:
-                    target_ref = Reference(target)
-                    target_ref.set_account_name(self.account_ctx.get_name())
+                    target_ref = Reference(target.target)
+                    target_ref.set_account_name(account_ctx.get_name())
                     target_ref.set_region(aws_region)
                     lambda_ref = Reference(awslambda.paco_ref)
 
@@ -310,11 +301,12 @@ class Lambda(CFTemplate):
                         group = get_parent_by_interface(obj, schemas.IResourceGroup)
                         eventsrule_logical_name = self.gen_cf_logical_name(group.name + obj.name, '_')
                         if eventsrule_logical_name not in seen:
-                            rule_name = self.create_cfn_logical_id("EventsRule" + obj.paco_ref)
-                            rule_name = hash_smaller(rule_name, 64)
+                            rule_name = create_event_rule_name(obj)
+                            # rule_name = self.create_cfn_logical_id("EventsRule" + obj.paco_ref)
+                            # rule_name = hash_smaller(rule_name, 64)
                             source_arn = 'arn:aws:events:{}:{}:rule/{}'.format(
                                 aws_region,
-                                self.account_ctx.id,
+                                account_ctx.id,
                                 rule_name
                             )
                             troposphere.awslambda.Permission(
@@ -352,14 +344,14 @@ class Lambda(CFTemplate):
         # LogGroup permissions
         log_group_arns = [
             troposphere.Join(':', [
-                f'arn:aws:logs:{self.aws_region}:{self.account_ctx.id}:log-group',
+                f'arn:aws:logs:{self.aws_region}:{account_ctx.id}:log-group',
                 loggroup_function_name,
                 '*'
             ])
         ]
         log_stream_arns = [
             troposphere.Join(':', [
-                f'arn:aws:logs:{self.aws_region}:{self.account_ctx.id}:log-group',
+                f'arn:aws:logs:{self.aws_region}:{account_ctx.id}:log-group',
                 loggroup_function_name,
                 'log-stream',
                 '*'
@@ -368,10 +360,10 @@ class Lambda(CFTemplate):
         for loggroup_name in awslambda.log_group_names:
             prefixed_loggroup_name = prefixed_name(awslambda, loggroup_name, self.paco_ctx.legacy_flag)
             log_group_arns.append(
-                f'arn:aws:logs:{self.aws_region}:{self.account_ctx.id}:log-group:{prefixed_loggroup_name}:*'
+                f'arn:aws:logs:{self.aws_region}:{account_ctx.id}:log-group:{prefixed_loggroup_name}:*'
             )
             log_stream_arns.append(
-                f'arn:aws:logs:{self.aws_region}:{self.account_ctx.id}:log-group:{prefixed_loggroup_name}:log-stream:*'
+                f'arn:aws:logs:{self.aws_region}:{account_ctx.id}:log-group:{prefixed_loggroup_name}:log-stream:*'
             )
 
         loggroup_policy_resource = troposphere.iam.ManagedPolicy(
@@ -415,8 +407,6 @@ class Lambda(CFTemplate):
             ref=awslambda.paco_ref_parts + '.arn',
         )
 
-        # Finished
-        self.set_template()
 
     def add_log_group(self, loggroup_name, logical_name=None):
         "Add a LogGroup resource to the template"

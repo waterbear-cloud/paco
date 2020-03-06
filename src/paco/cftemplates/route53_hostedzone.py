@@ -1,31 +1,14 @@
+from paco.cftemplates.cftemplates import StackTemplate
 import troposphere
 import troposphere.route53
 
-from paco.cftemplates.cftemplates import CFTemplate
 
-class Route53HostedZone(CFTemplate):
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        zone_config,
-        config_ref
-    ):
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=zone_config.is_enabled(),
-            config_ref=config_ref,
-            iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags
-        )
+class Route53HostedZone(StackTemplate):
+    def __init__(self, stack, paco_ctx):
+        zone_config = stack.resource
+        config_ref = zone_config.paco_ref_parts
+        super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_NAMED_IAM"])
         self.set_aws_name('HostedZone', zone_config.name)
-
         self.init_template('Route53 Hosted Zone: ' + zone_config.domain_name)
 
         self.paco_ctx.log_action_col("Init", "Route53", "Hosted Zone", "{}".format(zone_config.domain_name))
@@ -71,8 +54,3 @@ class Route53HostedZone(CFTemplate):
                 RecordSets=record_set_list
             )
             group_res.DependsOn = hosted_zone_res
-
-
-        self.set_template()
-
-

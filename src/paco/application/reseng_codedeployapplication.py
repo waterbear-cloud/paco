@@ -32,28 +32,23 @@ class CodeDeployApplicationResourceEngine(ResourceEngine):
         iam_role_id = self.gen_iam_role_id(self.res_id, role_name)
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_role(
-            paco_ctx=self.paco_ctx,
-            account_ctx=self.account_ctx,
             region=self.aws_region,
-            group_id=self.grp_id,
-            role_id=iam_role_id,
-            role_ref=iam_role_ref,
-            role_config=role,
+            resource=self.resource,
+            role=role,
+            iam_role_id=iam_role_id,
             stack_group=self.stack_group,
-            template_params=None,
             stack_tags=self.stack_tags
         )
 
         # CodeDeploy Application
-        paco.cftemplates.CodeDeployApplication(
-            self.paco_ctx,
-            self.account_ctx,
+        self.stack_group.add_new_stack(
             self.aws_region,
-            self.stack_group,
-            self.stack_tags,
-            self.env_ctx,
-            self.app_id,
-            self.grp_id,
             self.resource,
-            role
+            paco.cftemplates.CodeDeployApplication,
+            stack_tags=self.stack_tags,
+            extra_context={
+                'env_ctx': self.env_ctx,
+                'app_name': self.app.name,
+                'role': role,
+            }
         )

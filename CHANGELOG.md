@@ -1,15 +1,10 @@
 Changelog for Paco
 ==================
 
-5.2.0 (unreleased)
+6.0.0 (unreleased)
 ------------------
 
-### Added
-
-- Integrated the Parliment library to lint/validate the IAM Policies used for all Roles.
-  https://github.com/duo-labs/parliament
-
-### Changed
+### Breaking
 
 - Consolidated the Paco work directories into a single ``.paco-work`` directory.
   Documented them on a new Paco Internals doc page. To migrate an existing Paco project
@@ -17,8 +12,40 @@ Changelog for Paco
 
       cd <my-paco-project>
       mv aimdata .paco-work
-      mv Outputs .paco-work/outpus
+      mv Outputs .paco-work/outputs
       mv build .paco-work/build
+
+- The IAM Roles for BackupVault had inconsistently named CloudFormation stacks ("BackupVaults--Backup").
+  A new IAM Role will be created in a new stack. The old stack will remain but it can be safely deleted.
+
+  There will be a stack UPDATE to the BackupVaults. Each AWS::Backup::BackupSelection resource will
+  have "Selection: " prefixed on the SelectionName, this will replace the old BackupSelection resources
+  with new ones using the new Role. The AWS CloudFormation documentation states that a BackupSelection's
+  SelectionName is a display name only, but this is incorrect.
+
+- Removed the ``Resource/NotificationGroups.yaml`` filename alias. This file is now only loaded using
+  the filename ``resoruce/snstopics.yaml``.
+
+- EventsRule type target field changed from a list of Targets to a list of IEventTarget objects. This allows
+  the ability to specify other information with the target such as the input_json field. Old was:
+
+    type: EventsRule
+    targets:
+      - paco.ref some.ref
+
+  New format is:
+
+    type: EventsRule
+    targets:
+      - target: paco.ref some.ref
+        input_json: '{"cat":"dog"}'
+
+### Added
+
+- DeploymentPipeline can now use GitHub.Source as a source.
+
+- Integrated the Parliment library to lint/validate the IAM Policies used for all Roles.
+  https://github.com/duo-labs/parliament
 
 
 5.1.1 (2020-02-19)

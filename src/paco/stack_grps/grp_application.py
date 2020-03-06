@@ -1,4 +1,4 @@
-from paco.stack_group import StackGroup, StackTags
+from paco.stack import StackGroup, StackTags
 from paco.core.yaml import YAML
 from paco.application.app_engine import ApplicationEngine
 
@@ -11,20 +11,19 @@ class ApplicationStackGroup(StackGroup):
         paco_ctx,
         account_ctx,
         env_ctx,
-        app_id,
+        app,
         stack_tags
     ):
-        aws_name = '-'.join(['App', app_id])
+        aws_name = '-'.join(['App', app.name])
         super().__init__(
             paco_ctx,
             account_ctx,
-            app_id,
+            app.name,
             aws_name,
             env_ctx
         )
         self.env_ctx = env_ctx
-        self.app_id = app_id
-        self.config_ref_prefix = self.env_ctx.config_ref_prefix
+        self.app = app
         self.aws_region = self.env_ctx.region
         self.env_id = self.env_ctx.env_id
         self.stack_tags = stack_tags
@@ -34,18 +33,13 @@ class ApplicationStackGroup(StackGroup):
             self.paco_ctx,
             self.account_ctx,
             self.aws_region,
-            self.app_id,
-            self.env_ctx.config.applications[self.app_id],
-            self.config_ref_prefix,
+            self.app,
             self,
             'netenv',
             stack_tags=self.stack_tags,
             env_ctx=self.env_ctx
         )
         self.app_engine.init()
-
-    def validate(self):
-        super().validate()
 
     def provision(self):
         # Provision any SSL Cerificates
@@ -54,8 +48,4 @@ class ApplicationStackGroup(StackGroup):
 
         # Provison Application Group
         super().provision()
-
-    def delete(self):
-        super().delete()
-
 

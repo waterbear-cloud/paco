@@ -1,16 +1,14 @@
 import paco.cftemplates
 from paco.application.res_engine import ResourceEngine
-from paco.core.yaml import YAML
-from paco.stack_group import StackOrder
+from paco.stack import StackOrder
 
-yaml=YAML()
-yaml.default_flow_sytle = False
 
 class CloudFrontResourceEngine(ResourceEngine):
 
     def init_resource(self):
         for factory_name, factory_config in self.resource.factory.items():
-            cloudfront_config_ref = self.resource.paco_ref_parts + '.factory.' + factory_name
+            support_resource_ref_ext = 'factory.' + factory_name
+            cloudfront_config_ref = self.resource.paco_ref_parts + '.' + support_resource_ref_ext
             self.resource.domain_aliases = factory_config.domain_aliases
             self.resource.viewer_certificate.certificate = factory_config.viewer_certificate.certificate
 
@@ -30,16 +28,11 @@ class CloudFrontResourceEngine(ResourceEngine):
             factory_config.viewer_certificate.resolve_ref_obj = self.app_engine
             factory_config.resolve_ref_obj = self.app_engine
             # CloudFront CloudFormation
-            paco.cftemplates.CloudFront(
-                self.paco_ctx,
-                self.account_ctx,
+            self.stack_group.add_new_stack(
                 self.aws_region,
-                self.stack_group,
-                self.stack_tags,
-                self.app_id,
-                self.grp_id,
-                self.res_id,
-                factory_name,
                 self.resource,
-                cloudfront_config_ref
+                paco.cftemplates.CloudFront,
+                stack_tags=self.stack_tags,
+                extra_context={'factory_name': factory_name},
+                support_resource_ref_ext=support_resource_ref_ext,
             )

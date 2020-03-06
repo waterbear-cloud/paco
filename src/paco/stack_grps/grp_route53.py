@@ -1,5 +1,5 @@
 import paco.cftemplates
-from paco.stack_group import StackEnum, StackOrder, Stack, StackGroup
+from paco.stack import Stack, StackGroup
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
 
@@ -14,7 +14,6 @@ class Route53StackGroup(StackGroup):
             aws_name,
             controller
         )
-
         # Initialize config with a deepcopy of the project defaults
         self.config = route53_config
         self.account_ctx = account_ctx
@@ -26,33 +25,24 @@ class Route53StackGroup(StackGroup):
 
     def init_hosted_zones(self):
         for zone_id in self.config.get_zone_ids(account_name=self.account_ctx.get_name()):
-            zone_config = self.config.hosted_zones[zone_id]
-            route53_template = paco.cftemplates.Route53HostedZone(
-                self.paco_ctx,
-                self.account_ctx,
-                # this should come from config, maybe project.yaml?
-                self.paco_ctx.project['credentials'].aws_default_region,
-                self, # stack_group
-                None, # stack_tags
-                zone_config,
-                zone_config.paco_ref_parts
+            zone = self.config.hosted_zones[zone_id]
+            # this should come from config, maybe project.yaml?
+            aws_region = self.paco_ctx.project['credentials'].aws_default_region
+            route53_stack = self.add_new_stack(
+                aws_region,
+                zone,
+                paco.cftemplates.Route53HostedZone
             )
-            route53_stack = route53_template.stack
             route53_stack.set_termination_protection(True)
             self.zone_stack_map[zone_id] = route53_stack
 
     def init_legacy(self):
-        config_ref = 'resource.route53'
-        route53_template = paco.cftemplates.Route53(
-            self.paco_ctx,
-            self.account_ctx,
-            self.paco_ctx.project['credentials'].aws_default_region,
-            self, # stack_group
-            None, # stack_tags
+        aws_region = self.paco_ctx.project['credentials'].aws_default_region
+        route53_stack = self.add_new_stack(
+            aws_region,
             self.config,
-            config_ref
+            paco.cftemplates.Route53
         )
-        route53_stack = route53_template.stack
         route53_stack.set_termination_protection(True)
         self.zone_stack_map['legacy'] = route53_stack
 
@@ -67,10 +57,3 @@ class Route53StackGroup(StackGroup):
         elif zone_id in self.zone_stack_map.keys():
             return self.zone_stack_map[zone_id]
         return None
-
-    def validate(self):
-        super().validate()
-
-    def provision(self):
-        #self.validate()
-        super().provision()

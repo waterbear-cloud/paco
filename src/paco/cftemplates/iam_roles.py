@@ -1,40 +1,30 @@
-from enum import Enum
-from io import StringIO
-from paco import utils
-from paco.cftemplates.cftemplates import CFTemplate, Parameter
+from paco.cftemplates.cftemplates import StackTemplate
+from paco.stack import Parameter
 from paco.utils import md5sum
 import os
 import sys
 
 
-class IAMRoles(CFTemplate):
+class IAMRoles(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        role_ref,
-        grp_id,
-        role_id,
-        role_config,
         template_params,
-        change_protected
+        role,
     ):
+        # The stack.resource is the object which controls this Role's provisioning
+        # e.g. an ASG resource creates an IAM Instance Role to support it or a
+        # service resource (Patch) creates cross-account Roles
+        role_config = role
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=role_config.is_enabled(),
-            config_ref=role_ref,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            change_protected=change_protected
         )
-        self.set_aws_name('Role', grp_id, role_id)
-        self.role_ref = role_ref
+        role_id = self.resource.name + '-' + role.name
+        role_ref = role.paco_ref_parts
+        self.set_aws_name('Role', self.resource_group_name, role_id)
 
         # Define the Template
         template_fmt = """
@@ -134,7 +124,7 @@ Outputs:
             iam_role_table['role_name'] = role_config.role_name
         else:
             # Hashed name to avoid conflicts between environments, etc.
-            iam_role_table['role_name'] = self.gen_iam_role_name("Role", role_id)
+            iam_role_table['role_name'] = self.gen_iam_role_name("Role", role_ref, role_id)
         iam_role_table['cf_resource_name_prefix'] = self.get_cf_resource_name_prefix(role_id)
 
         # Assume Role Principal
@@ -172,7 +162,7 @@ Outputs:
 
         # Instance Profile
         if role_config.instance_profile == True:
-            iam_role_table['profile_name'] = self.gen_iam_role_name("Profile", role_id)
+            iam_role_table['profile_name'] = self.gen_iam_role_name("Profile", role_ref, role_id)
             iam_role_table['instance_profile'] = iam_profile_fmt.format(iam_role_table)
         else:
             iam_role_table['instance_profile'] = ""
@@ -184,16 +174,16 @@ Outputs:
         if role_config.instance_profile == True:
             outputs_yaml += iam_profile_outputs_fmt.format(iam_role_table)
         # Initialize Parameters
-        self.set_parameter(role_path_param_name, role_config.path)
+        self.stack.set_parameter(role_path_param_name, role_config.path)
 
         template_table['parameters_yaml'] = parameters_yaml
         template_table['resources_yaml'] = resources_yaml
         template_table['outputs_yaml'] = outputs_yaml
         self.set_template(template_fmt.format(template_table))
 
-    # Generate a name valid in CloudFormation
-    def gen_iam_role_name(self, role_type, role_id):
-        iam_context_hash = md5sum(str_data=self.role_ref)[:8].upper()
+    def gen_iam_role_name(self, role_type, role_ref, role_id):
+        "Generate a name valid in CloudFormation"
+        iam_context_hash = md5sum(str_data=role_ref)[:8].upper()
         role_name = self.create_resource_name_join(
             name_list=[iam_context_hash, role_type[0], role_id],
             separator='-',

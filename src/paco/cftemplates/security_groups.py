@@ -1,37 +1,27 @@
-from enum import Enum
-from io import StringIO
 from paco import utils
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.models import references
 from paco.models.references import Reference
 from paco.core.exception import StackException, PacoErrorCode
-import os
 import troposphere
 
 
-class SecurityGroups(CFTemplate):
+class SecurityGroups(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
         env_ctx,
-        security_groups_config,
-        sg_group_id,
-        sg_groups_config_ref,
-        template_type
+        template_type,
     ):
+        security_groups_config = stack.resource
+        sg_group_id = security_groups_config.name
+        sg_groups_config_ref = security_groups_config.paco_ref_parts
+
         self.env_ctx = env_ctx
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
-            config_ref=sg_groups_config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            environment_name=self.env_ctx.env_id,
         )
         rules_id = None
         if template_type == 'Rules':
@@ -68,7 +58,8 @@ class SecurityGroups(CFTemplate):
             else:
                 self.create_group_rules(sg_group_id, sg_name, sg_config, template)
 
-        self.enabled = is_sg_enabled
+        self.set_enabled(is_sg_enabled)
+
         self.set_template()
         if template_type == 'Rules':
             self.stack.wait_for_delete = True
@@ -194,7 +185,7 @@ class SecurityGroups(CFTemplate):
             param_type='AWS::EC2::SecurityGroup::Id',
             name='SourceGroupId' + group_ref_hash,
             description='Source Security Group - ' + hash_ref,
-            value=group_ref+'.id',
+            value=group_ref + '.id',
         )
 
         self.source_group_param_cache[group_ref_hash] = source_sg_param

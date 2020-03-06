@@ -1,36 +1,16 @@
-import base64
-import os
+from paco import utils
+from paco.cftemplates.cftemplates import StackTemplate
+from paco.models import vocabulary, schemas
 import troposphere
 import troposphere.rds
 import troposphere.secretsmanager
-from paco import utils
-from paco.cftemplates.cftemplates import CFTemplate
-from paco.models import vocabulary, schemas
-from enum import Enum
-from io import StringIO
 
-class DBParameterGroup(CFTemplate):
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        grp_id,
-        resource,
-        config_ref=None
-    ):
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=resource.is_enabled(),
-            config_ref=config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags
-        )
-        self.set_aws_name('DBParameterGroup', grp_id, resource.name)
+
+class DBParameterGroup(StackTemplate):
+    def __init__(self, stack, paco_ctx):
+        resource = stack.resource
+        super().__init__(stack, paco_ctx)
+        self.set_aws_name('DBParameterGroup', self.resource_group_name, resource.name)
         self.init_template('DB Parameter Group')
 
         # Resources
@@ -53,49 +33,23 @@ class DBParameterGroup(CFTemplate):
         self.template.add_resource(dbparametergroup_resource)
 
         # Outputs
-        dbparametergroup_name_output = troposphere.Output(
+        self.create_output(
             title='DBParameterGroupName',
-            Description='DB Parameter Group Name',
-            Value=troposphere.Ref(dbparametergroup_resource)
+            description='DB Parameter Group Name',
+            value=troposphere.Ref(dbparametergroup_resource),
+            ref=[self.resource.paco_ref_parts, self.resource.paco_ref_parts + ".name"]
         )
-        self.template.add_output(dbparametergroup_name_output)
-        self.register_stack_output_config(config_ref, 'DBParameterGroupName')
-        self.register_stack_output_config(config_ref + '.name', 'DBParameterGroupName')
-
-        # All done, let's go home!
-        self.set_template(self.template.to_yaml())
 
 
-class RDS(CFTemplate):
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        app_id,
-        grp_id,
-        res_id,
-        rds_config,
-        config_ref=None
-    ):
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=rds_config.is_enabled(),
-            config_ref=config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags
-        )
-        self.set_aws_name('RDS', grp_id, res_id)
+class RDS(StackTemplate):
+    def __init__(self, stack, paco_ctx,):
+        rds_config = stack.resource
+        config_ref = rds_config.paco_ref_parts
+        super().__init__(stack, paco_ctx)
+        self.set_aws_name('RDS', self.resource_group_name, self.resource.name)
         self.init_template('RDS')
         template = self.template
-
-        if not rds_config.is_enabled():
-            # Remove RDS resource and leave a dummy template is not enabled
-            return self.set_template()
+        if not rds_config.is_enabled(): return
 
         rds_logical_id = 'PrimaryDBInstance'
 
@@ -307,8 +261,7 @@ class RDS(CFTemplate):
                         )
                         record_set_res.DependsOn = db_instance_res
 
-        self.set_template()
-
+        # Legacy Route53 Record Set
         if self.paco_ctx.legacy_flag('route53_record_set_2019_10_16') == False:
             if rds_config.is_dns_enabled() == True:
                 route53_ctl = self.paco_ctx.get_controller('route53')
@@ -316,10 +269,11 @@ class RDS(CFTemplate):
                     route53_ctl.add_record_set(
                         self.account_ctx,
                         self.aws_region,
+                        rds_config,
                         enabled=rds_config.is_enabled(),
                         dns=dns_config,
                         record_set_type='CNAME',
-                        resource_records=[ 'paco.ref '+config_ref+'.endpoint.address' ],
-                        stack_group=self.stack_group,
-                        config_ref=rds_config.paco_ref_parts+'.dns'
+                        resource_records=['paco.ref ' + config_ref + '.endpoint.address'],
+                        stack_group=self.stack.stack_group,
+                        config_ref=rds_config.paco_ref_parts + '.dns'
                     )

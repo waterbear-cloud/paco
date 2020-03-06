@@ -1,31 +1,14 @@
-import os
-from paco.cftemplates.cftemplates import CFTemplate
-from io import StringIO
-from enum import Enum
+from paco.cftemplates.cftemplates import StackTemplate
 
 
-class CodeCommit(CFTemplate):
+class CodeCommit(StackTemplate):
     "Provision repo_list which is a list of repositories by account"
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        stack_hooks,
-        codecommit_config,
-        repo_list
-    ):
+    def __init__(self, stack, paco_ctx, repo_list):
+        repo_config = stack.resource
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
-            config_ref=None,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            stack_hooks=stack_hooks
         )
         self.set_aws_name('Repositories')
 
@@ -171,9 +154,10 @@ Resources:
                     repo_arns_yaml += "\n              - !GetAtt "+repo_logical_id_prefix+"Repository.Arn"
                 else:
                     repo_arns_yaml += "\n              - arn:aws:codecommit:{}:{}:{}".format(
-                        aws_region,
-                        account_ctx.get_id(),
-                        repo_config.repository_name )
+                        stack.aws_region,
+                        stack.account_ctx.get_id(),
+                        repo_config.repository_name,
+                    )
 
             codecommit_readwrite_table['repository_arns'] = repo_arns_yaml
 

@@ -54,53 +54,37 @@ role_name: %s""" % ("ASGInstance")
         role_config.enabled = self.resource.is_enabled()
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_role(
-            paco_ctx=self.paco_ctx,
-            account_ctx=self.account_ctx,
             region=self.aws_region,
-            group_id=self.grp_id,
-            role_id=instance_iam_role_id,
-            role_ref=instance_iam_role_ref,
-            role_config=role_config,
+            resource=self.resource,
+            role=role_config,
+            iam_role_id=instance_iam_role_id,
             stack_group=self.stack_group,
-            template_params=None,
             stack_tags=self.stack_tags,
-            change_protected=self.resource.change_protected
         )
         role_profile_arn = iam_ctl.role_profile_arn(instance_iam_role_ref)
 
         # EC2 Launch Manger Bundles
         self.app_engine.ec2_launch_manager.process_bundles(self.resource, instance_iam_role_ref)
 
-        # SSM Agent
-        # if when_ssm_is_need():
-        #    self.app_engine.ec2_launch_manager.lb_add_ssm_agent(
-        #        instance_iam_role_ref,
-        #        self.app_id,
-        #        self.grp_id,
-        #        self.res_id,
-        #        self.resource
-        #    )
-        # Add EIP AllocationId Tag
-        paco.cftemplates.ASG(
-            self.paco_ctx,
-            self.account_ctx,
-            self.aws_region,
-            self.stack_group,
-            self.stack_tags,
-            self.env_ctx,
+        # Create ASG stack
+        ec2_manager_user_data_script = self.app_engine.ec2_launch_manager.user_data_script(
             self.app_id,
             self.grp_id,
             self.res_id,
             self.resource,
-            self.resource.paco_ref_parts,
-            role_profile_arn,
-            self.app_engine.ec2_launch_manager.user_data_script(
-                self.app_id,
-                self.grp_id,
-                self.res_id,
-                self.resource,
-                instance_iam_role_ref,
-                self.stack_name
-            ),
-            self.app_engine.ec2_launch_manager.get_cache_id(self.resource, self.app_id, self.grp_id)
+            instance_iam_role_ref,
+            self.stack_name
         )
+        self.stack_group.add_new_stack(
+            self.aws_region,
+            self.resource,
+            paco.cftemplates.ASG,
+            stack_tags=self.stack_tags,
+            extra_context={
+                'env_ctx': self.env_ctx,
+                'role_profile_arn': role_profile_arn,
+                'ec2_manager_user_data_script': ec2_manager_user_data_script,
+                'ec2_manager_cache_id': self.app_engine.ec2_launch_manager.get_cache_id(self.resource, self.app_id, self.grp_id),
+            },
+        )
+

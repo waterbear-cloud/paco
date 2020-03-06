@@ -18,15 +18,11 @@ class ElasticsearchDomainResourceEngine(ResourceEngine):
                 'es.amazonaws.com'
             )
 
-        # Elasticsearch Domain CloudFormation
-        cftemplates.ElasticsearchDomain(
-            self.paco_ctx,
-            self.account_ctx,
+        # Elasticsearch Domain stack
+        stack = self.stack_group.add_new_stack(
             self.aws_region,
-            self.stack_group,
-            self.stack_tags,
-            self.env_ctx,
-            self.grp_id,
-            self.res_id,
             self.resource,
+            cftemplates.ElasticsearchDomain,
+            stack_tags=self.stack_tags,
+            extra_context={'env_ctx': self.env_ctx},
         )

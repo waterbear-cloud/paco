@@ -1,49 +1,46 @@
+from paco import utils
+from paco.cftemplates.cftemplates import StackTemplate
+from paco.models import schemas
+from paco.models.locations import get_parent_by_interface
+from paco.models.references import Reference
 import os
 import troposphere
 import troposphere.ec2
 
-from enum import Enum
-from io import StringIO
-from paco.cftemplates.cftemplates import CFTemplate
-from paco.models import schemas
-from paco.models.locations import get_parent_by_interface
-from paco.models.references import Reference
-from paco import utils
 
-class NATGateway(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 stack_order,
-                 network_config,
-                 nat_sg_config,
-                 nat_sg_config_ref,
-                 nat_config):
-
+class NATGateway(StackTemplate):
+    def __init__(
+        self,
+        stack,
+        paco_ctx,
+        nat_sg_config,
+    ):
+        if nat_sg_config != None:
+            nat_sg_config_ref = nat_sg_config.paco_ref_parts
+        nat_config = stack.resource
+        network_config = get_parent_by_interface(nat_config, schemas.INetwork)
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=nat_config.is_enabled(),
-            config_ref=nat_config.paco_ref_parts,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            stack_order=stack_order
         )
         self.set_aws_name('NGW', nat_config.name)
+
+        # empty template if not enabled
+        # ToDo: Once the Managed type is Troposphere this code can be simplified
+        if not nat_config.is_enabled():
+            if nat_config.type == 'Managed':
+                self.init_template('NAT Gateways')
+            else:
+                self.init_template('EC2 NAT Gateway')
+            return
 
         if nat_config.type == 'Managed':
             self.managed_nat_gateway(network_config, nat_config)
         else:
             self.init_template('EC2 NAT Gateway')
-            if nat_config.is_enabled() == True:
-                self.ec2_nat_gateway(network_config, nat_sg_config, nat_sg_config_ref, nat_config)
-            # Generate the Template
-            self.set_template(self.template.to_yaml())
+            self.ec2_nat_gateway(network_config, nat_sg_config, nat_sg_config_ref, nat_config)
+
 
     def ec2_nat_gateway(self, network_config, nat_sg_config, nat_sg_config_ref, nat_config):
 

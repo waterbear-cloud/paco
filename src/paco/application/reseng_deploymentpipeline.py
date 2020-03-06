@@ -4,6 +4,7 @@ from paco.core.yaml import YAML
 from paco.models import schemas
 from paco import models
 
+
 yaml=YAML()
 yaml.default_flow_sytle = False
 
@@ -13,7 +14,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         super().__init__(app_engine, grp_id, res_id, resource, stack_tags)
         self.pipeline_account_ctx = None
         self.pipeline_config = resource
-        self.kms_template = None
+        self.kms_stack = None
         self.kms_crypto_principle_list = []
         self.artifacts_bucket_policy_resource_arns = []
         self.artifacts_bucket_meta = {
@@ -22,6 +23,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             'name': None,
         }
         self.codecommit_role_name = 'codecommit_role'
+        self.github_role_name = 'github_role'
         self.source_stage = None
 
     def init_stage(self, stage_config):
@@ -48,20 +50,20 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         # KMS Key
         kms_refs = {}
         # Application Account
-        aws_account_ref = 'paco.ref ' + self.parent_config_ref + '.network.aws_account'
-        app_account = self.paco_ctx.get_ref(aws_account_ref)
-        kms_refs[app_account] = None
+        kms_refs['paco.ref accounts.{}'.format(self.account_ctx.name)] = None
 
         # CodeCommit Account(s)
         # ToDo: allows ALL CodeCommit accounts access, filter out non-CI/CD CodeCommit repos?
-        for subdict in self.paco_ctx.project['resource']['codecommit'].values():
-            for repo in subdict.values():
+        for codecommit_group in self.paco_ctx.project['resource']['codecommit'].values():
+            for repo in codecommit_group.values():
                 kms_refs[repo.account] = None
+
         for key in kms_refs.keys():
             self.kms_crypto_principle_list.append(
                 "paco.sub 'arn:aws:iam::${%s}:root'" % (key)
             )
 
+        # KMS stack
         kms_config_dict = {
             'admin_principal': {
                 'aws': [ "!Sub 'arn:aws:iam::${{AWS::AccountId}}:root'" ]
@@ -70,18 +72,14 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
                 'aws': self.kms_crypto_principle_list
             }
         }
-        kms_config_ref = self.pipeline_config.paco_ref_parts + '.kms'
-        self.kms_template = cftemplates.KMS(
-            self.paco_ctx,
-            self.pipeline_account_ctx,
+        self.kms_stack = self.stack_group.add_new_stack(
             self.aws_region,
-            self.stack_group,
-            self.stack_tags,
-            self.grp_id,
-            self.res_id,
             self.resource,
-            kms_config_ref,
-            kms_config_dict
+            cftemplates.KMS,
+            account_ctx=self.pipeline_account_ctx,
+            stack_tags=self.stack_tags,
+            support_resource_ref_ext='kms',
+            extra_context={'kms_config_dict': kms_config_dict}
         )
 
         # Stages
@@ -91,39 +89,31 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
 
         # CodePipeline
         codepipeline_config_ref = self.pipeline_config.paco_ref_parts + '.codepipeline'
-        self.pipeline_config._template = cftemplates.CodePipeline(
-            self.paco_ctx,
-            self.pipeline_account_ctx,
+        self.pipeline_config._stack = self.stack_group.add_new_stack(
             self.aws_region,
-            self.stack_group,
-            self.stack_tags,
-            self.env_ctx,
-            self.app_id,
-            self.grp_id,
-            self.res_id,
             self.resource,
-            self.artifacts_bucket_meta['name'],
-            codepipeline_config_ref
+            cftemplates.CodePipeline,
+            account_ctx=self.pipeline_account_ctx,
+            stack_tags=self.stack_tags,
+            extra_context={
+                'env_ctx': self.env_ctx,
+                'app_name': self.app.name,
+                'artifacts_bucket_name': self.artifacts_bucket_meta['name']
+            },
         )
 
         # Add CodeBuild Role ARN to KMS Key principal now that the role is created
         kms_config_dict['crypto_principal']['aws'] = self.kms_crypto_principle_list
-        kms_template = cftemplates.KMS(
-            self.paco_ctx,
-            self.pipeline_account_ctx,
+        kms_stack = self.stack_group.add_new_stack(
             self.aws_region,
-            self.stack_group,
-            self.stack_tags,
-            self.grp_id,
-            self.res_id,
             self.resource,
-            kms_config_ref,
-            kms_config_dict
+            cftemplates.KMS,
+            account_ctx=self.pipeline_account_ctx,
+            stack_tags=self.stack_tags,
+            support_resource_ref_ext='kms',
+            extra_context={'kms_config_dict': kms_config_dict}
         )
-        # Adding a file id allows us to generate a second template without overwritting
-        # the first one. This is needed as we need to update the KMS policy with the
-        # Codebuild Arn after the Codebuild has been created.
-        kms_template.set_dependency(self.kms_template, 'post-pipeline')
+        kms_stack.set_dependency(self.kms_stack, 'post-pipeline')
 
         # Get the ASG Instance Role ARN
         if not self.pipeline_config.is_enabled():
@@ -139,12 +129,14 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         }
         s3_ctl.add_bucket_policy(self.artifacts_bucket_meta['ref'], cpbd_s3_bucket_policy)
 
+    def init_stage_action_github_source(self, action_config):
+        pass
+
     def init_stage_action_codecommit_source(self, action_config):
+        "Initialize an IAM Role for the CodeCommit action"
         if not action_config.is_enabled():
             return
 
-        # -------------------------------------------
-        # CodeCommit Delegate Role
         role_yaml = """
 assume_role_policy:
   effect: Allow
@@ -195,32 +187,27 @@ policies:
         codecommit_iam_role_id = self.gen_iam_role_id(self.res_id, self.codecommit_role_name)
         self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s.%s.arn}'" % (action_config.paco_ref, self.codecommit_role_name))
         # IAM Roles Parameters
-        iam_role_params = [
-            {
-                'key': 'CMKArn',
-                'value': self.pipeline_config.paco_ref + '.kms.arn',
-                'type': 'String',
-                'description': 'DeploymentPipeline KMS Key Arn'
-            }
-        ]
-        codecommit_account_ref = self.paco_ctx.get_ref(action_config.codecommit_repository+'.account')
+        iam_role_params = [{
+            'key': 'CMKArn',
+            'value': self.pipeline_config.paco_ref + '.kms.arn',
+            'type': 'String',
+            'description': 'DeploymentPipeline KMS Key Arn'
+        }]
+        codecommit_account_ref = self.paco_ctx.get_ref(action_config.codecommit_repository + '.account')
         codecommit_account_ctx = self.paco_ctx.get_account_context(codecommit_account_ref)
-        codecommit_iam_role_ref = '{}.{}'.format(action_config.paco_ref_parts, self.codecommit_role_name)
         iam_ctl.add_role(
-            paco_ctx=self.paco_ctx,
             account_ctx=codecommit_account_ctx,
             region=self.aws_region,
-            group_id=self.grp_id,
-            role_id=codecommit_iam_role_id,
-            role_ref=codecommit_iam_role_ref,
-            role_config=codecommit_iam_role_config,
+            resource=self.resource,
+            role=codecommit_iam_role_config,
+            iam_role_id=codecommit_iam_role_id,
             stack_group=self.stack_group,
+            stack_tags=self.stack_tags,
             template_params=iam_role_params,
-            stack_tags=self.stack_tags
         )
 
-    # S3 Deploy
     def init_stage_action_s3_deploy(self, action_config):
+        "Initialize an IAM Role stack to allow access to the S3 Bucket for the action"
         # Create a role to allow access to the S3 Bucket
         role_yaml = """
 assume_role_policy:
@@ -267,55 +254,47 @@ policies:
         iam_ctl = self.paco_ctx.get_controller('IAM')
         # The ID to give this role is: group.resource.instance_iam_role
         role_id = self.gen_iam_role_id(self.res_id, 'delegate')
-        self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (action_config.paco_ref + '.delegate_role.arn'))
+        self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (action_config.paco_ref + '.delegate.arn'))
         # IAM Roles Parameters
-        iam_role_params = [
-            {
-                'key': 'CMKArn',
-                'value': self.pipeline_config.paco_ref + '.kms.arn',
-                'type': 'String',
-                'description': 'DeploymentPipeline KMS Key Arn'
-            }
-        ]
+        iam_role_params = [{
+            'key': 'CMKArn',
+            'value': self.pipeline_config.paco_ref + '.kms.arn',
+            'type': 'String',
+            'description': 'DeploymentPipeline KMS Key Arn'
+        }]
         bucket_account_ctx = self.paco_ctx.get_account_context(bucket_config.account)
-        role_ref = '{}.delegate_role'.format(action_config.paco_ref_parts)
+        role_ref = '{}.delegate'.format(action_config.paco_ref_parts)
         iam_ctl.add_role(
-            paco_ctx=self.paco_ctx,
             account_ctx=bucket_account_ctx,
             region=self.aws_region,
-            group_id=self.grp_id,
-            role_id=role_id,
-            role_ref=role_ref,
-            role_config=role_config,
+            resource=self.resource,
+            role=role_config,
+            iam_role_id=role_id,
             stack_group=self.stack_group,
+            stack_tags=self.stack_tags,
             template_params=iam_role_params,
-            stack_tags=self.stack_tags
         )
         action_config._delegate_role_arn = iam_ctl.role_arn(role_ref)
 
 
-    # Code Deploy
     def init_stage_action_codedeploy_deploy(self, action_config):
+        "Initialize a CodeDeploy stack for the action"
         if not action_config.is_enabled():
             return
 
         self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (action_config.paco_ref + '.codedeploy_tools_delegate_role.arn'))
         self.artifacts_bucket_policy_resource_arns.append(self.paco_ctx.get_ref(action_config.auto_scaling_group+'.instance_iam_role.arn'))
-        codedeploy_config_ref = action_config.paco_ref_parts
-        action_config._template = cftemplates.CodeDeploy(
-            self.paco_ctx,
-            self.account_ctx,
+        action_config._stack = self.stack_group.add_new_stack(
             self.aws_region,
-            self.stack_group,
-            self.stack_tags,
-            self.env_ctx,
-            self.app_id,
-            self.grp_id,
-            self.res_id,
-            self.pipeline_config,
-            action_config,
-            self.artifacts_bucket_meta['name'],
-            codedeploy_config_ref
+            self.resource,
+            cftemplates.CodeDeploy,
+            stack_tags=self.stack_tags,
+            extra_context={
+                'env_ctx': self.env_ctx,
+                'app_name': self.app.name,
+                'action_config': action_config,
+                'artifacts_bucket_name': self.artifacts_bucket_meta['name'],
+            },
         )
 
     def init_stage_action_codebuild_build(self, action_config):
@@ -324,21 +303,18 @@ policies:
 
         self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (action_config.paco_ref + '.project_role.arn'))
         self.kms_crypto_principle_list.append("paco.sub '${%s}'" % (action_config.paco_ref+'.project_role.arn'))
-        codebuild_config_ref = action_config.paco_ref_parts
-        action_config._template = cftemplates.CodeBuild(
-            self.paco_ctx,
-            self.pipeline_account_ctx,
+        action_config._stack = self.stack_group.add_new_stack(
             self.aws_region,
-            self.stack_group,
-            self.stack_tags,
-            self.env_ctx,
-            self.app_id,
-            self.grp_id,
-            self.res_id,
-            self.pipeline_config,
-            action_config,
-            self.artifacts_bucket_meta['name'],
-            codebuild_config_ref
+            self.resource,
+            cftemplates.CodeBuild,
+            account_ctx=self.pipeline_account_ctx,
+            stack_tags=self.stack_tags,
+            extra_context={
+                'env_ctx': self.env_ctx,
+                'app_name': self.app.name,
+                'action_config': action_config,
+                'artifacts_bucket_name': self.artifacts_bucket_meta['name'],
+            }
         )
 
     def init_stage_action_manualapproval(self, action_config):
@@ -352,19 +328,19 @@ policies:
         if schemas.IDeploymentPipelineDeployCodeDeploy.providedBy(ref.resource):
             # CodeDeploy
             if ref.resource_ref == 'deployment_group.name':
-                return ref.resource._template.stack
+                return ref.resource._stack
             elif ref.resource_ref == 'codedeploy_tools_delegate_role.arn':
-                return ref.resource._template.get_tools_delegate_role_arn()
+                return ref.resource._stack.template.get_tools_delegate_role_arn()
             elif ref.resource_ref == 'codedeploy_application_name':
-                return ref.resource._template.get_application_name()
+                return ref.resource._stack.template.get_application_name()
             elif ref.resource_ref == 'deployment_group.name':
-                return ref.resource._template.stack
+                return ref.resource._stack
         elif schemas.IDeploymentPipeline.providedBy(ref.resource):
             # DeploymentPipeline
             if ref.resource_ref.startswith('kms.'):
-                return self.kms_template.stack
+                return self.kms_stack
             elif ref.resource_ref == 'codepipeline_role.arn':
-                return ref.resource._template.get_codepipeline_role_arn()
+                return ref.resource._stack.template.get_codepipeline_role_arn()
         elif schemas.IDeploymentPipelineSourceCodeCommit.providedBy(ref.resource):
             # CodeCommit
             if ref.resource_ref == self.codecommit_role_name+'.arn':
@@ -373,13 +349,18 @@ policies:
             elif ref.resource_ref == 'codecommit.arn':
                 codecommit_ref = ref.resource.codecommit_repository
                 return self.paco_ctx.get_ref(codecommit_ref+".arn")
+        elif schemas.IDeploymentPipelineSourceGitHub.providedBy(ref.resource):
+            # GitHub
+            if ref.resource_ref == self.github_role_name + '.arn':
+                iam_ctl = self.paco_ctx.get_controller("IAM")
+                return iam_ctl.role_arn(ref.raw[:-4])
         elif schemas.IDeploymentPipelineBuildCodeBuild.providedBy(ref.resource):
             # CodeBuild
             if ref.resource_ref == 'project_role.arn':
                 # self.cpbd_codepipebuild_template will fail if there are two deployments
                 # this application... corner case, but might happen?
-                return ref.resource._template.get_project_role_arn()
+                return ref.resource._stack.template.get_project_role_arn()
             elif ref.resource_ref == 'project.arn':
                 # self.cpbd_codepipebuild_template will fail if there are two deployments
                 # this application... corner case, but might happen?
-                return ref.resource._template.get_project_arn()
+                return ref.resource._stack.template.get_project_arn()

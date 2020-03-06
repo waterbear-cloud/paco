@@ -1,38 +1,16 @@
-import os
+from paco.cftemplates.cftemplates import StackTemplate
 import troposphere
 import troposphere.efs
-from paco.cftemplates.cftemplates import CFTemplate
 
 
-class EFS(CFTemplate):
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        env_ctx,
-        app_id,
-        grp_id,
-        res_id,
-        efs_config,
-        config_ref
-    ):
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=efs_config.is_enabled(),
-            config_ref=config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags
-        )
-        self.set_aws_name('EFS', grp_id, res_id)
+class EFS(StackTemplate):
+    def __init__(self, stack, paco_ctx, network):
+        efs_config = stack.resource
+        super().__init__(stack, paco_ctx)
+        self.set_aws_name('EFS', self.resource_group_name, self.resource.name)
 
         self.init_template('Elastic Filesystem')
-        if not efs_config.is_enabled():
-            return self.set_template()
+        if not efs_config.is_enabled(): return
 
         # Parameters
         sg_list_param = self.create_cfn_ref_list_param(
@@ -59,21 +37,17 @@ class EFS(CFTemplate):
             title=efs_res.title + 'Id',
             description="Elastic File System ID.",
             value=troposphere.Ref(efs_res),
-            ref=config_ref + ".id"
+            ref=efs_config.paco_ref_parts + ".id"
         )
 
         # Mount Targets
-        availability_zones = env_ctx.config.network.availability_zones
-        for az_idx in range(1, availability_zones+1):
-            subnet_id_ref = env_ctx.env_ref_prefix(
-                segment_id=efs_config.segment,
-                attribute='az{}.subnet_id'.format(az_idx)
-            )
+        for az_idx in range(1, network.availability_zones + 1):
+            subnet_id_ref = network.vpc.segments[efs_config.segment].paco_ref_parts + '.az{}.subnet_id'.format(az_idx)
             subnet_param = self.create_cfn_parameter(
                 name='SubnetIdAZ{}'.format(az_idx),
                 param_type='String',
                 description='The SubnetId for AZ{}.'.format(az_idx),
-                value=subnet_id_ref,
+                value='paco.ref ' + subnet_id_ref,
             )
             efs_mount_logical_id = self.create_cfn_logical_id('EFSMountTargetAZ{}'.format(az_idx))
             troposphere.efs.MountTarget(
@@ -83,7 +57,3 @@ class EFS(CFTemplate):
                 SecurityGroups=troposphere.Ref(sg_list_param),
                 SubnetId=troposphere.Ref(subnet_param)
             )
-
-        # Generate the Template
-        self.set_template()
-

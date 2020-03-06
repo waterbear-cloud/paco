@@ -1,16 +1,9 @@
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 import troposphere.iam
 
 
-class IAMSLRoles(CFTemplate):
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        servicename
-    ):
+class IAMSLRoles(StackTemplate):
+    def __init__(self, stack, paco_ctx, servicename):
         normalized_servicename = servicename.replace('.','')
         config_ref = 'resource.iam.servicelinkedrole' + '.' + normalized_servicename
         super().__init__(

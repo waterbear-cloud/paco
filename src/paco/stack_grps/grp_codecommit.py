@@ -1,4 +1,4 @@
-from paco.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks
+from paco.stack import StackOrder, Stack, StackGroup, StackHooks
 import paco.cftemplates
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
@@ -25,7 +25,6 @@ class CodeCommitStackGroup(StackGroup):
         # Initialize config with a deepcopy of the project defaults
         self.config = codecommit_config
         self.stack_list = []
-        self.config_ref_prefix = 'codecommit'
         self.account_ctx = account_ctx
         self.aws_region = aws_region
         self.repo_list = repo_list
@@ -42,17 +41,12 @@ class CodeCommitStackGroup(StackGroup):
                 hook_arg=self.config
             )
         # CodeCommit Repository
-        codecommit_template = paco.cftemplates.CodeCommit(
-            self.paco_ctx,
-            self.account_ctx,
+        codecommit_stack = self.add_new_stack(
             self.aws_region,
-            self,
-            None, # stack_tags
-            stack_hooks,
             self.config,
-            self.repo_list
+            paco.cftemplates.CodeCommit,
+            extra_context={'repo_list':self.repo_list}
         )
-        codecommit_stack = codecommit_template.stack
         codecommit_stack.set_termination_protection(True)
         self.stack_list.append(codecommit_stack)
 

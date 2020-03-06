@@ -1,68 +1,37 @@
-
+from awacs.aws import Allow, Action, Principal, Statement, Condition, MultiFactorAuthPresent, PolicyDocument, StringEquals
+from awacs.aws import Bool as AWACSBool
+from awacs.sts import AssumeRole
+from getpass import getpass
+from paco import utils
+from paco.cftemplates.cftemplates import StackTemplate
+from paco.core.exception import StackException
+from paco.core.exception import PacoErrorCode
+from paco.models.references import Reference
 import troposphere
 import troposphere.cloudformation
 import troposphere.iam
 
 
-from paco import utils
-from paco.cftemplates.cftemplates import CFTemplate
-from paco.core.exception import StackException
-from paco.core.exception import PacoErrorCode
-from paco.models.references import Reference
-from awacs.aws import Allow, Action, Principal, Statement, Condition, MultiFactorAuthPresent, PolicyDocument, StringEquals
-from awacs.aws import Bool as AWACSBool
-from awacs.sts import AssumeRole
-from getpass import getpass
-
-
-class IAMUserAccountDelegates(CFTemplate):
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        stack_order,
-
-        user_config,
-        permissions_list,
-        config_ref
-    ):
-
-        # ---------------------------------------------------------------------------
-        # CFTemplate Initialization
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            config_ref=config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            stack_order=stack_order,
-            iam_capabilities=['CAPABILITY_NAMED_IAM']
-        )
-
-        #self.set_aws_name('Account-Delegates', user_config.name)
+class IAMUserAccountDelegates(StackTemplate):
+    def __init__(self, stack, paco_ctx, master_account_id, account_id, permissions_list):
+        user_config = stack.resource
+        self.account_id = account_id
+        account_ctx = stack.account_ctx
+        self.master_account_id = master_account_id
+        super().__init__(stack, paco_ctx, iam_capabilities=['CAPABILITY_NAMED_IAM'])
 
         username = self.create_resource_name(
             user_config.name,
             camel_case=True
         )
         username = username[0].upper() + username[1:]
-
         if self.paco_ctx.legacy_flag('cftemplate_iam_user_delegates_2019_10_02') == True:
             self.set_aws_name(username, 'Account-Delegates')
         else:
             self.set_aws_name('Account-Delegates', username)
 
-        self.account_id = account_ctx.id
-        self.master_account_id = self.paco_ctx.get_ref('paco.ref accounts.master.id')
-
-        # ---------------------------------------------------------------------------
         # Troposphere Template Initialization
         self.init_template('IAM User Account Delegate Permissions')
-        template = self.template
 
         # Restrict account access here so that we can create an empty CloudFormation
         # template which will then delete permissions that have been revoked.
@@ -70,12 +39,9 @@ class IAMUserAccountDelegates(CFTemplate):
             if user_config.account_whitelist[0] == 'all' or account_ctx.get_name() in user_config.account_whitelist:
                 self.user_delegate_role_and_policies(user_config, permissions_list)
 
-        # Generate the Template
-        self.set_template()
 
     def user_delegate_role_and_policies(self, user_config, permissions_list):
         user_arn = 'arn:aws:iam::{}:user/{}'.format(self.master_account_id, user_config.username)
-        #user_arn = 'arn:aws:iam::{}:root'.format(self.master_account_id)
         assume_role_res = troposphere.iam.Role(
             "UserAccountDelegateRole",
             RoleName="IAM-User-Account-Delegate-Role-{}".format(
@@ -192,14 +158,6 @@ class IAMUserAccountDelegates(CFTemplate):
                     Resource=['*']#readonly_codebuild_arns
                 )
             )
-            #statement_list.append(
-            #    Statement(
-            #        Sid='OtherReadOnly',
-            #        Effect=Allow,
-            #        Action=readonly_other_actions,
-            #        Resource=['*']
-            #    )
-            #)
 
         managed_policy_res = troposphere.iam.ManagedPolicy(
             title=self.create_cfn_logical_id("CodeBuildPolicy"),

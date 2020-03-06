@@ -8,7 +8,7 @@ from paco.controllers.ctl_account import AccountController
 from paco.controllers.ctl_project import ProjectController
 from paco.controllers.ctl_ec2 import EC2Controller
 from paco.controllers.ctl_cloudwatch import CloudWatchController
-from paco.controllers.ctl_notificationgroups import NotificationGroupsController
+from paco.controllers.ctl_snstopics import SNTopicsGroupsController
 from paco.controllers.ctl_cloudtrail import CloudTrailController
 
 klass = {
@@ -23,6 +23,6 @@ klass = {
     'project': ProjectController,
     'ec2': EC2Controller,
     'cloudwatch': CloudWatchController,
-    'notificationgroups': NotificationGroupsController,
+    'snstopics': SNTopicsGroupsController,
     'cloudtrail': CloudTrailController,
 }

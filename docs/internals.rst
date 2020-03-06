@@ -41,41 +41,92 @@ Paco will go through the following steps:
      through their StackGroups and calling the cloud action on each StackGroup.
 
 
-StackGroups, Stacks, StackHooks and Templates
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Stacks and Templates
+--------------------
+
+AWS CloudFormation
+^^^^^^^^^^^^^^^^^^
 
 Paco uses the AWS CloudFormation service to provision AWS resources and maintain resource state. CloudFormation has two
 core concepts: a template and a stack. A template is a CloudFormation document the declares resources. A stack is when
 a template is uploaded to AWS to create those resources. A stack will always belong to a specific account and region.
 
-Paco organizes Stacks into StackGroups. A StackGroup is a logical collection of stacks that support a single concept.
-The ``paco.stack_group.stack_group.StackGroup`` class implements StackGroup which provides functionality to iterate
-through the Stacks that belong to it and validate, provision and delete them.
+Paco has several Classes which it uses to model stacks and templates and control how they interact with the
+AWS CloudFormation service.
 
-It is a common pattern to subclass a StackGroup and include additional functionality. For example, a BackupVault needs
-an IAM Role to assume. The BackupVaultsStackGroup inherits from StackGroup, but also contains functionality to create a
-stack with that IAM Role.
+Controller
+^^^^^^^^^^
 
-A Stack is a template that is sent to AWS. The ``paco.stack_group.stack_group.Stack`` class implements Stack and is
-responsible for creating, updating and deleting of actual AWS Stacks.
+Controller objects initialize and set-up other objects. They create StackGroups and add Stacks to them.
+The can also interact with commands from the CLI.
 
-Every Stack has a Template. The base class ``paco.cftemplates.cftemplates.CFTemplate`` defines core template functionality.
-This class isn't meant to be directly instantiated though, instead resource specific templates inherit from CFTemplate
-and are responsible for creating the template. The CFTemplate base class provides methods to create Parameters and Outputs
-more easily.
+Controllers also inject a ``resolve_ref_obj`` into model objects, to allow model objects to use Paco
+References to refer to Stack outputs.
 
-Templates will have a .body attribute that contains the actual CloudFormation template as a string. However, Troposphere
-is used to construct that template body. Every template will have a .template attribute that is a troposphere.Template object.
-The ``.init_template(description)`` method of CFTemplate sets up an empty Troposphere template ready to be populated with
-Parameters, Resources and Outputs.
-
-
-Refactoring
+PacoContext
 ^^^^^^^^^^^
 
-The StackGroup/Stack/Template pattern works, but it currently requires passing a lot of arguments around.
-Templates know about stacks and stacks groups, which shouldn't be needed. This could be refactored to be
-cleaner without impacting the behaviour of how Paco works.
+The ``paco.config.paco_context.PacoContext`` class contains the arguments and options parsed from the CLI.
+PacoContext also makes a call to load a Paco project into a model and make the project root node available
+as a ``.project`` attribute.
+
+The ``.get_controller(<controller-name>)`` method on PacoContext is used to fetch a controller. This ensures
+that controllers are initialized once and only once.
+
+StackGroup
+^^^^^^^^^^
+
+The ``paco.stack.stack_group.StackGroup`` class implements a StackGroup. A StackGroup is a logical collection
+of stacks that support a single concept. StackGroups apply the same operation against all Stacks that it
+contains and ensure that they are executed in the correct order and if necessary wait for stacks to be
+created if one stack depends upon the output of another stack.
+
+StackGroups are often subclassed and the subclass adds logic to related to that subclasses purpose.
+For example, a BackupVault needs an IAM Role to assume. If you have a BackupVault Stack, you also need
+an IAM Role Stack with a Role. The BackupVaultsStackGroup adds the ability to create a Stack for that IAM Role.
+
+Stack
+^^^^^
+
+The ``paco.stack.Stack`` class defines a Paco Stack. A Stack is connected to an account and region, and
+can fetch the state of the Stack as well as create, update and delete a stack in AWS.
+
+Every Stack expects a StackTemplate object to be set on the ``.template`` attribute. This happens by calling
+``add_new_stack()`` on a StackGroup. This method ensures that the Stack is created first, then the StackTemplate
+is created with the stack object passed in the constructor, after the new StackTemplate object is set on the
+``.template`` attribute any commands that need to happen after are applied and the stack is given orders
+to the StackGroup.
+
+Every Stack is created with a ``.resource`` attribute. This is the model object which contains the configuration
+for that Stacks template. The ``IResource`` interface in the models provides an ``is_enabled()`` method, and
+a ``.order`` and ``.change_protected`` attributes. This helps inform the stack if it should be modified,
+and in which order, or if it shouldn't be touched at all.
+
+Every Stack as a ``stack_ref`` property. This is normally the paco.ref for the ``.resource`` but it can also
+be extended with a ``support_resource_ref_ext`` when the Stack is created. For example, an ASG resource needs
+a LogGroup stack where it will log to. This is a supporting resource that isn't explicitly declared in the
+configuration. The same happens for Alarms, which add a '.alarms' extension to the ref.
+
+
+StackTemplate
+^^^^^^^^^^^^^
+
+The ``paco.cftemplates.StackTemplate`` class defines a Paco Template. A StackTemplate has a .body attribute which is
+a string of CloudFormation in YAML format.
+
+A StackTemplate requires a Stack object to be passed to the constructor. In Paco, a StackTemplate can provision
+a CloudFormation template in several different locations and potentially look different in each of those
+locations. The StackTemplate has access to the Stack. The StackTemplate typically sets Parameters on the Stack.
+It can also change the behaviour of Stack updates, for example, certain Parameters can be set to use the
+previously existing value of the Stack.
+
+A ``troposphere.Template`` class defines a StackTemplate's .template attribute. Troposphere is an external
+Python dependency of Paco. It's a great library with a complete and updated representation of CloudFormation objects.
+However a StackTemplatecan provide any kind of return string, so simple Python strings can also be constructed and
+set as the template body.
+
+When Paco uses a StackTemplate it never instantiates it directly. It's a base class that resource specific templates
+inherit from. These subclasses are responsible for creating the template.
 
 
 The .paco-work directory

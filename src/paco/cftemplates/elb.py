@@ -1,37 +1,16 @@
-import os
-from paco.cftemplates.cftemplates import CFTemplate
-
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.cftemplates.cftemplates import StackOutputParam
 from paco.models.references import Reference
-from io import StringIO
-from enum import Enum
 
 
-class ELB(CFTemplate):
-    def __init__(self, paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 env_ctx,
-                 app_id,
-                 grp_id,
-                 elb_id,
-                 elb_config,
-                 elb_config_ref):
-        #paco_ctx.log("ELB CF Template init")
-
+class ELB(StackTemplate):
+    def __init__(self, stack, paco_ctx, env_ctx, app_name):
+        elb_config = stack.resource
         self.env_ctx = env_ctx
         segment_stack = self.env_ctx.get_segment_stack(elb_config['segment'])
 
-        super().__init__(paco_ctx=paco_ctx,
-                         account_ctx=account_ctx,
-                         aws_region=aws_region,
-                         enabled=elb_config.is_enabled(),
-                         config_ref=elb_config_ref,
-                         stack_group=stack_group,
-                         stack_tags=stack_tags)
-        self.set_aws_name('ELB', grp_id, elb_id)
+        super().__init__(stack, paco_ctx)
+        self.set_aws_name('ELB', self.resource_group_name, self.resource.name)
 
         # Initialize Parameters
         self.set_parameter('HealthyThreshold', elb_config['health_check']['healthy_threshold'])
@@ -56,10 +35,8 @@ class ELB(CFTemplate):
         # Name collision risk:, if unique identifying characrtes are truncated
         #   - Add a hash?
         #   - Check for duplicates with validating template
-        # TODO: Make a method for this
-        #load_balancer_name = paco_ctx.project_ctx.name + "-" + paco_ctx.env_ctx.name + "-" + stack_group_ctx.application_name + "-" + elb_id
         load_balancer_name = self.create_resource_name_join(
-            name_list=[self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, elb_id],
+            name_list=[self.env_ctx.netenv_id, self.env_ctx.env_id, app_name, self.resource.name],
             separator='',
             camel_case=True
         )

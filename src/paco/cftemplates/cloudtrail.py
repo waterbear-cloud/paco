@@ -1,33 +1,17 @@
+from paco.models import references
+from paco.cftemplates.cftemplates import StackTemplate
+from awacs.aws import Allow, Action, Principal, Statement, PolicyDocument
 import awacs.logs
 import troposphere
 import troposphere.cloudtrail
 import troposphere.cloudwatch
 import troposphere.iam
-from paco.models import references
-from paco.cftemplates.cftemplates import CFTemplate
-from awacs.aws import Allow, Action, Principal, Statement, PolicyDocument
 
 
-class CloudTrail(CFTemplate):
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        trail,
-        s3_bucket_name
-    ):
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            config_ref=None,
-            iam_capabilities=["CAPABILITY_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags
-        )
+class CloudTrail(StackTemplate):
+    def __init__(self, stack, paco_ctx, s3_bucket_name):
+        trail = stack.resource
+        super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_IAM"])
         self.set_aws_name('CloudTrail')
         self.init_template('CloudTrail')
         template = self.template
@@ -116,5 +100,3 @@ class CloudTrail(CFTemplate):
             value=troposphere.GetAtt(trail_resource, "Arn"),
             ref=trail.paco_ref_parts + '.arn',
         )
-
-        self.set_template()

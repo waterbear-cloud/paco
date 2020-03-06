@@ -1,43 +1,19 @@
-import os
-from paco.cftemplates.cftemplates import CFTemplate
+from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action
+from awacs.sts import AssumeRole
+from paco.cftemplates.cftemplates import StackTemplate
 import troposphere
 import troposphere.codepipeline
 import troposphere.codebuild
 import troposphere.sns
-from io import StringIO
-from enum import Enum
-from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action
-from awacs.sts import AssumeRole
 
-class CodeBuild(CFTemplate):
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        env_ctx,
-        app_id,
-        grp_id,
-        res_id,
-        pipeline_config,
-        action_config,
-        artifacts_bucket_name,
-        config_ref
-    ):
+
+class CodeBuild(StackTemplate):
+    def __init__(self, stack, paco_ctx, env_ctx, app_name, action_config, artifacts_bucket_name):
+        pipeline_config = stack.resource
+        config_ref = action_config.paco_ref_parts
         self.env_ctx = env_ctx
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=action_config.is_enabled(),
-            config_ref=config_ref,
-            iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags
-        )
-        self.set_aws_name('CodeBuild', grp_id, res_id)
+        super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_NAMED_IAM"])
+        self.set_aws_name('CodeBuild', self.resource_group_name, self.resource.name)
 
         # Troposphere Template Initialization
         self.init_template('Deployment: CodeBuild')
@@ -46,7 +22,7 @@ class CodeBuild(CFTemplate):
             return
 
         self.res_name_prefix = self.create_resource_name_join(
-            name_list=[env_ctx.get_aws_name(), app_id, grp_id, res_id],
+            name_list=[env_ctx.get_aws_name(), app_name, self.resource_group_name, self.resource.name],
             separator='-',
             camel_case=True
         )
@@ -74,9 +50,6 @@ class CodeBuild(CFTemplate):
             action_config,
             config_ref
         )
-
-        # All done
-        self.set_template()
 
     def create_codebuild_cfn(
         self,

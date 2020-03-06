@@ -19,6 +19,15 @@ from functools import partial
 from hashlib import blake2b
 
 
+def get_support_resource_ref_ext(resource, support_resource):
+    """The reference extension of a supporting resource.
+    For example an instance IAM Role to suport an ASG:
+    netenv.mynet.dev.us-west-2.applications.app.groups.bastion.resources.asg.instance_iam_role
+    The .asg is the ASG resource and the .instance_iam_role is the supporting Role resource.
+    The return value would be "instance_iam_role".
+    """
+    return support_resource.paco_ref_parts[len(resource.paco_ref_parts) + 1:]
+
 def enhanced_input(
     prompt,
     default=None,

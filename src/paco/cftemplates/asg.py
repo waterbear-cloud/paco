@@ -7,47 +7,32 @@ from io import StringIO
 from enum import Enum
 from paco import utils
 from paco.models import references, schemas
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.core.exception import UnsupportedCloudFormationParameterType
 from paco.models.locations import get_parent_by_interface
 from paco.models.references import Reference
 
 
-class ASG(CFTemplate):
+class ASG(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
         env_ctx,
-        app_id,
-        grp_id,
-        asg_id,
-        asg_config,
-        asg_config_ref,
         role_profile_arn,
         ec2_manager_user_data_script,
         ec2_manager_cache_id
     ):
+        self.asg_config = asg_config = stack.resource
+        asg_config_ref = asg_config.paco_ref_parts
         self.env_ctx = env_ctx
         self.ec2_manager_cache_id = ec2_manager_cache_id
         segment_stack = self.env_ctx.get_segment_stack(asg_config.segment)
-
-        # Super Init:
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=asg_config.is_enabled(),
-            config_ref=asg_config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            change_protected=asg_config.change_protected
         )
-        self.set_aws_name('ASG', grp_id, asg_id)
-        self.asg_config = asg_config
+        self.set_aws_name('ASG', self.resource_group_name, self.resource_name)
 
         # Troposphere
         self.init_template('AutoScalingGroup: ' + self.ec2_manager_cache_id)
@@ -421,5 +406,3 @@ class ASG(CFTemplate):
                     RoleARN=lifecycle_hook.role_arn,
                     NotificationTargetARN=lifecycle_hook.notification_target_arn
                 )
-
-        self.set_template()

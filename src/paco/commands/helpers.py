@@ -33,6 +33,7 @@ def init_cloud_command(
     verbose,
     nocache,
     yes,
+    warn,
     disable_validation,
     quiet_changes_only,
     config_scope,
@@ -41,6 +42,7 @@ def init_cloud_command(
     paco_ctx.verbose = verbose
     paco_ctx.nocache = nocache
     paco_ctx.yes = yes
+    paco_ctx.warn = warn
     paco_ctx.disable_validation = disable_validation
     paco_ctx.quiet_changes_only = quiet_changes_only
     paco_ctx.command = command_name
@@ -109,7 +111,7 @@ See the Paco CLI config scope docs at https://www.paco-cloud.io/en/latest//cli.h
 """
             )
 
-    if config_scope.lower().startswith('resource.snstopics') or config_scope.lower().startswith('resource.notificationgroups'):
+    if config_scope.lower().startswith('resource.snstopics'):
         parts = config_scope.split('.')
         if len(parts) > 2:
             raise InvalidPacoScope(
@@ -198,10 +200,6 @@ Expected to be on branch named '{}' for a change with a global scope of '{}', bu
                     expected_branch_name, config_scope, branch_name
                 ))
 
-    # resource.snstopics is an alias for resource.notificationgroups
-    if config_scope.startswith('resource.snstopics'):
-        config_scope = 'resource.notificationgroups' + config_scope[len('resource.snstopics'):]
-
     scope_parts = config_scope.split('.')
     if scope_parts[0] == 'resource':
         controller_type = scope_parts[1]
@@ -244,6 +242,12 @@ def cloud_options(func):
         is_flag=True,
         default=False,
         help='Responds "yes" to any Yes/No prompts.'
+    )(func)
+    func = click.option(
+        '-w', '--warn',
+        is_flag=True,
+        default=False,
+        help='Warn about potential problems, such as invalid IAM Policies.'
     )(func)
     func = click.option(
         '-d', '--disable-validation',

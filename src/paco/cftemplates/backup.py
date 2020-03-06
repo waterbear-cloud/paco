@@ -1,34 +1,18 @@
+from paco import utils
+from paco.cftemplates.cftemplates import StackTemplate
 import troposphere
 import troposphere.backup
 
-from paco import utils
-from paco.cftemplates.cftemplates import CFTemplate
 
-class BackupVault(CFTemplate):
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        vault,
-        role
-    ):
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            config_ref=vault.paco_ref_parts,
-            stack_group=stack_group,
-            stack_tags=stack_tags
-        )
+class BackupVault(StackTemplate):
+    def __init__(self, stack, paco_ctx, role):
+        vault = stack.resource
+        super().__init__(stack, paco_ctx)
         self.set_aws_name(vault.name)
         self.init_template('Backup Vault: ' + vault.name)
         self.paco_ctx.log_action_col("Init", "Backup", "Vault")
-        is_enabled = vault.is_enabled()
-        if not is_enabled:
-            return self.set_template()
+        if not vault.is_enabled():
+            return
 
         # Service Role ARN parameter
         if role != None:
@@ -45,7 +29,7 @@ class BackupVault(CFTemplate):
 
         # BackupVault Notifications
         if vault.notification_events:
-            notification_paco_ref = self.paco_ctx.project['resource']['notificationgroups'][aws_region][vault.notification_group].paco_ref + '.arn'
+            notification_paco_ref = self.paco_ctx.project['resource']['snstopics'][aws_region][vault.notification_group].paco_ref + '.arn'
             param_name = 'Notification{}'.format(utils.md5sum(str_data=notification_paco_ref))
             notification_param = self.create_cfn_parameter(
                 param_type='String',
@@ -129,7 +113,7 @@ class BackupVault(CFTemplate):
                 if tags_list:
                     cfn_export_dict['BackupSelection']['ListOfTags'] = tags_list
                 if selection.title:
-                    cfn_export_dict['BackupSelection']['SelectionName'] = selection.title
+                    cfn_export_dict['BackupSelection']['SelectionName'] = "Selection: " + selection.title
 
                 # Resource-based selections
                 if selection.resources:
@@ -144,7 +128,7 @@ class BackupVault(CFTemplate):
 
                 # Role
                 cfn_export_dict['BackupSelection']['IamRoleArn'] = troposphere.Ref(service_role_arn_param)
-                selection_logical_id = self.create_cfn_logical_id('Plan{}Selection{}'.format(plan.name, idx))
+                selection_logical_id = self.create_cfn_logical_id('BackupPlan{}Selection{}'.format(plan.name, idx))
                 selection_resource = troposphere.backup.BackupSelection.from_dict(
                     selection_logical_id,
                     cfn_export_dict
@@ -152,6 +136,3 @@ class BackupVault(CFTemplate):
                 selection_resource.DependsOn = [plan_resource.title]
                 self.template.add_resource(selection_resource)
                 idx += 1
-
-        self.enabled = is_enabled
-        self.set_template()
