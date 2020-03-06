@@ -285,8 +285,9 @@ class ALB(CFTemplate):
                     logical_rule_name = self.create_cfn_logical_id(rule_name)
                     cfn_export_dict = {}
                     if rule.rule_type == "forward":
+                        logical_target_group_id = self.create_cfn_logical_id('TargetGroup' + rule.target_group)
                         cfn_export_dict['Actions'] = [
-                            {'Type': 'forward', 'TargetGroupArn': troposphere.Ref('TargetGroup' + rule.target_group) }
+                            {'Type': 'forward', 'TargetGroupArn': troposphere.Ref(logical_target_group_id) }
                         ]
                         if rule.host != None:
                             field = 'host-header'
