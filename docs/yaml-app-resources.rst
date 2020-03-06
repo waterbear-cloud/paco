@@ -2162,9 +2162,7 @@ CloudFrontCacheBehavior
 CloudFrontFactory
 ^^^^^^^^^^^^^^^^^^
 
-
 CloudFront Factory
-    
 
 .. _CloudFrontFactory:
 
@@ -2571,7 +2569,7 @@ DeploymentPipeline
 -------------------
 
 
-Code Pipeline: Build and Deploy
+CodePipeline: Source, Build and Deploy or Stages
     
 
 .. _DeploymentPipeline:
@@ -2605,8 +2603,63 @@ Code Pipeline: Build and Deploy
       - Deployment Pipeline Source Stage
       - 
       - 
+    * - stages
+      - Container<CodePipelineStages_>
+      - Stages
+      - 
+      - 
 
 *Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
+
+CodePipelineStages
+^^^^^^^^^^^^^^^^^^^
+
+Container for `CodePipelineStage`_ objects.
+
+.. _CodePipelineStages:
+
+.. list-table:: :guilabel:`CodePipelineStages` |bars| Container<`CodePipelineStage`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CodePipelineStage
+^^^^^^^^^^^^^^^^^^
+
+Container for different types of DeploymentPipelineStageAction objects.
+
+.. _CodePipelineStage:
+
+.. list-table:: :guilabel:`CodePipelineStage`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
 
 
 DeploymentPipelineSourceStage
@@ -3616,13 +3669,42 @@ Events Rule
       - 
       - 
     * - targets
-      - List<PacoReference> |star|
+      - List<EventTarget_> |star|
       - The AWS Resources that are invoked when the Rule is triggered.
-      - Paco Reference to `Interface`_.
+      - 
       - 
 
 *Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
+
+EventTarget
+^^^^^^^^^^^^
+
+
+
+.. _EventTarget:
+
+.. list-table:: :guilabel:`EventTarget`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - input_json
+      - String
+      - Valid JSON passed as input to the target.
+      - 
+      - 
+    * - target
+      - PacoReference |star|
+      - Paco Reference to an AWS Resource to invoke
+      - Paco Reference to `Interface`_.
+      - 
+
+*Base Schemas* `Named`_, `Title`_
 
 
 Lambda
@@ -4179,6 +4261,11 @@ ListenerRule
       - Host header value
       - 
       - 
+    * - path_pattern
+      - List<String>
+      - List of paths to match
+      - 
+      - 
     * - priority
       - Int
       - Forward condition priority
@@ -4338,6 +4425,11 @@ IAM Managed Policy
       - Path
       - 
       - /
+    * - policy_name
+      - String |star|
+      - Policy Name used in AWS. This will be prefixed with an 8 character hash.
+      - 
+      - 
     * - roles
       - List<String>
       - List of Role Names
@@ -4695,9 +4787,7 @@ Route53 Health Check
 S3Bucket
 ---------
 
-
 S3 Bucket
-    
 
 .. _S3Bucket:
 

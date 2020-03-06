@@ -162,7 +162,7 @@ class ProjectController(Controller):
             fh = open(self.paco_ctx.home + os.sep + '.gitignore', 'w')
             fh.write(".credentials.yaml\n")
             fh.write(".credentials.yml\n")
-            fh.write("build/\n")
+            fh.write(".paco-work/build/\n")
             fh.close()
 
             print("\n\nPaco project created at:\n")

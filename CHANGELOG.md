@@ -11,9 +11,12 @@ Changelog for Paco
   to this new structure:
 
       cd <my-paco-project>
-      mv aimdata .paco-work
-      mv Outputs .paco-work/outputs
-      mv build .paco-work/build
+      git mv aimdata .paco-work
+      git mv Outputs .paco-work/outputs
+      git mv build .paco-work/build
+
+  Those commands assume you are using git to manage a Paco project. If you are, also update your ``.gitignore``
+  file to ignore .paco-work/build.
 
 - The IAM Roles for BackupVault had inconsistently named CloudFormation stacks ("BackupVaults--Backup").
   A new IAM Role will be created in a new stack. The old stack will remain but it can be safely deleted.
@@ -33,7 +36,7 @@ Changelog for Paco
     targets:
       - paco.ref some.ref
 
-  New format is:
+  The new format is:
 
     type: EventsRule
     targets:

@@ -463,17 +463,29 @@ support workloads sharing the same Security Groups.
 
 {IVPC}
 
+{IVPCPeerings}
+
 {IVPCPeering}
 
 {IVPCPeeringRoute}
 
+{INATGateways}
+
 {INATGateway}
+
+{IVPNGateways}
 
 {IVPNGateway}
 
 {IPrivateHostedZone}
 
+{ISegments}
+
 {ISegment}
+
+{ISecurityGroupSets}
+
+{ISecurityGroups}
 
 {ISecurityGroup}
 
@@ -510,8 +522,8 @@ In turn, each ResourceGroup contains ``resources:`` with names such as ``cpbd``,
                     type: Deployment
                     resources:
                         cpbd:
-                            # CodePipeline and CodeBuild CI/CD
-                            type: CodePipeBuildDeploy
+                            # CodePipeline CI/CD
+                            type: DeploymentPipeline
                             # configuration goes here ...
                 website:
                     type: Application
@@ -683,6 +695,7 @@ BackupVaults must be explicity referenced in an environment for them to be provi
 
 .. _ec2keypair: yaml-global-resources.html#ec2keypair
 
+
 """
 
 yaml_app_resources = """
@@ -811,6 +824,10 @@ as part of an Application.
 
 {IDeploymentPipeline}
 
+{ICodePipelineStages}
+
+{ICodePipelineStage}
+
 {IDeploymentPipelineSourceStage}
 
 {IDeploymentPipelineDeployStage}
@@ -867,6 +884,7 @@ An unconstrainted set of key-value pairs used to set advanced options for Elasti
 
 {IEventsRule}
 
+{IEventTarget}
 
 {ILambda}
 
@@ -1357,6 +1375,7 @@ MINOR_SCHEMAS = {
     'INameValuePair': None,
     'IDBParameters': None,
     'IDBParameterGroup': None,
+    'IEventTarget': None,
     'ILambdaFunctionCode': None,
     'ILambdaEnvironment': None,
     'ILambdaVpcConfig': None,
@@ -1378,6 +1397,9 @@ MINOR_SCHEMAS = {
     'ICloudFrontForwardedValues': None,
     'ICloudFrontCookies': None,
     'ICloudFrontDefaultCacheBehavior': None,
+    'ICodePipelineStages': None,
+    'ICodePipelineStage': None,
+    'IDeploymentPipelineStageAction': None,
     'IDeploymentPipelineSourceStage': None,
     'IDeploymentPipelineDeployStage': None,
     'IDeploymentPipelineBuildStage': None,
@@ -1387,7 +1409,6 @@ MINOR_SCHEMAS = {
     'IDeploymentPipelineDeployS3': None,
     'IDeploymentPipelineBuildCodeBuild': None,
     'IDeploymentPipelineSourceCodeCommit': None,
-    'IDeploymentPipelineStageAction': None,
     'IDeploymentPipelineConfiguration': None,
     'IDeploymentGroupS3Location': None,
     'IRDSMysql': None,
@@ -1472,11 +1493,17 @@ MINOR_SCHEMAS = {
     'INetwork': None,
     'IVPC': None,
     'IVPCPeering': None,
+    'IVPCPeerings': None,
     'IVPCPeeringRoute': None,
+    'INATGateways': None,
     'INATGateway': None,
+    'IVPNGateways': None,
     'IVPNGateway': None,
     'IPrivateHostedZone': None,
+    'ISegments': None,
     'ISegment': None,
+    'ISecurityGroupSets': None,
+    'ISecurityGroups': None,
     'ISecurityGroup': None,
     'IEgressRule': None,
     'IIngressRule': None,

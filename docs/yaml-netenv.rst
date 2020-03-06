@@ -117,9 +117,7 @@ support workloads sharing the same Security Groups.
 NetworkEnvironment
 ^^^^^^^^^^^^^^^^^^^
 
-
-NetworkEnvironment : A template for a network.
-    
+NetworkEnvironment
 
 .. _NetworkEnvironment:
 
@@ -132,16 +130,11 @@ NetworkEnvironment : A template for a network.
       - Purpose
       - Constraints
       - Default
-    * - availability_zones
-      - Int
-      - Availability Zones
-      - 
-      - 0
-    * - vpc
-      - Object<VPC_>
-      - VPC
-      - 
-      - 
+    * -
+      -
+      -
+      -
+      -
 
 *Base Schemas* `Deployable`_, `Named`_, `Title`_
 
@@ -162,21 +155,29 @@ Network
       - Purpose
       - Constraints
       - Default
+    * - availability_zones
+      - Int
+      - Availability Zones
+      - 
+      - 0
     * - aws_account
       - PacoReference
       - Account this Network belongs to
       - Paco Reference to `Account`_.
       - 
+    * - vpc
+      - Object<VPC_>
+      - VPC
+      - 
+      - 
 
-*Base Schemas* `NetworkEnvironment`_, `Deployable`_, `Named`_, `Title`_
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
 VPC
 ^^^^
 
-
-AWS Resource: VPC
-    
+VPC
 
 .. _VPC:
 
@@ -210,12 +211,12 @@ AWS Resource: VPC
       - 
       - False
     * - nat_gateway
-      - Container<NATGateway_> |star|
-      - NAT Gateway
+      - Container<NATGateways_> |star|
+      - NAT Gateways
       - 
-      - {}
+      - 
     * - peering
-      - Container<VPCPeering_>
+      - Container<VPCPeerings_> |star|
       - VPC Peering
       - 
       - 
@@ -225,22 +226,47 @@ AWS Resource: VPC
       - 
       - 
     * - security_groups
-      - Dict
-      - Security groups
-      - Two level deep dictionary: first key is Application name, second key is Resource name.
-      - {}
+      - Container<SecurityGroupSets_> |star|
+      - Security Group Sets
+      - Security Groups Sets are containers for SecurityGroups containers.
+      - 
     * - segments
-      - Container<Segment_>
+      - Container<Segments_> |star|
       - Segments
       - 
       - 
     * - vpn_gateway
-      - Container<VPNGateway_> |star|
-      - VPN Gateway
+      - Container<VPNGateways_> |star|
+      - VPN Gateways
       - 
-      - {}
+      - 
 
 *Base Schemas* `Deployable`_, `Named`_, `Title`_
+
+
+VPCPeerings
+^^^^^^^^^^^^
+
+Container for `VPCPeering`_ objects.
+
+.. _VPCPeerings:
+
+.. list-table:: :guilabel:`VPCPeerings` |bars| Container<`VPCPeering`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
 
 
 VPCPeering
@@ -326,12 +352,35 @@ VPC Peering Route
 
 
 
+NATGateways
+^^^^^^^^^^^^
+
+Container for `NATGateway`_ objects.
+
+.. _NATGateways:
+
+.. list-table:: :guilabel:`NATGateways` |bars| Container<`NATGateway`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
 NATGateway
 ^^^^^^^^^^^
 
-
 NAT Gateway
-    
 
 .. _NATGateway:
 
@@ -383,12 +432,35 @@ NAT Gateway
 *Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
+VPNGateways
+^^^^^^^^^^^^
+
+Container for `VPNGateway`_ objects.
+
+.. _VPNGateways:
+
+.. list-table:: :guilabel:`VPNGateways` |bars| Container<`VPNGateway`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
 VPNGateway
 ^^^^^^^^^^^
 
-
 VPN Gateway
-    
 
 .. _VPNGateway:
 
@@ -407,15 +479,13 @@ VPN Gateway
       -
       -
 
-*Base Schemas* `Deployable`_
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
 PrivateHostedZone
 ^^^^^^^^^^^^^^^^^^
 
-
 Private Hosted Zone
-    
 
 .. _PrivateHostedZone:
 
@@ -440,6 +510,31 @@ Private Hosted Zone
       - 
 
 *Base Schemas* `Deployable`_
+
+
+Segments
+^^^^^^^^^
+
+Container for `Segment`_ objects.
+
+.. _Segments:
+
+.. list-table:: :guilabel:`Segments` |bars| Container<`Segment`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
 
 
 Segment
@@ -497,6 +592,56 @@ Segment
       - False
 
 *Base Schemas* `Deployable`_, `Named`_, `Title`_
+
+
+SecurityGroupSets
+^^^^^^^^^^^^^^^^^^
+
+Container for `SecurityGroups`_ objects.
+
+.. _SecurityGroupSets:
+
+.. list-table:: :guilabel:`SecurityGroupSets` |bars| Container<`SecurityGroups`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+SecurityGroups
+^^^^^^^^^^^^^^^
+
+Container for `SecurityGroup`_ objects.
+
+.. _SecurityGroups:
+
+.. list-table:: :guilabel:`SecurityGroups` |bars| Container<`SecurityGroup`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
 
 
 SecurityGroup
@@ -619,8 +764,8 @@ In turn, each ResourceGroup contains ``resources:`` with names such as ``cpbd``,
                     type: Deployment
                     resources:
                         cpbd:
-                            # CodePipeline and CodeBuild CI/CD
-                            type: CodePipeBuildDeploy
+                            # CodePipeline CI/CD
+                            type: DeploymentPipeline
                             # configuration goes here ...
                 website:
                     type: Application
@@ -1386,6 +1531,7 @@ BackupSelectionConditionResourceType
 
 
 .. _ec2keypair: yaml-global-resources.html#ec2keypair
+
 
 
 .. _Named: yaml-base.html#Named
