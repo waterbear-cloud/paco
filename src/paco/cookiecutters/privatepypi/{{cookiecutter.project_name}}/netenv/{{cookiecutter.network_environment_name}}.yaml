@@ -8,43 +8,42 @@ network:
     enable_dns_support: true
     enable_internet_gateway: true
     nat_gateway:
-      {{cookiecutter.application_name}}:
+      pypi:
         enabled: false
     vpn_gateway:
-      {{cookiecutter.application_name}}:
+      pypi:
         enabled: false
     private_hosted_zone:
       enabled: false
     security_groups:
-      {{cookiecutter.application_name}}:
-        pypi:
-          packages:
-            enabled: true
-            ingress:
-              - description: 'PyPI packages EFS'
-                name: PyPIPackagesEFS
-                protocol: tcp
-                port: 2049
-                source_security_group: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.pypi.server
-            egress:
-              - name: ANY
-                cidr_ip: 0.0.0.0/0
-                protocol: "-1"
-          server:
-            enabled: true
-            egress:
-              - cidr_ip: 0.0.0.0/0
-                name: ANY
-                protocol: "-1"
-            ingress:
-              - port: 8080
-                name: HTTP
-                protocol: tcp
-                source_security_group: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.shared.alb
-              - port: 22
-                name: SSH
-                protocol: tcp
-                source_security_group: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.bastion.instance
+      pypi:
+        packages:
+          enabled: true
+          ingress:
+            - description: 'PyPI packages EFS'
+              name: PyPIPackagesEFS
+              protocol: tcp
+              port: 2049
+              source_security_group: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.pypi.server
+          egress:
+            - name: ANY
+              cidr_ip: 0.0.0.0/0
+              protocol: "-1"
+        server:
+          enabled: true
+          egress:
+            - cidr_ip: 0.0.0.0/0
+              name: ANY
+              protocol: "-1"
+          ingress:
+            - port: 8080
+              name: HTTP
+              protocol: tcp
+              source_security_group: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.shared.alb
+            - port: 22
+              name: SSH
+              protocol: tcp
+              source_security_group: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.bastion.instance
       bastion:
         instance:
           enabled: true
@@ -74,10 +73,6 @@ network:
               name: HTTP
               protocol: tcp
               port: 80
-          egress:
-            - name: ANY
-              cidr_ip: 0.0.0.0/0
-              protocol: "-1"
     segments:
       public:
         enabled: true
@@ -85,7 +80,7 @@ network:
         enabled: true
 
 backup_vaults:
-  {{cookiecutter.application_name}}:
+  pypi:
     enabled: false
     plans:
       ebs:
@@ -104,8 +99,8 @@ backup_vaults:
 
 
 applications:
-  {{cookiecutter.application_name}}:
-    title: {{cookiecutter.application_title}}
+  pypi:
+    title: Private PyPI server
     enabled: true
     notifications:
       app:
@@ -118,7 +113,7 @@ applications:
           type: Route53HealthCheck
           enabled: false
           title: HTTP Monitor
-          ip_address: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.pypi.resources.eip
+          load_balancer: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.pypi.groups.shared.resources.alb
           health_check_type: 'HTTP'
           port: 80
           resource_path: /
@@ -165,7 +160,7 @@ applications:
                 port: 443
                 protocol: HTTPS
                 ssl_certificates:
-                  - paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.{{cookiecutter.application_name}}.groups.shared.resources.example_com_cert
+                  - paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.pypi.groups.shared.resources.example_com_cert
                 target_group: cloud
                 rules:
                   pypi_forward:
@@ -175,7 +170,7 @@ applications:
                     target_group: pypi
                     priority: 10
             dns:
-              - hosted_zone: paco.ref resource.route53.{{cookiecutter.application_name}}
+              - hosted_zone: paco.ref resource.route53.pypi
                 domain_name: pypi.example.com
             scheme: internet-facing
             security_groups:
@@ -187,7 +182,6 @@ applications:
         type: Application
         title: "Private PyPI server for Paco Products"
         order: 20
-        enabled: true
         resources:
           packages:
             type: EFS
@@ -210,7 +204,7 @@ applications:
               - paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.wordpress.groups.shared.resources.alb.target_groups.pypi
             instance_ami: paco.ref function.aws.ec2.ami.latest.amazon-linux-2
             instance_ami_type: amazon
-            instance_key_pair: paco.ref resource.ec2.keypairs.{{cookiecutter.application_name}}_prod
+            instance_key_pair: paco.ref resource.ec2.keypairs.pypi_prod
             instance_monitoring: true
             instance_type: t2.small
             desired_capacity: 1
@@ -296,7 +290,7 @@ applications:
             enabled: true
             # dns:
             #   - domain_name: bastion.example.com
-            #     hosted_zone: paco.ref resource.route53.{{cookiecutter.application_name}}
+            #     hosted_zone: paco.ref resource.route53.pypi
             #     ttl: 60
           instance:
             type: ASG
@@ -312,7 +306,7 @@ applications:
               enabled: true
             instance_ami: paco.ref function.aws.ec2.ami.latest.amazon-linux-2
             instance_ami_type: amazon
-            instance_key_pair: paco.ref resource.ec2.keypairs.{{cookiecutter.application_name}}_prod
+            instance_key_pair: paco.ref resource.ec2.keypairs.pypi_prod
             instance_monitoring: false
             instance_type: t2.micro
             desired_capacity: 1
@@ -348,10 +342,10 @@ environments:
     {{cookiecutter.aws_default_region}}:
       enabled: true
       backup_vaults:
-        {{cookiecutter.application_name}}:
+        pypi:
           enabled: false # backups are off
       applications:
-        {{cookiecutter.application_name}}:
+        pypi:
           enabled: true
           monitoring:
             enabled: false # metrics are OFF

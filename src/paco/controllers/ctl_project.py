@@ -19,15 +19,15 @@ yaml=YAML()
 yaml.default_flow_sytle = False
 
 prompt_help_mapping = {
-    'project_title': "Project title - Long description for this Paco project",
-    'network_environment_name': "NetworkEnvironment name - short alphanumeric string used to name cloud resources",
-    'network_environment_title': "NetworkEnvironment title - Long description for a NetworkEnvironment",
-    'application_name': "Application name - short alphanumeric string used to name cloud resources",
+    'project_title': "Project title - Describe this Paco project",
+    'network_environment_name': "NetworkEnvironment name - Short alphanumeric string to identify a network environment",
+    'network_environment_title': "NetworkEnvironment title - Long description for a network environment",
+    'application_name': "Application name - Short alphanumeric string to identify this application",
     'application_title': "Application title - Long description for this application",
     'aws_default_region': "AWS Region name - e.g. us-west-2, us-east-1 or ca-central-1",
     'aws_default_region_allowed_values': vocabulary.aws_regions.keys(),
     'master_account_id': "AWS account id this project will connect to",
-    'master_root_email': "Root email for the AWS account to connect to",
+    'master_root_email': "Root email for the AWS account",
 
     # multi-account prompts
     'dev_account': "Development account name - e.g. dev or devstage",
@@ -73,8 +73,9 @@ class ProjectController(Controller):
         index = 1
         index_dict = {}
         for name, info in starting_templates.items():
-            description = info[1]
-            print(f"{index}: {name}\n   {description}")
+            title = info[1]
+            description = info[2]
+            print(f"{index}: {title}:\n   {description}\n")
             index_dict[str(index)] = name
             index += 1
 
@@ -89,10 +90,11 @@ class ProjectController(Controller):
     def init_project(self):
         "Create a Paco project skeleton from a template"
         starting_templates = {
-            'simple-web-app': ("simplewebapp", "A minimal skeleton with a simple web application."),
-            'wordpress-single-tier': ("wordpresssingletier", "A single-tier WordPress application."),
-            'managed-webapp-cicd': ("managedwebappcicd", "A managed web application with CI/CD and dev/staging/prod environments."),
-            's3lambda': ("s3lambda", "An S3 Bucket that notifies a Lambda which replicates additions/deletions to S3 Bucket(s) in other regions."),
+            'wordpress-single-tier': ("wordpresssingletier", "WordPress Single-Tier", "A single-tier WordPress application."),
+            'managed-webapp-cicd': ("managedwebappcicd", "Managed WebApp with CI/CD", "A managed web application with CI/CD and dev/staging/prod environments."),
+            's3lambda': ("s3lambda", "S3 Bucket Lambda replicator", "An S3 Bucket that notifies a Lambda which replicates additions/deletions to S3 Bucket(s) in other regions."),
+            'privatepypi': ("privatepypi", "Private PyPI server", "Private PyPI server with EFS filesystem behind a shared ALB."),
+            'simple-web-app': ("simplewebapp", "Empty skeleton project", "A minimal skeleton to be used as boilerplate for a from-scratch project."),
         }
         print("\nPaco project initialization")
         print("---------------------------\n")
@@ -104,11 +106,11 @@ class ProjectController(Controller):
             print("This command will create a new ready-to-run Paco project. Choose a starter project,")
             print("answer some quesetions and a new Paco project directory will be created at:\n")
             print("%s\n" % self.paco_ctx.home)
-            print("Important: You will be asked to supply names. These should be short and alphanumeric only.")
+            print("Important: You will be asked to supply names. Paco names are short, alphanumeric identifiers.")
             print("Paco uses these names when creating cloud resources. After you provision resources")
             print("with Paco it is not possible to change these names. You may also be asked for titles,")
-            print("these can contain any characters and can be freely changed. They are used as internal comments")
-            print("to help you organize your networks, applications and environments.")
+            print("these can contain any characters (including spaces) and can be freely changed. Titles are used")
+            print("to help you organize your configuration more descriptively.")
             print()
             print("(Press Ctrl-D to abort)\n")
             name = self.choose_template(starting_templates)

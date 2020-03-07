@@ -6,5 +6,5 @@ groups:
     title: "Administrator Group"
     enabled: true
     subscriptions:
-      - endpoint: {{cookiecutter.admin_email}}
+      - endpoint: {{cookiecutter.master_root_email}}
         protocol: email
