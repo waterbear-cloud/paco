@@ -264,14 +264,18 @@ applications:
             order: 10
 {%- if cookiecutter.budget == 'True' %}
             eip: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.pypi.groups.pypi.resources.eip
-{%- endif %}
+            associate_public_ip_address: true
+{$- else %}
             associate_public_ip_address: false
+{%- endif %}
             cooldown_secs: 300
             ebs_optimized: false
             health_check_grace_period_secs: 300
             health_check_type: EC2
+{%- if cookiecutter.budget == 'False' %}
             target_groups:
               - paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.pypi.groups.shared.resources.alb.target_groups.pypi
+{%- endif %}
             instance_ami: paco.ref function.aws.ec2.ami.latest.amazon-linux-2
             instance_ami_type: amazon
             instance_key_pair: paco.ref resource.ec2.keypairs.pypi_prod
