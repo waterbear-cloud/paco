@@ -1,0 +1,5 @@
+keypairs:
+  pypi_prod:
+    keypair_name: pypi-prod-{{cookiecutter.aws_default_region}}
+    region: {{cookiecutter.aws_default_region}}
+    account: paco.ref accounts.master

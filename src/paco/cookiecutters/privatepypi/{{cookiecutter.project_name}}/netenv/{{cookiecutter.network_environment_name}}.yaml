@@ -127,13 +127,13 @@ applications:
         order: 10
         enabled: true
         resources:
-          example_com_cert:
-            type: ACM
-            order: 1
-            enabled: true
-            domain_name: example.com
-            subject_alternative_names:
-              - '*.example.com'
+          # example_com_cert:
+          #   type: ACM
+          #   order: 1
+          #   enabled: true
+          #   domain_name: example.com
+          #   subject_alternative_names:
+          #     - '*.example.com'
           alb:
             type: LBApplication
             order: 20
@@ -153,15 +153,7 @@ applications:
               http:
                 port: 80
                 protocol: HTTP
-                redirect:
-                  port: 443
-                  protocol: HTTPS
-              https:
-                port: 443
-                protocol: HTTPS
-                ssl_certificates:
-                  - paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.pypi.groups.shared.resources.example_com_cert
-                target_group: cloud
+                target_group: pypi
                 rules:
                   pypi_forward:
                     enabled: true
@@ -169,9 +161,28 @@ applications:
                     host: 'pypi.example.com'
                     target_group: pypi
                     priority: 10
-            dns:
-              - hosted_zone: paco.ref resource.route53.pypi
-                domain_name: pypi.example.com
+              # http:
+              #   port: 80
+              #   protocol: HTTP
+              #   redirect:
+              #     port: 443
+              #     protocol: HTTPS
+              # https:
+              #   port: 443
+              #   protocol: HTTPS
+              #   ssl_certificates:
+              #     - paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.pypi.groups.shared.resources.example_com_cert
+              #   target_group: pypi
+              #   rules:
+              #     pypi_forward:
+              #       enabled: true
+              #       rule_type: forward
+              #       host: 'pypi.example.com'
+              #       target_group: pypi
+              #       priority: 10
+            # dns:
+            #   - hosted_zone: paco.ref resource.route53.pypi
+            #     domain_name: pypi.example.com
             scheme: internet-facing
             security_groups:
               - paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.shared.alb
@@ -201,7 +212,7 @@ applications:
             health_check_grace_period_secs: 300
             health_check_type: EC2
             target_groups:
-              - paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.wordpress.groups.shared.resources.alb.target_groups.pypi
+              - paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.pypi.groups.shared.resources.alb.target_groups.pypi
             instance_ami: paco.ref function.aws.ec2.ami.latest.amazon-linux-2
             instance_ami_type: amazon
             instance_key_pair: paco.ref resource.ec2.keypairs.pypi_prod
@@ -218,7 +229,7 @@ applications:
             efs_mounts:
               - enabled: true
                 folder: /var/pypi
-                target: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.tools.groups.pypi.resources.packages
+                target: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.pypi.groups.pypi.resources.packages
             security_groups:
               - paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.pypi.server
             monitoring:
