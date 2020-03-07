@@ -4,7 +4,10 @@ Changelog for Paco
 6.0.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Fixed
+
+- Removed ``{{['.gitignore']|join}}`` cookiecutter file that crept back in that breaks install on
+  filesystems that do not allow the | character.
 
 
 6.0.0 (2020-03-06)
