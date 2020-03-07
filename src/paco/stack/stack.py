@@ -682,6 +682,7 @@ class Stack():
                 )
             param_value = param_value.replace("<region>", self.aws_region)
             ref = references.Reference(param_value)
+            ref.set_region(self.aws_region)
             ref_value = ref.resolve(self.paco_ctx.project, account_ctx=self.account_ctx)
             if ref_value == None:
                 message = "Error: Unable to locate value for ref: {}\n".format(param_value)
