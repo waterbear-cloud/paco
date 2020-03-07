@@ -9,6 +9,7 @@ Changelog for Paco
 - Removed ``{{['.gitignore']|join}}`` cookiecutter file that crept back in that breaks install on
   filesystems that do not allow the | character.
 
+- ALB rule.target group fix was merged into wrong place in the code.
 
 6.0.0 (2020-03-06)
 ------------------
