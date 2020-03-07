@@ -1,6 +1,7 @@
 {
     "project_name": "myproj",
     "project_title": "My Paco Project",
+    "budget": true,
     "network_environment_name": "mynet",
     "network_environment_title": "My Paco NetworkEnvironment",
     "application_name": "myapp",

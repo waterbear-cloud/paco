@@ -20,6 +20,7 @@ yaml.default_flow_sytle = False
 
 prompt_help_mapping = {
     'project_title': "Project title - Describe this Paco project",
+    'budget': "Budget or Professional - Low-cost set-up or more secure and reliable set-up",
     'network_environment_name': "NetworkEnvironment name - Short alphanumeric string to identify a network environment",
     'network_environment_title': "NetworkEnvironment title - Long description for a network environment",
     'application_name': "Application name - Short alphanumeric string to identify this application",
@@ -152,6 +153,13 @@ class ProjectController(Controller):
                 project_context['short_region_list'] = vocabulary.aws_regions[
                     project_context['aws_second_region']
                 ]['short_name']
+
+            # budget Y or N to True or False
+            if 'budget' in project_context:
+                if project_context['budget'].lower().startswith('y'):
+                    project_context['budget'] = True
+                else:
+                    project_context['budget'] = False
 
             cookiecutter(
                 os.path.join(os.path.dirname(__file__), '..', 'cookiecutters', packagename),

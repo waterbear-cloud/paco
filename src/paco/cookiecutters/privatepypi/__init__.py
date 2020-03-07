@@ -4,6 +4,8 @@ from paco.models import vocabulary
 def get_project_context(paco_ctx):
     return {
         'project_name': os.path.basename(os.path.normpath(paco_ctx.home)),
+        'budget': 'Y',
+        'budget_allowed_values': ['Y','y','yes','N','n','no'],
         'project_title': 'My Paco Project',
         'network_environment_name': 'mynet',
         'network_environment_title': 'My Network',

@@ -163,7 +163,7 @@ class NetworkStackGroup(StackGroup):
                 nat_sg_config = sg_config[sg_nat_id]
             else:
                 nat_sg_config = None
-            # We now disable the NAT Gatewy in the template so that we can delete it and recreate it when disabled.
+            # We now disable the NAT Gateway in the template so that we can delete it and recreate it when disabled.
             nat_stack = self.add_new_stack(
                 self.region,
                 nat_config,
