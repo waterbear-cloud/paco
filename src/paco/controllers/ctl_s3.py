@@ -1,34 +1,38 @@
-import os
 from paco.core.exception import StackException, PacoBucketExists
 from paco.core.exception import PacoErrorCode
 from paco.models import schemas
 from paco.models import references
 from paco.models.locations import get_parent_by_interface
-from paco.stack_group import StackGroup
+from paco.stack import StackGroup
 from paco.controllers.controllers import Controller
 from botocore.exceptions import ClientError
 from paco.models import vocabulary
-import paco.cftemplates
-from paco.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackHooks, StackTags
-import copy
+from paco.stack import StackOrder, Stack, StackGroup, StackHooks, StackTags
 import botocore
+import copy
+import os
+import paco.cftemplates
+
 
 class S3StackGroup(StackGroup):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 region,
-                 group_name,
-                 controller,
-                 resource_ref,
-                 stack_hooks=None):
-        #print("S3 Group Name: " + group_name)
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        region,
+        group_name,
+        controller,
+        resource_ref,
+        stack_hooks=None
+    ):
         aws_name = group_name
-        super().__init__(paco_ctx,
-                         account_ctx,
-                         group_name,
-                         aws_name,
-                         controller)
+        super().__init__(
+            paco_ctx,
+            account_ctx,
+            group_name,
+            aws_name,
+            controller
+        )
         self.stack_hooks = stack_hooks
 
 class S3Context():
@@ -58,24 +62,20 @@ class S3Context():
         stack_hooks=None,
         new_stack=True,
         stack_tags=None,
-        change_protected=False
     ):
-        s3_template = paco.cftemplates.S3(
-            self.paco_ctx,
-            self.account_ctx,
+        stack = self.stack_group.add_new_stack(
             self.region,
-            self.stack_group,
-            stack_tags,
-            stack_hooks,
-            self.bucket_context,
-            bucket_policy_only,
-            self.resource_ref,
-            change_protected=change_protected
+            self.bucket_context['config'],
+            paco.cftemplates.S3,
+            account_ctx=self.account_ctx,
+            stack_tags=stack_tags,
+            stack_hooks=stack_hooks,
+            extra_context={'bucket_context': self.bucket_context, 'bucket_policy_only': bucket_policy_only}
         )
         if bucket_policy_only == False:
             if self.bucket_context['stack'] != None:
                 raise StackException(PacoErrorCode.Unknown)
-            self.bucket_context['stack'] = s3_template.stack
+            self.bucket_context['stack'] = stack
 
     def add_bucket(
         self,
@@ -98,7 +98,6 @@ class S3Context():
         self.bucket_context['ref'] = self.resource_ref
         bucket.resolve_ref_obj = self
 
-
         if bucket.external_resource == True:
             # if the bucket already exists, do not create a stack for it
             self.paco_ctx.log_action_col(
@@ -120,7 +119,6 @@ class S3Context():
                     bucket_policy_only=False,
                     stack_hooks=stack_hooks,
                     stack_tags=self.stack_tags,
-                    change_protected=change_protected
                 )
 
     def add_bucket_policy(self, policy_dict, stack_hooks=None, new_stack=True):
@@ -220,11 +218,7 @@ class S3Context():
 
 class S3Controller(Controller):
     def __init__(self, paco_ctx):
-        super().__init__(
-            paco_ctx,
-            "S3",
-            "Resource"
-        )
+        super().__init__(paco_ctx, "S3", "Resource")
         self.contexts = {}
         self.init_s3_resource_done = False
 
@@ -257,8 +251,9 @@ class S3Controller(Controller):
         self.paco_ctx.log_action_col("Init", "S3")
         self.init_s3_resource_done = True
         s3_env_map = {}
+        s3resource = self.paco_ctx.project['resource']['s3']
         for bucket_id in bucket_list:
-            bucket_config = self.paco_ctx.project['resource']['s3'].buckets[bucket_id]
+            bucket_config = s3resource.buckets[bucket_id]
             account_ctx = self.paco_ctx.get_account_context(account_ref=bucket_config.account)
             region = bucket_config.region
             s3_env_id = '-'.join([account_ctx.get_name(), region])
@@ -275,6 +270,11 @@ class S3Controller(Controller):
         self.init_bucket_environments(s3_env_map, stack_tags)
         self.paco_ctx.log_action_col("Init", "S3", "Completed")
 
+    def resolve_ref(self, ref):
+        "Find the bucket then call resolve_ref on it"
+        buckets = self.paco_ctx.project['resource']['s3'].buckets
+        return buckets[ref.parts[3]].resolve_ref(ref)
+
     def init(self, command=None, model_obj=None):
         if model_obj != None:
             bucket_list = []
@@ -283,6 +283,8 @@ class S3Controller(Controller):
             else:
                 bucket_list.append(model_obj.name)
             self.init_s3_resource(bucket_list, stack_tags=None)
+        s3resource = self.paco_ctx.project['resource']['s3']
+        s3resource.resolve_ref_obj = self
 
     def init_context(self, account_ctx, region, resource_ref, stack_group, stack_tags):
         if resource_ref.startswith('paco.ref '):
@@ -291,7 +293,7 @@ class S3Controller(Controller):
             self.contexts[resource_ref] = S3Context(self.paco_ctx, account_ctx, region, self, stack_group, resource_ref, stack_tags)
             # Add an 'paco.ref ' key here so that we can take paco.ref's from the yaml
             # and still do a lookup on them
-            self.contexts['paco.ref '+resource_ref] = self.contexts[resource_ref]
+            self.contexts['paco.ref ' + resource_ref] = self.contexts[resource_ref]
 
     def context_list(self):
         "Returns contexts that do not include the redundant 'paco.ref ' prefixed keys."
@@ -321,6 +323,7 @@ class S3Controller(Controller):
         return self.contexts[resource_ref].get_bucket_arn(*args, **kwargs)
 
     def get_bucket_name(self, resource_ref, *args, **kwargs):
+        self.contexts[resource_ref].bucket_context['config'].get_bucket_name()
         return self.contexts[resource_ref].bucket_context['config'].get_bucket_name()
 
     def empty_bucket(self, resource_ref, *args, **kwargs):

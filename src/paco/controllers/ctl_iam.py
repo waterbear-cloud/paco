@@ -1,22 +1,24 @@
-import click
-import os
-import time
-import paco
-from paco.cftemplates import IAMRoles, IAMManagedPolicies,IAMUsers, IAMUserAccountDelegates
+from paco.cftemplates import IAMRoles, IAMManagedPolicies,IAMUsers, IAMUserAccountDelegates, IAMSLRoles
 from paco.controllers.controllers import Controller
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
 from paco.core.yaml import YAML, Ref, Sub
 from paco.models.references import Reference
-from paco.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackTags, StackHooks
-from paco.utils import md5sum
+from paco.models.locations import get_parent_by_interface
+from paco.models import schemas
+from paco.models.base import Named
+from paco.stack import StackOrder, Stack, StackGroup, StackTags, StackHooks
+from paco.utils import md5sum, get_support_resource_ref_ext
+from parliament import analyze_policy_string
+import click
+import json
+import os
+import paco
+import time
+
 
 yaml=YAML(typ='safe')
-#yaml.register_class(Ref)
-#yaml.register_class(Sub)
-#yaml.preserve_quotes = True
-#yaml=YAML(typ="safe", pure=True)
-#yaml.default_flow_sytle = False
+
 
 class IAMUserStackGroup(StackGroup):
     def __init__(self, paco_ctx, account_ctx, group_name, controller):
@@ -28,102 +30,93 @@ class IAMUserStackGroup(StackGroup):
             controller
         )
 
-class PolicyContext():
-    def __init__(
-        self,
-        paco_ctx, account_ctx, region,
-        group_id, policy_id,
-        policy_ref,
-        policy_config_yaml,
-        parent_config,
-        stack_group,
-        template_params,
-        stack_tags,
-        change_protected = False
-    ):
-        self.paco_ctx = paco_ctx
-        self.account_ctx = account_ctx
-        self.region = region
-        self.group_id = group_id
-        self.name = None
-        self.arn = None
-        self.policy_id = policy_id
-        self.policy_ref = policy_ref
-        self.policy_config_yaml = policy_config_yaml
-        self.stack_group = stack_group
-        self.stack_tags = stack_tags
-        self.policy_template = None
-        self.policy_stack = None
-        self.template_params = template_params
-        self.change_protected = change_protected
-        self.policy_context = {}
-        policy_config_dict = yaml.load(self.policy_config_yaml)
-        self.policy_config = paco.models.iam.ManagedPolicy(policy_id, parent_config)
-        paco.models.loader.apply_attributes_from_config(self.policy_config, policy_config_dict)
-        self.init_policy()
-
-    def init_policy(self):
-        self.policy_config.resolve_ref_obj = self
-        policy_context = {
-            'id': self.policy_id,
-            'config': self.policy_config,
-            'ref': self.policy_ref,
-            'template_params': self.template_params
-        }
-        policy_stack_tags = StackTags(self.stack_tags)
-        policy_stack_tags.add_tag('Paco-IAM-Resource-Type', 'ManagedPolicy')
-        policy_context['template'] = IAMManagedPolicies(
-            self.paco_ctx,
-            self.account_ctx,
-            self.region,
-            self.stack_group,
-            policy_stack_tags,
-            policy_context,
-            self.group_id,
-            self.policy_id,
-            change_protected=self.change_protected
-        )
-        policy_context['stack'] = policy_context['template'].stack
-        self.name = policy_context['template'].gen_policy_name(self.policy_id)
-        self.arn = "arn:aws:iam::{0}:policy/{1}".format(self.account_ctx.get_id(), self.name)
-        self.policy_context[self.policy_ref] = policy_context
-        self.stack_group.add_stack_order(policy_context['stack'])
-
-
-class RoleContext():
+class SLRoleContext():
     def __init__(
         self,
         paco_ctx,
         account_ctx,
         region,
-        group_id,
-        role_id,
-        role_ref,
-        role_config,
+        resource,
         stack_group,
-        template_params,
-        stack_tags,
-        change_protected=False
+        servicename
     ):
         self.paco_ctx = paco_ctx
         self.account_ctx = account_ctx
         self.region = region
-        self.group_id = group_id
-        self.role_name = None
-        self.role_id = role_id
-        self.role_ref = role_ref
-        self.role_config = role_config
         self.stack_group = stack_group
-        self.stack_tags = stack_tags
-        self.role_template = None
-        self.role_stack = None
-        self.template_params = template_params
-        self.change_protected = change_protected
-        self.policy_context = {}
-        self.init_role()
+        self.servicename = servicename
+        self.resource= resource
+        self.sl_role_stack = self.stack_group.add_new_stack(
+            self.region,
+            self.resource,
+            IAMSLRoles,
+            account_ctx=self.account_ctx,
+            extra_context={'servicename': servicename},
+        )
+        self.sl_role_stack.singleton = True
 
     def aws_name(self):
-        return self.role_ref
+        return self.servicename
+
+
+class RoleContext():
+    def __init__(
+        self,
+        account_ctx,
+        region,
+        resource,
+        role_id,
+        role,
+        stack_group,
+        stack_tags,
+        template_params,
+    ):
+        self.account_ctx = account_ctx
+        self.region = region
+        self.resource = resource
+        self.role_id = role_id
+        self.role = role
+        self.role_ref = role.paco_ref_parts
+        self.stack_group = stack_group
+        self.stack_tags = stack_tags
+        self.template_params = template_params
+        self.role_name = None
+        self.role_template = None
+        self.role_stack = None
+        self.policy_context = {}
+
+        # Create a Role stack and add it to the StackGroup
+        role_stack_tags = StackTags(self.stack_tags)
+        role_stack_tags.add_tag('Paco-IAM-Resource-Type', 'Role')
+
+        # set the resolve_ref_obj on the model
+        self.role.resolve_ref_obj = self
+
+        # Resources such as a service might not have change_protected
+        change_protected = getattr(self.resource, 'change_protected', False)
+        role_ext = get_support_resource_ref_ext(self.resource, self.role)
+        self.role_stack = self.stack_group.add_new_stack(
+            self.region,
+            self.resource,
+            IAMRoles,
+            account_ctx=self.account_ctx,
+            stack_tags=role_stack_tags,
+            change_protected=change_protected,
+            extra_context={
+                'template_params': self.template_params,
+                'role': self.role,
+            },
+            support_resource_ref_ext=role_ext,
+        )
+        self.role_template = self.role_stack.template
+        role_id = self.resource.name + '-' + self.role.name
+        self.role_name = self.role_template.gen_iam_role_name("Role", self.role.paco_ref_parts, role_id)
+        self.role_arn = "arn:aws:iam::{0}:role/{1}".format(self.account_ctx.get_id(), self.role_name)
+        role_profile_name = self.role_template.gen_iam_role_name("Profile", self.role.paco_ref_parts, role_id)
+        self.role_profile_arn = "arn:aws:iam::{0}:instance-profile/{1}".format(self.account_ctx.get_id(), role_profile_name)
+
+    def aws_name(self):
+        return self.role.paco_ref_parts
 
     def get_aws_name(self):
         return self.aws_name()
@@ -153,71 +146,54 @@ class RoleContext():
 
     def add_managed_policy(
         self,
-        parent_config,
-        group_id,
-        policy_id,
-        policy_ref,
-        policy_config_yaml=None,
+        resource,
+        policy_name,
+        policy_config_yaml,
         template_params=None,
-        change_protected=False
+        change_protected=False,
+        extra_ref_names=None,
     ):
-        if policy_ref in self.policy_context.keys():
+        "Adds a Managed Policy stack that is attached to this Role"
+        # create a Policy object from YAML and add it to the model
+        policy_dict = yaml.load(policy_config_yaml)
+        policy_dict['roles'] = [self.role_name]
+        # extra_ref_names adds extra parts to the Policy paco.ref
+        # This is because the paco.ref is used to generate the a Policy hash used in the AWS
+        # Policy name. The ref should not change otherwise the Policy names change.
+        parent = resource
+        for name in extra_ref_names:
+            container = Named(name, parent)
+            parent = container
+        policy = paco.models.iam.ManagedPolicy(policy_name, parent)
+        paco.models.loader.apply_attributes_from_config(policy, policy_dict)
+
+        if policy.paco_ref_parts in self.policy_context.keys():
             print("Managed policy already exists: %s" % (policy_ref) )
             raise StackException(PacoErrorCode.Unknown)
 
-        policy_config_dict = yaml.load(policy_config_yaml)
-        policy_config_dict['roles'] = [self.role_name]
-        policy_config = paco.models.iam.ManagedPolicy(policy_id, parent_config)
-        paco.models.loader.apply_attributes_from_config(policy_config, policy_config_dict)
-        policy_config.resolve_ref_obj = self
+        # set the resolve_ref_obj to this RoleContext
+        policy.resolve_ref_obj = self
         policy_context = {
-            'id': policy_id,
-            'config': policy_config,
-            'ref': policy_ref,
-            'template_params': template_params
+            'id': policy_name,
+            'config': policy,
+            'ref': policy.paco_ref_parts,
+            'template_params': template_params,
         }
         policy_stack_tags = StackTags(self.stack_tags)
         policy_stack_tags.add_tag('Paco-IAM-Resource-Type', 'ManagedPolicy')
-        policy_context['template'] = IAMManagedPolicies(
-            self.paco_ctx,
-            self.account_ctx,
+        policy_ext = get_support_resource_ref_ext(resource, policy)
+        policy_context['stack'] = self.stack_group.add_new_stack(
             self.region,
-            self.stack_group,
-            policy_stack_tags,
-            policy_context,
-            self.group_id,
-            policy_id,
-            change_protected
+            resource,
+            IAMManagedPolicies,
+            stack_tags=policy_stack_tags,
+            extra_context={'policy': policy, 'template_params': template_params},
+            support_resource_ref_ext=policy_ext
         )
-        policy_context['stack'] = policy_context['template'].stack
-        self.policy_context['name'] = policy_context['template'].gen_policy_name(policy_id)
+        policy_context['template'] = policy_context['stack'].template
+        self.policy_context['name'] = policy_context['template'].gen_policy_name(policy.name)
         self.policy_context['arn'] = "arn:aws:iam::{0}:policy/{1}".format(self.account_ctx.get_id(), self.policy_context['name'])
-        self.policy_context[policy_ref] = policy_context
-        self.stack_group.add_stack_order(policy_context['stack'])
-
-    def init_role(self):
-        role_stack_tags = StackTags(self.stack_tags)
-        role_stack_tags.add_tag('Paco-IAM-Resource-Type', 'Role')
-        self.role_config.resolve_ref_obj = self
-        self.role_template = IAMRoles(
-            self.paco_ctx,
-            self.account_ctx,
-            self.region,
-            self.stack_group,
-            role_stack_tags,
-            self.role_ref,
-            self.group_id,
-            self.role_id,
-            self.role_config,
-            self.template_params,
-            self.change_protected
-        )
-        self.role_stack = self.role_template.stack
-        self.role_name = self.role_template.gen_iam_role_name("Role", self.role_id)
-        self.role_arn = "arn:aws:iam::{0}:role/{1}".format(self.account_ctx.get_id(), self.role_name)
-        role_profile_name = self.role_template.gen_iam_role_name("Profile", self.role_id)
-        self.role_profile_arn = "arn:aws:iam::{0}:instance-profile/{1}".format(self.account_ctx.get_id(), role_profile_name)
-        self.stack_group.add_stack_order(self.role_stack)
+        self.policy_context[policy.paco_ref_parts] = policy_context
 
     def get_role_arn(self):
         return self.role_arn
@@ -243,17 +219,18 @@ class RoleContext():
 
 class IAMController(Controller):
     def __init__(self, paco_ctx):
-        super().__init__(paco_ctx,
-                         "Resource",
-                         "IAM")
-
+        super().__init__(
+            paco_ctx,
+            "Resource",
+            "IAM"
+        )
         self.role_context = {}
+        self.sl_role_context = {}
         self.policy_context = {}
         self.iam_config = self.paco_ctx.project['resource']['iam']
         self.iam_user_stack_groups = {}
         self.iam_user_access_keys_sdb_domain = 'Paco-IAM-Users-Access-Keys-Meta'
         self.init_done = False
-        #self.paco_ctx.log("IAM Service: Configuration: %s" % (name))
 
     # Administrator
     def init_custompolicy_permission(self, permission_config, permissions_by_account):
@@ -560,16 +537,14 @@ class IAMController(Controller):
                     hook_arg=user_config
                 )
 
-        config_ref = 'resource.iam.users'
-        IAMUsers(
-            self.paco_ctx,
-            master_account_ctx,
+        # stack for the IAM User - this only exists in the Master account
+        # and delegate roles are provisioned in accounts
+        self.iam_user_stack_groups['master'].add_new_stack(
             master_account_ctx.config.region,
-            self.iam_user_stack_groups['master'],
-            None, # stack_tags,
-            stack_hooks,
             self.iam_config.users,
-            config_ref
+            IAMUsers,
+            account_ctx=master_account_ctx,
+            stack_hooks=stack_hooks,
         )
 
         for user_name in self.iam_config.users.keys():
@@ -591,34 +566,19 @@ class IAMController(Controller):
             for account_name in self.paco_ctx.project['accounts'].keys():
                 account_ctx = self.paco_ctx.get_account_context('paco.ref accounts.'+account_name)
                 config_ref = 'resource.iam.users.'+user_name
-                # Template and stack
-                IAMUserAccountDelegates(
-                    self.paco_ctx,
-                    account_ctx,
+                # IAM User delegate stack
+                self.iam_user_stack_groups[account_name].add_new_stack(
                     master_account_ctx.config.region,
-                    self.iam_user_stack_groups[account_name],
-                    None, # stack_tags
-                    [StackOrder.PROVISION ,StackOrder.WAITLAST],
                     user_config,
-                    permissions_by_account[account_name],
-                    config_ref
+                    IAMUserAccountDelegates,
+                    stack_orders=[StackOrder.PROVISION ,StackOrder.WAITLAST],
+                    account_ctx=account_ctx,
+                    extra_context={
+                        'permissions_list': permissions_by_account[account_name],
+                        'account_id': account_ctx.id,
+                        'master_account_id': master_account_ctx.id,
+                    }
                 )
-
-
-        # Create the IAM Users
-        #iam_user(self.iam_config.users)
-            # Create IAMUser
-            #   - Access Key
-            #   - Console Access: Enough to be able to login and set MFA
-            #   - user_config.accounts: Create cross account access roles
-            #   - Prompt for and set password
-            #
-            # Iterate through permissions
-            #   - CodeCommit
-            #     - Get repository account and create a policy and attach
-            #       it to the user's account delegatge role
-            #     - Manage SSH keys
-
 
     def init(self, command=None, model_obj=None):
         if model_obj == None:
@@ -632,67 +592,107 @@ class IAMController(Controller):
             self.stack_group_filter = model_obj.paco_ref_parts
             self.init_users(model_obj)
 
-    def create_managed_policy(
-        self,
-        paco_ctx, account_ctx, region,
-        group_id, policy_id,
-        policy_ref,
-        policy_config_yaml,
-        parent_config,
-        stack_group,
-        template_params,
-        stack_tags,
-        change_protected=False
-    ):
-        if policy_ref not in self.policy_context.keys():
-            self.policy_context[policy_ref] = PolicyContext(
-                paco_ctx=self.paco_ctx,
-                account_ctx=account_ctx,
-                region=region,
-                group_id=group_id,
-                policy_id=policy_id,
-                policy_ref=policy_ref,
-                policy_config_yaml=policy_config_yaml,
-                parent_config=parent_config,
-                stack_group=stack_group,
-                template_params=template_params,
-                stack_tags=stack_tags,
-                change_protected=change_protected
-            )
-        else:
-            print("Managed Policy already exists: %s" % (policy_ref))
-            raise StackException(PacoErrorCode.Unknown)
+    def add_managed_policy(self, role, *args, **kwargs):
+        return self.role_context[role.paco_ref_parts].add_managed_policy(*args, **kwargs)
 
-    def add_managed_policy(self, role_ref, *args, **kwargs):
-        return self.role_context[role_ref].add_managed_policy(*args, **kwargs)
-
-    def add_role(
+    def add_service_linked_role(
         self,
         paco_ctx,
         account_ctx,
         region,
-        group_id,
-        role_id,
-        role_ref,
-        role_config,
         stack_group,
-        template_params,
-        stack_tags,
-        change_protected=False
+        resource,
+        servicename
     ):
+        "Add a ServiceLinked Role for this account and region if it doesn't already exist"
+        # ToDo: Each service-linked role can only be enabled once in each account/region.
+        # These roles can be created by different resources, each request to
+        # add a SL Role should check if the Role already exists, rather than creating it again
+        sl_id = f"{account_ctx.id}-{region}-{servicename}"
+
+        # SericeLinked Role already created/seen
+        if sl_id in self.sl_role_context.keys():
+            return
+
+        # check if the role already exists
+        client = account_ctx.get_aws_client(
+            'iam',
+            aws_region=region
+        )
+        roles = client.list_roles(
+            PathPrefix=f"/aws-service-role/{servicename}/",
+        )
+        if len(roles["Roles"]) > 0:
+            # cache result
+            if sl_id not in self.sl_role_context:
+                self.sl_role_context[sl_id] = True
+        else:
+            self.sl_role_context[sl_id] = SLRoleContext(
+                paco_ctx,
+                account_ctx,
+                region,
+                resource,
+                stack_group,
+                servicename
+            )
+
+    def add_role(
+        self,
+        region,
+        resource,
+        role,
+        iam_role_id,
+        stack_group,
+        stack_tags=None,
+        account_ctx=None,
+        template_params=None,
+    ):
+        role_ref = role.paco_ref_parts
+        # default account_ctx is the StackGroup's account_ctx
+        if account_ctx == None:
+            account_ctx = stack_group.account_ctx
+
+        if self.paco_ctx.warn:
+            # lint all IAM Policies and report on complaints
+            for policy in role.policies:
+                policy_json = policy.export_as_json()
+                policy_analysis = analyze_policy_string(policy_json)
+
+                # Possible Findings:
+                # UNKNOWN_ACTION
+                # UNKNOWN_PREFIX
+                # UNKNOWN_PRINCIPAL
+                # UNKNOWN_FEDERATION_SOURCE
+                # UNKNOWN_OPERATOR
+                # MISMATCHED_TYPE_OPERATION_TO_NULL
+                # BAD_PATTERN_FOR_MFA
+                # MISMATCHED_TYPE
+                # UNKNOWN_CONDITION_FOR_ACTION
+                # MALFORMED
+                # INVALID_ARN
+                # RESOURCE_MISMATCH
+
+                if len(policy_analysis.findings) > 0:
+                    print("\nWARNING: Problems detected for IAM Policy for Role named {}.".format(role.name))
+                    print("  Role paco.ref     : {}".format(role.paco_ref_parts))
+                    resource = get_parent_by_interface(role, schemas.IResource)
+                    if resource != None:
+                        print("  Role for Resource : {} ({})".format(resource.name, resource.type))
+                    for finding in policy_analysis.findings:
+                        print("  {} - {}".format(finding.issue, finding.detail))
+                        print()
+                    print()
+
         if role_ref not in self.role_context.keys():
             self.role_context[role_ref] = RoleContext(
-                paco_ctx=self.paco_ctx,
                 account_ctx=account_ctx,
                 region=region,
-                group_id=group_id,
-                role_id=role_id,
-                role_ref=role_ref,
-                role_config=role_config,
+                resource=resource,
+                role_id=iam_role_id,
+                role=role,
                 stack_group=stack_group,
-                template_params=template_params,
                 stack_tags=stack_tags,
-                change_protected=change_protected
+                template_params=template_params,
             )
         else:
             print("Role already exists: %s" % (role_ref))

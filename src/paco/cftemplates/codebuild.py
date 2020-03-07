@@ -1,43 +1,19 @@
-import os
-from paco.cftemplates.cftemplates import CFTemplate
+from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action
+from awacs.sts import AssumeRole
+from paco.cftemplates.cftemplates import StackTemplate
 import troposphere
 import troposphere.codepipeline
 import troposphere.codebuild
 import troposphere.sns
-from io import StringIO
-from enum import Enum
-from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action
-from awacs.sts import AssumeRole
 
-class CodeBuild(CFTemplate):
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        env_ctx,
-        app_id,
-        grp_id,
-        res_id,
-        pipeline_config,
-        action_config,
-        artifacts_bucket_name,
-        config_ref
-    ):
+
+class CodeBuild(StackTemplate):
+    def __init__(self, stack, paco_ctx, env_ctx, app_name, action_config, artifacts_bucket_name):
+        pipeline_config = stack.resource
+        config_ref = action_config.paco_ref_parts
         self.env_ctx = env_ctx
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=action_config.is_enabled(),
-            config_ref=config_ref,
-            iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags
-        )
-        self.set_aws_name('CodeBuild', grp_id, res_id)
+        super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_NAMED_IAM"])
+        self.set_aws_name('CodeBuild', self.resource_group_name, self.resource.name)
 
         # Troposphere Template Initialization
         self.init_template('Deployment: CodeBuild')
@@ -46,7 +22,7 @@ class CodeBuild(CFTemplate):
             return
 
         self.res_name_prefix = self.create_resource_name_join(
-            name_list=[env_ctx.get_aws_name(), app_id, grp_id, res_id],
+            name_list=[env_ctx.get_aws_name(), app_name, self.resource_group_name, self.resource.name],
             separator='-',
             camel_case=True
         )
@@ -55,24 +31,18 @@ class CodeBuild(CFTemplate):
             name='ResourceNamePrefix',
             description='The name to prefix resource names.',
             value=self.res_name_prefix,
-            use_troposphere=True,
-            troposphere_template=template,
         )
         self.cmk_arn_param = self.create_cfn_parameter(
             param_type='String',
             name='CMKArn',
             description='The KMS CMK Arn of the key used to encrypt deployment artifacts.',
             value=pipeline_config.paco_ref + '.kms.arn',
-            use_troposphere=True,
-            troposphere_template=template,
         )
         self.artifacts_bucket_name_param = self.create_cfn_parameter(
             param_type='String',
             name='ArtifactsBucketName',
             description='The name of the S3 Bucket to create that will hold deployment artifacts',
             value=artifacts_bucket_name,
-            use_troposphere=True,
-            troposphere_template=template,
         )
         self.codebuild_project_res = self.create_codebuild_cfn(
             template,
@@ -80,7 +50,6 @@ class CodeBuild(CFTemplate):
             action_config,
             config_ref
         )
-        self.set_template(template.to_yaml())
 
     def create_codebuild_cfn(
         self,
@@ -95,24 +64,18 @@ class CodeBuild(CFTemplate):
             name='CodeBuildComputeType',
             description='The type of compute environment. This determines the number of CPU cores and memory the build environment uses.',
             value=action_config.codebuild_compute_type,
-            use_troposphere=True,
-            troposphere_template=template,
         )
         image_param = self.create_cfn_parameter(
             param_type='String',
             name='CodeBuildImage',
             description='The image tag or image digest that identifies the Docker image to use for this build project.',
             value=action_config.codebuild_image,
-            use_troposphere=True,
-            troposphere_template=template,
         )
         deploy_env_name_param = self.create_cfn_parameter(
             param_type='String',
             name='DeploymentEnvironmentName',
             description='The name of the environment codebuild will be deploying into.',
             value=action_config.deployment_environment,
-            use_troposphere=True,
-            troposphere_template=template,
         )
         self.project_role_name = self.create_iam_resource_name(
             name_list=[self.res_name_prefix, 'CodeBuild-Project'],
@@ -223,8 +186,6 @@ class CodeBuild(CFTemplate):
             name='TimeoutInMinutes',
             description='How long, in minutes, from 5 to 480 (8 hours), for AWS CodeBuild to wait before timing out any related build that did not get marked as completed.',
             value=action_config.timeout_mins,
-            use_troposphere=True,
-            troposphere_template=template,
         )
 
         # CodeBuild: Environment
@@ -263,14 +224,12 @@ class CodeBuild(CFTemplate):
             )
         )
 
-        troposphere.Output(
+        self.create_output(
             title='ProjectArn',
-            template=template,
-            Value=troposphere.GetAtt(project_res, 'Arn'),
-            Description='CodeBuild Project Arn'
+            value=troposphere.GetAtt(project_res, 'Arn'),
+            description='CodeBuild Project Arn',
+            ref=config_ref+'.project.arn'
         )
-
-        self.register_stack_output_config(config_ref+'.project.arn', 'ProjectArn')
 
         return project_res
 

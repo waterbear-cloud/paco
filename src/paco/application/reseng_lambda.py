@@ -1,7 +1,7 @@
-import paco.cftemplates
+from paco import models
 from paco.application.res_engine import ResourceEngine
 from paco.core.yaml import YAML
-from paco import models
+import paco.cftemplates
 
 
 yaml=YAML()
@@ -23,19 +23,12 @@ role_name: %s""" % ("LambdaFunction")
         else:
             role_config = self.resource.iam_role
 
-        # Add CloudWatch Logs permissions
-        cw_logs_policy = """
-name: CloudWatchLogs
-statement:
-  - effect: Allow
-    action:
-      - logs:CreateLogGroup
-      - logs:CreateLogStream
-      - logs:PutLogEvents
-    resource:
-      - '*'
-"""
-        role_config.add_policy(yaml.load(cw_logs_policy))
+        # Note that CloudWatch LogGroup permissions are added in the Lambda stack
+        # This is to allow CloudFormation to create the LogGroup to manage it's Retention policy
+        # and to prevent the Lambda from being invoked and writing to the LogGroup before it's
+        # created by CloudFormation and creating a LogGroup and causing a race condition in the stack.
+        # Also, by setting the Policy after the Lambda it's possible to restrict the policy to just
+        # the Lambda LogGroups and not leave it wide open like AWSLambdaBasicExecutionRole does.
 
         if self.resource.vpc_config != None:
             vpc_config_policy = """
@@ -67,25 +60,17 @@ statement:
         role_config.enabled = self.resource.is_enabled()
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_role(
-            paco_ctx=self.paco_ctx,
-            account_ctx=self.account_ctx,
             region=self.aws_region,
-            group_id=self.grp_id,
-            role_id=iam_role_id,
-            role_ref=iam_role_ref,
-            role_config=role_config,
+            resource=self.resource,
+            role=role_config,
+            iam_role_id=iam_role_id,
             stack_group=self.stack_group,
-            template_params=None,
             stack_tags=self.stack_tags
         )
-        paco.cftemplates.Lambda(
-            self.paco_ctx,
-            self.account_ctx,
+        stack = self.stack_group.add_new_stack(
             self.aws_region,
-            self.stack_group,
-            self.stack_tags,
-            self.grp_id,
-            self.res_id,
             self.resource,
-            self.resource.paco_ref_parts
+            paco.cftemplates.Lambda,
+            stack_tags=self.stack_tags
         )
+

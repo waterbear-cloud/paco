@@ -8,11 +8,13 @@ BadConfigFiles StackDoesNotExist StackOutputMissing InvalidStackName \
 WaiterError')
 
 class PacoException(Exception):
+    "Deprecated PacoExceptions. New exceptions act like stanaard Python Exceptions"
     def __init__(self, code, message=None):
         super().__init__()
         self.code = code
         if message != None:
             self.message = message
+            self.title = message
         else:
             self.set_message(code)
 
@@ -39,17 +41,33 @@ class StackException(PacoException):
         error_str =  "StackException: " + self.code.name + ": " + self.message
         return error_str
 
-class PacoBucketExists(Exception):
-    "S3 Bucket already exists"
 
-class UnsupportedCloudFormationParameterType(Exception):
-    "Unsupported Parameter Type"
+class PacoBaseException(Exception):
+    title = "Generic Paco Error"
 
-class InvalidLogSetConfiguration(Exception):
-    "Invalid Log Set configuration"
+class PacoBucketExists(PacoBaseException):
+    title = "S3 Bucket already exists"
 
-class PacoUnsupportedFeature(Exception):
-    "Feature does not yet exist"
+class UnsupportedCloudFormationParameterType(PacoBaseException):
+    title = "Unsupported CloudFormation Parameter Type"
 
-class InvalidPacoScope(Exception):
-    "Paco Reference not valid in this context."
+class InvalidLogSetConfiguration(PacoBaseException):
+    title = "Invalid Log Set configuration in YAML"
+
+class PacoUnsupportedFeature(PacoBaseException):
+    title = "Feature does not yet exist"
+
+class InvalidPacoHome(PacoBaseException):
+    title = "Paco did not get a valid PACO_HOME path to a Paco project"
+
+class InvalidPacoScope(PacoBaseException):
+    title = "Invalid CONFIG_SCOPE argument"
+
+class MissingAccountId(PacoBaseException):
+    title = "No AWS account id"
+
+class InvalidAccountName(PacoBaseException):
+    title = "Invalid AWS account name"
+
+class InvalidVersionControl(PacoBaseException):
+    title = "Invalid version control"

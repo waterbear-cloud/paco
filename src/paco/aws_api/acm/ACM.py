@@ -1,4 +1,3 @@
-import boto3
 from botocore.config import Config
 import tldextract
 from . import aws_helpers
@@ -31,12 +30,18 @@ class DNSValidatedACMCertClient():
         return response.get('CertificateArn')
 
     def get_certificate_arn(self):
-        cert_list = self.acm_client.list_certificates()
-        if len(cert_list['CertificateSummaryList']) == 0:
-            return None
-        for cert_item in cert_list['CertificateSummaryList']:
-            if cert_item['DomainName'] == self.domain:
-                return cert_item['CertificateArn']
+        list_certs_args = {}
+        while True:
+            cert_list = self.acm_client.list_certificates(**list_certs_args)
+            if len(cert_list['CertificateSummaryList']) == 0:
+                return None
+            for cert_item in cert_list['CertificateSummaryList']:
+                if cert_item['DomainName'] == self.domain:
+                    return cert_item['CertificateArn']
+            if 'NextToken' in cert_list.keys():
+                list_certs_args = {'NextToken': cert_list['NextToken'] }
+                continue
+            break
         return None
 
     def request_certificate(self, subject_alternative_names=[]):

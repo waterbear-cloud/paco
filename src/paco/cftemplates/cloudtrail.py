@@ -1,26 +1,20 @@
+from paco.models import references
+from paco.cftemplates.cftemplates import StackTemplate
+from awacs.aws import Allow, Action, Principal, Statement, PolicyDocument
 import awacs.logs
 import troposphere
 import troposphere.cloudtrail
 import troposphere.cloudwatch
 import troposphere.iam
-from paco.models import references
-from paco.cftemplates.cftemplates import CFTemplate
-from awacs.aws import Allow, Action, Principal, Statement, PolicyDocument
 
 
-class CloudTrail(CFTemplate):
-    def __init__(self, paco_ctx, account_ctx, aws_region, stack_group, stack_tags, trail, s3_bucket_name):
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            config_ref=None,
-            iam_capabilities=["CAPABILITY_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags
-        )
+class CloudTrail(StackTemplate):
+    def __init__(self, stack, paco_ctx, s3_bucket_name):
+        trail = stack.resource
+        super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_IAM"])
         self.set_aws_name('CloudTrail')
-        template = troposphere.Template()
+        self.init_template('CloudTrail')
+        template = self.template
 
         # create Trail resource
         trail_dict = {
@@ -85,12 +79,11 @@ class CloudTrail(CFTemplate):
             trail_dict['CloudWatchLogsRoleArn'] = troposphere.GetAtt(trail_role_resource, "Arn")
 
             # LogGroup Output
-            self.register_stack_output_config(log_group.paco_ref_parts + '.arn', log_group.logical_id + 'Arn')
-            log_group_output = troposphere.Output(
-                log_group.logical_id + 'Arn',
-                Value=troposphere.GetAtt(log_group_resource, "Arn")
+            self.create_output(
+                title=log_group.logical_id + 'Arn',
+                value=troposphere.GetAtt(log_group_resource, "Arn"),
+                ref=log_group.paco_ref_parts + '.arn'
             )
-            template.add_output(log_group_output)
 
         # CloudTrail resource
         trail.logical_id = 'CloudTrail' + self.create_cfn_logical_id(trail.name)
@@ -102,11 +95,8 @@ class CloudTrail(CFTemplate):
         template.add_resource(trail_resource)
 
         # CloudTrail output
-        self.register_stack_output_config(trail.paco_ref_parts + '.arn', trail.logical_id + 'Arn')
-        trail_output = troposphere.Output(
-            trail.logical_id + 'Arn',
-            Value=troposphere.GetAtt(trail_resource, "Arn"),
+        self.create_output(
+            title=trail.logical_id + 'Arn',
+            value=troposphere.GetAtt(trail_resource, "Arn"),
+            ref=trail.paco_ref_parts + '.arn',
         )
-        template.add_output(trail_output)
-
-        self.set_template(template.to_yaml())

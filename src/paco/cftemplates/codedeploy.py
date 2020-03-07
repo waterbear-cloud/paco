@@ -1,40 +1,23 @@
-import os
-from enum import Enum
-from io import StringIO
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 
 
-class CodeDeploy(CFTemplate):
+class CodeDeploy(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
         env_ctx,
-        app_id,
-        grp_id,
-        res_id,
-        pipeline_config,
+        app_name,
         action_config,
-        artifacts_bucket_name,
-        cpbd_config_ref
+        artifacts_bucket_name
     ):
+        pipeline_config = stack.resource
+        cpbd_config_ref = action_config.paco_ref_parts
         self.env_ctx = env_ctx
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=action_config.is_enabled(),
-            config_ref=cpbd_config_ref,
-            iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags
-        )
-        self.set_aws_name('CodeDeploy', grp_id, res_id)
+        super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_NAMED_IAM"])
+        self.set_aws_name('CodeDeploy', self.resource_group_name, self.resource.name)
         self.res_name_prefix = self.create_resource_name_join(
-            name_list=[self.env_ctx.get_aws_name(), app_id, grp_id, res_id],
+            name_list=[self.env_ctx.get_aws_name(), app_name, self.resource_group_name, self.resource.name],
             separator='-',
             camel_case=True
         )

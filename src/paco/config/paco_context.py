@@ -7,7 +7,7 @@ import pathlib
 import pkg_resources
 import ruamel.yaml
 from paco.core.exception import StackException
-from paco.core.exception import PacoErrorCode
+from paco.core.exception import PacoErrorCode, MissingAccountId, InvalidAccountName
 from paco.models import vocabulary
 from paco.models.references import Reference
 from paco.models import references
@@ -35,7 +35,16 @@ class AccountContext(object):
         self.client_cache = {}
         self.resource_cache = {}
         self.paco_ctx = paco_ctx
-        self.config = paco_ctx.project['accounts'][name]
+        try:
+            self.config = paco_ctx.project['accounts'][name]
+        except KeyError:
+            # ToDo: this should be validated during model loading so that
+            # the error can identify which file it comes from ...
+            raise InvalidAccountName(
+"""The account '{}' does not exist. This name must match a name in this
+Paco projects `accounts/` directory.
+""".format(name)
+            )
         self.mfa_account = mfa_account
         self.aws_session = None
         self.temp_aws_session = None
@@ -50,12 +59,11 @@ class AccountContext(object):
         # check that account_id has been set
         # account YAML files are created without an account_id until they are provisioned
         if self.config.account_id == None:
-            print("""
-The account '{}' is missing an account_id field.
+            raise MissingAccountId(
+"""The account '{}' is missing an account_id field.
 Add this manually or run `paco provision accounts` for this project.
 """.format(self.config.name)
             )
-            sys.exit()
 
         self.admin_iam_role_arn = 'arn:aws:iam::{}:role/{}'.format(
             self.config.account_id,
@@ -220,9 +228,9 @@ class PacoContext(object):
         self.verbose = False
         self.nocache = False
         self.yes = False
+        self.warn = False
         self.quiet_changes_only = False
         self.paco_path = os.getcwd()
-        self.build_folder = None
         self.aws_name = "Paco"
         self.controllers = {}
         self.services = {}
@@ -264,6 +272,35 @@ class PacoContext(object):
             return None
         return region
 
+    @property
+    def paco_work_path(self):
+        """Return the path to the Paco work directory
+
+This directory contains several sub-directories that Paco uses:
+
+  .paco-work/
+    build/
+    outputs/
+    applied/
+
+"""
+        return pathlib.Path(self.home + os.sep + '.paco-work')
+
+    @property
+    def outputs_path(self):
+        "Return the path to the Paco outputs directory"
+        return self.paco_work_path / 'outputs'
+
+    @property
+    def applied_path(self):
+        "Return the path to the Paco applied directory"
+        return self.paco_work_path / 'applied'
+
+    @property
+    def build_path(self):
+        "Return the path to the Paco applied directory"
+        return self.paco_work_path / 'build'
+
     def load_project(self, project_init=False, project_only=False, master_only=False):
         "Load a Paco Project from YAML, initialize settings and controllers, and load Service plug-ins."
         self.project_folder = self.home
@@ -277,7 +314,6 @@ class PacoContext(object):
             return
 
         # Settings
-        self.build_folder = os.path.join(self.home, "build", self.project.name)
         self.master_account = AccountContext(
             paco_ctx=self,
             name='master',
@@ -292,15 +328,11 @@ class PacoContext(object):
         self.get_controller('Route53')
         self.get_controller('CodeCommit')
         self.get_controller('S3').init({'name': 'buckets'})
-        self.get_controller('NotificationGroups')
+        self.get_controller('SNSTopics')
 
         # Load the Service plug-ins
         service_plugins = paco.models.services.list_service_plugins()
         for plugin_name, plugin_module in service_plugins.items():
-            # Skip it for now
-            if plugin_name.lower() == 'patch':
-                self.log_action_col("Skipping", 'Service', plugin_name)
-                continue
             try:
                 self.project['service'][plugin_name.lower()]
             except KeyError:
@@ -455,13 +487,14 @@ class PacoContext(object):
         and the new actual file to be applied.
         """
         project_folder_path = pathlib.Path(self.project_folder)
+
+        # the scope can be deeper than the file - however applied
+        # only operates at the file level
+        while not hasattr(model_obj, '_read_file_path'):
+            model_obj = model_obj.__parent__
+
         changed_file_path = project_folder_path.joinpath(model_obj._read_file_path)
-        applied_file_path = project_folder_path.joinpath(
-            'aimdata',
-            'applied',
-            'model',
-            model_obj._read_file_path
-        )
+        applied_file_path = self.applied_path / 'model' / model_obj._read_file_path
         applied_file_path.parent.mkdir(parents=True, exist_ok=True)
 
         return (applied_file_path, changed_file_path)

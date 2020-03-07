@@ -10,7 +10,7 @@ from paco.application.ec2_launch_manager import EC2LaunchManager
 from paco.models import schemas
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
-from paco.stack_group import StackTags
+from paco.stack import StackTags
 
 
 class ApplicationEngine():
@@ -24,25 +24,22 @@ class ApplicationEngine():
         paco_ctx,
         account_ctx,
         aws_region,
-        app_id,
-        config,
-        parent_config_ref,
+        app,
         stack_group,
         ref_type,
         stack_tags=StackTags(),
         env_ctx=None
     ):
         self.paco_ctx = paco_ctx
-        self.config = config
-        self.app_id = app_id
-        self.parent_config_ref = parent_config_ref
+        self.config = app
+        self.app = app
         self.account_ctx = account_ctx
         self.aws_region = aws_region
         self.stack_group = stack_group
         self.ref_type = ref_type
         self.env_ctx = env_ctx
         self.stack_tags = stack_tags
-        self.stack_tags.add_tag( 'Paco-Application-Name', self.app_id )
+        self.stack_tags.add_tag( 'Paco-Application-Name', self.app.name )
 
     def get_aws_name(self):
         return self.stack_group.get_aws_name()
@@ -59,14 +56,13 @@ class ApplicationEngine():
         typically creating a CFTemplate for the Resource and adding it to the Application's
         StackGroup, and any supporting CFTemplates needed such as Alarms or IAM Policies.
         """
-        self.paco_ctx.log_action_col('Init', 'Application', self.app_id, enabled=self.config.is_enabled())
+        self.paco_ctx.log_action_col('Init', 'Application', self.app.name, enabled=self.config.is_enabled())
         self.ec2_launch_manager = EC2LaunchManager(
             self.paco_ctx,
             self,
-            self.app_id,
+            self.config,
             self.account_ctx,
             self.aws_region,
-            self.parent_config_ref,
             self.stack_group,
             self.stack_tags
         )
@@ -92,7 +88,7 @@ class ApplicationEngine():
                 resource_engine.init_monitoring()
 
         self.init_app_monitoring()
-        self.paco_ctx.log_action_col('Init', 'Application', self.app_id, 'Completed', enabled=self.config.is_enabled())
+        self.paco_ctx.log_action_col('Init', 'Application', self.app.name, 'Completed', enabled=self.config.is_enabled())
 
     def init_app_monitoring(self):
         "Application level Alarms are not specific to any Resource"
@@ -108,27 +104,26 @@ class ApplicationEngine():
                 health_check.resolve_ref_obj = self
                 # ToDo: enable other types when there is more than one
                 if health_check.type == 'Route53HealthCheck':
-                    paco.cftemplates.Route53HealthCheck(
-                        self.paco_ctx,
-                        self.account_ctx,
-                        self.aws_region,
-                        self.stack_group,
-                        stack_tags,
-                        health_check
+                    self.stack_group.add_new_stack(
+                        'us-east-1', # Route53 Health Check only runs in us-east-1
+                        self.config,
+                        paco.cftemplates.Route53HealthCheck,
+                        stack_tags=stack_tags,
+                        extra_context={
+                            'health_check': health_check,
+                            'app_aws_region': self.aws_region,
+                        },
                     )
 
-        # If alarm_sets exist init alarms for them
+        # If alarm_sets exist init their alarms stack
         if getattr(self.config.monitoring, 'alarm_sets', None) != None and \
             len(self.config.monitoring.alarm_sets.values()) > 0:
-            paco.cftemplates.CWAlarms(
-                self.paco_ctx,
-                self.account_ctx,
+            stack = self.stack_group.add_new_stack(
                 self.aws_region,
-                self.stack_group,
-                self.stack_tags,
-                self.config.monitoring.alarm_sets,
-                self.config.paco_ref_parts,
                 self.config,
+                paco.cftemplates.CWAlarms,
+                support_resource_ref_ext='alarms',
+                stack_tags=self.stack_tags
             )
 
     def gen_iam_role_id(self, res_id, role_id):
@@ -181,6 +176,8 @@ class ApplicationEngine():
         elif schemas.IElastiCache.providedBy(ref.resource):
             return self.stack_group.get_stack_from_ref(ref)
         elif schemas.ICodeDeployApplication.providedBy(ref.resource):
+            return self.stack_group.get_stack_from_ref(ref)
+        elif schemas.IElasticsearchDomain.providedBy(ref.resource):
             return self.stack_group.get_stack_from_ref(ref)
 
         return None

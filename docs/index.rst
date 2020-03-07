@@ -117,6 +117,7 @@ PACO is developed by Waterbear Cloud. Contact us about our `support and consulti
    :maxdepth: 3
 
    cli
+   workflow
 
 .. toctree::
    :caption: Starter Projects
@@ -131,10 +132,21 @@ PACO is developed by Waterbear Cloud. Contact us about our `support and consulti
    :maxdepth: 3
 
    paco-config-basics
-   paco-config
+   yaml-base
+   yaml-accounts
+   yaml-global-resources
+   yaml-netenv
+   yaml-app-resources
+   yaml-monitoring
 
 .. toctree::
-   :caption: Copyright, Trademarks and Attributions
+   :caption: Other
+   :maxdepth: 3
+
+   internals
+
+.. toctree::
+   :caption: Attributions
    :maxdepth: 1
 
    copyright

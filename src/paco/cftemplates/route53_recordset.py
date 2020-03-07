@@ -1,47 +1,26 @@
-import os
-import troposphere
-#import troposphere.<resource>
-
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.models import references
 from paco import utils
+import os
+import troposphere
 
 
-class Route53RecordSet(CFTemplate):
+class Route53RecordSet(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-
         record_set_name,
         record_set_config,
-        config_ref):
-
+    ):
         if references.is_ref(record_set_name) == True:
             record_set_name = paco_ctx.get_ref(record_set_name)
-
-        # ---------------------------------------------------------------------------
-        # CFTemplate Initialization
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=record_set_config['enabled'],
-            config_ref=config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            change_protected=record_set_config['change_protected']
-        )
+        super().__init__(stack, paco_ctx)
         self.set_aws_name('RecordSet', record_set_name)
 
-        # ---------------------------------------------------------------------------
         # Troposphere Template Initialization
         self.init_template('Route53 RecordSet: ' + record_set_name)
 
-        # ---------------------------------------------------------------------------
         # Parameters
         hosted_zone_id = record_set_config['dns'].hosted_zone
         if references.is_ref(record_set_config['dns'].hosted_zone):
@@ -51,9 +30,7 @@ class Route53RecordSet(CFTemplate):
             name='HostedZoneId',
             description='Record Set Hosted Zone Id',
             value=hosted_zone_id,
-            use_troposphere=True,
-            troposphere_template=self.template
-            )
+        )
 
         record_set_type = record_set_config['record_set_type']
         if record_set_config['record_set_type'] == 'Alias':
@@ -72,18 +49,13 @@ class Route53RecordSet(CFTemplate):
                 name='AliasHostedZoneId',
                 description='Hosted Zone Id for the A Alias',
                 value=record_set_config['alias_hosted_zone_id'],
-                use_troposphere=True,
-                troposphere_template=self.template
-                )
-
+            )
             alias_dns_name_param = self.create_cfn_parameter(
                 param_type='String',
                 name='AliasDNSName',
                 description='DNS Name for the A Alias',
                 value=record_set_config['alias_dns_name'],
-                use_troposphere=True,
-                troposphere_template=self.template
-                )
+            )
             record_set_dict['AliasTarget'] = {
                 'DNSName': troposphere.Ref(alias_dns_name_param),
                 'HostedZoneId': troposphere.Ref(alias_hosted_zone_id_param)
@@ -102,8 +74,6 @@ class Route53RecordSet(CFTemplate):
                     name='ResourceRecord' + record_hash,
                     description='Resource Record: ' + hash_name,
                     value=resource_record,
-                    use_troposphere=True,
-                    troposphere_template=self.template
                 )
                 record_set_dict['ResourceRecords'].append(troposphere.Ref(resource_record_param))
 
@@ -112,7 +82,3 @@ class Route53RecordSet(CFTemplate):
             record_set_dict
         )
         self.template.add_resource(record_set_res)
-
-        # Generate the Template
-        self.set_template(self.template.to_yaml())
-

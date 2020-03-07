@@ -1,41 +1,32 @@
-import os
-from paco.cftemplates.cftemplates import CFTemplate, Parameter
-from paco.utils import md5sum
 from paco import utils
-from io import StringIO
-from enum import Enum
-import sys
+from paco.cftemplates.cftemplates import StackTemplate
+from paco.stack import Parameter
+from paco.utils import md5sum
 
 
-class IAMManagedPolicies(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 policy_context,
-                 grp_id,
-                 res_id,
-                 change_protected):
-
+class IAMManagedPolicies(StackTemplate):
+    def __init__(
+        self,
+        stack,
+        paco_ctx,
+        policy,
+        template_params,
+    ):
+        self.policy = policy
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=policy_context['config'].is_enabled(),
-            config_ref=policy_context['ref'],
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            change_protected=change_protected
         )
-        self.set_aws_name('Policy', grp_id, res_id)
-        self.policy_context = policy_context
+        # existing Policy.policy_name's have been named in the format "<resource.name>-<policy.name>"
+        # however, the policy.name is actually just 'policy' and the name used was a parent container that
+        # contained the actual name for the policy.
+        self.set_aws_name('Policy', self.resource_group_name, policy.policy_name)
+
         # Define the Template
         template_fmt = """
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'IAM Roles: Roles and Instance Profiles'
+Description: 'IAM: Managed Policy'
 
 {0[parameters_yaml]:s}
 
@@ -103,40 +94,40 @@ Resources:
      Type: {0[type]:s}
      Description: {0[description]:s}
 """
-        policy_config = policy_context['config']
-        if policy_config.is_enabled() == True:
+
+        if policy.is_enabled() == True:
             policy_table.clear()
-            if policy_context['template_params']:
-                for param_table in policy_context['template_params']:
+            if template_params:
+                for param_table in template_params:
                     self.set_parameter(param_table['key'], param_table['value'])
                     parameters_yaml += parameter_fmt.format(param_table)
 
-            policy_id = policy_context['id']
+            policy_name = policy.policy_name
             # Name
-            policy_table['name'] = self.gen_policy_name(policy_id)
-            policy_table['cfn_logical_id_prefix'] = self.create_cfn_logical_id(policy_id)
+            policy_table['name'] = self.gen_policy_name(policy_name)
+            policy_table['cfn_logical_id_prefix'] = self.create_cfn_logical_id(policy_name)
             # Path
-            policy_table['path'] = policy_config.path
+            policy_table['path'] = policy.path
 
             # Policy Document
             # Roles
             policy_table['roles'] = ""
-            if policy_config.roles and len(policy_config.roles) > 0:
+            if policy.roles and len(policy.roles) > 0:
                 policy_table['roles'] = """      Roles:
     """
-                for role in policy_config.roles:
+                for role in policy.roles:
                     policy_table['roles'] += role_fmt % (role)
 
             # Users
             policy_table['users'] = ""
-            if policy_config.users and len(policy_config.users) > 0:
+            if policy.users and len(policy.users) > 0:
                 policy_table['users'] = "      Users:\n"
-                for user in policy_config.users:
+                for user in policy.users:
                     policy_table['users'] += user_fmt % (user)
 
             policy_table['policy_document'] = policy_document
             # Statement
-            policy_table['statement'] = self.gen_statement_yaml(policy_config.statement)
+            policy_table['statement'] = self.gen_statement_yaml(policy.statement)
 
             # Resources
             resources_yaml += policy_fmt.format(policy_table)
@@ -163,19 +154,17 @@ Resources:
         self.set_template(template_fmt.format(template_table))
 
 
-    # Generate a name valid in CloudFormation
-    def gen_policy_name(self, policy_id):
-        policy_context_hash = md5sum(str_data=self.policy_context['ref'])[:8].upper()
+    def gen_policy_name(self, policy_name):
+        "Generate a name valid in CloudFormation"
+        policy_ref_hash = md5sum(str_data=self.policy.paco_ref_parts)[:8].upper()
         policy_name = self.create_resource_name_join(
-            name_list=[policy_context_hash, policy_id],
+            name_list=[policy_ref_hash, policy_name],
             separator='-',
             camel_case=False,
             filter_id='IAM.ManagedPolicy.ManagedPolicyName'
         )
         return policy_name
 
-    # TODO: This shares the same code in iam_roles.py. This should
-    # be consolidated in cftemplates.py...
     def gen_statement_yaml(self, statements):
         statement_fmt = """
           - Effect: {0[effect]:s}

@@ -9,13 +9,13 @@ from paco import utils
 import paco.models
 from paco.models import schemas
 from paco.models import vocabulary
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.models.locations import get_parent_by_interface
 from paco.utils import prefixed_name
 from paco.core.exception import InvalidLogSetConfiguration
 
 
-class CFBaseAlarm(CFTemplate):
+class CFBaseAlarm(StackTemplate):
     "Methods shared by different CFTemplates that can create a CloudWatch Alarm"
     # allow services the chance to send notifications to another region
     notification_region = None
@@ -29,7 +29,7 @@ class CFBaseAlarm(CFTemplate):
             else:
                 region = self.notification_region
             notification_paco_refs.append(
-                self.paco_ctx.project['resource']['notificationgroups'][region][group].paco_ref + '.arn'
+                self.paco_ctx.project['resource']['snstopics'][region][group].paco_ref + '.arn'
             )
 
         notification_cfn_refs = []
@@ -45,9 +45,7 @@ class CFBaseAlarm(CFTemplate):
                     description='SNS Topic to notify',
                     value=notification_paco_ref,
                     min_length=1, # prevent borked empty values from breaking notification
-                    use_troposphere=True
                 )
-                self.template.add_parameter(notification_param)
                 self.notification_param_map[param_name] = notification_param
             notification_cfn_refs.append(troposphere.Ref(notification_param))
         return notification_cfn_refs
@@ -55,7 +53,7 @@ class CFBaseAlarm(CFTemplate):
     def set_alarm_actions_to_cfn_export(self, alarm, cfn_export_dict):
         "Sets the AlarmActions, OKActions and InsufficientDataActions for a Troposphere dict"
         alarm_action_list = []
-        notification_groups = self.paco_ctx.project['resource']['notificationgroups'][alarm.region_name]
+        notification_groups = self.paco_ctx.project['resource']['snstopics'][alarm.region_name]
         for alarm_action in alarm.get_alarm_actions_paco_refs(notification_groups):
             # Create parameter
             param_name = 'AlarmAction{}'.format(utils.md5sum(str_data=alarm_action))
@@ -66,10 +64,8 @@ class CFBaseAlarm(CFTemplate):
                     param_type='String',
                     name=param_name,
                     description='SNSTopic for Alarm to notify.',
-                    value=alarm_action,
-                    use_troposphere=True
+                    value=alarm_action
                 )
-                self.template.add_parameter(alarm_action_param)
                 self.alarm_action_param_map[param_name] = alarm_action_param
             alarm_action_list.append(troposphere.Ref(alarm_action_param))
 
@@ -81,38 +77,24 @@ class CFBaseAlarm(CFTemplate):
 
 
 class CWAlarms(CFBaseAlarm):
-    """
-    CloudFormation template for CloudWatch Alarms
-    """
-
+    """CloudFormation template for CloudWatch Alarms"""
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        alarm_sets,
-        res_config_ref,
-        resource,
-        grp_id=None,
-        res_id=None,
     ):
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=resource.is_enabled(),
-            config_ref=res_config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags
         )
-        if grp_id and res_id:
-            self.set_aws_name('Alarms', grp_id, res_id, resource.type)
+        resource = stack.resource
+        alarm_sets = resource.monitoring.alarm_sets
+        if schemas.IResource.providedBy(resource):
+            self.set_aws_name('Alarms', self.resource_group_name, self.resource_name, stack.resource.type)
         else:
             # Application-level Alarms
             self.set_aws_name('Alarms')
-        self.alarm_sets = alarm_sets
+
         self.dimension = vocabulary.cloudwatch[resource.type]['dimension']
 
         # build a list of Alarm objects
@@ -129,30 +111,25 @@ class CWAlarms(CFBaseAlarm):
 
         # Define the Template
         self.init_template('CloudWatch Alarms')
-        template = self.template
-
         self.alarm_action_param_map = {}
         self.notification_param_map = {}
         alarms_are_enabled = False
         if resource.is_enabled() and resource.monitoring.enabled:
             alarms_are_enabled = self.add_alarms(
-                template,
+                self.template,
                 alarms,
                 resource,
-                res_config_ref,
                 self.paco_ctx.project,
                 alarm_id,
                 alarm_set_id,
             )
         self.template.enabled = alarms_are_enabled
-        self.set_template(template.to_yaml())
 
     def add_alarms(
             self,
             template,
             alarms,
             resource,
-            res_config_ref,
             project,
             alarm_id,
             alarm_set_id,
@@ -164,14 +141,13 @@ class CWAlarms(CFBaseAlarm):
                 # Primary node uses the aws name with '-001' appended to it
                 # ToDo: how to have Alarms for the read replica nodes?
                 value = resource.get_aws_name() + '-001'
+
             dimension_param = self.create_cfn_parameter(
-                param_type = 'String',
-                name = 'DimensionResource',
-                description = 'The resource id or name for the metric dimension.',
-                value = value,
-                use_troposphere = True
+                name='DimensionResource',
+                param_type='String',
+                description='The resource id or name for the metric dimension.',
+                value=value
             )
-            template.add_parameter(dimension_param)
         alarms_are_enabled = False
         for alarm in alarms:
             if alarm.enabled == True:
@@ -181,13 +157,11 @@ class CWAlarms(CFBaseAlarm):
             if len(alarm.dimensions) > 0:
                 for dimension in alarm.dimensions:
                     dimension.parameter = self.create_cfn_parameter(
-                        param_type = 'String',
-                        name = 'DimensionResource{}{}'.format(alarm.cfn_resource_name, dimension.name),
-                        description = 'The resource id or name for the metric dimension.',
-                        value = dimension.value,
-                        use_troposphere = True
+                        name='DimensionResource{}{}'.format(alarm.cfn_resource_name, dimension.name),
+                        param_type='String',
+                        description='The resource id or name for the metric dimension.',
+                        value=dimension.value,
                     )
-                    template.add_parameter(dimension.parameter)
 
             # compute dynamic attributes for cfn_export_dict
             alarm_export_dict = alarm.cfn_export_dict
@@ -258,12 +232,12 @@ HINT: Ensure that the monitoring.log_sets for the resource is enabled and that t
             template.add_resource(alarm_resource)
 
             # Alarm Output
-            output_ref = '.'.join([res_config_ref, 'monitoring', 'alarm_sets', alarm_set_id, alarm_id])
-            self.register_stack_output_config(output_ref, alarm.cfn_resource_name)
-            alarm_output = troposphere.Output(
-                alarm.cfn_resource_name,
-                Value=troposphere.Ref(alarm_resource)
+            output_ref = '.'.join([resource.paco_ref_parts, 'monitoring', 'alarm_sets', alarm_set_id, alarm_id])
+            self.create_output(
+                title=alarm.cfn_resource_name,
+                value=troposphere.Ref(alarm_resource),
+                ref=output_ref,
             )
-            template.add_output(alarm_output)
+
         return alarms_are_enabled
 

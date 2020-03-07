@@ -1,5 +1,5 @@
-Copyright, Trademarks, and Attributions
-=======================================
+Copyright and Attributions
+==========================
 
 *Paco*
 

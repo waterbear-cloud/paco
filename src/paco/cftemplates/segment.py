@@ -1,38 +1,22 @@
-import os
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
+from paco.stack.stack import StackOutputParam
 
-from paco.cftemplates.cftemplates import StackOutputParam
-from io import StringIO
-from enum import Enum
 
-class Segment(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 stack_order,
-                 env_ctx,
-                 segment_id,
-                 segment_config,
-                 segment_config_ref):
-
-        #paco_ctx.log("Segment CF Template init")
+class Segment(StackTemplate):
+    def __init__(
+      self,
+      stack,
+      paco_ctx,
+      env_ctx,
+    ):
+        segment_config = stack.resource
+        segment_config_ref = segment_config.paco_ref_parts
         self.env_ctx = env_ctx
-
-        # Super
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
-            enabled=segment_config.is_enabled(),
-            config_ref=segment_config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            stack_order=stack_order
         )
-        self.set_aws_name('Segments', segment_id)
+        self.set_aws_name('Segments', segment_config.name)
 
         vpc_stack = self.env_ctx.get_vpc_stack()
         availability_zones = self.env_ctx.availability_zones()

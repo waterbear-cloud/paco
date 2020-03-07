@@ -1,28 +1,21 @@
+from paco import utils
+from paco.cftemplates.cftemplates import StackTemplate
 import troposphere
 import troposphere.secretsmanager
 
-from paco import utils
-from paco.cftemplates.cftemplates import CFTemplate
 
-class SecretsManager(CFTemplate):
+class SecretsManager(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        secrets_config,
-        config_ref
     ):
+        secrets_config = stack.resource
+        config_ref = secrets_config.paco_ref_parts
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
-            config_ref=config_ref,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags
         )
         self.set_aws_name('SecretsManager')
         self.init_template('Secrets Manager')
@@ -54,19 +47,21 @@ class SecretsManager(CFTemplate):
                     self.template.add_resource(secret_resource)
 
                     # Secret resource Output
-                    secret_arn_output_logical_id = self.create_cfn_logical_id('Secret' + secret_hash + 'Arn')
-                    self.template.add_output(
-                        troposphere.Output(
-                            title=secret_arn_output_logical_id,
-                            Value=troposphere.Ref(secret_resource)
-                        )
-                    )
-                    self.register_stack_output_config(
-                        secret_config.paco_ref_parts + '.arn',
-                        secret_arn_output_logical_id
+                    self.create_output(
+                        title=self.create_cfn_logical_id('Secret' + secret_hash + 'Arn'),
+                        value=troposphere.Ref(secret_resource),
+                        ref=secret_config.paco_ref_parts + '.arn'
                     )
 
-        self.enabled = is_enabled
-        self.set_template(self.template.to_yaml())
+        self.set_enabled(is_enabled)
+
+    def warn_template_changes(self, deep_diff):
+        """Inform the user about changes to generate_secret_string making new secrets"""
+        for change in deep_diff.values():
+            for diff_level in change:
+                if 'GenerateSecretString' in diff_level.path():
+                    print("WARNING: About to change the generate_secret_string CloudFormation for Secret(s).")
+                    print("Applying this change will cause the existing Secret(s) to be re-generated!")
+                    return
 
 

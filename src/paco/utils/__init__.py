@@ -19,6 +19,15 @@ from functools import partial
 from hashlib import blake2b
 
 
+def get_support_resource_ref_ext(resource, support_resource):
+    """The reference extension of a supporting resource.
+    For example an instance IAM Role to suport an ASG:
+    netenv.mynet.dev.us-west-2.applications.app.groups.bastion.resources.asg.instance_iam_role
+    The .asg is the ASG resource and the .instance_iam_role is the supporting Role resource.
+    The return value would be "instance_iam_role".
+    """
+    return support_resource.paco_ref_parts[len(resource.paco_ref_parts) + 1:]
+
 def enhanced_input(
     prompt,
     default=None,
@@ -54,7 +63,7 @@ def enhanced_input(
         try_again = False
     return value
 
-def hash_smaller(text, max_len=99):
+def hash_smaller(text, max_len=99, suffix=False):
     "Return a string that is shorter than 100 chars by hashing the start"
     if len(text) <= max_len:
         return text
@@ -66,6 +75,9 @@ def hash_smaller(text, max_len=99):
     # hexdigest is twice length of the digest size
     # leave an extra char for a '-' seperator.
     hex_len = (max_len - 1) - (digest_size * 2)
+    # hash as suffix for resources which can be queried by prefix such as Event Rule
+    if suffix:
+        return text[:hex_len] + '-' + hash_sig
     return hash_sig + '-'  + text[-hex_len:]
 
 def md5sum(filename=None, str_data=None):
@@ -131,15 +143,20 @@ def prefixed_name(resource, name, legacy_flag):
     """Returns a name prefixed to be unique:
     e.g. netenv_name-env_name-app_name-group_name-resource_name-name"""
     str_list = []
-    # currently ony works for resources in an environment
+    # currently only works for resources in an environment
     if legacy_flag('netenv_loggroup_name_2019_10_13') == False:
-        netenv_name = get_parent_by_interface(resource, schemas.INetworkEnvironment).name
-        str_list.append(netenv_name)
-    env_name = get_parent_by_interface(resource, schemas.IEnvironment).name
+        netenv = get_parent_by_interface(resource, schemas.INetworkEnvironment)
+        if netenv != None:
+            str_list.append(netenv.name)
     app_name = get_parent_by_interface(resource, schemas.IApplication).name
     group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
 
-    str_list.extend([env_name, app_name, group_name, resource.name, name])
+    env = get_parent_by_interface(resource, schemas.IEnvironment)
+    # Services do not have an environment
+    if env != None:
+        str_list.extend([env.name, app_name, group_name, resource.name, name])
+    else:
+        str_list.extend([app_name, group_name, resource.name, name])
 
     return '-'.join(str_list)
 

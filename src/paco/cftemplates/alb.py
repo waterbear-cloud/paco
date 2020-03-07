@@ -1,76 +1,55 @@
-import os
-import troposphere
-import troposphere.elasticloadbalancingv2
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.cftemplates.cftemplates import StackOutputParam
 from paco.models.references import Reference, get_model_obj_from_ref
-from io import StringIO
-from enum import Enum
-from pprint import pprint
+import troposphere
+import troposphere.elasticloadbalancingv2
 
 
-class ALB(CFTemplate):
+class ALB(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
         env_ctx,
         app_id,
-        grp_id,
-        alb_config
     ):
+        alb_config = stack.resource
         self.env_ctx = env_ctx
         self.config_ref = alb_config.paco_ref_parts
         segment_stack = self.env_ctx.get_segment_stack(alb_config.segment)
-        super().__init__(
-            paco_ctx=paco_ctx,
-            account_ctx=account_ctx,
-            aws_region=aws_region,
-            enabled=alb_config.is_enabled(),
-            config_ref=alb_config.paco_ref_parts,
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            environment_name=self.env_ctx.env_id,
-            change_protected=alb_config.change_protected
-        )
-        self.set_aws_name('ALB', grp_id, alb_config.name)
+        super().__init__(stack, paco_ctx)
+        self.set_aws_name('ALB', self.resource_group_name, alb_config.name)
 
         # Init Troposphere template
         self.init_template('Application Load Balancer')
+        if not alb_config.is_enabled():
+            return self.set_template()
 
         # Parameters
         if alb_config.is_enabled():
             alb_enable = 'true'
         else:
             alb_enable = 'false'
+
         alb_is_enabled_param = self.create_cfn_parameter(
             param_type='String',
             name='ALBEnabled',
             description='Enable the ALB in this template',
-            value=alb_enable,
-            use_troposphere=True,
-            troposphere_template=self.template
+            value=alb_enable
         )
         vpc_stack = self.env_ctx.get_vpc_stack()
         vpc_param = self.create_cfn_parameter(
             param_type='String',
             name='VPC',
             description='VPC ID',
-            value=StackOutputParam('VPC', vpc_stack, 'VPC', self),
-            use_troposphere=True,
-            troposphere_template=self.template
+            value=StackOutputParam('VPC', vpc_stack, 'VPC', self)
         )
         alb_region = env_ctx.region
         alb_hosted_zone_id_param = self.create_cfn_parameter(
             param_type='String',
             name='ALBHostedZoneId',
             description='The Regonal AWS Route53 Hosted Zone ID',
-            value=self.lb_hosted_zone_id('alb', alb_region),
-            use_troposphere=True,
-            troposphere_template=self.template
+            value=self.lb_hosted_zone_id('alb', alb_region)
         )
 
         # 32 Characters max
@@ -80,7 +59,7 @@ class ALB(CFTemplate):
         #   - Add a hash?
         #   - Check for duplicates with validating template
         load_balancer_name = self.create_resource_name_join(
-            name_list=[self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, grp_id, alb_config.name],
+            name_list=[self.env_ctx.netenv_id, self.env_ctx.env_id, app_id, self.resource_group_name, alb_config.name],
             separator='',
             camel_case=True,
             filter_id='EC2.ElasticLoadBalancingV2.LoadBalancer.Name'
@@ -89,9 +68,7 @@ class ALB(CFTemplate):
             param_type='String',
             name='LoadBalancerName',
             description='The name of the load balancer',
-            value=load_balancer_name,
-            use_troposphere=True,
-            troposphere_template=self.template
+            value=load_balancer_name
         )
         scheme_param = self.create_cfn_parameter(
             param_type='String',
@@ -99,9 +76,7 @@ class ALB(CFTemplate):
             max_length=128,
             name='Scheme',
             description='Specify internal to create an internal load balancer with a DNS name that resolves to private IP addresses or internet-facing to create a load balancer with a publicly resolvable DNS name, which resolves to public IP addresses.',
-            value=alb_config.scheme,
-            use_troposphere=True,
-            troposphere_template=self.template
+            value=alb_config.scheme
         )
 
         # Segment SubnetList is a Segment stack Output based on availability zones
@@ -110,26 +85,20 @@ class ALB(CFTemplate):
             param_type='List<AWS::EC2::Subnet::Id>',
             name='SubnetList',
             description='A list of subnets where the ALBs instances will be provisioned',
-            value=StackOutputParam('SubnetList', segment_stack, subnet_list_key, self),
-            use_troposphere=True,
-            troposphere_template=self.template
+            value=StackOutputParam('SubnetList', segment_stack, subnet_list_key, self)
         )
         security_group_list_param = self.create_cfn_ref_list_param(
             param_type='List<AWS::EC2::SecurityGroup::Id>',
             name='SecurityGroupList',
             description='A List of security groups to attach to the ALB',
             value=alb_config.security_groups,
-            ref_attribute='id',
-            use_troposphere=True,
-            troposphere_template=self.template
+            ref_attribute='id'
         )
         idle_timeout_param = self.create_cfn_parameter(
             param_type='String',
             name='IdleTimeoutSecs',
             description='The idle timeout value, in seconds.',
-            value=alb_config.idle_timeout_secs,
-            use_troposphere=True,
-            troposphere_template=self.template
+            value=alb_config.idle_timeout_secs
         )
 
         # Conditions
@@ -208,29 +177,26 @@ class ALB(CFTemplate):
             self.template.add_resource(target_group_resource)
 
             # Target Group Outputs
-            target_group_arn_output = troposphere.Output(
-                title='TargetGroupArn' + target_group_id,
-                Value=troposphere.Ref(target_group_resource)
-            )
-            self.template.add_output(target_group_arn_output)
             target_group_ref = '.'.join([alb_config.paco_ref_parts, 'target_groups', target_group_name])
             target_group_arn_ref = '.'.join([target_group_ref, 'arn'])
-            self.register_stack_output_config(target_group_arn_ref, 'TargetGroupArn' + target_group_id)
-
-            target_group_name_output = troposphere.Output(
-                title='TargetGroupName' + target_group_id,
-                Value=troposphere.GetAtt(target_group_resource, 'TargetGroupName')
+            self.create_output(
+                title='TargetGroupArn' + target_group_id,
+                value=troposphere.Ref(target_group_resource),
+                ref=target_group_arn_ref
             )
-            self.template.add_output(target_group_name_output)
+
             target_group_name_ref = '.'.join([target_group_ref, 'name'])
-            self.register_stack_output_config(target_group_name_ref, 'TargetGroupName' + target_group_id)
-
-            target_group_fullname_output = troposphere.Output(
-                title='TargetGroupFullName' + target_group_id,
-                Value=troposphere.GetAtt(target_group_resource, 'TargetGroupFullName')
+            self.create_output(
+                title='TargetGroupName' + target_group_id,
+                value=troposphere.GetAtt(target_group_resource, 'TargetGroupName'),
+                ref=target_group_name_ref
             )
-            self.template.add_output(target_group_fullname_output)
-            self.register_stack_output_config(target_group_ref + '.fullname', 'TargetGroupFullName' + target_group_id)
+
+            self.create_output(
+                title='TargetGroupFullName' + target_group_id,
+                value=troposphere.GetAtt(target_group_resource, 'TargetGroupFullName'),
+                ref=target_group_ref + '.fullname'
+            )
 
         # Listeners
         for listener_name, listener in alb_config.listeners.items():
@@ -250,7 +216,7 @@ class ALB(CFTemplate):
             else:
                 action = {
                     'Type': 'forward',
-                    'TargetGroupArn': troposphere.Ref('TargetGroup' + listener.target_group)
+                    'TargetGroupArn': troposphere.Ref('TargetGroup' + rule.target_group)
                 }
             cfn_export_dict['DefaultActions'] = [action]
             cfn_export_dict['LoadBalancerArn'] = troposphere.Ref(alb_resource)
@@ -264,20 +230,18 @@ class ALB(CFTemplate):
                         param_type='String',
                         name='SSLCertificateIdL%sC%d' % (listener_name, ssl_cert_idx),
                         description='The Arn of the SSL Certificate to associate with this Load Balancer',
-                        value=listener.ssl_certificates[ssl_cert_idx] + ".arn",
-                        use_troposphere=True,
-                        troposphere_template=self.template
+                        value=listener.ssl_certificates[ssl_cert_idx] + ".arn"
                     )
                     if ssl_cert_idx == 0:
                         cfn_export_dict['Certificates'] = [ {
                             'CertificateArn': troposphere.Ref(ssl_cert_param)
                         } ]
-                    ssl_cert_param_obj_list.append(
-                        troposphere.elasticloadbalancingv2.Certificate(
-                            CertificateArn=troposphere.Ref(ssl_cert_param)
+                    else:
+                        ssl_cert_param_obj_list.append(
+                            troposphere.elasticloadbalancingv2.Certificate(
+                                CertificateArn=troposphere.Ref(ssl_cert_param)
+                            )
                         )
-                    )
-
 
             listener_resource = troposphere.elasticloadbalancingv2.Listener.from_dict(
                 logical_listener_name,
@@ -302,17 +266,28 @@ class ALB(CFTemplate):
                     logical_rule_name = self.create_cfn_logical_id(rule_name)
                     cfn_export_dict = {}
                     if rule.rule_type == "forward":
+                        logical_target_group_id = self.create_cfn_logical_id('TargetGroup' + rule.target_group)
                         cfn_export_dict['Actions'] = [
-                            {'Type': 'forward', 'TargetGroupArn': troposphere.Ref('TargetGroup' + rule.target_group) }
+                            {'Type': 'forward', 'TargetGroupArn': troposphere.Ref(logical_target_group_id) }
                         ]
+                        if rule.host != None:
+                            field = 'host-header'
+                            rule_values = [rule.host]
+                        elif len(rule.path_pattern) > 0:
+                            field = 'path-pattern'
+                            rule_values = rule.path_pattern
                     elif rule.rule_type == "redirect":
                         cfn_export_dict['Actions'] = [
                             {'Type': 'redirect', 'RedirectConfig': {'Host': rule.redirect_host, 'StatusCode': 'HTTP_301'} }
                         ]
-                    cfn_export_dict['ListenerArn'] = troposphere.Ref(logical_listener_name)
+                        field = 'host-header'
+                        rule_values = [rule.host]
+
                     cfn_export_dict['Conditions'] = [
-                        {'Field': 'host-header', 'Values': [rule.host] }
+                        {'Field': field, 'Values': rule_values }
                     ]
+
+                    cfn_export_dict['ListenerArn'] = troposphere.Ref(logical_listener_name)
                     cfn_export_dict['Priority'] = rule.priority
                     logical_listener_rule_name = self.create_cfn_logical_id_join(
                         str_list=[logical_listener_name, 'Rule', logical_rule_name]
@@ -332,9 +307,7 @@ class ALB(CFTemplate):
                     hosted_zone_param = self.create_cfn_parameter(
                         param_type='String',
                         name='HostedZoneID%d' % (record_set_index),
-                        value=alb_dns.hosted_zone+'.id',
-                        use_troposphere=True,
-                        troposphere_template=self.template
+                        value=alb_dns.hosted_zone+'.id'
                     )
                     cfn_export_dict = {}
                     cfn_export_dict['HostedZoneId'] = troposphere.Ref(hosted_zone_param)
@@ -353,44 +326,31 @@ class ALB(CFTemplate):
                     record_set_index += 1
 
         if self.enabled == True:
-            self.template.add_output(
-                troposphere.Output(
-                    title='LoadBalancerArn',
-                    Value=troposphere.Ref(alb_resource)
-                )
+            self.create_output(
+                title='LoadBalancerArn',
+                value=troposphere.Ref(alb_resource),
+                ref=alb_config.paco_ref_parts + '.arn'
             )
-            self.register_stack_output_config(alb_config.paco_ref_parts + '.arn', 'LoadBalancerArn')
-            self.template.add_output(
-                troposphere.Output(
-                    title='LoadBalancerName',
-                    Value=troposphere.GetAtt(alb_resource, 'LoadBalancerName')
-                )
+            self.create_output(
+                title='LoadBalancerName',
+                value=troposphere.GetAtt(alb_resource, 'LoadBalancerName'),
+                ref=alb_config.paco_ref_parts + '.name'
             )
-            self.register_stack_output_config(alb_config.paco_ref_parts + '.name', 'LoadBalancerName')
-            self.template.add_output(
-                troposphere.Output(
-                    title='LoadBalancerFullName',
-                    Value=troposphere.GetAtt(alb_resource, 'LoadBalancerFullName')
-                )
+            self.create_output(
+                title='LoadBalancerFullName',
+                value=troposphere.GetAtt(alb_resource, 'LoadBalancerFullName'),
+                ref=alb_config.paco_ref_parts + '.fullname'
             )
-            self.register_stack_output_config(alb_config.paco_ref_parts + '.fullname', 'LoadBalancerFullName')
-            self.template.add_output(
-                troposphere.Output(
-                    title='LoadBalancerCanonicalHostedZoneID',
-                    Value=troposphere.GetAtt(alb_resource, 'CanonicalHostedZoneID')
-                )
+            self.create_output(
+                title='LoadBalancerCanonicalHostedZoneID',
+                value=troposphere.GetAtt(alb_resource, 'CanonicalHostedZoneID'),
+                ref=alb_config.paco_ref_parts + '.canonicalhostedzoneid'
             )
-
-            self.register_stack_output_config(alb_config.paco_ref_parts + '.canonicalhostedzoneid', 'LoadBalancerCanonicalHostedZoneID')
-            self.template.add_output(
-                troposphere.Output(
-                    title='LoadBalancerDNSName',
-                    Value=troposphere.GetAtt(alb_resource, 'DNSName')
-                )
+            self.create_output(
+                title='LoadBalancerDNSName',
+                value=troposphere.GetAtt(alb_resource, 'DNSName'),
+                ref=alb_config.paco_ref_parts + '.dnsname',
             )
-            self.register_stack_output_config(alb_config.paco_ref_parts + '.dnsname', 'LoadBalancerDNSName')
-
-            self.set_template(self.template.to_yaml())
 
             if self.paco_ctx.legacy_flag('route53_record_set_2019_10_16') == False:
                 route53_ctl = self.paco_ctx.get_controller('route53')
@@ -403,11 +363,14 @@ class ALB(CFTemplate):
                         route53_ctl.add_record_set(
                             account_ctx,
                             self.aws_region,
+                            alb_config,
                             enabled=alb_config.is_enabled(),
                             dns=alb_dns,
                             record_set_type='Alias',
                             alias_dns_name=alias_dns_ref,
                             alias_hosted_zone_id=alias_hosted_zone_ref,
-                            stack_group=self.stack_group,
+                            stack_group=self.stack.stack_group,
                             config_ref=alb_config.paco_ref_parts + '.dns'
                         )
+
+

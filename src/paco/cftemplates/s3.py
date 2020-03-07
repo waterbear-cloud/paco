@@ -3,28 +3,23 @@ import os
 import troposphere
 import troposphere.cloudfront
 import troposphere.s3
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.models import schemas
 from awacs.aws import Action, Allow, Statement, Policy, Principal, Condition, StringEquals
 from io import StringIO
 from enum import Enum
 
 
-class S3(CFTemplate):
+class S3(StackTemplate):
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        stack_hooks,
         bucket_context,
         bucket_policy_only,
-        config_ref,
-        change_protected
     ):
         bucket = bucket_context['config']
+        config_ref = bucket.paco_ref_parts
 
         # Application Group
         aws_name_list = []
@@ -44,16 +39,10 @@ class S3(CFTemplate):
             aws_name_list.append('policy')
 
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
             enabled=bucket_context['config'].is_enabled(),
-            config_ref=config_ref,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            stack_hooks=stack_hooks,
-            change_protected=change_protected
         )
         self.set_aws_name('S3', aws_name_list)
         self.s3_context_id = config_ref
@@ -81,14 +70,12 @@ class S3(CFTemplate):
                         param_name = self.create_cfn_logical_id('LambdaNotif' + lambda_notif.function[9:])
                         if param_name not in params:
                             lambda_arn_param = self.create_cfn_parameter(
-                                name = param_name,
-                                param_type = 'String',
-                                description = 'Lambda ARN parameter.',
-                                value = lambda_notif.function + '.arn',
-                                use_troposphere = True
+                                name=param_name,
+                                param_type='String',
+                                description='Lambda ARN parameter.',
+                                value=lambda_notif.function + '.arn',
                             )
                             params[param_name] = lambda_arn_param
-                            template.add_parameter(lambda_arn_param)
                         lambda_notifs.append({
                             'Event': lambda_notif.event,
                             'Function': troposphere.Ref(param_name)
@@ -98,14 +85,13 @@ class S3(CFTemplate):
             s3_resource = troposphere.s3.Bucket.from_dict(s3_logical_id, cfn_export_dict)
             s3_resource.DeletionPolicy = 'Retain' # We always retain. Bucket cleanup is handled by Stack hooks.
             template.add_resource(s3_resource)
-            bucket_name_output_id = s3_logical_id + 'Name'
-            template.add_output(
-                troposphere.Output(
-                    bucket_name_output_id,
-                    Value=troposphere.Ref(s3_resource)
-                )
+
+            # Output
+            self.create_output(
+                title=s3_logical_id + 'Name',
+                value=troposphere.Ref(s3_resource),
+                ref=config_ref + '.name'
             )
-            self.register_stack_output_config(config_ref + '.name', bucket_name_output_id)
 
         # Bucket Policy
         policy_statements = []
@@ -150,13 +136,11 @@ class S3(CFTemplate):
             #template.add_resource(bucket_policy_resource)
 
             # Output CloudFrontOriginAccessIdentity
-            template.add_output(
-                troposphere.Output(
-                    'CloudFrontOriginAccessIdentity',
-                    Value=troposphere.Ref(cloudfront_origin_resource)
-                )
+            self.create_output(
+                title='CloudFrontOriginAccessIdentity',
+                value=troposphere.Ref(cloudfront_origin_resource),
+                ref=config_ref + '.origin_id',
             )
-            self.register_stack_output_config(config_ref + '.origin_id', 'CloudFrontOriginAccessIdentity')
 
         if len(bucket.policy) > 0:
             # Bucket Policy
@@ -231,7 +215,7 @@ class S3(CFTemplate):
             bucket_policy_resource.DependsOn = depends_on
 
         # Generate the Template
-        self.set_template(template.to_yaml())
+        self.set_template()
 
 
     def delete(self):

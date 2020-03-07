@@ -3,7 +3,7 @@ import os, sys, time
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
 from paco.controllers.controllers import Controller
-from paco.stack_group import StackHooks
+from paco.stack import StackHooks
 from paco.stack_grps.grp_account import AccountStackGroup
 from paco.models import loader
 from botocore.exceptions import ClientError
@@ -101,7 +101,7 @@ class AccountController(Controller):
 
     def init_accounts_yaml(self):
         """Process master account file and and create child account YAML files for the organization_account_ids
-        field, if the child account YAML does not already exist."""
+field, if the child account YAML does not already exist."""
         for org_account_id in self.master_account_config.organization_account_ids:
             # If account YAML already exists then skip it
             if org_account_id in self.paco_ctx.project['accounts'].keys():
@@ -142,16 +142,18 @@ class AccountController(Controller):
                     yaml.dump(data=account_config, stream=stream)
 
     def init_organization_stack_groups(self):
-        # Next we process the Master account's organization accounts
+        "Process the Master account's organization accounts"
         for org_account_id in self.master_account_config.organization_account_ids:
             org_account_ctx = self.paco_ctx.get_account_context(account_name=org_account_id)
             org_account_config = self.paco_ctx.project['accounts'][org_account_id]
-            stack_group = AccountStackGroup(self.paco_ctx,
-                                            org_account_ctx,
-                                            org_account_id,
-                                            org_account_config,
-                                            stack_hooks=None,
-                                            controller=self)
+            stack_group = AccountStackGroup(
+                self.paco_ctx,
+                org_account_ctx,
+                org_account_id,
+                org_account_config,
+                stack_hooks=None,
+                controller=self
+            )
             self.org_stack_group_list.append(stack_group)
             stack_group.init()
 

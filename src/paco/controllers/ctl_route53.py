@@ -1,20 +1,22 @@
-import os
 from paco.stack_grps.grp_route53 import Route53StackGroup
-from paco.stack_group import StackGroup
+from paco.stack import StackGroup
 from paco.cftemplates import Route53RecordSet
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
 from paco.controllers.controllers import Controller
+import os
+
 
 class Route53RecordSetStackGroup(StackGroup):
     def __init__(self, paco_ctx, account_ctx, controller):
         aws_name = account_ctx.get_name()
-        super().__init__(paco_ctx,
-                         account_ctx,
-                         'Route53',
-                         aws_name,
-                         controller)
-
+        super().__init__(
+            paco_ctx,
+            account_ctx,
+            'Route53',
+            aws_name,
+            controller
+        )
         # Initialize config with a deepcopy of the project defaults
         self.account_ctx = account_ctx
         self.stack_list = []
@@ -25,20 +27,17 @@ class Route53Controller(Controller):
             controller_type = 'Service'
         else:
             controller_type = 'Resource'
-
-        super().__init__(paco_ctx,
-                         controller_type,
-                         "Route53")
-
+        super().__init__(
+            paco_ctx,
+            controller_type,
+            "Route53"
+        )
         if not 'route53' in self.paco_ctx.project['resource'].keys():
             self.init_done = True
             return
         self.config = self.paco_ctx.project['resource']['route53']
         if self.config != None:
             self.config.resolve_ref_obj = self
-
-        #self.paco_ctx.log("Route53 Service: Configuration: %s" % (name))
-
         self.stack_grps = []
         self.second = False
         self.init_done = False
@@ -59,49 +58,45 @@ class Route53Controller(Controller):
         self.second = True
         for account_name in self.config.get_hosted_zones_account_names():
             account_ctx = self.paco_ctx.get_account_context(account_name=account_name)
-            route53_stack_grp = Route53StackGroup(self.paco_ctx,
-                                                  account_ctx,
-                                                  self.config,
-                                                  self)
+            route53_stack_grp = Route53StackGroup(
+                self.paco_ctx,
+                account_ctx,
+                self.config,
+                self
+            )
             self.stack_grps.append(route53_stack_grp)
 
-    def add_record_set(self,
+    def add_record_set(
+        self,
         account_ctx,
         region,
+        resource,
         dns,
         record_set_type,
-        enabled = True,
-        resource_records = None,
-        alias_dns_name = None,
-        alias_hosted_zone_id = None,
-        stack_group = None,
-        config_ref = None):
-
+        enabled=True,
+        resource_records=None,
+        alias_dns_name=None,
+        alias_hosted_zone_id=None,
+        stack_group=None,
+        config_ref=None
+    ):
         record_set_config = {
             'enabled' : enabled,
-            'change_protected': False,
             'dns': dns,
             'alias_dns_name': alias_dns_name,
             'alias_hosted_zone_id': alias_hosted_zone_id,
             'record_set_type': record_set_type,
             'resource_records': resource_records
         }
-        #config_ref = 'route53.record_set.dns.domain_name'
         record_set_stack_group = Route53RecordSetStackGroup(
             self.paco_ctx, account_ctx, self
         )
-        Route53RecordSet(
-            self.paco_ctx,
-            account_ctx,
+        record_set_stack_group.add_new_stack(
             region,
-            record_set_stack_group, # stack_group
-            None, # stack_tags
-
-            dns.domain_name,
-            record_set_config,
-            config_ref
+            resource,
+            Route53RecordSet,
+            extra_context={'record_set_config': record_set_config, 'record_set_name': dns.domain_name}
         )
-        stack_group.add_stack_group(record_set_stack_group)
 
     def validate(self):
         for stack_grp in self.stack_grps:

@@ -1,10 +1,163 @@
 Changelog for Paco
 ==================
 
-3.5.5 (unreleased)
+6.0.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Fixed
+
+- Removed ``{{['.gitignore']|join}}`` cookiecutter file that crept back in that breaks install on
+  filesystems that do not allow the | character.
+
+
+6.0.0 (2020-03-06)
+------------------
+
+### Breaking
+
+- Consolidated the Paco work directories into a single ``.paco-work`` directory.
+  Documented them on a new Paco Internals doc page. To migrate an existing Paco project
+  to this new structure:
+
+      cd <my-paco-project>
+      git mv aimdata .paco-work
+      git mv Outputs .paco-work/outputs
+      git mv build .paco-work/build
+
+  Those commands assume you are using git to manage a Paco project. If you are, also update your ``.gitignore``
+  file to ignore .paco-work/build.
+
+- The IAM Roles for BackupVault had inconsistently named CloudFormation stacks ("BackupVaults--Backup").
+  A new IAM Role will be created in a new stack. The old stack will remain but it can be safely deleted.
+
+  There will be a stack UPDATE to the BackupVaults. Each AWS::Backup::BackupSelection resource will
+  have "Selection: " prefixed on the SelectionName, this will replace the old BackupSelection resources
+  with new ones using the new Role. The AWS CloudFormation documentation states that a BackupSelection's
+  SelectionName is a display name only, but this is incorrect.
+
+- Removed the ``Resource/NotificationGroups.yaml`` filename alias. This file is now only loaded using
+  the filename ``resoruce/snstopics.yaml``.
+
+- EventsRule type target field changed from a list of Targets to a list of IEventTarget objects. This allows
+  the ability to specify other information with the target such as the input_json field. Old was:
+
+    type: EventsRule
+    targets:
+      - paco.ref some.ref
+
+  The new format is:
+
+    type: EventsRule
+    targets:
+      - target: paco.ref some.ref
+        input_json: '{"cat":"dog"}'
+
+### Added
+
+- DeploymentPipeline can now use GitHub.Source as a source.
+
+- Integrated the Parliment library to lint/validate the IAM Policies used for all Roles.
+  https://github.com/duo-labs/parliament
+
+
+5.1.1 (2020-02-19)
+------------------
+
+### Fixed
+
+- Fixed security_group field for ElasticsearchDomain.
+
+
+5.1.0 (2020-02-19)
+------------------
+
+### Added
+
+- Ability to enforce that you need to be on a specific git branch to change a specific environment.
+  Documentation for this was added to a new Paco Workflows page.
+
+## Fixed
+
+- Added proper names to Elasticsearch output refs.
+
+5.0.1 (2020-02-17)
+------------------
+
+### Added
+
+- ASG has new field desirec_capacity_ignore_changes that can be set.
+
+### Fixed
+
+- If ignore_changes was set for a CloudFormation Parameter it was breaking the Confirm Changes CLI.
+
+
+5.0.0 (2020-02-17)
+------------------
+
+### Breaking
+
+- Breaking: Lamdba now creates it's Log Group in the CloudFormation. It also allows for additional
+  app-specific Log Groups. Lambda's execution role now restricts Log Group permissions to just the
+  Log Groups it needs.
+
+  If you have existing Lambdas, you will need to delete the Log Group and then re-provision the
+  Lambda (and ensrue the Lambda isn't invoked after the Log Group is deleted or it will re-create it).
+  This will allow the Lambda Log Groups to be under CloudFormation state.
+
+### Added
+
+- ServiceLinkedRoles for IAM. New IAM controller method ``add_service_linked_role`` which can be
+  used to add a SerivceLinkedRole.
+
+- ElasticsearchDomain resource.
+
+- Ability for a template Parameter to ignore_changes. If this is True then the Parameter will not
+  be changed during stack updates.
+
+- ASG has a new instance_ami_ignore_changes field which will mark the InstanceAMI Parameter with
+  ignore_changes.
+
+- EventRules can be in the State=ENABLED or State=DISABLED set by the ``enabled_state`` boolean field.
+
+### Changed
+
+- EventsRules are named with a random suffix instead of a prefix. This makes it easier to
+  use the --name-prefix option for list-rules in the AWS CLI and API.
+
+- New CFTemplate.create_output created that makes creating and registering outputs easier.
+
+4.0.0 (2020-02-05)
+------------------
+
+### Breaking
+
+- Breaking: This will change the secrets for any secret that was created by ``generate_secret_string``.
+  Completed full implementation of ``secrets.generate_secret_string``, every property in the CloudFormation
+  resource is represented so that expressing defaults won't trigger new secret created.
+
+### Added
+
+- New ``warn_template_changes`` method for CFTemplate. This is a hook that allows
+  templates to print a warning about potential unintended side-effects of the change.
+  The SecretsManager template is the first to implement this warning hook.
+
+### Docs
+
+- Improved Getting Started documentation and "paco init project" CLI messages.
+
+3.5.5 (2020-01-29)
+------------------
+
+### Fixed
+
+- EFS resource can be in a disabled state.
+
+- EIP resource will be removed when disabled.
+
+- ALB resource properly removes ALB when disabled.
+
+- ASG resource is properly disabled.
 
 
 3.5.4 (2020-01-21)

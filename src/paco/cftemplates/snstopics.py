@@ -5,61 +5,56 @@ CloudFormation template for SNS Topics
 import awacs.sns
 import troposphere
 import troposphere.sns
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.models import references
+from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
-from paco.models.references import Reference
 from awacs.aws import Allow, Policy, Statement, Principal, Condition, StringEquals
 
-class SNSTopics(CFTemplate):
+
+class SNSTopics(StackTemplate):
     """
     CloudFormation template for SNS Topics
     """
     def __init__(
         self,
+        stack,
         paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        grp_id,
-        res_id,
-        config,
-        res_config_ref
+        grp_id=None,
     ):
         enabled_topics = False
-        for topic in config:
-            if topic.is_enabled():
-                enabled_topics = True
+        config = stack.resource
+        # this template is used as both SNSTopics by global resources and a
+        # single SNSTopic for an application resource.
+        if grp_id == None:
+            topics = [stack.resource]
+            enabled_topics = stack.resource.is_enabled()
+        else:
+            topics = config.values()
+            for topic in topics:
+                if topic.is_enabled():
+                    enabled_topics = True
 
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
-            config_ref=res_config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags,
             enabled=enabled_topics,
         )
-        self.set_aws_name('SNSTopics', grp_id, res_id)
-        self.config = config
+
+        if grp_id == None:
+            self.set_aws_name('SNSTopics', self.resource_group_name, self.resource_name)
+        else:
+            self.set_aws_name('SNSTopics', grp_id)
 
         # Troposphere Template Initialization
-        template = troposphere.Template(
-            Description = 'SNS Topics',
-        )
-        template.set_version()
-        template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
-        )
+        self.init_template('SNS Topics')
+        template = self.template
 
         # Topic Resources and Outputs
-        any_topic_enabled = False
         topics_ref_cross_list = []
-        for topic in self.config:
+        for topic in topics:
             if not topic.is_enabled():
                 continue
-            any_topic_enabled = True
             topic_logical_id = self.create_cfn_logical_id(topic.name)
 
             # Do not specify a TopicName, as then updates cannot be performed that require
@@ -80,9 +75,7 @@ class SNSTopics(CFTemplate):
                         name = param_name,
                         description = 'SNSTopic Endpoint value',
                         value = subscription.endpoint,
-                        use_troposphere = True
                     )
-                    template.add_parameter(parameter)
                     endpoint = parameter
                 else:
                     endpoint = subscription.endpoint
@@ -100,20 +93,20 @@ class SNSTopics(CFTemplate):
             template.add_resource(topic_resource)
 
             # Topic Outputs
-            output_ref = '.'.join([res_config_ref, topic.name])
-            topic_output_arn = troposphere.Output(
-                'SNSTopicArn' + topic_logical_id,
-                Value=troposphere.Ref(topic_resource)
+            if grp_id == None:
+                output_ref = stack.resource.paco_ref_parts
+            else:
+                output_ref = '.'.join([stack.resource.paco_ref_parts, topic.name])
+            self.create_output(
+                title='SNSTopicArn' + topic_logical_id,
+                value=troposphere.Ref(topic_resource),
+                ref=output_ref + '.arn'
             )
-            template.add_output(topic_output_arn)
-            self.register_stack_output_config(output_ref + '.arn', 'SNSTopicArn' + topic_logical_id)
-            topic_output_name = troposphere.Output(
-                'SNSTopicName' + topic_logical_id,
-                Value=troposphere.GetAtt(topic_resource, "TopicName")
+            self.create_output(
+                title='SNSTopicName' + topic_logical_id,
+                value=troposphere.GetAtt(topic_resource, "TopicName"),
+                ref=output_ref + '.name',
             )
-            template.add_output(topic_output_name)
-            self.register_stack_output_config(output_ref + '.name', 'SNSTopicName' + topic_logical_id)
-
 
         # Cross-account access policy
         if len(topics_ref_cross_list) > 0:
@@ -142,8 +135,3 @@ class SNSTopics(CFTemplate):
                 )
             )
             template.add_resource(topic_policy_resource)
-
-        self.enabled = any_topic_enabled
-
-        # Generate the Template
-        self.set_template(template.to_yaml())

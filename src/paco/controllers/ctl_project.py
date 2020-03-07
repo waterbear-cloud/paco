@@ -8,7 +8,6 @@ import time
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
 from paco.controllers.controllers import Controller
-from paco.stack_grps.grp_account import AccountStackGroup
 from paco.models import loader, vocabulary
 from paco.core.yaml import YAML
 from paco.utils import enhanced_input
@@ -100,7 +99,18 @@ class ProjectController(Controller):
         if pathlib.Path(self.paco_ctx.home).exists():
             print("Directory at {} already exists.\n".format(self.paco_ctx.home))
         else:
-            print("About to create a new Paco project directory at %s\n" % self.paco_ctx.home)
+            print("A Paco project is a directory of YAML files that describes a cloud architecture,")
+            print("it's configuration and automation.\n")
+            print("This command will create a new ready-to-run Paco project. Choose a starter project,")
+            print("answer some quesetions and a new Paco project directory will be created at:\n")
+            print("%s\n" % self.paco_ctx.home)
+            print("Important: You will be asked to supply names. These should be short and alphanumeric only.")
+            print("Paco uses these names when creating cloud resources. After you provision resources")
+            print("with Paco it is not possible to change these names. You may also be asked for titles,")
+            print("these can contain any characters and can be freely changed. They are used as internal comments")
+            print("to help you organize your networks, applications and environments.")
+            print()
+            print("(Press Ctrl-D to abort)\n")
             name = self.choose_template(starting_templates)
             packagename = starting_templates[name][0]
             allowed_key_list = []
@@ -152,8 +162,15 @@ class ProjectController(Controller):
             fh = open(self.paco_ctx.home + os.sep + '.gitignore', 'w')
             fh.write(".credentials.yaml\n")
             fh.write(".credentials.yml\n")
-            fh.write("build/\n")
+            fh.write(".paco-work/build/\n")
             fh.close()
+
+            print("\n\nPaco project created at:\n")
+            print("%s\n" % self.paco_ctx.home)
+            print("It is recommended to export the PACO_HOME environment variable to tell Paco")
+            print("where your active Paco project is located, although you can also use the")
+            print("`paco --home=/your/path` flag. Consider adding this to your BASH profile.\n")
+            print("export PACO_HOME=%s\n" % self.paco_ctx.home)
 
 
     def init_credentials(self, force=False):
@@ -170,10 +187,10 @@ class ProjectController(Controller):
         master = self.paco_ctx.project['accounts']['master']
         self.credentials['aws_default_region'] = master.region
         self.credentials['master_account_id'] = master.account_id
-        self.credentials['master_admin_iam_username'] = enhanced_input("master_admin_iam_username")
-        self.credentials['admin_iam_role_name'] = enhanced_input("admin_iam_role_name")
-        self.credentials['aws_access_key_id'] = enhanced_input("aws_access_key_id")
-        self.credentials['aws_secret_access_key']  = enhanced_input("aws_secret_access_key")
+        self.credentials['master_admin_iam_username'] = enhanced_input("Paco Admin Username", default='paco-admin')
+        self.credentials['admin_iam_role_name'] = 'Paco-Admin-Delegate-Role'
+        self.credentials['aws_access_key_id'] = enhanced_input("AWS Access Key")
+        self.credentials['aws_secret_access_key']  = enhanced_input("AWS Secret Key")
         self.credentials['mfa_session_expiry_secs'] = 43200
         self.credentials['assume_role_session_expiry_secs'] = 3600
 
@@ -188,6 +205,14 @@ class ProjectController(Controller):
                 stream=output_fd
             )
         os.chmod(self.credentials_path, stat.S_IRUSR)
+
+        print("Paco credentials file created at:\n")
+        print( "%s\n" % self.credentials_path)
+        print("It is NOT recommended to store this file in version control.")
+        print("Paco starter project include a .gitignore file to prevent this.")
+        print("You can store this file in a secrets mananger or re-create it again")
+        print("by generating a new AWS Api Key for the Paco Admin User and re-running")
+        print("this 'paco init credentials' command.\n")
 
     def init_accounts(self):
         "Initialize Accounts"

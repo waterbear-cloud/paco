@@ -1,4 +1,6 @@
-from paco.stack_group import StackEnum, StackOrder, Stack, StackGroup, StackTags
+from paco.models import schemas
+from paco.models.locations import get_parent_by_interface
+from paco.stack import StackOrder, Stack, StackGroup, StackTags
 import paco.cftemplates
 
 
@@ -19,7 +21,6 @@ class BackupVaultsStackGroup(StackGroup):
             env_ctx
         )
         self.env_ctx = env_ctx
-        self.config_ref_prefix = self.env_ctx.config_ref_prefix
         self.region = self.env_ctx.region
         self.config = config
         self.config.resolve_ref_obj = self
@@ -33,6 +34,9 @@ class BackupVaultsStackGroup(StackGroup):
     def create_iam_role(self):
         "Backup service Role"
         # if at least one vault is enabled, create an IAM Role
+        # BackupVault will create one IAM Role for each NetworkEnvironment/Environment combination,
+        # this way a netenv/env can be created, have it's own Role, then a different netenv/env with a second Role
+        # if the first netenv/env is deleted, the second one will not be impacted.
         vaults_enabled = False
         for vault in self.config.values():
             if vault.is_enabled():
@@ -40,35 +44,29 @@ class BackupVaultsStackGroup(StackGroup):
         if not vaults_enabled:
             return None
 
-        role_name = "BackupService"
+        netenv = get_parent_by_interface(self.config, schemas.INetworkEnvironment)
+        iam_role_id = 'Backup-{}-{}'.format(netenv.name, self.env_ctx.env_id)
         policy_arns = [
             'arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup',
             'arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores'
         ]
-
         role_dict = {
             'enabled': True,
             'path': '/',
-            'role_name': role_name,
+            'role_name': iam_role_id,
             'managed_policy_arns': policy_arns,
             'assume_role_policy': {'effect': 'Allow', 'service': ['backup.amazonaws.com']}
         }
-        role = paco.models.iam.Role(role_name, self.config)
+        role = paco.models.iam.Role(iam_role_id, self.config)
         role.apply_config(role_dict)
 
-        iam_role_ref = self.config.paco_ref_parts + '.' + role_name
-        iam_role_id = 'Backup-' + self.env_ctx.env_id + '-' + role_name
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_role(
-            paco_ctx=self.paco_ctx,
-            account_ctx=self.account_ctx,
             region=self.env_ctx.region,
-            group_id='',
-            role_id=iam_role_id,
-            role_ref=iam_role_ref,
-            role_config=role,
+            resource=self.config,
+            role=role,
+            iam_role_id=iam_role_id,
             stack_group=self,
-            template_params=None,
             stack_tags=StackTags(self.stack_tags)
         )
         return role
@@ -78,15 +76,11 @@ class BackupVaultsStackGroup(StackGroup):
         role = self.create_iam_role()
         for backup_vault in self.config.values():
             backup_vault.resolve_ref_obj = self
-            backup_vault_template = paco.cftemplates.BackupVault(
-                self.paco_ctx,
-                self.account_ctx,
+            stack = self.add_new_stack(
                 self.region,
-                self, # stack_group
-                StackTags(self.stack_tags),
                 backup_vault,
-                role
+                paco.cftemplates.BackupVault,
+                stack_tags=StackTags(self.stack_tags),
+                extra_context={'role': role}
             )
-            self.stack_list.append(
-                backup_vault_template.stack
-            )
+            self.stack_list.append(stack)

@@ -1,56 +1,28 @@
-import base64
-import os
+from paco import utils
+from paco.cftemplates.cftemplates import StackTemplate
+from paco.models.references import Reference, is_ref, resolve_ref
 import troposphere
 import troposphere.cloudfront
 import troposphere.route53
 
-from paco import utils
-from paco.cftemplates.cftemplates import CFTemplate
-from paco.models.references import Reference, is_ref, resolve_ref
-from enum import Enum
-from io import StringIO
 
-class CloudFront(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 app_id,
-                 grp_id,
-                 res_id,
-                 factory_name,
-                 cloudfront_config,
-                 config_ref):
-
-        # Super Init:
-        super().__init__(paco_ctx,
-                         account_ctx,
-                         aws_region,
-                         enabled=cloudfront_config.is_enabled(),
-                         config_ref=config_ref,
-                         stack_group=stack_group,
-                         stack_tags=stack_tags,
-                         change_protected=cloudfront_config.change_protected)
-        self.set_aws_name('CloudFront', grp_id, res_id, factory_name)
+class CloudFront(StackTemplate):
+    def __init__(self, stack, paco_ctx, factory_name):
+        cloudfront_config = stack.resource
+        config_ref = stack.stack_ref
+        super().__init__(stack, paco_ctx)
+        self.set_aws_name('CloudFront', self.resource_group_name, self.resource_name, factory_name)
         origin_access_id_enabled = False
 
-        template = troposphere.Template(
-            Description = 'CloudFront Distribution',
-        )
-        template.set_version()
-        template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="EmptyTemplatePlaceholder")
-        )
+        self.init_template('CloudFront Distribution')
+        template = self.template
 
         target_origin_param = self.create_cfn_parameter(
-                param_type='String',
-                name='TargetOrigin',
-                description='Target Origin',
-                value=cloudfront_config.default_cache_behavior.target_origin,
-                use_troposphere=True,
-                troposphere_template=template)
+            param_type='String',
+            name='TargetOrigin',
+            description='Target Origin',
+            value=cloudfront_config.default_cache_behavior.target_origin,
+        )
 
         distribution_config_dict = {
             'Enabled': cloudfront_config.is_enabled(),
@@ -64,7 +36,7 @@ class CloudFront(CFTemplate):
             },
             'PriceClass': 'PriceClass_'+cloudfront_config.price_class,
             'ViewerCertificate': {
-                'AcmCertificateArn': self.paco_ctx.get_ref('paco.ref '+self.config_ref+'.viewer_certificate.arn'),
+                'AcmCertificateArn': self.paco_ctx.get_ref('paco.ref ' + self.stack.stack_ref + '.viewer_certificate.arn'),
                 'SslSupportMethod': cloudfront_config.viewer_certificate.ssl_supported_method,
                 'MinimumProtocolVersion': cloudfront_config.viewer_certificate.minimum_protocol_version
             }
@@ -79,20 +51,15 @@ class CloudFront(CFTemplate):
         aliases_param_map = {}
         for alias in cloudfront_config.domain_aliases:
             alias_hash = utils.md5sum(str_data=alias.domain_name)
-
             domain_name_param = 'DomainAlias' + alias_hash
             alias_param = self.create_cfn_parameter(
                 param_type='String',
                 name=domain_name_param,
                 description='Domain Alias CNAME',
-                value=alias.domain_name,
-                use_troposphere=True,
-                troposphere_template=template)
+                value=alias.domain_name
+            )
             aliases_list.append(troposphere.Ref(alias_param))
             aliases_param_map[alias.domain_name] = alias_param
-
-
-
 
         distribution_config_dict['Aliases'] = aliases_list
 
@@ -127,8 +94,7 @@ class CloudFront(CFTemplate):
                         name=self.create_cfn_logical_id('TargetOriginCacheBehavior'+target_origin_hash),
                         description='Target Origin',
                         value=cache_behavior.target_origin,
-                        use_troposphere=True,
-                        troposphere_template=template)
+                    )
                     target_origin_param_map[target_origin_hash] = cb_target_origin_param
                 else:
                     cb_target_origin_param = target_origin_param_map[target_origin_hash]
@@ -158,8 +124,6 @@ class CloudFront(CFTemplate):
                 cache_behaviors_list.append(cache_behavior_dict)
 
             distribution_config_dict['CacheBehaviors'] = cache_behaviors_list
-
-
 
         # Origin Access Identity
         if cloudfront_config.s3_origin_exists() == True:
@@ -213,8 +177,6 @@ class CloudFront(CFTemplate):
                       name=param_name,
                       description='Origin Access Identity',
                       value=access_id_ref,
-                      use_troposphere=True,
-                      troposphere_template=template
                     )
                     origin_dict['S3OriginConfig']['OriginAccessIdentity'] = troposphere.Sub(
                         'origin-access-identity/cloudfront/${OriginAccessId}',
@@ -242,16 +204,13 @@ class CloudFront(CFTemplate):
               param_type='String',
               name='WebAclId',
               description='WAF Web Acl ID',
-              value=cloudfront_config.webacl_id,
-              use_troposphere=True,
-              troposphere_template=template
+              value=cloudfront_config.webacl_id
             )
             distribution_config_dict['WebACLId'] = troposphere.Ref(webacl_id_param)
 
         distribution_dict = {
             'DistributionConfig': distribution_config_dict
         }
-
         distribution_res = troposphere.cloudfront.Distribution.from_dict(
             'Distribution', distribution_dict )
 
@@ -265,9 +224,7 @@ class CloudFront(CFTemplate):
                         name=zone_param_name,
                         description='Domain Alias Hosted Zone Id',
                         value=alias.hosted_zone+'.id',
-                        use_troposphere=True,
-                        troposphere_template=template
-                        )
+                    )
                     record_set_res = troposphere.route53.RecordSetType(
                         title = self.create_cfn_logical_id_join(['RecordSet', alias_hash]),
                         template = template,
@@ -281,21 +238,19 @@ class CloudFront(CFTemplate):
                     )
                     record_set_res.DependsOn = distribution_res
 
-        troposphere.Output(
-            title = 'CloudFrontURL',
-            template = template,
-            Value = troposphere.GetAtt('Distribution', 'DomainName')
+        self.create_output(
+            title='CloudFrontURL',
+            value=troposphere.GetAtt('Distribution', 'DomainName'),
+            ref=self.config_ref + '.domain_name'
         )
-        self.register_stack_output_config(self.config_ref+'.domain_name', 'CloudFrontURL')
-        troposphere.Output(
-            title = 'CloudFrontId',
-            template = template,
-            Value = troposphere.Ref(distribution_res)
+        self.create_output(
+            title='CloudFrontId',
+            value=troposphere.Ref(distribution_res),
+            ref=self.config_ref + '.id'
         )
 
         template.add_resource(distribution_res)
 
-        self.set_template(template.to_yaml())
         if origin_access_id_enabled:
           self.stack.wait_for_delete = True
 
@@ -306,10 +261,12 @@ class CloudFront(CFTemplate):
                     route53_ctl.add_record_set(
                         self.account_ctx,
                         self.aws_region,
+                        cloudfront_config,
                         enabled=cloudfront_config.is_enabled(),
                         dns=alias,
                         record_set_type='Alias',
-                        alias_dns_name = 'paco.ref '+self.config_ref+'.domain_name',
+                        alias_dns_name = 'paco.ref ' + self.stack.stack_ref + '.domain_name',
                         alias_hosted_zone_id = 'Z2FDTNDATAQYW2',
-                        stack_group = self.stack_group,
-                        config_ref = self.config_ref+'.record_set')
+                        stack_group=self.stack.stack_group,
+                        config_ref=config_ref+'.record_set'
+                    )

@@ -1,42 +1,28 @@
-import os
-import troposphere
 from paco import utils
-from paco.cftemplates.cftemplates import CFTemplate
-
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.models import references
 from paco.models.references import Reference
 from paco.core.exception import StackException, PacoErrorCode
-from io import StringIO
-from enum import Enum
+import troposphere
 
 
-class SecurityGroups(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 env_ctx,
-                 security_groups_config,
-                 sg_group_id,
-                 sg_groups_config_ref,
-                 template_type):
-
-        #paco_ctx.log("SecurityGroup CF Template init")
+class SecurityGroups(StackTemplate):
+    def __init__(
+        self,
+        stack,
+        paco_ctx,
+        env_ctx,
+        template_type,
+    ):
+        security_groups_config = stack.resource
+        sg_group_id = security_groups_config.name
+        sg_groups_config_ref = security_groups_config.paco_ref_parts
 
         self.env_ctx = env_ctx
-
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
-            config_ref=sg_groups_config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags,
-            environment_name=self.env_ctx.env_id,
         )
-
         rules_id = None
         if template_type == 'Rules':
             rules_id = 'Rules'
@@ -49,13 +35,8 @@ class SecurityGroups(CFTemplate):
         self.source_group_param_cache = {}
 
         # Troposphere Template Initialization
-        template = troposphere.Template()
-        template.set_version('2010-09-09')
-        template.set_description('Security Groups')
-
-        template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
-        )
+        self.init_template('Security Groups')
+        template = self.template
 
         # VPC Id
         vpc_id_param = self.create_cfn_parameter(
@@ -63,9 +44,7 @@ class SecurityGroups(CFTemplate):
             param_type='AWS::EC2::VPC::Id',
             description='The VPC Id',
             value='paco.ref netenv.{}.<environment>.<region>.network.vpc.id'.format(self.env_ctx.netenv_id),
-            use_troposphere=True
         )
-        template.add_parameter(vpc_id_param)
 
         # Security Group and Ingress/Egress Resources
         is_sg_enabled = False
@@ -79,8 +58,9 @@ class SecurityGroups(CFTemplate):
             else:
                 self.create_group_rules(sg_group_id, sg_name, sg_config, template)
 
-        self.enabled = is_sg_enabled
-        self.set_template(template.to_yaml())
+        self.set_enabled(is_sg_enabled)
+
+        self.set_template()
         if template_type == 'Rules':
             self.stack.wait_for_delete = True
 
@@ -114,14 +94,13 @@ class SecurityGroups(CFTemplate):
             )
         )
 
-        group_output_logical_id = group_logical_id + 'Id'
-        group_output = troposphere.Output(
-            title = group_output_logical_id,
-            Value = troposphere.Ref(group_res)
-        )
-        template.add_output(group_output)
+        # Output
         group_config_ref = '.'.join([self.config_ref, sg_name])
-        self.register_stack_output_config(group_config_ref + '.id', group_output_logical_id)
+        self.create_output(
+            title=group_logical_id + 'Id',
+            value=troposphere.Ref(group_res),
+            ref=group_config_ref + '.id'
+        )
 
     def create_group_rules(self, sg_group_id, sg_name, sg_config, template):
         sg_group_config_ref = 'paco.ref ' + '.'.join([self.config_ref, sg_name])
@@ -206,9 +185,8 @@ class SecurityGroups(CFTemplate):
             param_type='AWS::EC2::SecurityGroup::Id',
             name='SourceGroupId' + group_ref_hash,
             description='Source Security Group - ' + hash_ref,
-            value=group_ref+'.id',
-            use_troposphere=True,
-            troposphere_template=template)
+            value=group_ref + '.id',
+        )
 
         self.source_group_param_cache[group_ref_hash] = source_sg_param
         return troposphere.Ref(self.source_group_param_cache[group_ref_hash])

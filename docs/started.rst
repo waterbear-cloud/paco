@@ -77,27 +77,31 @@ by avoiding the need to type out the `--home` option for every command:
 Create a User and Role in your AWS account
 ------------------------------------------
 
-When you run Paco it will requrie access to your AWS account.
+When you run Paco it requires access to your AWS account.
 
 Paco requires access key credentials for an IAM User that has permissions to switch
-to an IAM Role that delegates full Administrator access. The reason for having the Administrator
-privileges in a Role and not the User is so that multi-factor authentication (MFA) can be enforced.
-MFA protects you if your access key credentials are accidentaly exposed.
+to an IAM Role that delegates full Administrator access.
 
-You can use any User and Role in your IAM account, but follow the steps below to
-install a CloudFormation template that will create a dedicated User and Role to use with Paco.
 
-  1. Download the PacoInitialization.yaml_ CloudFormation template.
+.. Note::
 
-  #. Login to the AWS Console, visit the CloudFormation Service and click on the
-     "Create stack (with new resources (standard))" button. Choose "Upload a template file" and
-     then "Choose file" and choose the PacoInitialization.yaml file. Then click "Next".
+  Why can't I just use any AWS Access Key with Administrator access with Paco?
 
-     .. image:: _static/images/quickstart101-create-stack-init.png
+  Paco requires an IAM User capable of switching to a Role that contains Administrator permissions.
+  Paco does this for security reasons. Paco will ask you for your MFA token from the CLI.
+  As you store an AWS Access Key and Secret in a Paco ``.credentials`` file, if this file is accidentaly leaked
+  then unwanted users will not be able to use your key without also being able to access your MFA device.
 
-  #. Enter "PacoAccess" as the Stack name and enter the name of a new IAM User. Then click "Next".
+To install a CloudFormation template that will create a User and Role to use with Paco.
 
-     .. image:: _static/images/quickstart101-stack-init-details.png
+  1. Click on `this URL to create a PacoAdminAccess CloudFormation stack`_ in your AWS Account.
+
+     .. image:: _static/images/create-paco-admin-stack.png
+
+  #. Click "Next" and take note that you will create a IAM User with the name ``paco-admin``.
+     If you like you can change this username here.
+
+     .. image:: _static/images/stack-admin-username.png
 
   #. On the "Configure stack options" screen you can leave everything default and click "Next".
      On the "Review PacoInitialization" you can also leave all the defaults click
@@ -105,7 +109,10 @@ install a CloudFormation template that will create a dedicated User and Role to 
      to confirm that this stack can create an IAM User.
      Finally click "Create stack".
 
-.. _PacoInitialization.yaml: ./_static/templates/PacoInitialization.yaml
+.. _this URL to create a PacoAdminAccess CloudFormation stack: https://console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/new?stackName=PacoAdminAccess&templateURL=https://paco-cloud.s3-us-west-2.amazonaws.com/PacoInitialization.yaml
+
+Create an AWS Access Key and configure MFA
+------------------------------------------
 
 Next you will need to set-up the new User account with an API key:
 
@@ -139,21 +146,31 @@ if you used the CloudFormation template your role name will be ``Paco-Admin-Dele
 
     $ paco init credentials --home=/path/to/your-paco-project
 
-    Paco Project Credentials Initialization
+    Paco project credentials initialization
     ---------------------------------------
 
-    master_admin_iam_username: <your-paco-username>
-    admin_iam_role_name: Paco-Admin-Delegate-Role
-    aws_access_key_id: AKIA***********4MXP
-    aws_secret_access_key: 56aU******************57cT
+    Paco Admin Username: [paco-admin]:
+    AWS Access Key: KAKIA***********4MXP
+    AWS Secret Key: 56aU******************57cT
+    Paco credentials file created at:
+
+    /Users/bob/paco-project/.credentials.yaml
+
+    It is NOT recommended to store this file in version control.
+    Paco starter project include a .gitignore file to prevent this.
+    You can store this file in a secrets mananger or re-create it again
+    by generating a new AWS Api Key for the Paco Admin User and re-running
+    this 'paco init credentials' command.
+
 
 This will create a file named ``.credentials`` in your Paco project directory. Starting Paco projects also have a ``.gitignore``
 file that will prevent you from committing this credentials file to a git repo. You can save this file somewhere secure,
 or if it is lost use the AWS Console to create a new acccess key for your IAM User and re-run ``paco init credentials`` to
 generate a new ``.credentials`` file.
 
-Finally, use the ``paco validate`` command to verify your credentials work. The ``paco validate`` command generates CloudFormation
-templates and verifies them for correctness against your AWS account, but it will never modify any AWS resources.
+Finally, use the ``paco validate`` command to verify your credentials allow you to connect to your AWS account.
+The ``paco validate`` command generates CloudFormation templates and validates them in your AWS account.
+Validate will never modify resources. It's a safe command to run to test the state of your Paco proejct.
 
 .. code-block:: bash
 

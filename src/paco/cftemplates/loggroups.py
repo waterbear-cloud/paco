@@ -2,7 +2,7 @@
 CloudFormation template for CloudWatch Log Groups
 """
 
-from paco.cftemplates.cftemplates import CFTemplate
+from paco.cftemplates.cftemplates import StackTemplate
 from paco.models import references, schemas
 from paco.models.locations import get_parent_by_interface
 from paco.models.references import Reference
@@ -11,59 +11,34 @@ import troposphere
 import troposphere.logs
 
 
-class LogGroups(CFTemplate):
+class LogGroups(StackTemplate):
     """
     CloudFormation template for CloudWatch Log Groups
     """
-    def __init__(
-        self,
-        paco_ctx,
-        account_ctx,
-        aws_region,
-        stack_group,
-        stack_tags,
-        group_name,
-        resource,
-        res_config_ref
-    ):
-        super().__init__(
-            paco_ctx,
-            account_ctx,
-            aws_region,
-            config_ref=res_config_ref,
-            stack_group=stack_group,
-            stack_tags=stack_tags
-        )
-        self.set_aws_name('LogGroups', group_name, resource.name)
-        self.resource = resource
+    def __init__(self, stack, paco_ctx):
+        super().__init__(stack, paco_ctx)
+        self.set_aws_name('LogGroups', self.resource_group_name, self.resource_name)
 
         # Troposphere Template Initialization
-        template = troposphere.Template(
-            Description = 'LogGroups',
-        )
-        template.set_version()
-        template.add_resource(
-            troposphere.cloudformation.WaitConditionHandle(title="DummyResource")
-        )
+        self.init_template('LogGroups')
+        template = self.template
 
-        cw_logging = get_parent_by_interface(resource, schemas.IProject)['cw_logging']
+        cw_logging = get_parent_by_interface(stack.resource, schemas.IProject)['cw_logging']
         default_retention = cw_logging.expire_events_after_days
-        for log_group in self.resource.monitoring.log_sets.get_all_log_groups():
+        for log_group in stack.resource.monitoring.log_sets.get_all_log_groups():
             cfn_export_dict = {}
             log_group_name = log_group.get_full_log_group_name()
-            prefixed_log_group_name = prefixed_name(resource, log_group_name, self.paco_ctx.legacy_flag)
+            prefixed_log_group_name = prefixed_name(stack.resource, log_group_name, self.paco_ctx.legacy_flag)
             loggroup_logical_id = self.create_cfn_logical_id('LogGroup' + log_group_name)
 
             # provide prefixed LogGroup name as a CFN Parameter
             param_name = 'Name' + loggroup_logical_id
             log_group_name_parameter = self.create_cfn_parameter(
-                param_type = 'String',
-                name = param_name,
-                description = 'LogGroup name',
-                value = prefixed_log_group_name,
-                use_troposphere = True
+                param_type='String',
+                name=param_name,
+                description='LogGroup name',
+                value=prefixed_log_group_name,
             )
-            template.add_parameter(log_group_name_parameter)
             cfn_export_dict['LogGroupName'] = troposphere.Ref(log_group_name_parameter)
 
             # override default retention?
@@ -114,6 +89,3 @@ class LogGroups(CFTemplate):
                 )
                 metric_filter_resource.DependsOn = log_group_resource
                 template.add_resource(metric_filter_resource)
-
-        # Generate the Template
-        self.set_template(template.to_yaml())

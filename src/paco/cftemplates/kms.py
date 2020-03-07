@@ -1,33 +1,11 @@
-import os
-from paco.cftemplates.cftemplates import CFTemplate
-
-from io import StringIO
-from enum import Enum
+from paco.cftemplates.cftemplates import StackTemplate
 
 
-class KMS(CFTemplate):
-    def __init__(self,
-                 paco_ctx,
-                 account_ctx,
-                 aws_region,
-                 stack_group,
-                 stack_tags,
-                 grp_id,
-                 res_id,
-                 res_config,
-                 kms_config_ref,
-                 kms_config_dict):
-
-        #paco_ctx.log("S3 CF Template init")
-        super().__init__(paco_ctx,
-                         account_ctx,
-                         aws_region,
-                         enabled=res_config.is_enabled(),
-                         config_ref=kms_config_ref,
-                         iam_capabilities=["CAPABILITY_NAMED_IAM"],
-                         stack_group=stack_group,
-                         stack_tags=stack_tags)
-        self.set_aws_name('KMS', grp_id, res_id)
+class KMS(StackTemplate):
+    def __init__(self, stack, paco_ctx, kms_config_dict):
+        kms_config_ref = stack.stack_ref
+        super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_NAMED_IAM"])
+        self.set_aws_name('KMS', self.resource_group_name, self.resource.name)
 
         # Define the Template
         template_fmt = """
@@ -91,8 +69,6 @@ Outputs:
     Value: !Ref CMK
 
 """
-
-
         principal_yaml = """
               AWS:"""
         for aws_principal in kms_config_dict['crypto_principal']['aws']:

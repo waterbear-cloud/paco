@@ -10,16 +10,9 @@ class EventsRuleResourceEngine(ResourceEngine):
 
     def init_resource(self):
         # CloudWatch Events Rule
-        paco.cftemplates.eventsrule.EventsRule(
-            self.paco_ctx,
-            self.account_ctx,
+        self.stack_group.add_new_stack(
             self.aws_region,
-            self.stack_group,
-            self.stack_tags,
-            self.env_ctx,
-            self.app_id,
-            self.grp_id,
-            self.res_id,
             self.resource,
-            self.resource.paco_ref_parts
+            paco.cftemplates.eventsrule.EventsRule,
+            stack_tags=self.stack_tags,
         )

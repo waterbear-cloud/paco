@@ -230,4 +230,11 @@ a.icon-home {
 .rst-content dl.simple dt {
   border-top: none;
   color: black;
+  background: none;
+}
+
+.rst-content .section dl dt {
+  background: none;
+  border-top: none;
+  border-bottom: 1px dotted #aaaaaa;
 }
