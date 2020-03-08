@@ -284,7 +284,6 @@ class Stack():
         stack_tags=None,
         change_protected=None,
         support_resource_ref_ext=None,
-        orders=None,
     ):
         """A Stack represent a CloudFormation template that is provisioned in an account and region in AWS.
         A Stack is created empty and then has a template added to it. This allows the template to interact with the stack.
@@ -320,7 +319,6 @@ class Stack():
         self.wait_for_delete = False
         self.tags = StackTags(stack_tags)
         self.tags.add_tag('Paco-Stack', 'true')
-        self.orders = orders
         self.outputs_value_cache = {}
         self.yaml_path = None
         self.applied_yaml_path = None
