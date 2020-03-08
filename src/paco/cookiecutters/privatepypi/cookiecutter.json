@@ -1,0 +1,17 @@
+{
+    "project_name": "myproj",
+    "project_title": "My Paco Project",
+    "budget": true,
+    "network_environment_name": "mynet",
+    "network_environment_title": "My Paco NetworkEnvironment",
+    "application_name": "myapp",
+    "application_title": "My Paco Application",
+    "aws_default_region": "",
+    "master_account_id": "",
+    "master_admin_iam_username": "",
+    "master_root_email": "root@example.com",
+    "_computed_paco_home_path": "",
+    "_extensions": [
+        "paco.commands.cmd_init.EnvOverrideExtension"
+    ]
+}

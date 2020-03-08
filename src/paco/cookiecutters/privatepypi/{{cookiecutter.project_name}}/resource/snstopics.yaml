@@ -1,0 +1,10 @@
+account: paco.ref accounts.master
+regions:
+  - '{{cookiecutter.aws_default_region}}'
+groups:
+  admin:
+    title: "Administrator Group"
+    enabled: true
+    subscriptions:
+      - endpoint: {{cookiecutter.master_root_email}}
+        protocol: email

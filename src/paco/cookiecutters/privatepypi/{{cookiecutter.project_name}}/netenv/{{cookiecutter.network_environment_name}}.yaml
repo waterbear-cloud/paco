@@ -1,0 +1,460 @@
+network:
+  title: "{{cookiecutter.network_environment_title}}"
+{%- if cookiecutter.budget == 'False' %}
+  availability_zones: 2
+{%- else %}
+  availability_zones: 1
+{%- endif %}
+  enabled: true
+  vpc:
+    enabled: true
+    enable_dns_hostnames: true
+    enable_dns_support: true
+    enable_internet_gateway: true
+    private_hosted_zone:
+      enabled: true
+{%- if cookiecutter.budget == 'False' %}
+    nat_gateway:
+      pypi:
+        enabled: false
+        availability_zone: 1
+        segment: paco.ref netenv.mynet.network.vpc.segments.public
+        default_route_segments:
+          - paco.ref netenv.mynet.network.vpc.segments.private
+{%- endif %}
+    security_groups:
+      pypi:
+        packages:
+          enabled: true
+          ingress:
+            - description: 'PyPI packages EFS'
+              name: PyPIPackagesEFS
+              protocol: tcp
+              port: 2049
+              source_security_group: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.pypi.server
+          egress:
+            - name: ANY
+              cidr_ip: 0.0.0.0/0
+              protocol: "-1"
+        server:
+          enabled: true
+          egress:
+            - cidr_ip: 0.0.0.0/0
+              name: ANY
+              protocol: "-1"
+          ingress:
+            - port: 8080
+              name: HTTP
+              protocol: tcp
+              cidr_ip: 0.0.0.0/0
+            - port: 22
+              name: SSH
+              protocol: tcp
+              cidr_ip: 0.0.0.0/0
+{%- if cookiecutter.budget == 'False' %}
+    security_groups:
+      pypi:
+        packages:
+          enabled: true
+          ingress:
+            - description: 'PyPI packages EFS'
+              name: PyPIPackagesEFS
+              protocol: tcp
+              port: 2049
+              source_security_group: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.pypi.server
+          egress:
+            - name: ANY
+              cidr_ip: 0.0.0.0/0
+              protocol: "-1"
+        server:
+          enabled: true
+          egress:
+            - cidr_ip: 0.0.0.0/0
+              name: ANY
+              protocol: "-1"
+          ingress:
+            - port: 8080
+              name: HTTP
+              protocol: tcp
+              source_security_group: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.shared.alb
+            - port: 22
+              name: SSH
+              protocol: tcp
+              source_security_group: paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.bastion.instance
+      bastion:
+        instance:
+          enabled: true
+          egress:
+            - cidr_ip: 0.0.0.0/0
+              name: ANY
+              protocol: "-1"
+          ingress:
+            - from_port: 22
+              name: SSH
+              protocol: tcp
+              cidr_ip: 255.255.255.255/32 # Change to 0.0.0.0/0 to allow from all (less secure)
+              to_port: 22
+      shared:
+        alb:
+          enabled: true
+          egress:
+            - cidr_ip: 0.0.0.0/0
+              name: ANY
+              protocol: "-1"
+          ingress:
+            - cidr_ip: 0.0.0.0/0
+              name: HTTPS
+              protocol: tcp
+              port: 443
+            - cidr_ip: 0.0.0.0/0
+              name: HTTP
+              protocol: tcp
+              port: 80
+    segments:
+      public:
+        enabled: true
+      private:
+        enabled: true
+{%- else %}
+    segments:
+      public:
+        enabled: true
+{%- endif %}
+
+backup_vaults:
+  pypi:
+    enabled: false
+    plans:
+      ebs:
+        title: EFS Backups
+        enabled: true
+        plan_rules:
+          - title: Daily EFS backups
+            schedule_expression: cron(0 6 ? * * *)
+            lifecycle_delete_after_days: 365
+        selections:
+          - title: EFS Daily Backups Selection
+            tags:
+              - condition_type: STRINGEQUALS
+                condition_key: Paco-Application-Resource-Name
+                condition_value: wp_volume
+
+applications:
+  pypi:
+    title: Private PyPI server
+    enabled: true
+    notifications:
+      app:
+        groups:
+          - admin
+    monitoring:
+      enabled: false
+      health_checks:
+        external_ping:
+          type: Route53HealthCheck
+          enabled: false
+          title: HTTP Monitor
+{%- if cookiecutter.budget == 'False' %}
+          load_balancer: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.pypi.groups.shared.resources.alb
+{%- else %}
+          ip_address: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.pypi.groups.shared.resources.eip
+{%- endif %}
+          health_check_type: 'HTTP'
+          port: 80
+          resource_path: /
+          match_string: "PyPI"
+          failure_threshold: 3
+    groups:
+{%- if cookiecutter.budget == 'False' %}
+      shared:
+        type: Application
+        title: "Applicaiton Load Balancer (ALB) shared by all applications"
+        order: 10
+        enabled: true
+        resources:
+          # example_com_cert:
+          #   type: ACM
+          #   order: 1
+          #   enabled: true
+          #   domain_name: example.com
+          #   subject_alternative_names:
+          #     - '*.example.com'
+          alb:
+            type: LBApplication
+            order: 20
+            enabled: true
+            target_groups:
+              pypi:
+                health_check_interval: 30
+                health_check_timeout: 10
+                healthy_threshold: 2
+                unhealthy_threshold: 4
+                port: 8080
+                protocol: HTTP
+                health_check_http_code: 200
+                health_check_path: /
+                connection_drain_timeout: 10
+            listeners:
+              http:
+                port: 80
+                protocol: HTTP
+                target_group: pypi
+                rules:
+                  pypi_forward:
+                    enabled: true
+                    rule_type: forward
+                    host: 'pypi.example.com'
+                    target_group: pypi
+                    priority: 10
+              # http:
+              #   port: 80
+              #   protocol: HTTP
+              #   redirect:
+              #     port: 443
+              #     protocol: HTTPS
+              # https:
+              #   port: 443
+              #   protocol: HTTPS
+              #   ssl_certificates:
+              #     - paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.pypi.groups.shared.resources.example_com_cert
+              #   target_group: pypi
+              #   rules:
+              #     pypi_forward:
+              #       enabled: true
+              #       rule_type: forward
+              #       host: 'pypi.example.com'
+              #       target_group: pypi
+              #       priority: 10
+            # dns:
+            #   - hosted_zone: paco.ref resource.route53.pypi
+            #     domain_name: pypi.example.com
+            scheme: internet-facing
+            security_groups:
+              - paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.shared.alb
+            segment: public
+{%- endif %}
+
+      pypi:
+        title: "Private PyPI server for Paco Products"
+        enabled: true
+        type: Application
+        order: 20
+        resources:
+{%- if cookiecutter.budget == 'True' %}
+          eip:
+            type: EIP
+            order: 10
+            enabled: true
+{%- endif %}
+          packages:
+            type: EFS
+            order: 5
+            enabled: true
+            encrypted: false
+{%- if cookiecutter.budget == 'True' %}
+            segment: public
+{%- else %}
+            segment: private
+{%- endif %}
+            security_groups:
+              - paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.pypi.packages
+          server:
+            type: ASG
+            enabled: true
+            order: 10
+{%- if cookiecutter.budget == 'True' %}
+            eip: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.pypi.groups.pypi.resources.eip
+            associate_public_ip_address: true
+{$- else %}
+            associate_public_ip_address: false
+{%- endif %}
+            cooldown_secs: 300
+            ebs_optimized: false
+            health_check_grace_period_secs: 300
+            health_check_type: EC2
+{%- if cookiecutter.budget == 'False' %}
+            target_groups:
+              - paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.pypi.groups.shared.resources.alb.target_groups.pypi
+{%- endif %}
+            instance_ami: paco.ref function.aws.ec2.ami.latest.amazon-linux-2
+            instance_ami_type: amazon
+            instance_key_pair: paco.ref resource.ec2.keypairs.pypi_prod
+            instance_monitoring: true
+            instance_type: t2.small
+            desired_capacity: 1
+            max_instances: 1
+            min_instances: 0
+            update_policy_max_batch_size: 1
+            update_policy_min_instances_in_service: 0
+{%- if cookiecutter.budget == 'True' %}
+            segment: public
+{%- else %}
+            segment: private
+{%- endif %}
+            termination_policies:
+              - Default
+            efs_mounts:
+              - enabled: true
+                folder: /var/pypi
+                target: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.pypi.groups.pypi.resources.packages
+            security_groups:
+              - paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.pypi.server
+            monitoring:
+              enabled: true
+              collection_interval: 300
+              metrics:
+                - name: swap
+                  measurements:
+                    - used_percent
+                - name: disk
+                  measurements:
+                    - free
+                  resources:
+                    - '/'
+                  collection_interval: 300
+            launch_options:
+              update_packages: true
+              cfn_init_config_sets:
+                - "InstallPyPI"
+            cfn_init:
+              config_sets:
+                InstallPyPI:
+                  - "InstallPyPI"
+              configurations:
+                InstallPyPI:
+                  packages:
+                    yum:
+                      python3: []
+                      httpd: [] # needed only for htpasswd
+                  users:
+                    www-data:
+                      uid: 2000
+                      home_dir: /home/www-data
+                  files:
+                    "/etc/systemd/system/pypiserver.service":
+                      content_file: ./pypi-config/pypiserver.service
+                      mode: '000744'
+                      owner: root
+                      group: root
+                    "/var/pypi/htpasswd.txt":
+                      content_file: ./pypi-config/htpasswd.txt
+                      mode: '000744'
+                      owner: root
+                      group: root
+                  commands:
+                    00_pypiserver:
+                      command: "/bin/pip3 install pypiserver >> /var/log/cfn-init-commands.log 2>&1"
+                    01_passlib_dependency:
+                      command: "/bin/pip3 install passlib >> /var/log/cfn-init-commands.log 2>&1"
+                    02_prep_mount:
+                       command: "/bin/chown www-data:www-data /var/pypi >> /var/log/cfn-init-commands.log 2>&1"
+                    03_empty_htpasswd:
+                       command: "/bin/touch /var/pypi/htpasswd.txt >> /var/log/cfn-init-commands.log 2>&1"
+                    10_prep_logging:
+                       command: "/bin/touch /var/log/pypiserver.log >> /var/log/cfn-init-commands.log 2>&1"
+                    11_chown_logging:
+                       command: "/bin/chown www-data:www-data /var/log/pypiserver.log >> /var/log/cfn-init-commands.log 2>&1"
+                  services:
+                    sysvinit:
+                      pypiserver:
+                        enabled: true
+                        ensure_running: true
+
+{%- if cookiecutter.budget == 'False' %}
+  bastion:
+    title: "SSH Bastion"
+    enabled: false
+    groups:
+      bastion:
+        type: Application
+        order: 10
+        enabled: true
+        resources:
+          eip:
+            type: EIP
+            order: 10
+            enabled: true
+            # dns:
+            #   - domain_name: bastion.example.com
+            #     hosted_zone: paco.ref resource.route53.pypi
+            #     ttl: 60
+          instance:
+            type: ASG
+            enabled: true
+            order: 20
+            associate_public_ip_address: true
+            cooldown_secs: 300
+            eip: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.bastion.groups.bastion.resources.eip
+            ebs_optimized: false
+            health_check_grace_period_secs: 300
+            health_check_type: EC2
+            instance_iam_role:
+              enabled: true
+            instance_ami: paco.ref function.aws.ec2.ami.latest.amazon-linux-2
+            instance_ami_type: amazon
+            instance_key_pair: paco.ref resource.ec2.keypairs.pypi_prod
+            instance_monitoring: false
+            instance_type: t2.micro
+            desired_capacity: 1
+            max_instances: 1
+            min_instances: 1
+            segment: public
+            termination_policies:
+              - Default
+            update_policy_max_batch_size: 1
+            update_policy_min_instances_in_service: 0
+            security_groups:
+              - paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.bastion.instance
+            monitoring:
+              enabled: false
+            user_data_script: |
+              #!/bin/bash
+
+              yum update -y
+{%- endif %}
+
+environments:
+  prod:
+    title: "Production Environment"
+    default:
+      network:
+        aws_account: paco.ref accounts.master # change to prod if you have multi-account
+{%- if cookiecutter.budget == 'False' %}
+        vpc:
+          nat_gateway:
+            pypi:
+              enabled: true
+          cidr: 10.20.0.0/16
+          segments:
+            public:
+              az1_cidr: 10.20.1.0/24
+              az2_cidr: 10.20.2.0/24
+              internet_access: true
+            private:
+              az1_cidr: 10.20.3.0/24
+              az2_cidr: 10.20.4.0/24
+              internet_access: false
+{%- else %}
+        vpc:
+          cidr: 10.20.0.0/16
+          segments:
+            public:
+              az1_cidr: 10.20.1.0/24
+              internet_access: true
+{%- endif %}
+
+    {{cookiecutter.aws_default_region}}:
+      enabled: true
+      backup_vaults:
+        pypi:
+          enabled: false # backups are off
+      applications:
+        pypi:
+          enabled: true
+          monitoring:
+            enabled: false # metrics are OFF
+            health_checks:
+              external_ping:
+                enabled: false # health checks are OFF
+
+

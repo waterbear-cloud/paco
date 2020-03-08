@@ -75,9 +75,8 @@ class StackGroup():
             hooks=stack_hooks,
             change_protected=change_protected,
             support_resource_ref_ext=support_resource_ref_ext,
-            orders=stack_orders,
         )
-        self.add_stack_order(stack)
+        self.add_stack_order(stack, stack_orders)
         # cook the template and add it to the stack
         stack.template = template_class(stack, self.paco_ctx, **extra_context)
 
@@ -213,7 +212,7 @@ class StackGroup():
 
     def add_stack_order(self, stack, orders=[StackOrder.PROVISION, StackOrder.WAIT]):
         "Add Stack orders to the StackGroups orders"
-        for order in stack.orders:
+        for order in orders:
             stack_order = self.pop_stack_order(stack, order)
             self.stack_orders.append(stack_order)
         if not stack in self.stacks:
