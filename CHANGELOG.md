@@ -1,6 +1,12 @@
 Changelog for Paco
 ==================
 
+6.0.2 (unreleased)
+------------------
+
+- Nothing changed yet.
+
+
 6.0.1 (2020-03-08)
 ------------------
 
