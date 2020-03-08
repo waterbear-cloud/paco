@@ -1,7 +1,7 @@
 Changelog for Paco
 ==================
 
-6.0.1 (unreleased)
+6.0.1 (2020-03-08)
 ------------------
 
 ### Fixed
@@ -10,6 +10,8 @@ Changelog for Paco
   filesystems that do not allow the | character.
 
 - ALB rule.target group fix was merged into wrong place in the code.
+
+- Restored StackOrders which wasn't being respected after refactor.
 
 6.0.0 (2020-03-06)
 ------------------
