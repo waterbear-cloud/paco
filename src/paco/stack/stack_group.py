@@ -127,8 +127,7 @@ class StackGroup():
             # Exact match or append '.' otherwise we might match
             # foo.bar wtih foo.bar_bad
             if stack.template.config_ref == self.filter_config or \
-                stack.template.config_ref.startswith(self.filter_config+'.') or \
-                stack.singleton:
+                stack.template.config_ref.startswith(self.filter_config+'.'):
                 action_method()
             else:
                 stack.log_action(
