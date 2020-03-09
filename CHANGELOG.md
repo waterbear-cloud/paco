@@ -1,10 +1,12 @@
 Changelog for Paco
 ==================
 
-6.0.2 (unreleased)
+6.1.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Added
+
+- New Private PyPI Starter Project.
 
 
 6.0.1 (2020-03-08)

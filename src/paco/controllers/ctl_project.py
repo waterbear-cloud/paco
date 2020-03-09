@@ -20,7 +20,7 @@ yaml.default_flow_sytle = False
 
 prompt_help_mapping = {
     'project_title': "Project title - Describe this Paco project",
-    'budget': "Budget or Professional - Low-cost set-up or more secure and reliable set-up",
+    'budget': "Budget - Lower cost but less robust set-up?",
     'network_environment_name': "NetworkEnvironment name - Short alphanumeric string to identify a network environment",
     'network_environment_title': "NetworkEnvironment title - Long description for a network environment",
     'application_name': "Application name - Short alphanumeric string to identify this application",
