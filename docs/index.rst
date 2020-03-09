@@ -126,6 +126,7 @@ PACO is developed by Waterbear Cloud. Contact us about our `support and consulti
    start-wordpress-single
    start-managed-webapp-cicd
    start-s3lambda
+   start-privatepypi
 
 .. toctree::
    :caption: Paco project configuration

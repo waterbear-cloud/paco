@@ -18,7 +18,7 @@ network or other complex resources in this starting project.
 Create a "S3 Bucket Lambda replicator" Project
 ----------------------------------------------
 
-`Install`_ Paco and then get started by running the ``paco init project <your-project-name`` command.
+`Install`_ Paco and then get started by running the ``paco init project <your-project-name>`` command.
 Review the instructions on `Getting Started with Paco`_ to understand the importance of ``name``
 fields in Paco and the difference between a name and title. Then follow the instructions on creating
 credentials for your project to connect it to your AWS Account.

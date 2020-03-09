@@ -50,7 +50,7 @@ network:
             - port: 22
               name: SSH
               protocol: tcp
-              cidr_ip: 0.0.0.0/0
+              cidr_ip: 0.0.0.0/0 # change to your IP to improve security
 {%- if cookiecutter.budget == 'False' %}
     security_groups:
       pypi:
@@ -92,7 +92,7 @@ network:
             - from_port: 22
               name: SSH
               protocol: tcp
-              cidr_ip: 255.255.255.255/32 # Change to 0.0.0.0/0 to allow from all (less secure)
+              cidr_ip: 0.0.0.0/0 # change to your IP to improve security
               to_port: 22
       shared:
         alb:
@@ -136,8 +136,8 @@ backup_vaults:
           - title: EFS Daily Backups Selection
             tags:
               - condition_type: STRINGEQUALS
-                condition_key: Paco-Application-Resource-Name
-                condition_value: wp_volume
+                condition_key: Paco-Application-Name
+                condition_value: pypi
 
 applications:
   pypi:
@@ -157,7 +157,7 @@ applications:
 {%- if cookiecutter.budget == 'False' %}
           load_balancer: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.pypi.groups.shared.resources.alb
 {%- else %}
-          ip_address: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.pypi.groups.shared.resources.eip
+          ip_address: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.pypi.groups.pypi.resources.eip
 {%- endif %}
           health_check_type: 'HTTP'
           port: 80
@@ -308,7 +308,7 @@ applications:
                     - used_percent
                 - name: disk
                   measurements:
-                    - free
+                    - used_percent
                   resources:
                     - '/'
                   collection_interval: 300
@@ -341,6 +341,16 @@ applications:
                       mode: '000744'
                       owner: root
                       group: root
+                    "/etc/cfn/cfn-hup.conf":
+                      content_cfn_file: ./pypi-config/cfn-hup.conf
+                      mode: '000400'
+                      owner: root
+                      group: root
+                    "/etc/cfn/hooks.d/cfn-auto-reloader.conf":
+                      content_cfn_file: ./pypi-config/cfn-auto-reloader.conf
+                      mode: '000400'
+                      owner: root
+                      group: root
                   commands:
                     00_pypiserver:
                       command: "/bin/pip3 install pypiserver >> /var/log/cfn-init-commands.log 2>&1"
@@ -359,6 +369,12 @@ applications:
                       pypiserver:
                         enabled: true
                         ensure_running: true
+                      cfn-hup:
+                        enabled: true
+                        ensure_running: true
+                        files:
+                          - "/etc/cfn/cfn-hup.conf"
+                          - "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
 
 {%- if cookiecutter.budget == 'False' %}
   bastion:
@@ -451,8 +467,18 @@ environments:
       applications:
         pypi:
           enabled: true
+          # enable/disable web server monitoring
+          groups:
+            pypi:
+              resources:
+                server:
+                  monitoring:
+                    enabled: false # metrics are OFF
+                    alarm_sets:
+                      pypiserver:
+          # enable/disable HTTP checks
           monitoring:
-            enabled: false # metrics are OFF
+            enabled: false # health checks are OFF
             health_checks:
               external_ping:
                 enabled: false # health checks are OFF

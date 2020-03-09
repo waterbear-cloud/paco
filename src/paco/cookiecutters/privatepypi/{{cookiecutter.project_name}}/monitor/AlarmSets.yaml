@@ -1,0 +1,45 @@
+ASG:
+  pypiserver:
+    StatusCheck:
+      classification: health
+      severity: critical
+      metric_name: "StatusCheckFailed"
+      namespace: 'AWS/EC2'
+      period: 60
+      evaluation_periods: 5
+      statistic: Maximum
+      threshold: 0
+      comparison_operator: GreaterThanThreshold
+      treat_missing_data: breaching
+    CPU:
+      classification: performance
+      severity: critical
+      metric_name: "CPUUtilization"
+      namespace: 'AWS/EC2'
+      period: 60
+      evaluation_periods: 10
+      threshold: 80
+      statistic: Average
+      treat_missing_data: breaching
+      comparison_operator: GreaterThanThreshold
+    DiskSpace:
+      classification: health
+      severity: low
+      metric_name: "disk_used_percent"
+      period: 300
+      evaluation_periods: 1
+      statistic: Minimum
+      threshold: 80
+      comparison_operator: GreaterThanThreshold
+      treat_missing_data: breaching
+    Swap:
+      classification: performance
+      severity: critical
+      namespace: CWAgent
+      metric_name: "swap_used_percent"
+      period: 60
+      evaluation_periods: 5
+      statistic: Maximum
+      threshold: 50
+      comparison_operator: GreaterThanThreshold
+      treat_missing_data: breaching
