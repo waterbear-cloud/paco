@@ -4,7 +4,9 @@ Changelog for Paco
 6.1.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Fixed
+
+- CodePipeline resource can be created in Service applications.
 
 
 6.1.0 (2020-03-09)

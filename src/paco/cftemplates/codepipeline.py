@@ -39,9 +39,8 @@ ACTION_MAP = {
 }
 
 class CodePipeline(StackTemplate):
-    def __init__(self, stack, paco_ctx, env_ctx, app_name, artifacts_bucket_name):
+    def __init__(self, stack, paco_ctx, base_aws_name, deploy_region, app_name, artifacts_bucket_name):
         self.pipeline = stack.resource
-        self.env_ctx = env_ctx
         super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_NAMED_IAM"])
         self.set_aws_name('CodePipeline', self.resource_group_name, self.resource.name)
 
@@ -60,7 +59,7 @@ class CodePipeline(StackTemplate):
         self.s3_deploy_assume_role_statement = None
 
         self.res_name_prefix = self.create_resource_name_join(
-            name_list=[env_ctx.get_aws_name(), app_name, self.resource_group_name, self.resource.name],
+            name_list=[base_aws_name, app_name, self.resource_group_name, self.resource.name],
             separator='-',
             camel_case=True
         )
@@ -699,7 +698,7 @@ class CodePipeline(StackTemplate):
                     param_type='String',
                     name='CodeDeployRegion',
                     description='The AWS Region where deployments to CodeDeploy will be sent.',
-                    value=self.env_ctx.region,
+                    value=deploy_region,
                 )
                 # CodeDeploy Deploy Action
                 codedeploy_deploy_action = troposphere.codepipeline.Actions(

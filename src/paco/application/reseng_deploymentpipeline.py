@@ -89,6 +89,17 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
 
         # CodePipeline
         codepipeline_config_ref = self.pipeline_config.paco_ref_parts + '.codepipeline'
+
+        # Resource can be in a Service or an Environment
+        if hasattr(self, 'env_ctx'):
+            base_aws_name = self.env_ctx.get_aws_name()
+            deploy_region = self.env_ctx.region
+        else:
+            # deploy region is the same as the Service region
+            # ToDo: use-cases to have this be another region?
+            deploy_region = self.aws_region
+            base_aws_name = self.stack_group.get_aws_name()
+
         self.pipeline_config._stack = self.stack_group.add_new_stack(
             self.aws_region,
             self.resource,
@@ -96,7 +107,8 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             account_ctx=self.pipeline_account_ctx,
             stack_tags=self.stack_tags,
             extra_context={
-                'env_ctx': self.env_ctx,
+                'base_aws_name': base_aws_name,
+                'deploy_region': deploy_region,
                 'app_name': self.app.name,
                 'artifacts_bucket_name': self.artifacts_bucket_meta['name']
             },
