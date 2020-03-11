@@ -45,7 +45,8 @@ class CodeCommitStackGroup(StackGroup):
             self.aws_region,
             self.config,
             paco.cftemplates.CodeCommit,
-            extra_context={'repo_list':self.repo_list}
+            extra_context={'repo_list':self.repo_list},
+            stack_hooks=stack_hooks
         )
         codecommit_stack.set_termination_protection(True)
         self.stack_list.append(codecommit_stack)
@@ -96,7 +97,7 @@ class CodeCommitStackGroup(StackGroup):
 
     def codecommit_post_stack_hook_cache_id(self, hook, config):
         cache_data = ""
-        for repo_group in config.repository_groups.values():
+        for repo_group in config.values():
             for repo_config in repo_group.values():
                 if repo_config.users != None:
                     for user_config in repo_config.users.values():
@@ -110,7 +111,7 @@ class CodeCommitStackGroup(StackGroup):
         "Iterates through users and displays the SSHPublicKeyId for each user in the stack."
         iam_client = self.account_ctx.get_aws_client('iam')
         user_done = {}
-        for repo_group in config.repository_groups.values():
+        for repo_group in config.values():
             for repo_config in repo_group.values():
                 if self.paco_ctx.get_ref(repo_config.account+'.name') != self.account_ctx.get_name():
                     continue
