@@ -100,6 +100,8 @@ class CodePipeline(StackTemplate):
                     self.github_source = True
                 elif action.type == 'Lambda.Invoke':
                     self.lambda_invoke = True
+                elif action.type == 'Paco.CreateThenDeployImage':
+                    self.lambda_invoke = True
                 configuration = getattr(self, info['configuration_method'])(stage, action)
                 action_resource = troposphere.codepipeline.Actions(
                     Name=self.create_cfn_logical_id(info['Name'] + stage.name + action.name),
