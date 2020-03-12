@@ -735,7 +735,7 @@ statement:
             return
 
         # cfn-init base path
-        if resource.instance_ami_type == 'amazon':
+        if resource.instance_ami_type in ['amazon', 'centos']:
             # Amazon Linux has cfn-init pre-installed at /opt/aws/
             cfn_base_path = '/opt/aws'
         else:
