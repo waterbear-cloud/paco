@@ -85,7 +85,7 @@ class CodePipeline(StackTemplate):
         if self.pipeline.stages != None:
             self.create_pipeline_from_stages()
         else:
-            self.create_pipeine_from_sourcebuilddeploy()
+            self.create_pipeine_from_sourcebuilddeploy(deploy_region)
 
     def create_pipeline_from_stages(self):
         "Create CodePipeilne resources based on the .stages field"
@@ -343,7 +343,7 @@ class CodePipeline(StackTemplate):
         )
         return pipeline_service_role_res
 
-    def create_pipeine_from_sourcebuilddeploy(self):
+    def create_pipeine_from_sourcebuilddeploy(self, deploy_region):
         # CodePipeline
         # Source Actions
         source_stage_actions = []
@@ -476,51 +476,53 @@ class CodePipeline(StackTemplate):
         )
 
         # Build Actions
-        build_stage_actions = []
-        for action in self.pipeline.build.values():
+        build_stage = None
+        if self.pipeline.build != None:
+            build_stage_actions = []
+            for action in self.pipeline.build.values():
 
-            # Manual Approval Action
-            if action.type == 'ManualApproval':
-                manual_approval_action = self.init_manual_approval_action(action)
-                build_stage_actions.append(manual_approval_action)
+                # Manual Approval Action
+                if action.type == 'ManualApproval':
+                    manual_approval_action = self.init_manual_approval_action(action)
+                    build_stage_actions.append(manual_approval_action)
 
-            # CodeBuild Build Action
-            elif action.type == 'CodeBuild.Build':
-                self.codebuild_access = True
-                self.codebuild_project_arn_param = self.create_cfn_parameter(
-                    param_type='String',
-                    name='CodeBuildProjectArn',
-                    description='The arn of the CodeBuild project',
-                    value='{}.project.arn'.format(action.paco_ref),
-                )
-                codebuild_build_action = troposphere.codepipeline.Actions(
-                    Name='CodeBuild',
-                    ActionTypeId = troposphere.codepipeline.ActionTypeId(
-                        Category = 'Build',
-                        Owner = 'AWS',
-                        Version = '1',
-                        Provider = 'CodeBuild'
-                    ),
-                    Configuration = {
-                        'ProjectName': troposphere.Ref(self.resource_name_prefix_param),
-                    },
-                    InputArtifacts = self.build_input_artifacts,
-                    OutputArtifacts = [
-                        troposphere.codepipeline.OutputArtifacts(
-                            Name = 'CodeBuildArtifact'
-                        )
-                    ],
-                    RunOrder = action.run_order
-                )
-                build_stage_actions.append(codebuild_build_action)
-        build_stage = troposphere.codepipeline.Stages(
-            Name="Build",
-            Actions = build_stage_actions
-        )
+                # CodeBuild Build Action
+                elif action.type == 'CodeBuild.Build':
+                    self.codebuild_access = True
+                    self.codebuild_project_arn_param = self.create_cfn_parameter(
+                        param_type='String',
+                        name='CodeBuildProjectArn',
+                        description='The arn of the CodeBuild project',
+                        value='{}.project.arn'.format(action.paco_ref),
+                    )
+                    codebuild_build_action = troposphere.codepipeline.Actions(
+                        Name='CodeBuild',
+                        ActionTypeId = troposphere.codepipeline.ActionTypeId(
+                            Category = 'Build',
+                            Owner = 'AWS',
+                            Version = '1',
+                            Provider = 'CodeBuild'
+                        ),
+                        Configuration = {
+                            'ProjectName': troposphere.Ref(self.resource_name_prefix_param),
+                        },
+                        InputArtifacts = self.build_input_artifacts,
+                        OutputArtifacts = [
+                            troposphere.codepipeline.OutputArtifacts(
+                                Name = 'CodeBuildArtifact'
+                            )
+                        ],
+                        RunOrder = action.run_order
+                    )
+                    build_stage_actions.append(codebuild_build_action)
+            build_stage = troposphere.codepipeline.Stages(
+                Name="Build",
+                Actions = build_stage_actions
+            )
         # Deploy Action
         [ deploy_stage,
           self.s3_deploy_assume_role_statement,
-          self.codedeploy_deploy_assume_role_statement ] = self.init_deploy_stage()
+          self.codedeploy_deploy_assume_role_statement ] = self.init_deploy_stage(deploy_region)
 
         # Manual Deploy Enabled/Disable
         manual_approval_enabled_param = self.create_cfn_parameter(
@@ -606,17 +608,18 @@ class CodePipeline(StackTemplate):
 
         return manual_deploy_action
 
-    def init_deploy_stage(self):
+    def init_deploy_stage(self, deploy_region):
         if self.pipeline.deploy == None:
             return [None, None, None]
         deploy_stage_actions = []
+        s3_deploy_assume_role_statement = None
+        codedeploy_deploy_assume_role_statement = None
         for action in self.pipeline.deploy.values():
             if action.type == 'ManualApproval':
                 manual_approval_action = self.init_manual_approval_action(action)
                 deploy_stage_actions.append(manual_approval_action)
 
             # S3.Deploy
-            s3_deploy_assume_role_statement = None
             if action.type == 'S3.Deploy':
                 s3_deploy_bucket_name_param = self.create_cfn_parameter(
                     param_type='String',
@@ -676,7 +679,6 @@ class CodePipeline(StackTemplate):
                 )
                 deploy_stage_actions.append(s3_deploy_action)
 
-            self.codedeploy_deploy_assume_role_statement = None
             if action.type == 'CodeDeploy.Deploy':
                 codedeploy_tools_delegate_role_arn_param = self.create_cfn_parameter(
                     param_type='String',
