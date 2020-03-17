@@ -1,10 +1,22 @@
 Changelog for Paco
 ==================
 
-6.1.1 (unreleased)
+6.1.2 (unreleased)
 ------------------
 
+- Nothing changed yet.
+
+
+6.1.1 (2020-03-14)
+------------------
+
+### Added
+
+- Expanded the Stages/Actions for DeploymentPipeline to include S3.Deploy
+
 ### Fixed
+
+- SLRoles template was not fully ported to StackTemplate API.
 
 - CodePipeline resource can be created in Service applications.
 

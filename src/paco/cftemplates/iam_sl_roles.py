@@ -7,12 +7,9 @@ class IAMSLRoles(StackTemplate):
         normalized_servicename = servicename.replace('.','')
         config_ref = 'resource.iam.servicelinkedrole' + '.' + normalized_servicename
         super().__init__(
+            stack,
             paco_ctx,
-            account_ctx,
-            aws_region,
-            config_ref,
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
-            stack_group=stack_group,
         )
         self.set_aws_name('SLRole', normalized_servicename)
 
