@@ -52,11 +52,15 @@ class ASG(StackTemplate):
         )
 
         # if the network for the ASG is disabled, only use an empty placeholder
-        env_region = get_parent_by_interface(asg_config, schemas.IEnvironmentRegion)
-        if not env_region.network.is_enabled():
+        #if self.env_ctx.config.network.is_enabled():
+        #env_region = get_parent_by_interface(asg_config, schemas.IEnvironmentRegion)
+        #if self.env_ctx.config.network.is_enabled() != env_region.network.is_enabled():
+        #    breakpoint()
+
+        #if not env_region.network.is_enabled():
+        if not self.env_ctx.config.network.is_enabled():
             self.set_template(template.to_yaml())
             return
-
         security_group_list_param = self.create_cfn_ref_list_param(
             param_type='List<AWS::EC2::SecurityGroup::Id>',
             name='SecurityGroupList',

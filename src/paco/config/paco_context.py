@@ -346,10 +346,12 @@ This directory contains several sub-directories that Paco uses:
             self.services[plugin_name.lower()] = service
             self.log_action_col('Init', 'Service', plugin_name, 'Completed')
 
-    def get_controller(self, controller_type, command=None, model_obj=None):
+    def get_controller(self, controller_type, command=None, model_obj=None, model_paco_ref=None):
         """Gets a controller by name and calls .init() on it with any controller args"""
         controller_type = controller_type.lower()
         controller = None
+        if model_obj == None and model_paco_ref != None:
+            model_obj = references.get_model_obj_from_ref(model_paco_ref, self.project)
         if controller_type != 'service':
             if controller_type in self.controllers:
                 controller = self.controllers[controller_type]
