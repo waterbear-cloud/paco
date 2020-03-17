@@ -200,13 +200,13 @@ class NetEnvController(Controller):
             SecretString=secret_string
         )
 
-    def init_command(self, controller_args):
-        if controller_args['arg_1'].find('.secrets_manager.'):
-            parts = controller_args['arg_1'].split('.')
+    def set_command(self, resource):
+        if resource.paco_ref_parts.find('.secrets_manager.'):
+            parts = resource.paco_ref_parts.split('.')
             environment = parts[2]
             region = parts[3]
             account_ctx = self.paco_ctx.get_account_context(account_ref=self.config[environment][region].network.aws_account)
-            secret_name = controller_args['arg_1']
+            secret_name = resource.paco_ref_parts
             self.secrets_manager(secret_name, account_ctx, region)
 
     def init(self, command=None, model_obj=None):
