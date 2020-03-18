@@ -39,9 +39,13 @@ class StackGroup():
         self.stack_output_config = {}
         self.state = None
         self.prev_state = None
-        self.filter_config = controller.stack_group_filter
         self.state_filename = '-'.join([self.get_aws_name(), self.name, "StackGroup-State.yaml"])
         self.state_filepath = self.paco_ctx.build_path / self.state_filename
+
+    @property
+    def filter_config(self):
+        # Stack group filter can change, get it from the source
+        return self.controller.stack_group_filter
 
     def add_new_stack(
         self,

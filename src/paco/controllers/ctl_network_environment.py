@@ -20,7 +20,6 @@ yaml.default_flow_sytle = False
 class EnvironmentContext():
     def __init__(self, paco_ctx, netenv_ctl, netenv_id, env_id, region, config):
         self.paco_ctx = paco_ctx
-        self.stack_group_filter = netenv_ctl.stack_group_filter
         self.netenv_ctl = netenv_ctl
         self.netenv_id = netenv_id
         self.env_id = env_id
@@ -44,6 +43,12 @@ class EnvironmentContext():
         self.stack_tags = StackTags()
         self.stack_tags.add_tag('paco.netenv.name', self.netenv_id)
         self.stack_tags.add_tag('paco.env.name', self.env_id)
+
+    @property
+    def stack_group_filter(self):
+        # The stack_group_filter can change so we need to get it from the
+        # network environment itself
+        return self.netenv_ctl.stack_group_filter
 
     def init(self):
         if self.init_done:
@@ -210,6 +215,10 @@ class NetEnvController(Controller):
             self.secrets_manager(secret_name, account_ctx, region)
 
     def init(self, command=None, model_obj=None):
+        # Stack group filter is always set as the netevn controller object
+        # is cached and reused. Not setting the filter each time can result
+        # in the filter failing
+        self.stack_group_filter = model_obj.paco_ref_parts
         if self.init_done == True:
             return
         self.init_done = True
@@ -282,7 +291,6 @@ class NetEnvController(Controller):
                 first = False
 
         self.paco_ctx.log_action_col("Init", "NetEnv", self.netenv_id)
-        self.stack_group_filter = netenv_arg
         if regions:
             for region in regions:
                 self.init_sub_env(env_id, region)
