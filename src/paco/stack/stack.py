@@ -7,7 +7,7 @@ from paco.core.exception import StackException, PacoErrorCode, PacoException
 from paco.models import references
 from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
-from paco.utils import md5sum, dict_of_dicts_merge, list_to_comma_string
+from paco.utils import md5sum, dict_of_dicts_merge, list_to_comma_string, enhanced_input
 from pprint import pprint
 from shutil import copyfile
 import base64
@@ -1244,6 +1244,12 @@ to help identify the places where token expiry was failing."""
         if self.change_protected == True:
             self.log_action("Delete", "Protected")
             return
+        if self.paco_ctx.yes == False:
+            print("\n"+self.get_name())
+            answer = self.paco_ctx.input_confirm_action("DELETE stack? Are you sure?", default='n')
+            if answer in ['N', 'n']:
+                self.log_action("Delete", "Aborted")
+                return
         self.get_status()
         self.action = "delete"
         if self.is_exists() == True:
