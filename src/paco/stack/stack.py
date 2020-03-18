@@ -3,7 +3,7 @@ from copy import deepcopy
 from enum import Enum
 from paco import utils
 from paco.core.yaml import YAML
-from paco.core.exception import StackException, PacoErrorCode, PacoException
+from paco.core.exception import StackException, PacoErrorCode, PacoException, StackOutputException
 from paco.models import references
 from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
@@ -77,9 +77,7 @@ class StackOutputParam():
         comma = ''
         for entry in self.entry_list:
             for output_key in entry['output_keys']:
-                output_value = entry['stack'].get_outputs_value(
-                    output_key
-                )
+                output_value = entry['stack'].get_outputs_value(output_key)
                 param_value += comma + output_value
                 comma = ','
 
@@ -630,7 +628,28 @@ class Stack():
         """
         parameter_list = []
         for param_entry in self.parameters:
-            parameter = param_entry.gen_parameter()
+            try:
+                parameter = param_entry.gen_parameter()
+            except StackOutputException:
+                message = """Unable to find output for Parameter '{}' for the resource:
+
+  {}
+
+Attempting to resolve the paco.ref:
+
+  {}
+
+That Output should be provided by the CloudFormation Stack:
+
+  {}
+
+That Stack has potentially been disabled, deleted or modified. Check that the resource
+is enabled. If the stack for that resource has been modified by another user,
+your cache may be out of sync. Try running again the with the --nocache option.
+""".format(param_entry.key, self.resource.paco_ref_parts, param_entry.stack.resource.paco_ref_parts, param_entry.stack.get_name())
+
+                raise StackOutputException(message)
+
             # Do not update Parameters which have indicated they can be externally updated
             if action == "update" and parameter.ignore_changes == True:
                 stack_param_entry = {
@@ -1037,13 +1056,10 @@ to help identify the places where token expiry was failing."""
             break
 
         if 'Outputs' not in stack_metadata['Stacks'][0].keys():
-            message = self.get_stack_error_message()
-            message += '\nKey: '+key+'\n'
-            message += '\nHints:\n'
-            message += '1. register_stack_output_config() calls are missing in the cftemplate.\n'
-            message += '2. The CloudFormation template does not have the corresponding Outputs entry.\n'
-            message += '3. The stack has not been provisioned yet.\n'
-            raise StackException(PacoErrorCode.StackOutputMissing, message=message)
+            # this error should be caught be the calling code and re-raised with more context
+            # for example, if an ASG is looking for an EFS Id output, then the user needs to be
+            # informed that the ASG stack is failing to in find the output from the EFS stack
+            raise StackOutputException("Could not find the value for {}".format(key))
 
         for output in stack_metadata['Stacks'][0]['Outputs']:
             if output['OutputKey'] == key:
@@ -1065,7 +1081,27 @@ to help identify the places where token expiry was failing."""
         template_md5 = md5sum(self.get_yaml_path())
         outputs_str = ""
         for param_entry in self.parameters:
-            param_value = param_entry.gen_parameter_value()
+            try:
+                param_value = param_entry.gen_parameter_value()
+            except StackOutputException:
+                message = """Unable to find output for Parameter '{}' for the resource:
+
+  {}
+
+Attempting to resolve the paco.ref:
+
+  {}
+
+That Output should be provided by the CloudFormation Stack:
+
+  {}
+
+That Stack has potentially been disabled, deleted or modified. Check that the resource
+is enabled. If the stack for that resource has been modified by another user,
+your cache may be out of sync. Try running again the with the --nocache option.
+""".format(param_entry.key, self.resource.paco_ref_parts, param_entry.stack.resource.paco_ref_parts, param_entry.stack.get_name())
+
+                raise StackOutputException(message)
             outputs_str += param_value
         outputs_md5 = md5sum(str_data=outputs_str)
         new_cache_id = template_md5 + outputs_md5
