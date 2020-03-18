@@ -4,7 +4,10 @@ Changelog for Paco
 6.1.2 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Changed
+
+- All Paco warnings are now prefixed with a standard "WARNING:" and will only
+  be displayed if the -w, --warn flag is passed.
 
 
 6.1.1 (2020-03-14)

@@ -629,11 +629,12 @@ aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
 
         script_table['cache_id'] = self.get_cache_id(resource, app_id, grp_id)
         user_data_script = script_fmt.format(script_table)
-        if resource.rolling_update_policy != None and \
-            resource.rolling_update_policy.wait_on_resource_signals == True and \
-                resource.user_data_script.find('ec2lm_signal_asg_resource') == -1:
-            print("!! WARNING: {}.rolling_update_policy.wait_on_resource_signals == True".format(resource.paco_ref_parts))
-            print("          : 'ec2lm_signal_asg_resource <SUCCESS|FAILURE>' was not detected in your user_data_script for this resource.")
+        if self.paco_ctx.warn:
+            if resource.rolling_update_policy != None and \
+                resource.rolling_update_policy.wait_on_resource_signals == True and \
+                    resource.user_data_script.find('ec2lm_signal_asg_resource') == -1:
+                print("WARNING: {}.rolling_update_policy.wait_on_resource_signals == True".format(resource.paco_ref_parts))
+                print("'ec2lm_signal_asg_resource <SUCCESS|FAILURE>' was not detected in your user_data_script for this resource.")
 
         return user_data_script
 

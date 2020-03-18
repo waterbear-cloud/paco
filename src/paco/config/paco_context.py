@@ -10,6 +10,7 @@ from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode, MissingAccountId, InvalidAccountName
 from paco.models import vocabulary
 from paco.models.references import Reference
+from paco.models.exceptions import InvalidPacoProjectFile
 from paco.models import references
 from paco.models import load_project_from_yaml
 from paco.core.yaml import read_yaml_file
@@ -309,9 +310,13 @@ This directory contains several sub-directories that Paco uses:
 
         # Load the model from YAML
         print("Loading Paco project: %s" % (self.home))
-        self.project = load_project_from_yaml(self.project_folder, None)
+        self.project = load_project_from_yaml(self.project_folder, None, warn=self.warn)
         if project_only == True:
             return
+
+        # Check Notifications and warn about Alarms without any notifications
+        if self.warn:
+            self.check_notification_config()
 
         # Settings
         self.master_account = AccountContext(
@@ -395,6 +400,33 @@ This directory contains several sub-directories that Paco uses:
             self.project,
             account_ctx=account_ctx
         )
+
+    def check_notification_config(self):
+        """Detect misconfigured alarm notification situations.
+        This happens after both MonitorConfig and NetworkEnvironments have loaded.
+        """
+        if 'snstopics' in self.project['resource']:
+            for app in self.project.get_all_applications():
+                if app.is_enabled():
+                    for alarm_info in app.list_alarm_info():
+                        alarm = alarm_info['alarm']
+                        # warn on alarms with no subscriptions
+                        if len(alarm.notification_groups) == 0:
+                            print("WARNING: Alarm {} for app {} does not have any notifications.".format(
+                                alarm.name,
+                                app.name
+                            ))
+                        # alarms with groups that do not exist
+                        region = self.project.active_regions[0] # regions are all the same, just choose the first
+                        for groupname in alarm.notification_groups:
+                            if groupname not in self.project['resource']['snstopics'][region]:
+                                raise InvalidPacoProjectFile(
+                                    "Alarm {} for app {} notifies to group '{}' which does belong in Notification service group names.".format(
+                                        alarm.name,
+                                        app.name,
+                                        groupname
+                                    )
+                                )
 
     def confirm_yaml_changes(self, model_obj):
         """Confirm changes made to the Paco Project YAML from the last run"""

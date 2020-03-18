@@ -453,11 +453,12 @@ class Stack():
 
         yaml_path = self.get_yaml_path()
         # Template size limit is 51,200 bytes
-        # Start warning if the template size gets close
-        warning_size_limite_bytes = 41200
-        if yaml_path.stat().st_size >= warning_size_limite_bytes:
-            print("WARNING: Template is reaching size limit of 51,200 bytes: Current size: {} bytes ".format(yaml_path.stat().st_size))
-            print("template: {}".format(yaml_path))
+        if self.paco_ctx.warn:
+            # Start warning if the template size gets close
+            warning_size_limite_bytes = 41200
+            if yaml_path.stat().st_size >= warning_size_limite_bytes:
+                print("WARNING: Template is reaching size limit of 51,200 bytes: Current size: {} bytes ".format(yaml_path.stat().st_size))
+                print("template: {}".format(yaml_path))
 
     def validate(self):
         "Validate the Stack"
@@ -918,7 +919,8 @@ your cache may be out of sync. Try running again the with the --nocache option.
         print("\n--------------------------------------------------------")
         print("Stack: " + self.get_name())
         print("")
-        self.warn_template_changes(deep_diff)
+        if self.paco_ctx.warn:
+            self.warn_template_changes(deep_diff)
         answer = self.paco_ctx.input_confirm_action("\nAre these changes acceptable?")
         if answer == False:
             print("Aborted run.")
