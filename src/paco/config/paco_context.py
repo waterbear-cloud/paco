@@ -15,12 +15,7 @@ from paco.models import references
 from paco.models import load_project_from_yaml
 from paco.core.yaml import read_yaml_file
 from shutil import copyfile
-
-# deepdiff turns on Deprecation warnings, we need to turn them back off
-# again right after import, otherwise 3rd libs spam dep warnings all over the place
 from deepdiff import DeepDiff
-import warnings
-warnings.simplefilter("ignore")
 
 
 class AccountContext(object):
