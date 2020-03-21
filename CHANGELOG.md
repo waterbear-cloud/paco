@@ -9,6 +9,9 @@ Changelog for Paco
 - All Paco warnings are now prefixed with a standard "WARNING:" and will only
   be displayed if the -w, --warn flag is passed.
 
+- DeepDiff version required is 4.3.2. This version fixes the need to fiddle with deprecation
+  warning suppression.
+
 
 6.1.1 (2020-03-14)
 ------------------
