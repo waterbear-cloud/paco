@@ -1,8 +1,13 @@
 Changelog for Paco
 ==================
 
-6.1.2 (unreleased)
+6.2.0 (unreleased)
 ------------------
+
+### Migration
+
+- ASG rolling_udpate_policy behaviour has been changed. The fields ``update_policy_max_batch_size`` and ``update_policy_min_instances_in_service``
+  have been removed and these settings are only controlled with the ``rolling_udpate_policy`` field.
 
 ### Changed
 
