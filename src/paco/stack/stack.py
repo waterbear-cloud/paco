@@ -10,18 +10,12 @@ from paco.models.locations import get_parent_by_interface
 from paco.utils import md5sum, dict_of_dicts_merge, list_to_comma_string
 from pprint import pprint
 from shutil import copyfile
+from deepdiff import DeepDiff
 import base64
 import os.path
 import pathlib
 import re
 import sys
-
-
-# deepdiff turns on Deprecation warnings, we need to turn them back off
-# again right after import, otherwise 3rd libs spam dep warnings all over the place
-from deepdiff import DeepDiff
-import warnings
-warnings.simplefilter("ignore")
 
 
 yaml=YAML(typ="safe", pure=True)
