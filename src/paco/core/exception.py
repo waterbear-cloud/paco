@@ -74,3 +74,6 @@ class InvalidVersionControl(PacoBaseException):
 
 class StackOutputException(PacoBaseException):
     title = "Could not find CloudFormation Stack output"
+
+class InvalidPacoConfigFile(PacoBaseException):
+    title = "Paco config file is not a valid format"

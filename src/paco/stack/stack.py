@@ -1462,7 +1462,7 @@ your cache may be out of sync. Try running again the with the --nocache option.
             self.log_action_header()
         log_message = self.paco_ctx.log_action_col(
             action,
-            msg_account_name,
+            msg_account_name + '.' + self.aws_region,
             stack_action,
             stack_message,
             return_it

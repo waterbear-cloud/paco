@@ -3,12 +3,18 @@ import os
 import sys
 import ruamel.yaml.constructor
 from paco.config.paco_context import PacoContext, AccountContext
-from paco.core.exception import PacoException, StackException, InvalidPacoScope, PacoBaseException, InvalidPacoHome, InvalidVersionControl
+from paco.core.exception import PacoException, StackException, InvalidPacoScope, PacoBaseException, InvalidPacoHome, InvalidVersionControl, \
+    InvalidPacoConfigFile
+from paco.core.yaml import YAML
 from paco.models.exceptions import InvalidPacoProjectFile, UnusedPacoProjectField, InvalidPacoReference
 from paco.models.references import get_model_obj_from_ref
 from boto3.exceptions import Boto3Error
 from botocore.exceptions import BotoCoreError, ClientError
 from functools import wraps
+
+
+yaml=YAML()
+yaml.default_flow_sytle = False
 
 pass_paco_context = click.make_pass_decorator(PacoContext, ensure=True)
 
@@ -27,6 +33,27 @@ See the Paco CLI config scope docs at https://www.paco-cloud.io/en/latest//cli.h
 
 """
 
+def load_paco_config_options(paco_ctx):
+    "Loads the .paco-work/config.yaml options"
+    # read .paco-work/config.yaml
+    config_path = paco_ctx.paco_work_path / 'config.yaml'
+    if config_path.exists():
+        config = yaml.load(config_path)
+    else:
+        config_path = paco_ctx.paco_work_path / 'config.yml'
+        # no config.yaml or config.yml, do nothing
+        if not config_path.exists():
+            return
+        config_path = yaml.load(config_path)
+    if 'warn' in config:
+        if type(config['warn']) != type(bool()):
+            raise InvalidPacoConfigFile("The 'warn' option must be a boolean in the paco config file at:\n{}.".format(config_path))
+        paco_ctx.warn = config['warn']
+    if 'verbose' in config:
+        if type(config['verbose']) != type(bool()):
+            raise InvalidPacoConfigFile("The 'verbose' option must be a boolean in the paco config file at:\n{}.".format(config_path))
+        paco_ctx.verbose = config['verbose']
+
 def init_cloud_command(
     command_name,
     paco_ctx,
@@ -39,6 +66,7 @@ def init_cloud_command(
     config_scope,
     home
 ):
+    "Applies cloud options and verifies that the command is sane. Loads the model and reports on it"""
     paco_ctx.verbose = verbose
     paco_ctx.nocache = nocache
     paco_ctx.yes = yes
@@ -46,9 +74,12 @@ def init_cloud_command(
     paco_ctx.disable_validation = disable_validation
     paco_ctx.quiet_changes_only = quiet_changes_only
     paco_ctx.command = command_name
+    paco_ctx.config_scope = config_scope
     init_paco_home_option(paco_ctx, home)
     if not paco_ctx.home:
         raise InvalidPacoHome('Paco configuration directory needs to be specified with either --home or PACO_HOME environment variable.')
+
+    load_paco_config_options(paco_ctx)
 
     # Inform about invalid scopes before trying to load the Paco project
     scopes = config_scope.split('.')
@@ -147,8 +178,6 @@ See the Paco CLI config scope docs at https://www.paco-cloud.io/en/latest//cli.h
 """
             )
 
-    import warnings
-    warnings.simplefilter("ignore")
     paco_ctx.load_project()
 
     # Perform VCS checks if enforce_branch_environments is enabled
@@ -206,19 +235,8 @@ Expected to be on branch named '{}' for a change with a global scope of '{}', bu
     else:
         controller_type = scope_parts[0]
 
-    # Locate a model object and summarize it
     paco_ref = 'paco.ref {}'.format(config_scope)
     obj = get_model_obj_from_ref(paco_ref, paco_ctx.project)
-    print('Object selected to {}:'.format(command_name))
-    print('  Name: {}'.format(
-        getattr(obj, 'name', 'unnamed')
-    ))
-    print('  Type: {}'.format(obj.__class__.__name__))
-    if getattr(obj, 'title', None):
-        print('  Title: {}'.format(obj.title))
-    if hasattr(obj, 'paco_ref_parts'):
-        print('  Reference: {}'.format(obj.paco_ref_parts))
-
     return controller_type, obj
 
 def cloud_options(func):

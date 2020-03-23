@@ -53,6 +53,18 @@ There are three cloud commands to interact with the cloud:
 
 The CONFIG_SCOPE argument is a reference to an object in the Paco project configuration.
 
+Paco CLI config file
+--------------------
+
+The file ``.paco-work/config.yaml`` can be used to set default Paco CLI options.
+
+This file supports the ``--warn`` and ``--verbose`` options:
+
+.. code-block:: yaml
+
+    warn: true
+    verbose: true
+
 Config Scope
 ------------
 
@@ -267,3 +279,4 @@ You must specify a minimum of a global Resource type and you must have a YAML fi
 
 Typically you will only scope a complete add-on, but it is possible for an add-on to implement
 deeper scopes. Consult the add-on documentation directly.
+

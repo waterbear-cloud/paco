@@ -19,7 +19,6 @@ class SecretsManager(StackTemplate):
         )
         self.set_aws_name('SecretsManager')
         self.init_template('Secrets Manager')
-        self.paco_ctx.log_action_col("Init", "Secrets", "Manager")
 
         is_enabled = False
         for secret_app in secrets_config.values():
