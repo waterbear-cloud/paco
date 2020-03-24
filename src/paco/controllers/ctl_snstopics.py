@@ -38,6 +38,7 @@ class SNSTopicsStackGroup(StackGroup):
 
     def init(self):
         "init"
+        self.paco_ctx.log_start('Init', self.config)
         sns_topics_config = [topic for topic in self.config.values()]
         stack = self.add_new_stack(
             self.region,
@@ -46,6 +47,7 @@ class SNSTopicsStackGroup(StackGroup):
             stack_tags=StackTags(self.stack_tags),
             extra_context={'grp_id': 'NG'}
         )
+        self.paco_ctx.log_finish('Init', self.config)
 
 class SNTopicsGroupsController(Controller):
     def __init__(self, paco_ctx):

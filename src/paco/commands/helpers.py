@@ -1,7 +1,3 @@
-import click
-import os
-import sys
-import ruamel.yaml.constructor
 from paco.config.paco_context import PacoContext, AccountContext
 from paco.core.exception import PacoException, StackException, InvalidPacoScope, PacoBaseException, InvalidPacoHome, InvalidVersionControl, \
     InvalidPacoConfigFile
@@ -11,6 +7,11 @@ from paco.models.references import get_model_obj_from_ref
 from boto3.exceptions import Boto3Error
 from botocore.exceptions import BotoCoreError, ClientError
 from functools import wraps
+import click
+import os
+import sys
+import ruamel.yaml.constructor
+import pathlib
 
 
 yaml=YAML()
@@ -35,8 +36,8 @@ See the Paco CLI config scope docs at https://www.paco-cloud.io/en/latest//cli.h
 
 def load_paco_config_options(paco_ctx):
     "Loads the .paco-work/config.yaml options"
-    # read .paco-work/config.yaml
-    config_path = paco_ctx.paco_work_path / 'config.yaml'
+    # read .pacoconfig
+    config_path = pathlib.Path(paco_ctx.home) / '.pacoconfig'
     if config_path.exists():
         config = yaml.load(config_path)
     else:

@@ -282,12 +282,11 @@ class NetEnvController(Controller):
                     config_obj = config_obj[res_part]
                 first = False
 
-        self.paco_ctx.log_start("Init", self.config)
+        self.paco_ctx.log_section_start("Init", self.config)
         self.stack_group_filter = netenv_arg
         if regions:
             for region in regions:
                 self.init_sub_env(env_id, region)
-        self.paco_ctx.log_finish("Init", self.config)
 
     def validate(self):
         self.paco_ctx.log_start("Validate", self.config)

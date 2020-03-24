@@ -56,7 +56,7 @@ The CONFIG_SCOPE argument is a reference to an object in the Paco project config
 Paco CLI config file
 --------------------
 
-The file ``.paco-work/config.yaml`` can be used to set default Paco CLI options.
+A ``.pacoconfig`` file can be used to set default Paco CLI options.
 
 This file supports the ``--warn`` and ``--verbose`` options:
 

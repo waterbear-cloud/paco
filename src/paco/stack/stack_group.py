@@ -87,8 +87,8 @@ class StackGroup():
             enabled = resource.is_enabled()
         self.paco_ctx.log_action_col(
             "Init",
-            account_ctx.name + '.' + aws_region,
             template_class.__name__,
+            account_ctx.name + '.' + aws_region,
             "stack: " + stack.get_name(),
             enabled=enabled
         )

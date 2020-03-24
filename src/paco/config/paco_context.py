@@ -328,6 +328,7 @@ This directory contains several sub-directories that Paco uses:
             print('  Title: {}'.format(obj.title))
         if hasattr(obj, 'paco_ref_parts'):
             print('  Reference: {}'.format(obj.paco_ref_parts))
+        print()
 
         # Check Notifications and warn about Alarms without any notifications
         if self.warn:
@@ -356,11 +357,11 @@ This directory contains several sub-directories that Paco uses:
             try:
                 self.project['service'][plugin_name.lower()]
             except KeyError:
-                # ignore if no config files for a registered service
-                self.log_action_col("Skipping", 'Service', plugin_name)
                 continue
 
-            service = plugin_module.instantiate_class(self, self.project['service'][plugin_name.lower()])
+            service_config = self.project['service'][plugin_name.lower()]
+            self.log_section_start("Init", service_config)
+            service = plugin_module.instantiate_class(self, service_config)
             service.init(None)
             self.services[plugin_name.lower()] = service
 
@@ -549,13 +550,23 @@ This directory contains several sub-directories that Paco uses:
         applied_file_path, new_file_path = self.init_model_obj_store(model_obj)
         copyfile(new_file_path, applied_file_path)
 
+    def log_section_start(self, action, obj):
+        "Log start with a bar header"
+        if not self.verbose:
+            return
+        print("=== {}: {} ===".format(action, obj.paco_ref_parts))
+
     def log_start(self, action, obj):
-        "Log Init start for a controller"
-        print("{}: start: {}".format(action, obj.paco_ref_parts))
+        "Log start with a table header"
+        if not self.verbose:
+            return
+        print("> {}: start: {}".format(action, obj.paco_ref_parts))
 
     def log_finish(self, action, obj):
         "Log Init finish for a controller"
-        print("{}: finish: {}".format(action, obj.paco_ref_parts))
+        if not self.verbose:
+            return
+        print("< {}: finish: {}".format(action, obj.paco_ref_parts))
 
     def log_action_col(
         self,
@@ -566,8 +577,8 @@ This directory contains several sub-directories that Paco uses:
         return_it=False,
         enabled=True,
         col_1_size=10,
-        col_2_size=17,
-        col_3_size=19, # Resource type, longest is "ElasticSearchDomain"
+        col_2_size=19, # Resource type, longest is "ElasticSearchDomain"
+        col_3_size=23,
         col_4_size=None,
     ):
         "Log an action in columns"
