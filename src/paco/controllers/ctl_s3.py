@@ -100,13 +100,8 @@ class S3Context():
 
         if bucket.external_resource == True:
             # if the bucket already exists, do not create a stack for it
-            self.paco_ctx.log_action_col(
-                "Init", "S3", "External", bucket.name + ": " + bucket.get_bucket_name(), False, bucket.is_enabled()
-            )
+            pass
         else:
-            self.paco_ctx.log_action_col(
-                "Init", "S3", "Bucket", bucket.name + ": " + bucket.get_bucket_name(), False, bucket.is_enabled()
-            )
             if change_protected == False:
                 if stack_hooks == None:
                     stack_hooks = StackHooks(self.paco_ctx)
@@ -248,7 +243,6 @@ class S3Controller(Controller):
     def init_s3_resource(self, bucket_list, stack_tags):
         if self.init_s3_resource_done == True:
             return
-        self.paco_ctx.log_action_col("Init", "S3")
         self.init_s3_resource_done = True
         s3_env_map = {}
         s3resource = self.paco_ctx.project['resource']['s3']
@@ -268,7 +262,6 @@ class S3Controller(Controller):
             s3_env_map[s3_env_id]['buckets'].append([bucket_id, bucket_config])
 
         self.init_bucket_environments(s3_env_map, stack_tags)
-        self.paco_ctx.log_action_col("Init", "S3", "Completed")
 
     def resolve_ref(self, ref):
         "Find the bucket then call resolve_ref on it"

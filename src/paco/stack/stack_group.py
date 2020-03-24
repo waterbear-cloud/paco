@@ -81,6 +81,18 @@ class StackGroup():
         stack.template = template_class(stack, self.paco_ctx, **extra_context)
 
         # now that the template has been created, post-template actions are possible
+        if not hasattr(resource, 'is_enabled'):
+            enabled = True
+        else:
+            enabled = resource.is_enabled()
+        self.paco_ctx.log_action_col(
+            "Init",
+            template_class.__name__,
+            account_ctx.name + '.' + aws_region,
+            "stack: " + stack.get_name(),
+            enabled=enabled
+        )
+
         # Add Paco-Stack-Name tag
         if hasattr(stack, 'tags'):
             stack.tags.add_tag('Paco-Stack-Name', stack.get_name())

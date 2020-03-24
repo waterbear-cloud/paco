@@ -462,17 +462,17 @@ class Stack():
             short_yaml_path = short_yaml_path[1:]
         if self.enabled == False:
             if self.paco_ctx.quiet_changes_only == False:
-                self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name(), "Disabled", short_yaml_path)
+                self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name() + '.' + self.aws_region, "Disabled", short_yaml_path)
             return
         elif self.change_protected:
             if self.paco_ctx.quiet_changes_only == False:
-                self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name(), "Protected", short_yaml_path)
+                self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name() + '.' + self.aws_region, "Protected", short_yaml_path)
             return
         self.generate_template()
         new_str = ''
         if applied_file_path.exists() == False:
             new_str = ':new'
-        self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name(), "Template"+new_str, short_yaml_path)
+        self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name() + '.' + self.aws_region, "Template"+new_str, short_yaml_path)
         try:
             self.cfn_client.validate_template(TemplateBody=self.template.body)
         except ClientError as e:
@@ -883,7 +883,7 @@ your cache may be out of sync. Try running again the with the --nocache option.
         print("{}".format(self.get_name()))
         if self.paco_ctx.verbose:
             print()
-            print("model: {}".format(self.config_ref))
+            print("model: {}".format(self.resource.paco_ref_parts))
             print("file: {}".format(new_file_path))
             print("applied file: {}".format(applied_file_path))
 
@@ -1460,12 +1460,17 @@ your cache may be out of sync. Try running again the with the --nocache option.
         global log_next_header
         if return_it == False:
             self.log_action_header()
+        if action == "Init":
+            col_2_size=19
+        else:
+            col_2_size=9
         log_message = self.paco_ctx.log_action_col(
             action,
-            msg_account_name,
             stack_action,
-            stack_message,
-            return_it
+            msg_account_name + '.' + self.aws_region,
+            'stack: ' + stack_message,
+            return_it,
+            col_2_size=col_2_size
         )
         if return_it == True:
             return log_message

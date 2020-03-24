@@ -38,14 +38,14 @@ class CodeCommitController(Controller):
         if self.init_done:
             return
         self.init_done = True
-        self.paco_ctx.log_action_col("Init", "CodeCommit")
         self.config = self.paco_ctx.project['resource']['codecommit']
+        self.paco_ctx.log_start('Init', self.config)
         # Sets the CodeCommit reference resolver object to forward all
         # all paco.ref resource.codecommit.* calls to self.resolve_ref()
         if self.config != None:
             self.config.resolve_ref_obj = self
             self.init_stack_groups()
-        self.paco_ctx.log_action_col("Init", "CodeCommit", "Completed")
+        self.paco_ctx.log_finish("Init", self.config)
 
     def init_stack_groups(self):
         # CodeCommit Repository

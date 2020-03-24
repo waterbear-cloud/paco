@@ -18,12 +18,7 @@ class SecretsManagerStackGroup(StackGroup):
         self.config.resolve_ref_obj = self
         self.stack_tags = stack_tags
 
-    def log_init_status(self, name, description, is_enabled):
-        "Logs the init status of a secrets manager component"
-        self.paco_ctx.log_action_col('Init', 'Secrets', name, description, enabled=is_enabled)
-
     def init(self):
-        self.log_init_status('Secrets', '', True)
         # Initialize resolve_ref_obj
         for app_config in self.config.values():
             for grp_config in app_config.values():

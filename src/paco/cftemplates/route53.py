@@ -90,7 +90,6 @@ Resources:
             if zone_config.is_enabled() == False:
                 continue
             account_zones_enabled = True
-            self.paco_ctx.log_action_col("Init", "Route53", "Hosted Zone", "{}".format(zone_config.domain_name))
             res_name_prefix = self.gen_cf_logical_name(zone_id, '_')
             hosted_zone_table['cf_resource_name_prefix'] = res_name_prefix
             hosted_zone_table['domain'] = zone_config.domain_name

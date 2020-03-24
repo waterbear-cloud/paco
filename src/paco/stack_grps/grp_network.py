@@ -21,10 +21,6 @@ class NetworkStackGroup(StackGroup):
         self.region = self.env_ctx.region
         self.stack_tags = stack_tags
 
-    def log_init_status(self, name, description, is_enabled):
-        "Logs the init status of a network component"
-        self.paco_ctx.log_action_col('Init', 'Network', name, description, enabled=is_enabled)
-
     def init(self):
         # Network Stack Templates
         # VPC Stack
@@ -33,7 +29,6 @@ class NetworkStackGroup(StackGroup):
             # NetworkEnvironment with no network - serverless
             return
         network_config = get_parent_by_interface(vpc_config, schemas.INetwork)
-        self.log_init_status('VPC', '', vpc_config.is_enabled())
         vpc_config.resolve_ref_obj = self
         vpc_config.private_hosted_zone.resolve_ref_obj = self
         self.vpc_stack = self.add_new_stack(
@@ -48,7 +43,6 @@ class NetworkStackGroup(StackGroup):
         self.segment_dict = {}
         segments = network_config.vpc.segments
         for segment in segments.values():
-            self.log_init_status('Segment', '{}'.format(segment.name), segment.is_enabled())
             segment.resolve_ref_obj = self
             segment_stack = self.add_new_stack(
                 self.region,
@@ -107,10 +101,6 @@ class NetworkStackGroup(StackGroup):
             # Set resolve_ref_obj
             for sg_obj_id in sg_config[sg_id]:
                 sg_config[sg_id][sg_obj_id].resolve_ref_obj = self
-                self.log_init_status(
-                    'SecurityGroup', 'group: {}.{}'.format(sg_id, sg_obj_id),
-                    sg_config[sg_id][sg_obj_id].is_enabled()
-                )
             sg_stack = self.add_new_stack(
                 self.region,
                 sg_config[sg_id],
@@ -123,12 +113,6 @@ class NetworkStackGroup(StackGroup):
 
         # Ingress/Egress Stacks
         for sg_id in sg_config:
-            # Set resolve_ref_obj
-            for sg_obj_id in sg_config[sg_id]:
-                self.log_init_status(
-                    'SecurityGroup', 'rules: {}.{}'.format(sg_id, sg_obj_id),
-                    sg_config[sg_id][sg_obj_id].is_enabled()
-                )
             self.add_new_stack(
                 self.region,
                 sg_config[sg_id],
@@ -147,7 +131,6 @@ class NetworkStackGroup(StackGroup):
             for peer_id in peering_config.keys():
                 peer_config = vpc_config.peering[peer_id]
                 peer_config.resolve_ref_obj = self
-                self.log_init_status('VPCPeer', '{}'.format(peer_id), peer_config.is_enabled())
             self.peering_stack = self.add_new_stack(
                 self.region,
                 vpc_config,
@@ -158,7 +141,6 @@ class NetworkStackGroup(StackGroup):
         # NAT Gateway
         self.nat_list = []
         for nat_config in vpc_config.nat_gateway.values():
-            self.log_init_status('NAT Gateway', '{}'.format(nat_config.name), nat_config.is_enabled())
             if sg_nat_id in sg_config.keys():
                 nat_sg_config = sg_config[sg_nat_id]
             else:
@@ -176,8 +158,6 @@ class NetworkStackGroup(StackGroup):
 
         for nat_stack in self.nat_list:
             self.add_stack_order(nat_stack, [StackOrder.WAIT])
-
-        self.paco_ctx.log_action_col('Init', 'Network', 'Completed', enabled=self.env_ctx.config.network.is_enabled())
 
     def get_vpc_stack(self):
         return self.vpc_stack
