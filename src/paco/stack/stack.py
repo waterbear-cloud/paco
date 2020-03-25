@@ -221,7 +221,7 @@ class StackHooks():
 
     def run(self, stack_action, stack_timing, stack):
         for hook in self.hooks[stack_action][stack_timing]:
-            stack.log_action('Run', "Hook", message=": {}: {}: {}".format(hook['name'], stack_timing, stack_action))
+            stack.log_action('Run', "Hook", message="{}.{}: {}".format(stack_timing, stack_action, hook['name']))
             hook['method'](hook, hook['arg'])
 
     def gen_cache_id(self):
