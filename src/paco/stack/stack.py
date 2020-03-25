@@ -530,7 +530,7 @@ class Stack():
         print("{}".format(self.get_name()))
         if self.paco_ctx.verbose:
             print()
-            print("Model: {}".format(self.config_ref))
+            print("Model: {}".format(self.resource.paco_ref_parts))
             print("Template:  {}".format(new_file_path))
             print("Applied template:  {}".format(applied_file_path))
             print("Applied parameters:  {}".format(param_applied_file_path))
@@ -551,44 +551,49 @@ class Stack():
                 if self.paco_ctx.verbose == True:
                     self.paco_ctx.log_action_col(
                         '  ',
-                        col_2 = 'Unchanged',
-                        col_3 = new_param['ParameterKey'],
-                        col_4 = ': {}'.format(new_param['ParameterValue']),
-                        col_1_size = 2,
-                        col_2_size = col_2_size,
-                        col_3_size = col_3_size,
-                        )
+                        col_2='Unchanged',
+                        col_3=new_param['ParameterKey'],
+                        col_4=': {}'.format(new_param['ParameterValue']),
+                        col_1_size=2,
+                        col_2_size=col_2_size,
+                        col_3_size=col_3_size,
+                        use_bars=False
+                    )
             else:
                 for applied_param in applied_parameter_list:
                     if new_param['ParameterKey'] == applied_param['ParameterKey']:
                         self.paco_ctx.log_action_col(
-                            '  ', col_2 = 'Changed', col_3 = applied_param['ParameterKey'],
-                            col_4 = 'old: {}'.format(applied_param['ParameterValue']),
-                            col_1_size = 2, col_2_size = col_2_size, col_3_size = col_3_size,
-                            col_4_size = 80
-                            )
+                            '  ', col_2='Changed', col_3=applied_param['ParameterKey'],
+                            col_4='old: {}'.format(applied_param['ParameterValue']),
+                            col_1_size=2, col_2_size=col_2_size, col_3_size=col_3_size,
+                            col_4_size=80,
+                            use_bars=False
+                        )
                         self.paco_ctx.log_action_col(
                             '  ', col_2 = 'Changed', col_3 = new_param['ParameterKey'],
                             col_4 = 'new: {}'.format(new_param['ParameterValue']),
-                            col_1_size = 2, col_2_size = col_2_size, col_3_size = col_3_size,
-                            col_4_size = 80
-                            )
+                            col_1_size = 2, col_2_size=col_2_size, col_3_size=col_3_size,
+                            col_4_size = 80,
+                            use_bars=False
+                        )
                         # Parameter Changes
                         if new_param['ParameterKey'] == 'UserDataScript':
                             old_decoded = base64.b64decode(applied_param['ParameterValue'])
                             new_decoded = base64.b64decode(new_param['ParameterValue'])
                             self.paco_ctx.log_action_col(
-                                '  ', col_2 = 'Decoded', col_3 = 'UserDataScript',
-                                col_4 = 'old: {}'.format(old_decoded.decode()),
-                                col_1_size = 2, col_2_size = col_2_size, col_3_size = col_3_size,
-                                col_4_size = 80
-                                )
+                                '  ', col_2='Decoded', col_3='UserDataScript',
+                                col_4='old: {}'.format(old_decoded.decode()),
+                                col_1_size=-2, col_2_size=col_2_size, col_3_size=col_3_size,
+                                col_4_size=80,
+                                use_bars=False
+                            )
                             self.paco_ctx.log_action_col(
-                                '  ', col_2 = 'Decoded', col_3 = 'UserDataScript',
-                                col_4 = 'new: {}'.format(new_decoded.decode()),
-                                col_1_size = 2, col_2_size = col_2_size, col_3_size = col_3_size,
-                                col_4_size = 80
-                                )
+                                '  ', col_2='Decoded', col_3='UserDataScript',
+                                col_4='new: {}'.format(new_decoded.decode()),
+                                col_1_size=2, col_2_size=col_2_size, col_3_size=col_3_size,
+                                col_4_size=80,
+                                use_bars=False
+                            )
 
                     else:
                         # New parameter

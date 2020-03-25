@@ -582,6 +582,7 @@ This directory contains several sub-directories that Paco uses:
         col_2_size=19, # Resource type, longest is "ElasticSearchDomain"
         col_3_size=23,
         col_4_size=None,
+        use_bars=True
     ):
         "Log an action in columns"
         # Silence Init and Skipping messages unless in verbose mode
@@ -614,13 +615,17 @@ This directory contains several sub-directories that Paco uses:
         if col_4 != None:
             col_4_wrap_text = True
 
-        message = '| ' + create_log_col(col_1, col_1_size, 0)
+        if use_bars:
+            bars = '| '
+        else:
+            bars = ''
+        message = bars + create_log_col(col_1, col_1_size, 0)
         if col_2 != None:
-            message += '| ' + create_log_col(col_2, col_2_size, len(message), col_2_wrap_text)
+            message += bars + create_log_col(col_2, col_2_size, len(message), col_2_wrap_text)
             if col_3 != None:
-                message += '| ' + create_log_col(col_3, col_3_size, len(message), col_3_wrap_text)
+                message += bars + create_log_col(col_3, col_3_size, len(message), col_3_wrap_text)
                 if col_4 != None:
-                    message += '| ' + create_log_col(col_4, col_4_size, len(message), col_4_wrap_text)
+                    message += bars + create_log_col(col_4, col_4_size, len(message), col_4_wrap_text)
         if return_it == True:
             return message+'\n'
         print(message)
