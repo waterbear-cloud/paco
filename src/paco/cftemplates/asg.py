@@ -284,7 +284,6 @@ class ASG(StackTemplate):
         asg_res.DependsOn = launch_config_res
 
         # only create an UpdatePolicy if it is enabled
-        breakpoint()
         update_policy = asg_config.rolling_update_policy
         if update_policy.enabled == True:
             if update_policy.pause_time == '' and update_policy.wait_on_resource_signals == True:
