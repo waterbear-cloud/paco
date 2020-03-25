@@ -10,16 +10,13 @@ from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode, MissingAccountId, InvalidAccountName
 from paco.models import vocabulary
 from paco.models.references import Reference
+from paco.models.exceptions import InvalidPacoProjectFile
 from paco.models import references
 from paco.models import load_project_from_yaml
+from paco.models.references import get_model_obj_from_ref
 from paco.core.yaml import read_yaml_file
 from shutil import copyfile
-
-# deepdiff turns on Deprecation warnings, we need to turn them back off
-# again right after import, otherwise 3rd libs spam dep warnings all over the place
 from deepdiff import DeepDiff
-import warnings
-warnings.simplefilter("ignore")
 
 
 class AccountContext(object):
@@ -200,12 +197,13 @@ def print_diff_object(diff_obj, diff_obj_key):
         print('')
 
 def create_log_col(col='', col_size=0, message_len=0, wrap_text=False):
+    "Create a formattedtext column"
     if col == '' or col == None:
-        return ' '*col_size
-    message_spc = ' '*message_len
+        return ' ' * col_size
+    message_spc = ' ' * message_len
 
     if col.find('\n') != -1:
-        message = col.replace('\n', '\n'+message_spc)
+        message = col.replace('\n', '\n' + message_spc)
     elif wrap_text == True and len(col) > col_size:
         pos = col_size
         while pos < len(col):
@@ -213,7 +211,9 @@ def create_log_col(col='', col_size=0, message_len=0, wrap_text=False):
             pos += message_len + col_size
         message = col
     else:
-        message = '{}{} '.format(col[:col_size], ' '*(col_size-len(col[:col_size])))
+        message = '{}{} '.format(
+            col[:col_size], ' ' * (col_size - len(col[:col_size]))
+        )
     return message
 
 
@@ -239,6 +239,7 @@ class PacoContext(object):
         self.project = None
         self.master_account = None
         self.command = None
+        self.config_scope = None
         self.disable_validation = False
 
     def get_account_context(self, account_ref=None, account_name=None, netenv_ref=None):
@@ -301,7 +302,7 @@ This directory contains several sub-directories that Paco uses:
         "Return the path to the Paco applied directory"
         return self.paco_work_path / 'build'
 
-    def load_project(self, project_init=False, project_only=False, master_only=False):
+    def load_project(self, project_init=False, project_only=False, master_only=False, config_scope=None, command_name=None):
         "Load a Paco Project from YAML, initialize settings and controllers, and load Service plug-ins."
         self.project_folder = self.home
         if project_init == True:
@@ -309,9 +310,29 @@ This directory contains several sub-directories that Paco uses:
 
         # Load the model from YAML
         print("Loading Paco project: %s" % (self.home))
-        self.project = load_project_from_yaml(self.project_folder, None)
+        self.project = load_project_from_yaml(self.project_folder, None, warn=self.warn)
+        if self.verbose:
+            print("Finished loading.")
         if project_only == True:
             return
+
+        # Locate a model object and summarize it
+        paco_ref = 'paco.ref {}'.format(self.config_scope)
+        obj = get_model_obj_from_ref(paco_ref, self.project)
+        print('Object selected to {}:'.format(self.command))
+        print('  Name: {}'.format(
+            getattr(obj, 'name', 'unnamed')
+        ))
+        print('  Type: {}'.format(obj.__class__.__name__))
+        if getattr(obj, 'title', None):
+            print('  Title: {}'.format(obj.title))
+        if hasattr(obj, 'paco_ref_parts'):
+            print('  Reference: {}'.format(obj.paco_ref_parts))
+        print()
+
+        # Check Notifications and warn about Alarms without any notifications
+        if self.warn:
+            self.check_notification_config()
 
         # Settings
         self.master_account = AccountContext(
@@ -336,15 +357,13 @@ This directory contains several sub-directories that Paco uses:
             try:
                 self.project['service'][plugin_name.lower()]
             except KeyError:
-                # ignore if no config files for a registered service
-                self.log_action_col("Skipping", 'Service', plugin_name)
                 continue
 
-            self.log_action_col('Init', 'Service', plugin_name)
-            service = plugin_module.instantiate_class(self, self.project['service'][plugin_name.lower()])
+            service_config = self.project['service'][plugin_name.lower()]
+            self.log_section_start("Init", service_config)
+            service = plugin_module.instantiate_class(self, service_config)
             service.init(None)
             self.services[plugin_name.lower()] = service
-            self.log_action_col('Init', 'Service', plugin_name, 'Completed')
 
     def get_controller(self, controller_type, command=None, model_obj=None, model_paco_ref=None):
         """Gets a controller by name and calls .init() on it with any controller args"""
@@ -397,6 +416,33 @@ This directory contains several sub-directories that Paco uses:
             self.project,
             account_ctx=account_ctx
         )
+
+    def check_notification_config(self):
+        """Detect misconfigured alarm notification situations.
+        This happens after both MonitorConfig and NetworkEnvironments have loaded.
+        """
+        if 'snstopics' in self.project['resource']:
+            for app in self.project.get_all_applications():
+                if app.is_enabled():
+                    for alarm_info in app.list_alarm_info():
+                        alarm = alarm_info['alarm']
+                        # warn on alarms with no subscriptions
+                        if len(alarm.notification_groups) == 0:
+                            print("WARNING: Alarm {} for app {} does not have any notifications.".format(
+                                alarm.name,
+                                app.name
+                            ))
+                        # alarms with groups that do not exist
+                        region = self.project.active_regions[0] # regions are all the same, just choose the first
+                        for groupname in alarm.notification_groups:
+                            if groupname not in self.project['resource']['snstopics'][region]:
+                                raise InvalidPacoProjectFile(
+                                    "Alarm {} for app {} notifies to group '{}' which does belong in Notification service group names.".format(
+                                        alarm.name,
+                                        app.name,
+                                        groupname
+                                    )
+                                )
 
     def confirm_yaml_changes(self, model_obj):
         """Confirm changes made to the Paco Project YAML from the last run"""
@@ -506,6 +552,24 @@ This directory contains several sub-directories that Paco uses:
         applied_file_path, new_file_path = self.init_model_obj_store(model_obj)
         copyfile(new_file_path, applied_file_path)
 
+    def log_section_start(self, action, obj):
+        "Log start with a bar header"
+        if not self.verbose:
+            return
+        print("=== {}: {} ===".format(action, obj.paco_ref_parts))
+
+    def log_start(self, action, obj):
+        "Log start with a table header"
+        if not self.verbose:
+            return
+        print("> {}: start: {}".format(action, obj.paco_ref_parts))
+
+    def log_finish(self, action, obj):
+        "Log Init finish for a controller"
+        if not self.verbose:
+            return
+        print("< {}: finish: {}".format(action, obj.paco_ref_parts))
+
     def log_action_col(
         self,
         col_1,
@@ -515,11 +579,12 @@ This directory contains several sub-directories that Paco uses:
         return_it=False,
         enabled=True,
         col_1_size=10,
-        col_2_size=11,
-        col_3_size=15,
-        col_4_size=None
+        col_2_size=19, # Resource type, longest is "ElasticSearchDomain"
+        col_3_size=23,
+        col_4_size=None,
     ):
-        # Skip verbose messages unless -v verbose is flagged
+        "Log an action in columns"
+        # Silence Init and Skipping messages unless in verbose mode
         if not self.verbose:
             if col_1 == 'Init':
                 return
@@ -527,7 +592,6 @@ This directory contains several sub-directories that Paco uses:
                 return
         if col_2 == '': col_2 = None
         if col_3 == '': col_3 = None
-        if col_4 == '': col_4 = None
         if col_4 != None and col_4_size == None: col_4_size = len(col_4)
 
         if enabled == False:
@@ -550,13 +614,13 @@ This directory contains several sub-directories that Paco uses:
         if col_4 != None:
             col_4_wrap_text = True
 
-        message = create_log_col(col_1, col_1_size, 0)
+        message = '| ' + create_log_col(col_1, col_1_size, 0)
         if col_2 != None:
-            message += create_log_col(col_2, col_2_size, len(message), col_2_wrap_text)
+            message += '| ' + create_log_col(col_2, col_2_size, len(message), col_2_wrap_text)
             if col_3 != None:
-                message += create_log_col(col_3, col_3_size, len(message), col_3_wrap_text)
+                message += '| ' + create_log_col(col_3, col_3_size, len(message), col_3_wrap_text)
                 if col_4 != None:
-                    message += create_log_col(col_4, col_4_size, len(message), col_4_wrap_text)
+                    message += '| ' + create_log_col(col_4, col_4_size, len(message), col_4_wrap_text)
         if return_it == True:
             return message+'\n'
         print(message)

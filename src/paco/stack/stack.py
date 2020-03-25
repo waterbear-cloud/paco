@@ -3,25 +3,19 @@ from copy import deepcopy
 from enum import Enum
 from paco import utils
 from paco.core.yaml import YAML
-from paco.core.exception import StackException, PacoErrorCode, PacoException
+from paco.core.exception import StackException, PacoErrorCode, PacoException, StackOutputException
 from paco.models import references
 from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
 from paco.utils import md5sum, dict_of_dicts_merge, list_to_comma_string, enhanced_input
 from pprint import pprint
 from shutil import copyfile
+from deepdiff import DeepDiff
 import base64
 import os.path
 import pathlib
 import re
 import sys
-
-
-# deepdiff turns on Deprecation warnings, we need to turn them back off
-# again right after import, otherwise 3rd libs spam dep warnings all over the place
-from deepdiff import DeepDiff
-import warnings
-warnings.simplefilter("ignore")
 
 
 yaml=YAML(typ="safe", pure=True)
@@ -77,9 +71,7 @@ class StackOutputParam():
         comma = ''
         for entry in self.entry_list:
             for output_key in entry['output_keys']:
-                output_value = entry['stack'].get_outputs_value(
-                    output_key
-                )
+                output_value = entry['stack'].get_outputs_value(output_key)
                 param_value += comma + output_value
                 comma = ','
 
@@ -455,11 +447,12 @@ class Stack():
 
         yaml_path = self.get_yaml_path()
         # Template size limit is 51,200 bytes
-        # Start warning if the template size gets close
-        warning_size_limite_bytes = 41200
-        if yaml_path.stat().st_size >= warning_size_limite_bytes:
-            print("WARNING: Template is reaching size limit of 51,200 bytes: Current size: {} bytes ".format(yaml_path.stat().st_size))
-            print("template: {}".format(yaml_path))
+        if self.paco_ctx.warn:
+            # Start warning if the template size gets close
+            warning_size_limite_bytes = 41200
+            if yaml_path.stat().st_size >= warning_size_limite_bytes:
+                print("WARNING: Template is reaching size limit of 51,200 bytes: Current size: {} bytes ".format(yaml_path.stat().st_size))
+                print("template: {}".format(yaml_path))
 
     def validate(self):
         "Validate the Stack"
@@ -469,17 +462,17 @@ class Stack():
             short_yaml_path = short_yaml_path[1:]
         if self.enabled == False:
             if self.paco_ctx.quiet_changes_only == False:
-                self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name(), "Disabled", short_yaml_path)
+                self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name() + '.' + self.aws_region, "Disabled", short_yaml_path)
             return
         elif self.change_protected:
             if self.paco_ctx.quiet_changes_only == False:
-                self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name(), "Protected", short_yaml_path)
+                self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name() + '.' + self.aws_region, "Protected", short_yaml_path)
             return
         self.generate_template()
         new_str = ''
         if applied_file_path.exists() == False:
             new_str = ':new'
-        self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name(), "Template"+new_str, short_yaml_path)
+        self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name() + '.' + self.aws_region, "Template"+new_str, short_yaml_path)
         try:
             self.cfn_client.validate_template(TemplateBody=self.template.body)
         except ClientError as e:
@@ -630,7 +623,28 @@ class Stack():
         """
         parameter_list = []
         for param_entry in self.parameters:
-            parameter = param_entry.gen_parameter()
+            try:
+                parameter = param_entry.gen_parameter()
+            except StackOutputException:
+                message = """Unable to find output for Parameter '{}' for the resource:
+
+  {}
+
+Attempting to resolve the paco.ref:
+
+  {}
+
+That Output should be provided by the CloudFormation Stack:
+
+  {}
+
+That Stack has potentially been disabled, deleted or modified. Check that the resource
+is enabled. If the stack for that resource has been modified by another user,
+your cache may be out of sync. Try running again the with the --nocache option.
+""".format(param_entry.key, self.resource.paco_ref_parts, param_entry.stack.resource.paco_ref_parts, param_entry.stack.get_name())
+
+                raise StackOutputException(message)
+
             # Do not update Parameters which have indicated they can be externally updated
             if action == "update" and parameter.ignore_changes == True:
                 stack_param_entry = {
@@ -869,7 +883,7 @@ class Stack():
         print("{}".format(self.get_name()))
         if self.paco_ctx.verbose:
             print()
-            print("model: {}".format(self.config_ref))
+            print("model: {}".format(self.resource.paco_ref_parts))
             print("file: {}".format(new_file_path))
             print("applied file: {}".format(applied_file_path))
 
@@ -899,7 +913,8 @@ class Stack():
         print("\n--------------------------------------------------------")
         print("Stack: " + self.get_name())
         print("")
-        self.warn_template_changes(deep_diff)
+        if self.paco_ctx.warn:
+            self.warn_template_changes(deep_diff)
         answer = self.paco_ctx.input_confirm_action("\nAre these changes acceptable?")
         if answer == False:
             print("Aborted run.")
@@ -1037,13 +1052,10 @@ to help identify the places where token expiry was failing."""
             break
 
         if 'Outputs' not in stack_metadata['Stacks'][0].keys():
-            message = self.get_stack_error_message()
-            message += '\nKey: '+key+'\n'
-            message += '\nHints:\n'
-            message += '1. register_stack_output_config() calls are missing in the cftemplate.\n'
-            message += '2. The CloudFormation template does not have the corresponding Outputs entry.\n'
-            message += '3. The stack has not been provisioned yet.\n'
-            raise StackException(PacoErrorCode.StackOutputMissing, message=message)
+            # this error should be caught be the calling code and re-raised with more context
+            # for example, if an ASG is looking for an EFS Id output, then the user needs to be
+            # informed that the ASG stack is failing to in find the output from the EFS stack
+            raise StackOutputException("Could not find the value for {}".format(key))
 
         for output in stack_metadata['Stacks'][0]['Outputs']:
             if output['OutputKey'] == key:
@@ -1065,7 +1077,27 @@ to help identify the places where token expiry was failing."""
         template_md5 = md5sum(self.get_yaml_path())
         outputs_str = ""
         for param_entry in self.parameters:
-            param_value = param_entry.gen_parameter_value()
+            try:
+                param_value = param_entry.gen_parameter_value()
+            except StackOutputException:
+                message = """Unable to find output for Parameter '{}' for the resource:
+
+  {}
+
+Attempting to resolve the paco.ref:
+
+  {}
+
+That Output should be provided by the CloudFormation Stack:
+
+  {}
+
+That Stack has potentially been disabled, deleted or modified. Check that the resource
+is enabled. If the stack for that resource has been modified by another user,
+your cache may be out of sync. Try running again the with the --nocache option.
+""".format(param_entry.key, self.resource.paco_ref_parts, param_entry.stack.resource.paco_ref_parts, param_entry.stack.get_name())
+
+                raise StackOutputException(message)
             outputs_str += param_value
         outputs_md5 = md5sum(str_data=outputs_str)
         new_cache_id = template_md5 + outputs_md5
@@ -1434,12 +1466,17 @@ to help identify the places where token expiry was failing."""
         global log_next_header
         if return_it == False:
             self.log_action_header()
+        if action == "Init":
+            col_2_size=19
+        else:
+            col_2_size=9
         log_message = self.paco_ctx.log_action_col(
             action,
-            msg_account_name,
             stack_action,
-            stack_message,
-            return_it
+            msg_account_name + '.' + self.aws_region,
+            'stack: ' + stack_message,
+            return_it,
+            col_2_size=col_2_size
         )
         if return_it == True:
             return log_message

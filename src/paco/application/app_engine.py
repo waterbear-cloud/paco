@@ -56,7 +56,7 @@ class ApplicationEngine():
         typically creating a CFTemplate for the Resource and adding it to the Application's
         StackGroup, and any supporting CFTemplates needed such as Alarms or IAM Policies.
         """
-        self.paco_ctx.log_action_col('Init', 'Application', self.app.name, enabled=self.config.is_enabled())
+        self.paco_ctx.log_start('Init', self.config)
         self.ec2_launch_manager = EC2LaunchManager(
             self.paco_ctx,
             self,
@@ -83,12 +83,12 @@ class ApplicationEngine():
                     resource,
                     StackTags(stack_tags),
                 )
-                resource_engine.log_init_status()
+                #resource_engine.log_init_status()
                 resource_engine.init_resource()
                 resource_engine.init_monitoring()
 
         self.init_app_monitoring()
-        self.paco_ctx.log_action_col('Init', 'Application', self.app.name, 'Completed', enabled=self.config.is_enabled())
+        self.paco_ctx.log_finish('Init', self.config)
 
     def init_app_monitoring(self):
         "Application level Alarms are not specific to any Resource"

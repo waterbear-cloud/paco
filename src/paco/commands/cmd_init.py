@@ -37,7 +37,7 @@ def init_group(paco_ctx):
 @click.pass_context
 def init_project(ctx, project_name):
     """
-    Creates a new directory with a tempalted Paco project in it.
+    Creates a new directory with a templated Paco project in it.
     """
     paco_ctx = ctx.obj
     paco_ctx.command = 'init project'

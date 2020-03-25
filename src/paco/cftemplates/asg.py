@@ -28,10 +28,7 @@ class ASG(StackTemplate):
         self.env_ctx = env_ctx
         self.ec2_manager_cache_id = ec2_manager_cache_id
         segment_stack = self.env_ctx.get_segment_stack(asg_config.segment)
-        super().__init__(
-            stack,
-            paco_ctx,
-        )
+        super().__init__(stack, paco_ctx)
         self.set_aws_name('ASG', self.resource_group_name, self.resource_name)
 
         # Troposphere
@@ -52,15 +49,9 @@ class ASG(StackTemplate):
         )
 
         # if the network for the ASG is disabled, only use an empty placeholder
-        #if self.env_ctx.config.network.is_enabled():
-        #env_region = get_parent_by_interface(asg_config, schemas.IEnvironmentRegion)
-        #if self.env_ctx.config.network.is_enabled() != env_region.network.is_enabled():
-        #    breakpoint()
-
-        #if not env_region.network.is_enabled():
         if not self.env_ctx.config.network.is_enabled():
-            self.set_template(template.to_yaml())
             return
+
         security_group_list_param = self.create_cfn_ref_list_param(
             param_type='List<AWS::EC2::SecurityGroup::Id>',
             name='SecurityGroupList',
@@ -290,29 +281,25 @@ class ASG(StackTemplate):
         )
         template.add_resource(asg_res)
         asg_res.DependsOn = launch_config_res
-        max_batch_size = 1
-        min_instances_in_service = 0
-        pause_time = 'PT0S'
-        wait_on_resource_signals = False
-        if asg_config.is_enabled() == True:
-            if asg_config.rolling_update_policy != None:
-                if asg_config.rolling_update_policy.is_enabled():
-                    max_batch_size = asg_config.rolling_update_policy.max_batch_size
-                    min_instances_in_service = asg_config.rolling_update_policy.min_instances_in_service
-                    pause_time = asg_config.rolling_update_policy.pause_time
-                    wait_on_resource_signals = asg_config.rolling_update_policy.wait_on_resource_signals
-            else:
-                max_batch_size = asg_config.update_policy_max_batch_size
-                min_instances_in_service = asg_config.update_policy_min_instances_in_service
 
-        asg_res.UpdatePolicy = troposphere.policies.UpdatePolicy(
-            AutoScalingRollingUpdate=troposphere.policies.AutoScalingRollingUpdate(
-                MaxBatchSize=max_batch_size,
-                MinInstancesInService=min_instances_in_service,
-                PauseTime=pause_time,
-                WaitOnResourceSignals=wait_on_resource_signals
+        # only create an UpdatePolicy if it is enabled
+        update_policy = asg_config.rolling_update_policy
+        if update_policy.enabled == True:
+            if update_policy.pause_time == '' and update_policy.wait_on_resource_signals == True:
+                # if wait_on_resource_signals is true the default pause time is 5 minutes
+                update_policy.pause_time = 'PT5M'
+            elif update_policy.pause_time == '':
+                update_policy.pause_time = 'PT0S'
+
+            # UpdatePolicy properties
+            asg_res.UpdatePolicy = troposphere.policies.UpdatePolicy(
+                AutoScalingRollingUpdate=troposphere.policies.AutoScalingRollingUpdate(
+                    MaxBatchSize=update_policy.max_batch_size,
+                    MinInstancesInService=update_policy.min_instances_in_service,
+                    PauseTime=update_policy.pause_time,
+                    WaitOnResourceSignals=update_policy.wait_on_resource_signals
+                )
             )
-        )
 
         self.create_output(
             title='ASGName',

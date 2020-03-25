@@ -42,7 +42,7 @@ setup(
         'pexpect',
         'troposphere >= 2.5.2',
         'awacs',
-        'deepdiff',
+        'deepdiff >= 4.3.2',
         'gitpython',
         'parliament',
     ],

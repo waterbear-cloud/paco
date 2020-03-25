@@ -1,10 +1,21 @@
 Changelog for Paco
 ==================
 
-6.1.2 (unreleased)
+6.2.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Migration
+
+- ASG rolling_udpate_policy behaviour has been changed. The fields ``update_policy_max_batch_size`` and ``update_policy_min_instances_in_service``
+  have been removed and these settings are only controlled with the ``rolling_udpate_policy`` field.
+
+### Changed
+
+- All Paco warnings are now prefixed with a standard "WARNING:" and will only
+  be displayed if the -w, --warn flag is passed.
+
+- DeepDiff version required is 4.3.2. This version fixes the need to fiddle with deprecation
+  warning suppression.
 
 
 6.1.1 (2020-03-14)
