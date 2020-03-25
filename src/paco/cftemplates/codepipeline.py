@@ -2,7 +2,7 @@ from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Actio
 from awacs.sts import AssumeRole
 from paco import utils
 from paco.cftemplates.cftemplates import StackTemplate
-from paco.models.references import get_model_obj_from_ref
+from paco.models.references import get_model_obj_from_ref, Reference
 import troposphere
 import troposphere.codepipeline
 import troposphere.codebuild
@@ -284,29 +284,30 @@ class CodePipeline(StackTemplate):
         }
 
     def create_github_source_properties(self, stage, action, info):
-        github_token_param = self.create_cfn_parameter(
-            param_type='AWS::SSM::Parameter::Value<String>',
-            name=self.create_cfn_logical_id('GitHubTokenSSMParameterName' + stage.name + action.name),
-            description='The name of the SSM Parameter with the GitHub OAuth Token',
-            value=action.github_token_parameter_name,
-        )
+        #github_token_param = self.create_cfn_parameter(
+        #    param_type='AWS::SSM::Parameter::Value<String>',
+        #    name=self.create_cfn_logical_id('GitHubTokenSSMParameterName' + stage.name + action.name),
+        #    description='',
+        #    value=action.github_access_token
+        #)
+        github_access_token = Reference(action.github_access_token).ref
         github_owner_param = self.create_cfn_parameter(
             param_type='String',
             name=self.create_cfn_logical_id('GitHubOwner' + stage.name + action.name),
             description='The name of the GitHub owner',
-            value=action.github_owner,
+            value=action.github_owner
         )
         github_repo_param = self.create_cfn_parameter(
             param_type='String',
             name=self.create_cfn_logical_id('GitHubRepository' + stage.name + action.name),
             description='The name of the GitHub Repository',
-            value=action.github_repository,
+            value=action.github_repository
         )
         github_deploy_branch_name_param = self.create_cfn_parameter(
             param_type='String',
             name=self.create_cfn_logical_id('GitHubDeploymentBranchName' + stage.name + action.name),
             description='The name of the branch where commits will trigger a build.',
-            value=action.deployment_branch_name,
+            value=action.deployment_branch_name
         )
         output_artifact_name = '{}Artifact{}{}'.format(info['Name'], stage.name, action.name)
         return {
@@ -314,10 +315,10 @@ class CodePipeline(StackTemplate):
                 'Owner': troposphere.Ref(github_owner_param),
                 'Repo': troposphere.Ref(github_repo_param),
                 'Branch': troposphere.Ref(github_deploy_branch_name_param),
-                'OAuthToken': troposphere.Ref(github_token_param),
-                'PollForSourceChanges': False,
+                'OAuthToken': "{{resolve:secretsmanager:%s}}" % github_access_token,
+                'PollForSourceChanges': False
             },
-            'OutputArtifacts': [ troposphere.codepipeline.OutputArtifacts(Name=output_artifact_name) ],
+            'OutputArtifacts': [ troposphere.codepipeline.OutputArtifacts(Name=output_artifact_name) ]
         }
 
     # end create_<action_type>_properties
@@ -485,12 +486,13 @@ class CodePipeline(StackTemplate):
             elif action.type == 'GitHub.Source':
                 if action.is_enabled():
                     self.github_source_enabled = True
-                github_token_param = self.create_cfn_parameter(
-                    param_type='AWS::SSM::Parameter::Value<String>',
-                    name='GitHubTokenSSMParameterName',
-                    description='The name of the SSM Parameter with the GitHub OAuth Token',
-                    value=action.github_token_parameter_name,
-                )
+                github_access_token = Reference(action.github_access_token).ref
+                #github_token_param = self.create_cfn_parameter(
+                #    param_type='AWS::SSM::Parameter::Value<String>',
+                #    name='GitHubTokenSSMParameterName',
+                #    description='The name of the SSM Parameter with the GitHub OAuth Token',
+                #    value=action.github_token_parameter_name,
+                #)
                 github_owner_param = self.create_cfn_parameter(
                     param_type='String',
                     name='GitHubOwner',
@@ -522,7 +524,7 @@ class CodePipeline(StackTemplate):
                         'Owner': troposphere.Ref(github_owner_param),
                         'Repo': troposphere.Ref(github_repo_param),
                         'Branch': troposphere.Ref(github_deploy_branch_name_param),
-                        'OAuthToken': troposphere.Ref(github_token_param),
+                        'OAuthToken': "{{resolve:secretsmanager:%s}}" % github_access_token, #troposphere.Ref(github_token_param),
                         'PollForSourceChanges': False
                     },
                     OutputArtifacts = [

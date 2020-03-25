@@ -44,10 +44,11 @@ class ResourceEngine():
             self.resource.monitoring.enabled and \
             getattr(self.resource.monitoring, 'alarm_sets', None) != None and \
             len(self.resource.monitoring.alarm_sets.values()) > 0:
-            stack = self.stack_group.add_new_stack(
+            self.stack_group.add_new_stack(
                 self.aws_region,
                 self.resource,
                 paco.cftemplates.CWAlarms,
+                change_protected=False,
                 support_resource_ref_ext='alarms',
                 stack_tags=self.stack_tags
             )

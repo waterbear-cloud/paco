@@ -49,8 +49,7 @@ class ASG(StackTemplate):
         )
 
         # if the network for the ASG is disabled, only use an empty placeholder
-        env_region = get_parent_by_interface(asg_config, schemas.IEnvironmentRegion)
-        if not env_region.network.is_enabled():
+        if not self.env_ctx.config.network.is_enabled():
             return
 
         security_group_list_param = self.create_cfn_ref_list_param(

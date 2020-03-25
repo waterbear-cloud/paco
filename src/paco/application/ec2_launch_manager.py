@@ -206,7 +206,7 @@ class EC2LaunchManager():
         self.cache_id[cache_context] += bundle.cache_id
         stack_hooks = StackHooks(self.paco_ctx)
         stack_hooks.add(
-            name='EC2LaunchManager',
+            name='UploadBundle.'+bundle.name,
             stack_action='create',
             stack_timing='post',
             hook_method=self.upload_bundle_stack_hook,
@@ -214,7 +214,7 @@ class EC2LaunchManager():
             hook_arg=bundle
         )
         stack_hooks.add(
-            'EC2LaunchManager', 'update', 'post',
+            'UploadBundle.'+bundle.name, 'update', 'post',
             self.upload_bundle_stack_hook, self.stack_hook_cache_id, bundle
         )
         s3_ctl = self.paco_ctx.get_controller('S3')
@@ -229,7 +229,7 @@ class EC2LaunchManager():
         self.cache_id[cache_context] += bundle.cache_id
         stack_hooks = StackHooks(self.paco_ctx)
         stack_hooks.add(
-            name='EC2LaunchManager',
+            name='DeleteBundle.'+bundle.name,
             stack_action='create',
             stack_timing='post',
             hook_method=self.remove_bundle_stack_hook,
@@ -237,7 +237,7 @@ class EC2LaunchManager():
             hook_arg=bundle
         )
         stack_hooks.add(
-            'EC2LaunchManager', 'update', 'post',
+            'DeleteBundle.'+bundle.name, 'update', 'post',
             self.remove_bundle_stack_hook, self.stack_hook_cache_id, bundle
         )
         s3_ctl = self.paco_ctx.get_controller('S3')
@@ -298,7 +298,7 @@ class EC2LaunchManager():
         # EC2LM Common Functions StackHooks
         stack_hooks = StackHooks(self.paco_ctx)
         stack_hooks.add(
-            name='EC2LMFunctions',
+            name='UploadEC2LMFunctions',
             stack_action='create',
             stack_timing='post',
             hook_method=self.ec2lm_functions_hook,
@@ -306,7 +306,7 @@ class EC2LaunchManager():
             hook_arg=s3_bucket_ref
         )
         stack_hooks.add(
-            name='EC2LaunchManager',
+            name='UploadEC2LMFunctions',
             stack_action='update',
             stack_timing='post',
             hook_method=self.ec2lm_functions_hook,

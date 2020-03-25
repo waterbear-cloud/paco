@@ -7,7 +7,7 @@ from paco.core.exception import StackException, PacoErrorCode, PacoException, St
 from paco.models import references
 from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
-from paco.utils import md5sum, dict_of_dicts_merge, list_to_comma_string
+from paco.utils import md5sum, dict_of_dicts_merge, list_to_comma_string, enhanced_input
 from pprint import pprint
 from shutil import copyfile
 from deepdiff import DeepDiff
@@ -213,7 +213,7 @@ class StackHooks():
 
     def run(self, stack_action, stack_timing, stack):
         for hook in self.hooks[stack_action][stack_timing]:
-            stack.log_action('Run', "Hook", message=": {}: {}: {}".format(hook['name'], stack_timing, stack_action))
+            stack.log_action('Run', "Hook", message="{}.{}: {}".format(stack_timing, stack_action, hook['name']))
             hook['method'](hook, hook['arg'])
 
     def gen_cache_id(self):
@@ -530,7 +530,7 @@ class Stack():
         print("{}".format(self.get_name()))
         if self.paco_ctx.verbose:
             print()
-            print("Model: {}".format(self.config_ref))
+            print("Model: {}".format(self.resource.paco_ref_parts))
             print("Template:  {}".format(new_file_path))
             print("Applied template:  {}".format(applied_file_path))
             print("Applied parameters:  {}".format(param_applied_file_path))
@@ -551,44 +551,49 @@ class Stack():
                 if self.paco_ctx.verbose == True:
                     self.paco_ctx.log_action_col(
                         '  ',
-                        col_2 = 'Unchanged',
-                        col_3 = new_param['ParameterKey'],
-                        col_4 = ': {}'.format(new_param['ParameterValue']),
-                        col_1_size = 2,
-                        col_2_size = col_2_size,
-                        col_3_size = col_3_size,
-                        )
+                        col_2='Unchanged',
+                        col_3=new_param['ParameterKey'],
+                        col_4=': {}'.format(new_param['ParameterValue']),
+                        col_1_size=2,
+                        col_2_size=col_2_size,
+                        col_3_size=col_3_size,
+                        use_bars=False
+                    )
             else:
                 for applied_param in applied_parameter_list:
                     if new_param['ParameterKey'] == applied_param['ParameterKey']:
                         self.paco_ctx.log_action_col(
-                            '  ', col_2 = 'Changed', col_3 = applied_param['ParameterKey'],
-                            col_4 = 'old: {}'.format(applied_param['ParameterValue']),
-                            col_1_size = 2, col_2_size = col_2_size, col_3_size = col_3_size,
-                            col_4_size = 80
-                            )
+                            '  ', col_2='Changed', col_3=applied_param['ParameterKey'],
+                            col_4='old: {}'.format(applied_param['ParameterValue']),
+                            col_1_size=2, col_2_size=col_2_size, col_3_size=col_3_size,
+                            col_4_size=80,
+                            use_bars=False
+                        )
                         self.paco_ctx.log_action_col(
                             '  ', col_2 = 'Changed', col_3 = new_param['ParameterKey'],
                             col_4 = 'new: {}'.format(new_param['ParameterValue']),
-                            col_1_size = 2, col_2_size = col_2_size, col_3_size = col_3_size,
-                            col_4_size = 80
-                            )
+                            col_1_size = 2, col_2_size=col_2_size, col_3_size=col_3_size,
+                            col_4_size = 80,
+                            use_bars=False
+                        )
                         # Parameter Changes
                         if new_param['ParameterKey'] == 'UserDataScript':
                             old_decoded = base64.b64decode(applied_param['ParameterValue'])
                             new_decoded = base64.b64decode(new_param['ParameterValue'])
                             self.paco_ctx.log_action_col(
-                                '  ', col_2 = 'Decoded', col_3 = 'UserDataScript',
-                                col_4 = 'old: {}'.format(old_decoded.decode()),
-                                col_1_size = 2, col_2_size = col_2_size, col_3_size = col_3_size,
-                                col_4_size = 80
-                                )
+                                '  ', col_2='Decoded', col_3='UserDataScript',
+                                col_4='old: {}'.format(old_decoded.decode()),
+                                col_1_size=-2, col_2_size=col_2_size, col_3_size=col_3_size,
+                                col_4_size=80,
+                                use_bars=False
+                            )
                             self.paco_ctx.log_action_col(
-                                '  ', col_2 = 'Decoded', col_3 = 'UserDataScript',
-                                col_4 = 'new: {}'.format(new_decoded.decode()),
-                                col_1_size = 2, col_2_size = col_2_size, col_3_size = col_3_size,
-                                col_4_size = 80
-                                )
+                                '  ', col_2='Decoded', col_3='UserDataScript',
+                                col_4='new: {}'.format(new_decoded.decode()),
+                                col_1_size=2, col_2_size=col_2_size, col_3_size=col_3_size,
+                                col_4_size=80,
+                                use_bars=False
+                            )
 
                     else:
                         # New parameter
@@ -1276,6 +1281,12 @@ your cache may be out of sync. Try running again the with the --nocache option.
         if self.change_protected == True:
             self.log_action("Delete", "Protected")
             return
+        if self.paco_ctx.yes == False:
+            print("\n"+self.get_name())
+            answer = self.paco_ctx.input_confirm_action("DELETE stack? Are you sure?", default='n')
+            if answer in ['N', 'n']:
+                self.log_action("Delete", "Aborted")
+                return
         self.get_status()
         self.action = "delete"
         if self.is_exists() == True:
