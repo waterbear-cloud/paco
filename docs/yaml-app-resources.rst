@@ -599,7 +599,7 @@ ASG
 ----
 
 
-An Auto Scaling Group (ASG) contains a collection of Amazon EC2 instances that are treated as a
+An AutoScalingGroup (ASG) contains a collection of Amazon EC2 instances that are treated as a
 logical grouping for the purposes of automatic scaling and management.
 
 The Paco ASG resource provisions an AutoScalingGroup as well as LaunchConfiguration and TargetGroups
@@ -637,7 +637,6 @@ for that ASG.
     that will install a CloudWatch Agent and configure it to collect all specified metrics and log sources.
 
     ``secrets``: Adds a policy to the Instance Role which allows instances to access the specified secrets.
-
 
 .. code-block:: yaml
     :caption: example ASG configuration
@@ -677,8 +676,13 @@ for that ASG.
     instance_monitoring: true
     instance_type: t2.medium
     desired_capacity: 1
-    max_instances: 1
+    max_instances: 3
     min_instances: 1
+    rolling_update_policy:
+      max_batch_size: 1
+      min_instances_in_service: 1
+      pause_time: PT3M
+      wait_on_resource_signals: false
     target_groups:
       - paco.ref netenv.mynet.applications.app.groups.web.resources.alb.target_groups.cloud
     security_groups:
@@ -686,8 +690,6 @@ for that ASG.
     segment: private
     termination_policies:
       - Default
-    update_policy_max_batch_size: 1
-    update_policy_min_instances_in_service: 0
     scaling_policy_cpu_average: 60
     launch_options:
         cfn_init_config_sets:
@@ -739,6 +741,89 @@ for that ASG.
           collection_interval: 300
     user_data_script: |
       echo "Hello World!"
+
+
+AutoScalingGroup Rolling Update Policy
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When changes are applied to an AutoScalingGroup that modify the configuration of newly launched instances,
+AWS can automatically launch instances with the new configuration and terminate old instances that have stale configuration.
+This can be configured so that there is no interruption of service as the new instances gradually replace old ones.
+This configuration is set with the ``rolling_update_policy`` field.
+
+The rolling update policy must be able to work within the minimum/maximum number of instances in the ASG.
+Consider the following ASG configuration.
+
+.. code-block:: yaml
+    :caption: example ASG configuration
+
+    type: ASG
+    max_instances: 2
+    min_instances: 1
+    desired_capacity: 1
+    rolling_update_policy:
+      max_batch_size: 1
+      min_instances_in_service: 1
+      pause_time: PT0S # default setting
+      wait_on_resource_signals: false # default setting
+
+This will normally run a single instance in the ASG. The ASG is never allowed to launch more than 2 instances at one time.
+When an update happens, a new batch of instances is launched - in this example just one instance. There wil be only 1 instance
+in service, but the capacity will be at 2 instances will the new instance is launched. After the instance
+is put into service by the ASG, it will immediately terminate the old instance.
+
+The ``wait_on_resource_signals`` can be set to tell AWS CloudFormation to wait on making changes to the AutoScalingGroup configuration
+until a new instance is finished configuring and installing applications and is ready for service. If this field is enabled,
+then the ``pause_time`` default is PT05 (5 minutes). If CloudFormation does not get a SUCCESS signal within the ``pause_time``
+then it will mark the new instance as failed and terminate it.
+
+If you use ``pause_time`` with the default ``wait_on_resource_signals: false`` then AWS will simply wait for the full
+duration of the pause time and then consider the instance ready. ``pause_time`` is in format PT#H#M#S, where each # is the number of
+hours, minutes, and seconds, respectively. The maximum ``pause_time`` is one hour. For example:
+
+.. code-block:: yaml
+
+    pause_time: PT0S # 0 seconds
+    pause_time: PT5M # 5 minutes
+    pause_time: PT2M30S # 2 minutes and 30 seconds
+
+ASGs will use default settings for a rolling update policy. If you do not want to use an update policies at all, then
+you must disable the ``rolling_update_policy`` explicitly:
+
+.. code-block:: yaml
+
+    type: ASG
+    rolling_update_policy:
+      enabled: false
+
+With no rolling update policy, when you make configuration changes, then existing instances with old configuration will
+continue to run and instances with the new configuration will not happen until the AutoScalingGroup needs to launch new
+instances. You must be careful with this approach as you can not know 100% that your new configuration launches instances
+proprely until some point in the future when new instances are requested by the ASG.
+
+.. sidebar:: Prescribed Automation
+
+    Paco can help you send signals to CloudFormation when using ``wait_on_resource_signals``.
+    If you set ``wait_on_resource_signals: true`` then Paco will automatically grant the needed ``cloudformation:SignalResource`` and
+    ``cloudformation:DescribeStacks`` to the IAM Role associated with the instance for you. Paco also provides an
+    ``ec2lm_signal_asg_resource`` BASH function available in your ``user_data_script`` that you can run to signal the instance is
+    ready: ``ec2lm_signal_asg_resource SUCCESS`` or ``ec2lm_signal_asg_resource SUCCESS``.
+
+    If you want to wait until load balancer health checks are passing before an instance is considered healthy, then send the SUCCESS
+    signal to CloudFormation, you will need to configure this yourself.
+
+        .. code-block:: bash
+            :caption: example ASG signalling using ELB health checks
+
+            'until [ "$state" == ""InService"" ]; do state=$(aws --region ${AWS::Region} elb describe-instance-health
+            --load-balancer-name ${ElasticLoadBalancer}
+            --instances $(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+            --query InstanceStates[0].State); sleep 10; done'
+
+
+See the AWS documentation for more information on how `AutoScalingRollingUpdate Policy`_ configuration is used.
+
+.. _AutoScalingRollingUpdate Policy: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-updatepolicy.html#cfn-attributes-updatepolicy-replacingupdate
 
     
 
@@ -879,7 +964,7 @@ for that ASG.
       - 
       - 1
     * - rolling_update_policy
-      - Object<ASGRollingUpdatePolicy_>
+      - Object<ASGRollingUpdatePolicy_> |star|
       - Rolling Update Policy
       - 
       - 
@@ -918,16 +1003,6 @@ for that ASG.
       - Terminiation policies
       - 
       - 
-    * - update_policy_max_batch_size
-      - Int
-      - Update policy maximum batch size
-      - 
-      - 1
-    * - update_policy_min_instances_in_service
-      - Int
-      - Update policy minimum instances in service
-      - 
-      - 1
     * - user_data_pre_script
       - String
       - User data pre-script
@@ -1089,7 +1164,7 @@ ASGRollingUpdatePolicy
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 
-Auto Scaling Group Roling Update Policy
+AutoScalingRollingUpdate Policy
     
 
 .. _ASGRollingUpdatePolicy:
@@ -1103,6 +1178,11 @@ Auto Scaling Group Roling Update Policy
       - Purpose
       - Constraints
       - Default
+    * - enabled
+      - Boolean
+      - Enable an UpdatePolicy for the ASG
+      - 
+      - True
     * - max_batch_size
       - Int
       - Maximum batch size
@@ -1116,15 +1196,15 @@ Auto Scaling Group Roling Update Policy
     * - pause_time
       - String
       - Minimum instances in service
-      - Healthy success timeout
-      - PT0S
+      - Must be in the format PT#H#M#S
+      - 
     * - wait_on_resource_signals
       - Boolean |star|
       - Wait for resource signals
       - 
       - False
 
-*Base Schemas* `Deployable`_, `Named`_, `Title`_
+*Base Schemas* `Named`_, `Title`_
 
 
 BlockDeviceMapping
@@ -2887,6 +2967,11 @@ Amazon S3 Deployment Provider
       - Boolean indicating whether the deployment artifact will be unarchived.
       - 
       - True
+    * - input_artifacts
+      - List<String>
+      - Input Artifacts
+      - 
+      - 
     * - object_key
       - String
       - S3 object key to store the deployment artifact as.

@@ -525,7 +525,7 @@ statement:
       - '*'
 """.format(iam_policy_name)
         # Signal Resource permissions if its needed
-        if resource.rolling_update_policy != None and resource.rolling_update_policy.wait_on_resource_signals == True:
+        if resource.rolling_update_policy.wait_on_resource_signals == True:
             rolling_update_policy_table = {
                 'region': self.aws_region,
                 'stack_name': stack_name,

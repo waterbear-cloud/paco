@@ -510,7 +510,7 @@ This is a base schema which defines metadata useful to categorize an alarm.
       - 
     * - notification_groups
       - List<String>
-      - List of notificationn groups the alarm is subscribed to.
+      - List of notification groups the alarm is subscribed to.
       - 
       - 
     * - runbook_url
