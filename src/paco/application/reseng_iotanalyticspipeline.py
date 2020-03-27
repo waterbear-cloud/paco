@@ -1,33 +1,23 @@
 from paco import cftemplates
 from paco.application.res_engine import ResourceEngine
-from paco.models.references import get_model_obj_from_ref
 from paco.core.yaml import YAML
 from paco.models.iam import Role
-import paco.cftemplates.iottopicrule
+import paco.cftemplates.iotanalyticspipeline
 
 
-class IoTTopicRuleResourceEngine(ResourceEngine):
+class IoTAnalyticsPipelineResourceEngine(ResourceEngine):
 
     def init_resource(self):
-
         # Create a Role for the IoT Topic Rule to assume
-        role_name = "iot_topic_rule"
+        role_name = "iot_analytics"
 
         # add needed Statements to the Policy
         statements = []
-        for action in self.resource.actions:
-            if action.iotanalytics != None:
-                iotap = get_model_obj_from_ref(action.iotanalytics.pipeline, self.paco_ctx.project)
-                statements.append({
-                    'effect': 'Allow',
-                    'action': ['iotanalytics:BatchPutMessage'],
-                    'resource': f"arn:aws:iotanalytics:{self.aws_region}:{self.account_ctx.id}:channel/{iotap.name}",
-                })
 
         role_dict = {
             'enabled': self.resource.is_enabled(),
             'path': '/',
-            'role_name': "IoTTopicRule",
+            'role_name': "IoTAnalytics",
             'assume_role_policy': {'effect': 'Allow', 'service': ['iot.amazonaws.com']},
             'policies': [{'name': 'IoTTopicRule', 'statement': statements}],
         }
@@ -47,9 +37,7 @@ class IoTTopicRuleResourceEngine(ResourceEngine):
         self.stack_group.add_new_stack(
             self.aws_region,
             self.resource,
-            paco.cftemplates.iottopicrule.IoTTopicRule,
+            paco.cftemplates.iotanalyticspipeline.IoTAnalyticsPipeline,
             stack_tags=self.stack_tags,
-            extra_context={
-                'role': role,
-            }
+            extra_context={'role': role},
         )

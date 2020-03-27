@@ -42,3 +42,4 @@ from paco.cftemplates.backup import BackupVault
 from paco.cftemplates.dashboard import CloudWatchDashboard
 from paco.cftemplates.elasticsearch import ElasticsearchDomain
 from paco.cftemplates.iottopicrule import IoTTopicRule
+from paco.cftemplates.iotanalyticspipeline import IoTAnalyticsPipeline

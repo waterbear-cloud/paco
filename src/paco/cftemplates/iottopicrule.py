@@ -3,13 +3,13 @@ IoT TopicRule template
 """
 
 from paco.cftemplates.cftemplates import StackTemplate
+from paco.models.references import get_model_obj_from_ref
 import troposphere
 import troposphere.iot
 
 
-
 class IoTTopicRule(StackTemplate):
-    def __init__(self, stack, paco_ctx):
+    def __init__(self, stack, paco_ctx, role):
         super().__init__(stack, paco_ctx)
         self.set_aws_name('IoTTopicRule', self.resource_group_name, self.resource_name)
         iottopicrule = self.resource
@@ -19,6 +19,15 @@ class IoTTopicRule(StackTemplate):
         if not iottopicrule.is_enabled():
             return
 
+        # Role ARN for IoT
+        role_arn_param = self.create_cfn_parameter(
+            param_type='String',
+            name='IoTRoleArn',
+            description='IoT Topic Rule Service Role ARN',
+            value=role.get_arn(),
+        )
+
+        # IoT Topic Rule resource
         iottopicrule_logical_id = 'IoTTopicRule'
         # flip rule_enabled to opposite for RuleDisabled CFN
         if iottopicrule.rule_enabled:
@@ -39,7 +48,6 @@ class IoTTopicRule(StackTemplate):
             action_dict = {}
             if action.awslambda != None:
                 action_dict['Lambda'] = {}
-                self.create_cfn_parameter
                 lambda_param = self.create_cfn_parameter(
                     param_type='String',
                     name=f'LambdaArn{idx}',
@@ -47,6 +55,18 @@ class IoTTopicRule(StackTemplate):
                     value=action.awslambda.function + '.arn',
                 )
                 action_dict['Lambda']['FunctionArn'] = troposphere.Ref(lambda_param)
+            elif action.iotanalytics != None:
+                iotap = get_model_obj_from_ref(action.iotanalytics.pipeline, self.paco_ctx.project)
+                channel_name_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name=f'ChannelName{idx}',
+                    description=f'IoT Analytics Channel Name for Action{idx}',
+                    value=iotap.name,
+                )
+                action_dict["IotAnalytics"] = {}
+                action_dict["IotAnalytics"]['ChannelName'] = troposphere.Ref(channel_name_param)
+                action_dict["IotAnalytics"]['RoleArn'] = troposphere.Ref(role_arn_param)
+
             cfn_export_dict['TopicRulePayload']['Actions'].append(action_dict)
             idx += 1
 
