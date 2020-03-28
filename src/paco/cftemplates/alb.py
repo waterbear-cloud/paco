@@ -224,6 +224,8 @@ class ALB(StackTemplate):
             # Listener - SSL Certificates
             ssl_cert_param_obj_list = []
             if len(listener.ssl_certificates) > 0 and alb_config.is_enabled():
+                if listener.ssl_policy != '':
+                    cfn_export_dict['SslPolicy'] = listener.ssl_policy
                 cfn_export_dict['Certificates'] = []
                 for ssl_cert_idx in range(0, len(listener.ssl_certificates)):
                     ssl_cert_param = self.create_cfn_parameter(
