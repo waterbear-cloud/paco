@@ -15,7 +15,7 @@ class IoTAnalyticsPipelineResourceEngine(ResourceEngine):
         # add needed Statements to the Policy
         statements = []
 
-        if self.resource.channel_storage.bucket != None:
+        if self.resource.channel_storage.bucket != None or self.resource.datastore_storage.bucket != None:
             bucket = get_model_obj_from_ref(self.resource.channel_storage.bucket, self.paco_ctx.project)
             statements.append({
                 'effect': 'Allow',

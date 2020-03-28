@@ -60,11 +60,44 @@ class IoTAnalyticsPipeline(StackTemplate):
 
         # Pipeline Resource
 
-        # Dataset Resource
+        # Datastore Resource
+        iotchannel_logical_id = 'IoTAnalyticsDatastore'
+        cfn_export_dict = {}
+        if iotap.datastore_storage.bucket == None:
+            datastore_storage_dict = {'ServiceManagedS3':{}}
+            cfn_export_dict['RetentionPeriod'] = convert_expire_to_cfn_dict(iotap.datastore_storage.expire_events_after_days)
+        else:
+            datastore_bucket_param = self.create_cfn_parameter(
+                param_type='String',
+                name='IoTAnalyticsDatastoreBucketName',
+                description='IoT Analytics Datastore storage bucket name',
+                value=iotap.datastore_storage.bucket + '.name',
+            )
+            datastore_storage_dict = {'CustomerManagedS3': {
+                'Bucket': troposphere.Ref(datastore_bucket_param),
+                'KeyPrefix':iotap.datastore_storage.key_prefix,
+                'RoleArn': troposphere.Ref(role_arn_param),
+            }}
+
+        cfn_export_dict['DatastoreStorage'] = datastore_storage_dict
+        iotap_datastore_resource = troposphere.iotanalytics.Datastore.from_dict(
+            iotchannel_logical_id,
+            cfn_export_dict
+        )
+        self.template.add_resource(iotap_datastore_resource)
+
+        self.create_output(
+            title='DatastoreName',
+            description='IoT Analytics Datastore name',
+            value=troposphere.Ref(iotap_datastore_resource),
+            ref=self.resource.paco_ref_parts + '.datastore.name',
+        )
 
     def resolve_ref(self, ref):
         if ref.resource_ref == 'channel.name':
             return self.stack.get_outputs_value('ChannelName')
+        elif ref.resource_ref == 'datastore.name':
+            return self.stack.get_outputs_value('DatastoreName')
 
 
 def convert_expire_to_cfn_dict(expire):
