@@ -45,20 +45,18 @@ class IoTAnalyticsPipeline(StackTemplate):
                 'RoleArn': troposphere.Ref(role_arn_param),
             }}
         cfn_export_dict['ChannelStorage'] = channel_storage_dict
-        iotap_channel_resource = troposphere.iotanalytics.Channel.from_dict(
+        iot_channel_resource = troposphere.iotanalytics.Channel.from_dict(
             iotchannel_logical_id,
             cfn_export_dict
         )
-        self.template.add_resource(iotap_channel_resource)
+        self.template.add_resource(iot_channel_resource)
 
         self.create_output(
             title='ChannelName',
             description='IoT Analytics Channel name',
-            value=troposphere.Ref(iotap_channel_resource),
+            value=troposphere.Ref(iot_channel_resource),
             ref=self.resource.paco_ref_parts + '.channel.name',
         )
-
-        # Pipeline Resource
 
         # Datastore Resource
         iotchannel_logical_id = 'IoTAnalyticsDatastore'
@@ -93,11 +91,57 @@ class IoTAnalyticsPipeline(StackTemplate):
             ref=self.resource.paco_ref_parts + '.datastore.name',
         )
 
+        # Pipeline Resource
+        iotpipeline_logical_id = 'IoTAnalyticsPipeline'
+        cfn_export_dict = {}
+        cfn_export_dict['PipelineActivities'] = []
+        idx = 0
+        activity_list = list(iotap.pipeline_activities.values())
+
+        # start with a Channel activity
+        if len(activity_list) == 0:
+            next_name = "DatastoreActivity"
+        else:
+            next_name = activity_list[idx].name + "Activity"
+        cfn_export_dict['PipelineActivities'].append({
+            'Channel':{
+                'Name': "ChannelActivity",
+                'ChannelName': troposphere.Ref(iot_channel_resource),
+                'Next': next_name,
+            }
+        })
+
+        for activity in iotap.pipeline_activities.values():
+            idx += 1
+
+        # finish with a Datastore activity
+        cfn_export_dict['PipelineActivities'].append({
+            'Datastore':{
+                'Name': "DatastoreActivity",
+                'DatastoreName': troposphere.Ref(iotap_datastore_resource),
+            }
+        })
+
+        iotpipeline_resource = troposphere.iotanalytics.Pipeline.from_dict(
+            iotpipeline_logical_id,
+            cfn_export_dict,
+        )
+        self.template.add_resource(iotpipeline_resource)
+
+        self.create_output(
+            title='PipelineName',
+            description='IoT Analytics Pipeline name',
+            value=troposphere.Ref(iotpipeline_resource),
+            ref=self.resource.paco_ref_parts + '.pipeline.name',
+        )
+
     def resolve_ref(self, ref):
         if ref.resource_ref == 'channel.name':
             return self.stack.get_outputs_value('ChannelName')
         elif ref.resource_ref == 'datastore.name':
             return self.stack.get_outputs_value('DatastoreName')
+        elif ref.resource_ref == 'pipeline.name':
+            return self.stack.get_outputs_value('PipelineName')
 
 
 def convert_expire_to_cfn_dict(expire):
