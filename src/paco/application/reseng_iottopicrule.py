@@ -18,10 +18,11 @@ class IoTTopicRuleResourceEngine(ResourceEngine):
         for action in self.resource.actions:
             if action.iotanalytics != None:
                 iotap = get_model_obj_from_ref(action.iotanalytics.pipeline, self.paco_ctx.project)
+                iotap_name_sub = "paco.sub '${" + iotap.paco_ref + ".channel.name}'"
                 statements.append({
                     'effect': 'Allow',
                     'action': ['iotanalytics:BatchPutMessage'],
-                    'resource': f"arn:aws:iotanalytics:{self.aws_region}:{self.account_ctx.id}:channel/{iotap.name}",
+                    'resource': f"arn:aws:iotanalytics:{self.aws_region}:{self.account_ctx.id}:channel/{iotap_name_sub}",
                 })
 
         role_dict = {

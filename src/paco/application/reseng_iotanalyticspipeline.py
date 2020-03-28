@@ -2,6 +2,7 @@ from paco import cftemplates
 from paco.application.res_engine import ResourceEngine
 from paco.core.yaml import YAML
 from paco.models.iam import Role
+from paco.models.references import get_model_obj_from_ref
 import paco.cftemplates.iotanalyticspipeline
 
 
@@ -14,13 +15,26 @@ class IoTAnalyticsPipelineResourceEngine(ResourceEngine):
         # add needed Statements to the Policy
         statements = []
 
+        if self.resource.channel_storage.bucket != None:
+            bucket = get_model_obj_from_ref(self.resource.channel_storage.bucket, self.paco_ctx.project)
+            statements.append({
+                'effect': 'Allow',
+                'action': ['s3:*'],
+                'resource': [
+                    f"arn:aws:s3:::" + bucket.get_aws_name(),
+                    f"arn:aws:s3:::" + bucket.get_aws_name() + "/*"
+                ],
+            })
+
         role_dict = {
             'enabled': self.resource.is_enabled(),
             'path': '/',
             'role_name': "IoTAnalytics",
-            'assume_role_policy': {'effect': 'Allow', 'service': ['iot.amazonaws.com']},
-            'policies': [{'name': 'IoTTopicRule', 'statement': statements}],
+            'assume_role_policy': {'effect': 'Allow', 'service': ['iotanalytics.amazonaws.com']},
         }
+        if len(statements) > 0:
+            role_dict['policies'] = [{'name': 'IoTTopicRule', 'statement': statements}]
+
         role = Role(role_name, self.resource)
         role.apply_config(role_dict)
         iam_role_id = self.gen_iam_role_id(self.resource.name, role_name)
@@ -41,3 +55,4 @@ class IoTAnalyticsPipelineResourceEngine(ResourceEngine):
             stack_tags=self.stack_tags,
             extra_context={'role': role},
         )
+

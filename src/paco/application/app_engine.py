@@ -138,7 +138,7 @@ class ApplicationEngine():
         elif isinstance(ref.resource, models.applications.ASG):
             if ref.resource_ref.startswith('instance_id'):
                 asg_stack = self.stack_group.get_stack_from_ref(ref)
-                asg_outputs_key = asg_stack.template.get_outputs_key_from_ref(ref)
+                asg_outputs_key = asg_stack.get_outputs_key_from_ref(ref)
                 if asg_outputs_key == None:
                     raise StackException(
                         PacoErrorCode.Unknown,
