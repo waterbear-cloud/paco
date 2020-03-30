@@ -15,8 +15,19 @@ class IoTAnalyticsPipelineResourceEngine(ResourceEngine):
         # add needed Statements to the Policy
         statements = []
 
-        if self.resource.channel_storage.bucket != None or self.resource.datastore_storage.bucket != None:
-            bucket = get_model_obj_from_ref(self.resource.channel_storage.bucket, self.paco_ctx.project)
+        # pipeline buckets
+        bucket_refs = {}
+        if self.resource.channel_storage.bucket != None:
+            bucket_refs[self.resource.channel_storage.bucket] = None
+        if self.resource.datastore_storage.bucket != None:
+            bucket_refs[self.resource.datastore_storage.bucket] = None
+        for dataset in self.resource.datasets.values():
+            for delivery_rule in dataset.content_delivery_rules.values():
+                if delivery_rule.s3_destination != None:
+                    bucket_refs[delivery_rule.s3_destination.bucket] = None
+
+        for bucket_ref in bucket_refs.keys():
+            bucket = get_model_obj_from_ref(bucket_ref, self.paco_ctx.project)
             statements.append({
                 'effect': 'Allow',
                 'action': ['s3:*'],

@@ -3,6 +3,7 @@ IoT Analytics Pipeline template
 """
 
 from paco.cftemplates.cftemplates import StackTemplate
+from paco.models.references import get_model_obj_from_ref
 import troposphere
 import troposphere.iotanalytics
 
@@ -216,6 +217,49 @@ class IoTAnalyticsPipeline(StackTemplate):
             value=troposphere.Ref(iotpipeline_resource),
             ref=self.resource.paco_ref_parts + '.pipeline.name',
         )
+
+        # Datasets
+        for dataset in iotap.datasets.values():
+            iotdataset_logical_id = self.create_cfn_logical_id(f'IoTDataset{dataset.name}')
+            cfn_export_dict = {}
+            cfn_export_dict['Actions'] = []
+            if dataset.query_action != None:
+                cfn_export_dict['Actions'].append(
+                    {'ActionName': dataset.name, 'QueryAction': {
+                        'Filters': dataset.query_action.filters,
+                        'SqlQuery': dataset.query_action.sql_query,
+                    }}
+                )
+            else:
+                # ToDo: container_action
+                pass
+            cfn_export_dict['ContentDeliveryRules'] = []
+            for delivery_rule in dataset.content_delivery_rules.values():
+                delivery_dict = {
+                    'Destination': {},
+                    'EntryName': delivery_rule.name,
+                }
+                if delivery_rule.s3_destination != None:
+                    bucket = get_model_obj_from_ref(delivery_rule.s3_destination.bucket, self.paco_ctx.project)
+                    delivery_dict['Destination']['S3DestinationConfiguration'] = {
+                        'Bucket': bucket.get_aws_name(),
+                        'Key': delivery_rule.s3_destination.key,
+                        'RoleArn': troposphere.Ref(role_arn_param),
+                    }
+
+            cfn_export_dict['RetentionPeriod'] = convert_expire_to_cfn_dict(dataset.expire_events_after_days)
+            if dataset.version_history != None:
+                if dataset.version_history == 0:
+                    cfn_export_dict['VersioningConfiguration'] = {'Unlimited': True}
+                else:
+                    cfn_export_dict['VersioningConfiguration'] = {'MaxVersions': dataset.version_history, 'Unlimited': False}
+
+            iot_dataset_resource = troposphere.iotanalytics.Dataset.from_dict(
+                iotdataset_logical_id,
+                cfn_export_dict
+            )
+            self.template.add_resource(iot_dataset_resource)
+
 
     def resolve_ref(self, ref):
         if ref.resource_ref == 'channel.name':
