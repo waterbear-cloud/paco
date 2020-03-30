@@ -112,6 +112,88 @@ class IoTAnalyticsPipeline(StackTemplate):
         })
 
         for activity in iotap.pipeline_activities.values():
+            if len(activity_list) == idx + 1:
+                next_name = 'DatastoreActivity'
+            else:
+                next_name = activity_list[idx + 1].name + "Activity"
+            if activity.activity_type == 'lambda':
+                lambda_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name=f'LambdaFunction{idx}',
+                    description=f'IoT Analytics Lambda for Activity {idx}',
+                    value=activity.function + '.arn',
+                )
+                activity_dict = {
+                    'Lambda': {
+                        'LambdaName': troposphere.Join('', ['',
+                            troposphere.Select(6, troposphere.Split(':', troposphere.Ref(lambda_param)))
+                        ]),
+                        'BatchSize': activity.batch_size,
+                        'Name': activity.name + "Activity",
+                        'Next': next_name,
+                    }
+                }
+            elif activity.activity_type == 'add_attributes':
+                activity_dict = {
+                    'AddAttributes': {
+                        'Name': activity.name + "Activity",
+                        'Attributes': activity.attributes,
+                        'Next': next_name,
+                    }
+                }
+            elif activity.activity_type == 'remove_attributes':
+                activity_dict = {
+                    'RemoveAttributes': {
+                        'Name': activity.name + "Activity",
+                        'Attributes': activity.attribute_list,
+                        'Next': next_name,
+                    }
+                }
+            elif activity.activity_type == 'select_attributes':
+                activity_dict = {
+                    'SelectAttributes': {
+                        'Name': activity.name + "Activity",
+                        'Attributes': activity.attribute_list,
+                        'Next': next_name,
+                    }
+                }
+            elif activity.activity_type == 'filter':
+                activity_dict = {
+                    'Filter': {
+                        'Name': activity.name + "Activity",
+                        'Filter': activity.filter,
+                        'Next': next_name,
+                    }
+                }
+            elif activity.activity_type == 'math':
+                activity_dict = {
+                    'Math': {
+                        'Name': activity.name + "Activity",
+                        'Attribute': activity.attribute,
+                        'Math': activity.math,
+                        'Next': next_name,
+                    }
+                }
+            elif activity.activity_type == 'device_registry_enrich':
+                activity_dict = {
+                    'DeviceRegistryEnrich': {
+                        'Name': activity.name + "Activity",
+                        'Attribute': activity.attribute,
+                        'ThingName': activity.thing_name,
+                        'Next': next_name,
+                    }
+                }
+            elif activity.activity_type == 'device_shadow_enrich':
+                activity_dict = {
+                    'DeviceShadowEnrich': {
+                        'Name': activity.name + "Activity",
+                        'Attribute': activity.attribute,
+                        'ThingName': activity.thing_name,
+                        'Next': next_name,
+                    }
+                }
+
+            cfn_export_dict['PipelineActivities'].append(activity_dict)
             idx += 1
 
         # finish with a Datastore activity
