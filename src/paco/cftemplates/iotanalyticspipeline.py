@@ -79,10 +79,13 @@ class IoTAnalyticsPipeline(StackTemplate):
             }}
 
         cfn_export_dict['DatastoreStorage'] = datastore_storage_dict
+        if iotap.datastore_name != None:
+            cfn_export_dict['DatastoreName'] = iotap.datastore_name
         iotap_datastore_resource = troposphere.iotanalytics.Datastore.from_dict(
             iotchannel_logical_id,
             cfn_export_dict
         )
+        iotap_datastore_resource.DependsOn = iot_channel_resource
         self.template.add_resource(iotap_datastore_resource)
 
         self.create_output(
@@ -209,6 +212,7 @@ class IoTAnalyticsPipeline(StackTemplate):
             iotpipeline_logical_id,
             cfn_export_dict,
         )
+        iotpipeline_resource.DependsOn = [iot_channel_resource, iotap_datastore_resource]
         self.template.add_resource(iotpipeline_resource)
 
         self.create_output(
@@ -258,10 +262,12 @@ class IoTAnalyticsPipeline(StackTemplate):
                 iotdataset_logical_id,
                 cfn_export_dict
             )
+            iot_dataset_resource.DependsOn = iotap_datastore_resource
             self.template.add_resource(iot_dataset_resource)
 
 
     def resolve_ref(self, ref):
+        #return self.stack
         if ref.resource_ref == 'channel.name':
             return self.stack.get_outputs_value('ChannelName')
         elif ref.resource_ref == 'datastore.name':

@@ -61,7 +61,7 @@ class IoTTopicRule(StackTemplate):
                     param_type='String',
                     name=f'ChannelName{idx}',
                     description=f'IoT Analytics Channel Name for Action{idx}',
-                    value=iotap.name,
+                    value=iotap.paco_ref + '.channel.name',
                 )
                 action_dict["IotAnalytics"] = {}
                 action_dict["IotAnalytics"]['ChannelName'] = troposphere.Ref(channel_name_param)

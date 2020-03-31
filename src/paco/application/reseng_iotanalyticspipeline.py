@@ -30,7 +30,16 @@ class IoTAnalyticsPipelineResourceEngine(ResourceEngine):
             bucket = get_model_obj_from_ref(bucket_ref, self.paco_ctx.project)
             statements.append({
                 'effect': 'Allow',
-                'action': ['s3:*'],
+                'action': [
+                    "s3:GetBucketLocation",
+                    "s3:GetObject",
+                    "s3:ListBucket",
+                    "s3:ListBucketMultipartUploads",
+                    "s3:ListMultipartUploadParts",
+                    "s3:AbortMultipartUpload",
+                    "s3:PutObject",
+                    "s3:DeleteObject",
+                ],
                 'resource': [
                     f"arn:aws:s3:::" + bucket.get_aws_name(),
                     f"arn:aws:s3:::" + bucket.get_aws_name() + "/*"
