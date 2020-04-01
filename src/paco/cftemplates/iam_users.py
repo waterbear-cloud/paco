@@ -3,6 +3,7 @@ from awacs.aws import Bool as AWACSBool
 from awacs.sts import AssumeRole
 from paco import utils
 from paco.cftemplates.cftemplates import StackTemplate
+from paco.core.exception import InvalidAccountPermission
 import random
 import string
 import troposphere
@@ -72,6 +73,20 @@ class IAMUsers(StackTemplate):
         account_list = iam_user.account_whitelist
         if iam_user.account_whitelist[0] == 'all':
             account_list = self.paco_ctx.project['accounts'].keys()
+        else:
+            # If account_whitelist is not all then validate that there are no accounts specified
+            # in permissions that are not part of the account_whitelist
+            allowed = {}
+            for account in iam_user.account_whitelist:
+                allowed[account] = None
+            for permission in iam_user.permissions.values():
+                for account in permission.accounts:
+                    if account not in allowed:
+                        raise InvalidAccountPermission(
+f"User {iam_user.name} has permission {permission.name} for account {account} - that account is not granted in that user's account_whitelist."
+                        )
+
+
         for account_name in account_list:
             account_ref = 'paco.ref accounts.'+account_name
             account_id = self.paco_ctx.get_ref(account_ref+'.id')
