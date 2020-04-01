@@ -914,6 +914,49 @@ An unconstrainted set of key-value pairs used to set advanced options for Elasti
 {ITargetGroup}
 
 
+{IIoTTopicRule}
+
+{IIoTTopicRuleAction}
+
+{IIoTTopicRuleIoTAnalyticsAction}
+
+{IIoTTopicRuleLambdaAction}
+
+
+{IIotAnalyticsPipeline}
+
+{IIoTDatasets}
+
+{IIoTDataset}
+
+{IDatasetTrigger}
+
+{IDatasetContentDeliveryRules}
+
+{IDatasetContentDeliveryRule}
+
+{IDatasetS3Destination}
+
+{IDatasetQueryAction}
+
+{IDatasetContainerAction}
+
+{IDatasetVariables}
+
+{IDatasetVariable}
+
+{IIoTPipelineActivities}
+
+{IIoTPipelineActivity}
+
+{IAttributes}
+
+{IIotAnalyticsStorage}
+
+{IStorageRetention}
+
+
+
 {IManagedPolicy}
 
 RDS
@@ -1268,7 +1311,9 @@ def convert_field_to_table_row(schema, field, table_row_template):
         else:
             data_type = 'Dict'
     elif data_type == 'List':
-        if field.value_type and not zope.schema.interfaces.IText.providedBy(field.value_type):
+        if field.value_type and zope.schema.interfaces.IChoice.providedBy(field.value_type):
+            data_type = 'Choice'
+        elif field.value_type and not zope.schema.interfaces.IText.providedBy(field.value_type):
             data_type = 'List<{}_>'.format(
                 strip_interface_char(field.value_type.schema.__name__)
             )
@@ -1527,6 +1572,24 @@ MINOR_SCHEMAS = {
     'IBackupPlanRule': None,
     'IBackupPlanSelection': None,
     'IBackupSelectionConditionResourceType': None,
+    'IIoTTopicRuleAction': None,
+    'IIoTTopicRuleIoTAnalyticsAction': None,
+    'IIoTTopicRuleLambdaAction': None,
+    'IIoTDatasets': None,
+    'IIoTDataset': None,
+    'IDatasetTrigger': None,
+    'IDatasetContentDeliveryRules': None,
+    'IDatasetContentDeliveryRule': None,
+    'IDatasetS3Destination': None,
+    'IDatasetQueryAction': None,
+    'IDatasetContainerAction': None,
+    'IDatasetVariables': None,
+    'IDatasetVariable': None,
+    'IIoTPipelineActivities': None,
+    'IIoTPipelineActivity': None,
+    'IAttributes': None,
+    'IIotAnalyticsStorage': None,
+    'IStorageRetention': None,
 }
 
 def create_tables_from_schema():
