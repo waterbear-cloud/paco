@@ -35,7 +35,11 @@ class CodeDeploy(StackTemplate):
         self.set_parameter('ApplicationName', self.application_name)
         self.set_parameter('CodeDeployASGName', action_config.auto_scaling_group+'.name')
         self.set_parameter('ELBName', action_config.elb_name)
-        self.set_parameter('ALBTargetGroupName', action_config.alb_target_group+'.name')
+        if action_config.alb_target_group == None:
+            alb_target_group_name = ""
+        else:
+            alb_target_group_name = action_config.alb_target_group+'.name'
+        self.set_parameter('ALBTargetGroupName', alb_target_group_name)
         self.set_parameter('ArtifactsBucketName', artifacts_bucket_name)
         self.set_parameter('CodeDeployAutoRollbackEnabled', action_config.auto_rollback_enabled)
         self.set_parameter('CodeDeployStyleOption', action_config.deploy_style_option)
