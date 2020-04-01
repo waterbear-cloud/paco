@@ -18,3 +18,5 @@ from paco.application.reseng_ebs import EBSResourceEngine
 from paco.application.reseng_codedeployapplication import CodeDeployApplicationResourceEngine
 from paco.application.reseng_dashboard import DashboardResourceEngine
 from paco.application.reseng_elasticsearch import ElasticsearchDomainResourceEngine
+from paco.application.reseng_iottopicrule import IoTTopicRuleResourceEngine
+from paco.application.reseng_iotanalyticspipeline import IoTAnalyticsPipelineResourceEngine

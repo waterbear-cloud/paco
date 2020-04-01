@@ -77,3 +77,6 @@ class StackOutputException(PacoBaseException):
 
 class InvalidPacoConfigFile(PacoBaseException):
     title = "Paco config file is not a valid format"
+
+class InvalidAccountPermission(PacoBaseException):
+    title = "User permission attempts to grant to an account not in the User's account_whitelist"

@@ -227,7 +227,7 @@ class IAMController(Controller):
         self.role_context = {}
         self.sl_role_context = {}
         self.policy_context = {}
-        self.iam_config = self.paco_ctx.project['resource']['iam']
+        self.iam = self.paco_ctx.project['resource']['iam']
         self.iam_user_stack_groups = {}
         self.iam_user_access_keys_sdb_domain = 'Paco-IAM-Users-Access-Keys-Meta'
         self.init_done = False
@@ -516,6 +516,7 @@ class IAMController(Controller):
         return cache_id
 
     def init_users(self, model_obj):
+        "Initialize IAM User StackGroups"
         self.stack_group_filter = model_obj.paco_ref_parts
         master_account_ctx = self.paco_ctx.get_account_context(account_ref='paco.ref accounts.master')
         # StackGroup
@@ -524,8 +525,8 @@ class IAMController(Controller):
             self.iam_user_stack_groups[account_name] = IAMUserStackGroup(self.paco_ctx, account_ctx, account_name, self)
 
         stack_hooks = StackHooks(self.paco_ctx)
-        for user_name in self.iam_config.users.keys():
-            user_config = self.iam_config.users[user_name]
+        for user_name in self.iam.users.keys():
+            user_config = self.iam.users[user_name]
             # Stack hooks for managing access keys
             for hook_action in ['create', 'update']:
                 stack_hooks.add(
@@ -541,35 +542,31 @@ class IAMController(Controller):
         # and delegate roles are provisioned in accounts
         self.iam_user_stack_groups['master'].add_new_stack(
             master_account_ctx.config.region,
-            self.iam_config.users,
+            self.iam.users,
             IAMUsers,
             account_ctx=master_account_ctx,
             stack_hooks=stack_hooks,
         )
 
-        for user_name in self.iam_config.users.keys():
-            user_config = self.iam_config.users[user_name]
-
+        for user in self.iam.users.values():
             # Build a list of permissions for each account
             permissions_by_account = {}
             # Initialize permission_by_account for all accounts
             for account_name in self.paco_ctx.project['accounts'].keys():
                 permissions_by_account[account_name] = []
 
-            for permission_name in user_config.permissions.keys():
-                permission_config = user_config.permissions[permission_name]
+            for permission_name in user.permissions.keys():
+                permission_config = user.permissions[permission_name]
                 init_method = getattr(self, "init_{}_permission".format(permission_config.type.lower()))
                 init_method(permission_config, permissions_by_account)
 
             # Give access to accounts the user has explicit access to
-
             for account_name in self.paco_ctx.project['accounts'].keys():
-                account_ctx = self.paco_ctx.get_account_context('paco.ref accounts.'+account_name)
-                config_ref = 'resource.iam.users.'+user_name
+                account_ctx = self.paco_ctx.get_account_context('paco.ref accounts.' + account_name)
                 # IAM User delegate stack
                 self.iam_user_stack_groups[account_name].add_new_stack(
                     master_account_ctx.config.region,
-                    user_config,
+                    user,
                     IAMUserAccountDelegates,
                     stack_orders=[StackOrder.PROVISION ,StackOrder.WAITLAST],
                     account_ctx=account_ctx,
@@ -581,6 +578,7 @@ class IAMController(Controller):
                 )
 
     def init(self, command=None, model_obj=None):
+        "Initialize Controller's StackGroup for resource.iam scope"
         if model_obj == None:
             return
         if self.init_done == True:

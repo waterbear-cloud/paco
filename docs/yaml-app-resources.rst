@@ -1192,7 +1192,7 @@ AutoScalingRollingUpdate Policy
       - Int
       - Minimum instances in service
       - 
-      - 1
+      - 0
     * - pause_time
       - String
       - Minimum instances in service
@@ -3172,13 +3172,12 @@ If the volume is going to be used by an ASG, it should launch an instance in the
 .. code-block:: yaml
     :caption: Example EBS resource YAML
 
-    my_volume:
-      type: EBS
-      order: 5
-      enabled: true
-      size_gib: 4
-      volume_type: gp2
-      availability_zone: 1
+    type: EBS
+    order: 5
+    enabled: true
+    size_gib: 4
+    volume_type: gp2
+    availability_zone: 1
 
     
 
@@ -3299,16 +3298,15 @@ Elastic IP (EIP) resource.
 .. code-block:: yaml
     :caption: Example EIP resource YAML
 
-    eip:
-      type: EIP
-      order: 5
-      enabled: true
-      dns:
-        - domain_name: example.com
-          hosted_zone: paco.ref resource.route53.examplecom
-          ttl: 60
+    type: EIP
+    order: 5
+    enabled: true
+    dns:
+      - domain_name: example.com
+        hosted_zone: paco.ref resource.route53.examplecom
+        ttl: 60
 
-    
+
 
 .. _EIP:
 
@@ -3830,11 +3828,9 @@ For the code that the Lambda function will run, use the ``code:`` block and spec
     Paco will create an SNS Topic Subscription so that the Lambda function will recieve all messages sent to that SNS Topic.
     It will also create a Lambda Permission granting that SNS Topic the ability to publish to the Lambda.
 
-    **S3 Bucket Notification permission** Paco will check all resources in the Application for any S3 Buckets configured
-    to notify this Lambda. Lambda Permissions will be created to allow those S3 Buckets to invoke the Lambda.
-
-    **Events Rule permission** Paco will check all resources in the Application for CloudWatch Events Rule that are configured
-    to notify this Lambda and create a Lambda permission to allow that Event Rule to invoke the Lambda.
+    **Lambda Permissions** Paco will check all resources in the Application for any: S3Bucket configured
+    to notify this Lambda, EventsRule to invoke this Lambda, IoTAnalyticsPipeline activities to invoke this Lambda.
+    These resources will automatically gain a Lambda Permission to be able to invoke the Lambda.
 
 .. code-block:: yaml
     :caption: Lambda function resource YAML
@@ -4316,6 +4312,11 @@ Listener
       - List of SSL certificate References
       - Paco Reference to `AWSCertificateManager`_.
       - 
+    * - ssl_policy
+      - Choice
+      - SSL Policy
+      - 
+      - 
     * - target_group
       - String
       - Target group
@@ -4484,6 +4485,780 @@ Target Group
       - 
 
 *Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `PortProtocol`_, `Title`_, `Type`_
+
+
+
+IoTTopicRule
+-------------
+
+
+IoTTopicRule allows you to create a list of actions that will be triggered from a
+MQTT message coming in to IoT Core.
+
+.. sidebar:: Prescribed Automation
+
+    **IoTTopicRule Role** Every IoTTopicRule will have a Role created that it can assume to perform any actions
+    that it has. For example, it will be allowed to call a Lambda or an IoTAnalyticsPipeline.
+
+.. code-block:: yaml
+    :caption: example IoTTopicRule configuration
+
+    type: IoTTopicRule
+    title: Rule to take action for MQTT messages sent to 'sensor/example'
+    order: 20
+    enabled: true
+    actions:
+      - awslambda:
+          function: paco.ref netenv.mynet.applications.app.groups.app.resources.iotlambda
+      - iotanalytics:
+          pipeline: paco.ref netenv.mynet.applications.app.groups.app.resources.analyticspipeline
+    aws_iot_sql_version: '2016-03-23'
+    rule_enabled: true
+    sql: "SELECT * FROM 'sensor/example'"
+
+
+
+.. _IoTTopicRule:
+
+.. list-table:: :guilabel:`IoTTopicRule`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - actions
+      - List<IoTTopicRuleAction_> |star|
+      - Actions
+      - An IoTTopicRule must define at least one action.
+      - []
+    * - aws_iot_sql_version
+      - String
+      - AWS IoT SQL Version
+      - 
+      - 2016-03-23
+    * - rule_enabled
+      - Boolean
+      - Rule is Enabled
+      - 
+      - True
+    * - sql
+      - String |star|
+      - SQL statement used to query the topic
+      - Must be a valid Sql statement
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
+
+IoTTopicRuleAction
+^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _IoTTopicRuleAction:
+
+.. list-table:: :guilabel:`IoTTopicRuleAction`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - awslambda
+      - Object<IoTTopicRuleLambdaAction_>
+      - Lambda Action
+      - 
+      - 
+    * - iotanalytics
+      - Object<IoTTopicRuleIoTAnalyticsAction_>
+      - IoT Analytics Action
+      - 
+      - 
+
+
+
+IoTTopicRuleIoTAnalyticsAction
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _IoTTopicRuleIoTAnalyticsAction:
+
+.. list-table:: :guilabel:`IoTTopicRuleIoTAnalyticsAction`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - pipeline
+      - PacoReference |star|
+      - IoT Analytics pipeline
+      - Paco Reference to `IotAnalyticsPipeline`_.
+      - 
+
+
+
+IoTTopicRuleLambdaAction
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _IoTTopicRuleLambdaAction:
+
+.. list-table:: :guilabel:`IoTTopicRuleLambdaAction`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - function
+      - PacoReference |star|
+      - Lambda function
+      - Paco Reference to `Lambda`_.
+      - 
+
+
+
+
+IotAnalyticsPipeline
+---------------------
+
+
+An IoTAnalyticsPipeline composes four closely related resources: IoT Analytics Channel, IoT Analytics Pipeline,
+IoT Analytics Datastore and IoT Analytics Dataset.
+
+An IoT Analytics Pipeline begins with a Channel. A Channel is an S3 Bucket of raw incoming messages.
+A Channel provides an ARN that an IoTTopicRule can send MQTT messages to. These messages can later be re-processed
+if the analysis pipeline changes. Use the ``channel_storage`` field to configure the Channel storage.
+
+Next the Pipeline applies a series of ``pipeline_activities`` to the incoming Channel messages. After any message
+modifications have been made, they are stored in a Datastore.
+
+A Datastore is S3 Bucket storage of messages that are ready to be analyzed. Use the ``datastore_storage`` field to configure
+the Datastore storage. The ``datastore_name`` is an optional field to give your Datastore a fixed name, this can
+be useful if you use Dataset SQL Query analysis which needs to use the Datastore name in a SELECT query. However,
+if you use ``datastore_name`` it doesn't vary by Environment - if you use name then it is recommended to use different
+Regions and Accounts for each IoTAnalytics environment.
+
+Lastly the Datastore can be analyzed and have the resulting output saved as a Dataset. There may be multiple Datasets
+to create different analysis of the data. Datasets can be analyzed on a managed host running a Docker container or
+with an SQL Query to create subsets of a Datastore suitable for analysis with tools such as AWS QuickSight.
+
+.. sidebar:: Prescribed Automation
+
+    **IoTAnalyticsPipeline Role** Every IoTAnalyticsPipeline has an IAM Role associated with it. This Role will
+    have access to every S3 Bucket that is referenced by a Channel, Datastore or Dataset.
+
+    ``pipeline_activities``: Every list of activities beings with an implicit Channel activity and ends with a
+    Datastore activity.
+
+
+.. code-block:: yaml
+    :caption: example IoTAnalyticsPipeline configuration
+
+    type: IoTAnalyticsPipeline
+    title: My IoT Analytics Pipeline
+    order: 100
+    enabled: true
+    channel_storage:
+      bucket: paco.ref netenv.mynet.applications.app.groups.iot.resources.iotbucket
+      key_prefix: raw_input/
+    pipeline_activities:
+      adddatetime:
+        activity_type: lambda
+        function: paco.ref netenv.mynet.applications.app.groups.iot.resources.iotfunc
+        batch_size: 10
+      filter:
+        activity_type: filter
+        filter: "temperature > 0"
+    datastore_name: example
+    datastore_storage:
+      expire_events_after_days: 30
+    datasets:
+      hightemp:
+        query_action:
+          sql_query: "SELECT * FROM example WHERE temperature > 20"
+        content_delivery_rules:
+          s3temperature:
+            s3_destination:
+              bucket: paco.ref netenv.mynet.applications.app.groups.iot.resources.iotbucket
+              key: "/HighTemp/!{iotanalytics:scheduleTime}/!{iotanalytics:versionId}.csv"
+        expire_events_after_days: 3
+        version_history: 5
+
+    
+
+.. _IotAnalyticsPipeline:
+
+.. list-table:: :guilabel:`IotAnalyticsPipeline`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - channel_storage
+      - Object<IotAnalyticsStorage_>
+      - IoT Analytics Channel raw storage
+      - 
+      - 
+    * - datasets
+      - Container<IoTDatasets_> |star|
+      - IoT Analytics Datasets
+      - 
+      - 
+    * - datastore_name
+      - String
+      - Datastore name
+      - 
+      - 
+    * - datastore_storage
+      - Object<IotAnalyticsStorage_>
+      - IoT Analytics Datastore storage
+      - 
+      - 
+    * - pipeline_activities
+      - Container<IoTPipelineActivities_>
+      - IoT Analytics Pipeline Activies
+      - 
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
+
+IoTDatasets
+^^^^^^^^^^^^
+
+Container for `IoTDataset`_ objects.
+
+.. _IoTDatasets:
+
+.. list-table:: :guilabel:`IoTDatasets` |bars| Container<`IoTDataset`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+IoTDataset
+^^^^^^^^^^^
+
+
+
+.. _IoTDataset:
+
+.. list-table:: :guilabel:`IoTDataset`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - container_action
+      - Object<DatasetContainerAction_>
+      - Dataset Container action
+      - 
+      - 
+    * - content_delivery_rules
+      - Container<DatasetContentDeliveryRules_>
+      - Content Delivery Rules
+      - 
+      - 
+    * - query_action
+      - Object<DatasetQueryAction_>
+      - SQL Query action
+      - 
+      - 
+    * - triggers
+      - List<DatasetTrigger_>
+      - Triggers
+      - 
+      - []
+    * - version_history
+      - Int
+      - How many versions of dataset contents are kept. 0 indicates Unlimited. If not specified or set to null, only the latest version plus the latest succeeded version (if they are different) are kept for the time period specified by expire_events_after_days field.
+      - 
+      - 
+
+*Base Schemas* `StorageRetention`_, `Named`_, `Title`_
+
+
+DatasetTrigger
+^^^^^^^^^^^^^^^
+
+
+
+.. _DatasetTrigger:
+
+.. list-table:: :guilabel:`DatasetTrigger`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - schedule_expression
+      - String
+      - Schedule Expression
+      - 
+      - 
+    * - triggering_dataset
+      - String
+      - Triggering Dataset
+      - 
+      - 
+
+
+
+DatasetContentDeliveryRules
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Container for `DatasetContentDeliveryRule`_ objects.
+
+.. _DatasetContentDeliveryRules:
+
+.. list-table:: :guilabel:`DatasetContentDeliveryRules` |bars| Container<`DatasetContentDeliveryRule`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+DatasetContentDeliveryRule
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _DatasetContentDeliveryRule:
+
+.. list-table:: :guilabel:`DatasetContentDeliveryRule`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - s3_destination
+      - Object<DatasetS3Destination_>
+      - S3 Destination
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+DatasetS3Destination
+^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _DatasetS3Destination:
+
+.. list-table:: :guilabel:`DatasetS3Destination`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - bucket
+      - PacoReference |star|
+      - S3 Bucket
+      - Paco Reference to `S3Bucket`_.
+      - 
+    * - key
+      - String |star|
+      - Key
+      - 
+      - 
+
+
+
+DatasetQueryAction
+^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _DatasetQueryAction:
+
+.. list-table:: :guilabel:`DatasetQueryAction`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - filters
+      - List<String>
+      - Filters
+      - 
+      - []
+    * - sql_query
+      - String |star|
+      - Sql Query Dataset Action object
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+DatasetContainerAction
+^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _DatasetContainerAction:
+
+.. list-table:: :guilabel:`DatasetContainerAction`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - image_arn
+      - String |star|
+      - Image ARN
+      - 
+      - 
+    * - resource_compute_type
+      - Choice |star|
+      - Resource Compute Type
+      - Either ACU_1 (vCPU=4, memory=16 GiB) or ACU_2 (vCPU=8, memory=32 GiB)
+      - 
+    * - resource_volume_size_gb
+      - Int |star|
+      - Resource Volume Size in GB
+      - 
+      - 
+    * - variables
+      - Container<DatasetVariables_> |star|
+      - Variables
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+DatasetVariables
+^^^^^^^^^^^^^^^^^
+
+Container for `DatasetVariables`_ objects.
+
+.. _DatasetVariables:
+
+.. list-table:: :guilabel:`DatasetVariables` |bars| Container<`DatasetVariables`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+DatasetVariable
+^^^^^^^^^^^^^^^^
+
+
+
+.. _DatasetVariable:
+
+.. list-table:: :guilabel:`DatasetVariable`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - double_value
+      - Float
+      - Double Value
+      - 
+      - 
+    * - output_file_uri_value
+      - String
+      - Output file URI value
+      - The URI of the location where dataset contents are stored, usually the URI of a file in an S3 bucket.
+      - 
+    * - string_value
+      - String
+      - String Value
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+IoTPipelineActivities
+^^^^^^^^^^^^^^^^^^^^^^
+
+Container for `IoTPipelineActivity`_ objects.
+
+.. _IoTPipelineActivities:
+
+.. list-table:: :guilabel:`IoTPipelineActivities` |bars| Container<`IoTPipelineActivity`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+IoTPipelineActivity
+^^^^^^^^^^^^^^^^^^^^
+
+
+Each activity must have an ``activity_type`` and supply fields specific for that type.
+There is an implicit Channel activity before all other activities and an an implicit Datastore
+activity after all other activities.
+
+.. code-block: yaml
+    :caption: All example types for IotAnalyticsPipeline pipeline_activities
+
+    activity_type: lambda
+    batch_size: 1
+    function: paco.ref netenv.mynet[...]mylambda
+
+    activity_type: add_attributes
+    attributes:
+      key1: hello
+      key2: world
+
+    activity_type: remove_attributes
+    attribute_list:
+      - key1
+      - key2
+
+    activity_type: select_attributes
+    attribute_list:
+      - key1
+      - key2
+
+    activity_type: filter
+    filter: "attribute1 > 40 AND attribute2 < 20"
+
+    activity_type: math
+    attribute: "attribute1"
+    math: "attribute1 - 10"
+
+    activity_type: device_registry_enrich
+    attribute: "attribute1"
+    thing_name: "mything"
+
+    activity_type: device_shadow_enrich
+    attribute: "attribute1"
+    thing_name: "mything"
+
+
+
+.. _IoTPipelineActivity:
+
+.. list-table:: :guilabel:`IoTPipelineActivity`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - activity_type
+      - String |star|
+      - Activity Type
+      - 
+      - 
+    * - attribute
+      - String
+      - Attribute
+      - 
+      - 
+    * - attribute_list
+      - List<String>
+      - Attribute List
+      - 
+      - 
+    * - attributes
+      - Container<Attributes_>
+      - Attributes
+      - 
+      - 
+    * - batch_size
+      - Int
+      - Batch Size
+      - 
+      - 
+    * - filter
+      - String
+      - Filter
+      - 
+      - 
+    * - function
+      - PacoReference
+      - Lambda function
+      - Paco Reference to `Lambda`_.
+      - 
+    * - math
+      - String
+      - Math
+      - 
+      - 
+    * - thing_name
+      - String
+      - Thing Name
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+Attributes
+^^^^^^^^^^^
+
+
+Dictionary of Attributes
+    
+
+.. _Attributes:
+
+.. list-table:: :guilabel:`Attributes`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+IotAnalyticsStorage
+^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _IotAnalyticsStorage:
+
+.. list-table:: :guilabel:`IotAnalyticsStorage`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - bucket
+      - PacoReference
+      - S3 Bucket
+      - Paco Reference to `S3Bucket`_.
+      - 
+    * - key_prefix
+      - String
+      - Key Prefix for S3 Bucket
+      - 
+      - 
+
+*Base Schemas* `StorageRetention`_, `Named`_, `Title`_
+
+
+StorageRetention
+^^^^^^^^^^^^^^^^^
+
+
+
+.. _StorageRetention:
+
+.. list-table:: :guilabel:`StorageRetention`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - expire_events_after_days
+      - Int
+      - Expire Events After Days
+      - Must be 1 or greater. If set to an explicit 0 then it is considered unlimited.
+      - 0
+
+
 
 
 
