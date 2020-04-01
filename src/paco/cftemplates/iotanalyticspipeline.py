@@ -127,6 +127,8 @@ class IoTAnalyticsPipeline(StackTemplate):
                     description=f'IoT Analytics Lambda for Activity {idx}',
                     value=activity.function + '.arn',
                 )
+                if not activity.batch_size:
+                    activity.batch_size= 1
                 activity_dict = {
                     'Lambda': {
                         'LambdaName': troposphere.Join('', ['',
@@ -264,16 +266,6 @@ class IoTAnalyticsPipeline(StackTemplate):
             )
             iot_dataset_resource.DependsOn = iotap_datastore_resource
             self.template.add_resource(iot_dataset_resource)
-
-
-    def resolve_ref(self, ref):
-        #return self.stack
-        if ref.resource_ref == 'channel.name':
-            return self.stack.get_outputs_value('ChannelName')
-        elif ref.resource_ref == 'datastore.name':
-            return self.stack.get_outputs_value('DatastoreName')
-        elif ref.resource_ref == 'pipeline.name':
-            return self.stack.get_outputs_value('PipelineName')
 
 
 def convert_expire_to_cfn_dict(expire):

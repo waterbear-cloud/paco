@@ -3,6 +3,7 @@ from paco.application.res_engine import ResourceEngine
 from paco.models.references import get_model_obj_from_ref
 from paco.core.yaml import YAML
 from paco.models.iam import Role
+from paco import utils
 import paco.cftemplates.iottopicrule
 
 
@@ -15,14 +16,27 @@ class IoTTopicRuleResourceEngine(ResourceEngine):
 
         # add needed Statements to the Policy
         statements = []
+        role_params = []
         for action in self.resource.actions:
             if action.iotanalytics != None:
                 iotap = get_model_obj_from_ref(action.iotanalytics.pipeline, self.paco_ctx.project)
+                iotap_hash = utils.md5sum(str_data='.'.join(iotap.paco_ref_parts))
+                channel_key = f'ChannelName{iotap_hash}'
+                role_params.append({
+                    'description': f'IoT Analytics channel for {iotap.name}',
+                    'type': 'String',
+                    'key': channel_key,
+                    'value': iotap.paco_ref + ".channel.name"
+                })
                 iotap_name_sub = "paco.sub '${" + iotap.paco_ref + ".channel.name}'"
+                resource_cfn = "!Join [ '', [ {}, {} ] ]".format(
+                    f"'arn:aws:iotanalytics:{self.aws_region}:{self.account_ctx.id}:channel/'",
+                    f"!Ref {channel_key}",
+                )
                 statements.append({
                     'effect': 'Allow',
                     'action': ['iotanalytics:BatchPutMessage'],
-                    'resource': f"arn:aws:iotanalytics:{self.aws_region}:{self.account_ctx.id}:channel/{iotap_name_sub}",
+                    'resource': resource_cfn,
                 })
 
         role_dict = {
@@ -42,7 +56,8 @@ class IoTTopicRuleResourceEngine(ResourceEngine):
             role=role,
             iam_role_id=iam_role_id,
             stack_group=self.stack_group,
-            stack_tags=self.stack_tags
+            stack_tags=self.stack_tags,
+            template_params=role_params,
         )
 
         self.stack_group.add_new_stack(
