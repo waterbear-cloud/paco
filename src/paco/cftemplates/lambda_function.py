@@ -262,10 +262,12 @@ class Lambda(StackTemplate):
             )
             idx += 1
 
-        # S3 Bucket notification permission(s)
+
+        # Lambda permissions for connected Paco resources
+
         app = get_parent_by_interface(awslambda, schemas.IApplication)
-        # detect if an S3Bucket resource in the application is configured to notify the Lambda
         for obj in get_all_nodes(app):
+            # S3 Bucket notification permission(s)
             if schemas.IS3Bucket.providedBy(obj):
                 seen = {}
                 if hasattr(obj, 'notifications'):
@@ -286,8 +288,7 @@ class Lambda(StackTemplate):
                                     )
                                     seen[s3_logical_name] = True
 
-        # Events Rule permission(s)
-        for obj in get_all_nodes(app):
+            # Events Rule permission(s)
             if schemas.IEventsRule.providedBy(obj):
                 seen = {}
                 for target in obj.targets:
@@ -318,6 +319,30 @@ class Lambda(StackTemplate):
                                 SourceArn=source_arn,
                             )
                             seen[eventsrule_logical_name] = True
+
+            # IoT Analytics permission(s)
+            if schemas.IIotAnalyticsPipeline.providedBy(obj):
+                seen = {}
+                for activity in obj.pipeline_activities.values():
+                    if activity.activity_type == 'lambda':
+                        target_ref = Reference(activity.function)
+                        target_ref.set_account_name(account_ctx.get_name())
+                        target_ref.set_region(aws_region)
+                        lambda_ref = Reference(awslambda.paco_ref)
+                        if target_ref.raw == lambda_ref.raw:
+                            # yes, the IoT Analytics Lambda Activity has a ref to this Lambda
+                            group = get_parent_by_interface(obj, schemas.IResourceGroup)
+                            iotap_logical_name = self.gen_cf_logical_name(group.name + obj.name, '_')
+                            if iotap_logical_name not in seen:
+                                rule_name = create_event_rule_name(obj)
+                                troposphere.awslambda.Permission(
+                                    title='IoTAnalyticsPipeline' + iotap_logical_name,
+                                    template=self.template,
+                                    Action="lambda:InvokeFunction",
+                                    FunctionName=troposphere.GetAtt(self.awslambda_resource, 'Arn'),
+                                    Principal='iotanalytics.amazonaws.com',
+                                )
+                                seen[iotap_logical_name] = True
 
         # Log group(s)
         loggroup_function_name = troposphere.Join(

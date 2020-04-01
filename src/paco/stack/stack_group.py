@@ -80,6 +80,8 @@ class StackGroup():
             change_protected=change_protected,
             support_resource_ref_ext=support_resource_ref_ext,
         )
+        # make the stack available in the model
+        resource.stack = stack
         self.add_stack_order(stack, stack_orders)
         # cook the template and add it to the stack
         stack.template = template_class(stack, self.paco_ctx, **extra_context)
