@@ -42,11 +42,12 @@ class ACMController(Controller):
             # Create the certificate if it does not exists
             self.paco_ctx.log_action_col(
                 'Provision',
-                acm_config['account_ctx'].get_name(),
                 'ACM',
-                acm_config['region'] + ': ' + cert_config.domain_name + ': alt-names: {}'.format(
+                acm_config['account_ctx'].get_name()+'.'+acm_config['region'],
+                'config: ' + cert_config.domain_name + ': alt-names: {}'.format(
                     cert_config.subject_alternative_names
-                )
+                ),
+                col_2_size=9
             )
             cert_arn = acm_client.request_certificate(cert_config.subject_alternative_names)
             acm_config['cert_arn_cache'] = cert_arn
@@ -57,8 +58,8 @@ class ACMController(Controller):
                     print("Waiting for DNS Validation records ...")
                     self.paco_ctx.log_action_col(
                         'Waiting',
-                        acm_config['account_ctx'].get_name(),
                         'ACM',
+                        acm_config['account_ctx'].get_name()+'.'+acm_config['region'],
                         acm_config['region'] + ': ' + cert_config.domain_name
                     )
                     time.sleep(1)
@@ -86,6 +87,8 @@ class ACMController(Controller):
                 if cert_arn == None:
                     self.provision()
                     cert_arn = acm_client.get_certificate_arn()
+                    if cert_arn == None:
+                        breakpoint()
                 if res_config['config'].external_resource == False:
                     acm_client.wait_for_certificate_validation(cert_arn)
                 return cert_arn
@@ -94,6 +97,8 @@ class ACMController(Controller):
         raise StackException(PacoErrorCode.Unknown)
 
     def add_certificate_config(self, account_ctx, region, group_id, cert_id, cert_config):
+        if group_id == 'netenv.websites.test.us-east-1.applications.workloads.groups.instoremed.resources.cdn.factory.frontend.viewer_certificate':
+            breakpoint()
         if group_id not in self.cert_config_map.keys():
             self.cert_config_map[group_id] = []
 

@@ -1,7 +1,7 @@
 from paco.stack_grps.grp_route53 import Route53StackGroup
 from paco.stack import StackGroup
 from paco.cftemplates import Route53RecordSet
-from paco.core.exception import StackException
+from paco.core.exception import StackException, PacoException
 from paco.core.exception import PacoErrorCode
 from paco.controllers.controllers import Controller
 import os
@@ -88,15 +88,26 @@ class Route53Controller(Controller):
             'record_set_type': record_set_type,
             'resource_records': resource_records
         }
-        record_set_stack_group = Route53RecordSetStackGroup(
-            self.paco_ctx, account_ctx, self
-        )
-        record_set_stack_group.add_new_stack(
-            region,
-            resource,
-            Route53RecordSet,
-            extra_context={'record_set_config': record_set_config, 'record_set_name': dns.domain_name}
-        )
+        if stack_group == None:
+            # I don't believe this case happens anymore, and it doesn't
+            # look like it does anything.
+            raise PacoException(PacoErrorCode.Unknown)
+            #record_set_stack_group = Route53RecordSetStackGroup(
+            #    self.paco_ctx, account_ctx, self
+            #)
+            #record_set_stack_group.add_new_stack(
+            #    region,
+            #    resource,
+            #    Route53RecordSet,
+            #    extra_context={'record_set_config': record_set_config, 'record_set_name': dns.domain_name}
+            #)
+        else:
+            stack_group.add_new_stack(
+                region,
+                resource,
+                Route53RecordSet,
+                extra_context={'record_set_config': record_set_config, 'record_set_name': dns.domain_name}
+            )
 
     def validate(self):
         for stack_grp in self.stack_grps:

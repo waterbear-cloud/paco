@@ -34,13 +34,14 @@ class CloudFront(StackTemplate):
                 'TargetOriginId': troposphere.Ref(target_origin_param),
                 'ViewerProtocolPolicy': cloudfront_config.default_cache_behavior.viewer_protocol_policy
             },
-            'PriceClass': 'PriceClass_'+cloudfront_config.price_class,
-            'ViewerCertificate': {
+            'PriceClass': 'PriceClass_'+cloudfront_config.price_class
+        }
+        if cloudfront_config.is_enabled() == True:
+            distribution_config_dict['ViewerCertificate'] = {
                 'AcmCertificateArn': self.paco_ctx.get_ref('paco.ref ' + self.stack.stack_ref + '.viewer_certificate.arn'),
                 'SslSupportMethod': cloudfront_config.viewer_certificate.ssl_supported_method,
                 'MinimumProtocolVersion': cloudfront_config.viewer_certificate.minimum_protocol_version
             }
-        }
         if cloudfront_config.default_cache_behavior.min_ttl != -1:
             distribution_config_dict['DefaultCacheBehavior']['MinTTL'] = cloudfront_config.default_cache_behavior.min_ttl
         if cloudfront_config.default_cache_behavior.max_ttl != -1:
