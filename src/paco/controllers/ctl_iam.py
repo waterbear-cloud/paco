@@ -1,7 +1,6 @@
 from paco.cftemplates import IAMRoles, IAMManagedPolicies,IAMUsers, IAMUserAccountDelegates, IAMSLRoles
 from paco.controllers.controllers import Controller
-from paco.core.exception import StackException
-from paco.core.exception import PacoErrorCode
+from paco.core.exception import StackException, InvalidAccountPermission, PacoErrorCode
 from paco.core.yaml import YAML, Ref, Sub
 from paco.models.references import Reference
 from paco.models.locations import get_parent_by_interface
@@ -537,6 +536,19 @@ class IAMController(Controller):
                     cache_method=self.iam_user_access_keys_hook_cache_id,
                     hook_arg=user_config
                 )
+
+        # If account_whitelist is not ['all'] then validate that there are no accounts specified
+        # in permissions that are not part of the account_whitelist
+        for iam_user in self.iam.users.values():
+            allowed = {}
+            for account in iam_user.account_whitelist:
+                allowed[account] = None
+            for permission in iam_user.permissions.values():
+                for account in permission.accounts:
+                    if account != 'all' and account not in allowed:
+                        raise InvalidAccountPermission(
+    f"User {iam_user.name} has permission {permission.name} for account {account} - that account is not granted in that user's account_whitelist."
+                        )
 
         # stack for the IAM User - this only exists in the Master account
         # and delegate roles are provisioned in accounts
