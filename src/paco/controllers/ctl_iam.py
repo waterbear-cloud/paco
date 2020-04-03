@@ -543,7 +543,13 @@ class IAMController(Controller):
             allowed = {}
             for account in iam_user.account_whitelist:
                 allowed[account] = None
+            # If all accounts are allowed, no need to do this check.
+            if 'all' in allowed:
+                break
             for permission in iam_user.permissions.values():
+                # Some permissions don't have accounts so we ignore them here
+                if hasattr(permission, 'accounts') == False:
+                    continue
                 for account in permission.accounts:
                     if account != 'all' and account not in allowed:
                         raise InvalidAccountPermission(
