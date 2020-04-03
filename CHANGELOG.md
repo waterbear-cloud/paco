@@ -9,6 +9,10 @@ Changelog for Paco
 - ASG rolling_udpate_policy behaviour has been changed. The fields ``update_policy_max_batch_size`` and ``update_policy_min_instances_in_service``
   have been removed and these settings are only controlled with the ``rolling_udpate_policy`` field.
 
+### Added
+
+- IoT support! IoT Core has new types for IoTPolicy and IoTTopicRule, IoT Analytics has an IoTAnalyticsPipeline.
+
 ### Changed
 
 - All Paco warnings are now prefixed with a standard "WARNING:" and will only
