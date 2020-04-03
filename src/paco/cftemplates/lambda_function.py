@@ -321,7 +321,7 @@ class Lambda(StackTemplate):
                             seen[eventsrule_logical_name] = True
 
             # IoT Analytics permission(s)
-            if schemas.IIotAnalyticsPipeline.providedBy(obj):
+            if schemas.IIoTAnalyticsPipeline.providedBy(obj):
                 seen = {}
                 for activity in obj.pipeline_activities.values():
                     if activity.activity_type == 'lambda':

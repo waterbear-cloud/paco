@@ -923,7 +923,7 @@ An unconstrainted set of key-value pairs used to set advanced options for Elasti
 {IIoTTopicRuleLambdaAction}
 
 
-{IIotAnalyticsPipeline}
+{IIoTAnalyticsPipeline}
 
 {IIoTDatasets}
 

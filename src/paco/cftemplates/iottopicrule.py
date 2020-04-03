@@ -75,3 +75,18 @@ class IoTTopicRule(StackTemplate):
             cfn_export_dict
         )
         self.template.add_resource(iottopicrule_resource)
+
+        # Outputs
+        self.create_output(
+            title='TopicRuleName',
+            description='IoT TopicRule name',
+            value=troposphere.Ref(iottopicrule_resource),
+            ref=self.resource.paco_ref_parts + '.name',
+        )
+
+        self.create_output(
+            title='TopicRuleArn',
+            description='IoT TopicRule Arn',
+            value=troposphere.GetAtt(iottopicrule_resource, 'Arn'),
+            ref=self.resource.paco_ref_parts + '.arn',
+        )

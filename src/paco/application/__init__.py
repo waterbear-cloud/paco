@@ -20,3 +20,4 @@ from paco.application.reseng_dashboard import DashboardResourceEngine
 from paco.application.reseng_elasticsearch import ElasticsearchDomainResourceEngine
 from paco.application.reseng_iottopicrule import IoTTopicRuleResourceEngine
 from paco.application.reseng_iotanalyticspipeline import IoTAnalyticsPipelineResourceEngine
+from paco.application.reseng_iotpolicy import IoTPolicyResourceEngine
