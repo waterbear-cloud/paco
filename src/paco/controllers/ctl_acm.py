@@ -42,15 +42,19 @@ class ACMController(Controller):
             # Create the certificate if it does not exists
             cert_arn = acm_client.get_certificate_arn()
             if cert_arn == None:
-                self.paco_ctx.log_action_col(
-                    'Provision',
-                    'Create',
-                    acm_config['account_ctx'].get_name()+'.'+acm_config['region'],
-                    'boto3: ' + cert_config.domain_name + ': alt-names: {}'.format(
-                        cert_config.subject_alternative_names
-                    ),
-                    col_2_size=9
-                )
+                action = 'Create'
+            else:
+                action = 'Cache'
+            self.paco_ctx.log_action_col(
+                'Provision',
+                action,
+                acm_config['account_ctx'].get_name()+'.'+acm_config['region'],
+                'boto3: ' + cert_config.domain_name + ': alt-names: {}'.format(
+                    cert_config.subject_alternative_names
+                ),
+                col_2_size=9
+            )
+
             cert_arn = acm_client.request_certificate(cert_arn, cert_config.subject_alternative_names)
             acm_config['cert_arn_cache'] = cert_arn
             validation_records = None
