@@ -33,7 +33,7 @@ class IoTPolicyController(Controller):
                     'Provision',
                     'Create',
                     account_ctx.name + '.' + aws_region,
-                    'boto: ' + iotpolicy.get_aws_name(),
+                    'boto3: ' + iotpolicy.get_aws_name(),
                     enabled=iotpolicy.is_enabled(),
                     col_2_size=9
                 )
@@ -45,7 +45,7 @@ class IoTPolicyController(Controller):
                         'Provision',
                         'Update',
                         account_ctx.name + '.' + aws_region,
-                        'boto: ' + iotpolicy.get_aws_name(),
+                        'boto3: ' + iotpolicy.get_aws_name(),
                         col_2_size=9
                     )
                 else:
@@ -53,7 +53,7 @@ class IoTPolicyController(Controller):
                         'Provision',
                         'Cache',
                         account_ctx.name + '.' + aws_region,
-                        'boto: ' + iotpolicy.get_aws_name(),
+                        'boto3: ' + iotpolicy.get_aws_name(),
                         col_2_size=9
                     )
 

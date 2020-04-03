@@ -44,11 +44,10 @@ class DNSValidatedACMCertClient():
             break
         return None
 
-    def request_certificate(self, subject_alternative_names=[]):
+    def request_certificate(self, cert_arn, subject_alternative_names=[]):
         """Given a list of (optional) subject alternative names, request a certificate
         and return the certificate ARN.
         """
-        cert_arn = self.get_certificate_arn()
         if cert_arn == None:
             if len(subject_alternative_names) > 0:
                 response = self.acm_client.request_certificate(
