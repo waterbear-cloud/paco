@@ -1,7 +1,7 @@
 Changelog for Paco
 ==================
 
-6.2.0 (unreleased)
+6.2.0 (2020-04-04)
 ------------------
 
 ### Migration
