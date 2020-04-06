@@ -38,7 +38,16 @@ class IoTPolicyClient():
 
         # replace ${variable} strings
         def var_replace(match):
-            return self.iotpolicy.variables[match.groups()[0]]
+            value = match.groups()[0]
+            if value.lower() == 'AWS::Region'.lower():
+                return self.aws_region
+            elif value.lower() == 'AWS::AccountId'.lower():
+                return self.account_ctx.id
+            elif value.find(':') != -1:
+                return "${" + value + "}"
+            else:
+                return self.iotpolicy.variables[value]
+
         self._document = re.sub('\${(.+?)}', var_replace, self.iotpolicy.policy_json)
         return self._document
 
