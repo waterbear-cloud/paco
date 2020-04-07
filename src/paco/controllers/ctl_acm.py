@@ -93,8 +93,6 @@ class ACMController(Controller):
                 if cert_arn == None:
                     self.provision()
                     cert_arn = acm_client.get_certificate_arn()
-                    if cert_arn == None:
-                        breakpoint()
                 if res_config['config'].external_resource == False:
                     acm_client.wait_for_certificate_validation(cert_arn)
                 return cert_arn
@@ -103,8 +101,6 @@ class ACMController(Controller):
         raise StackException(PacoErrorCode.Unknown)
 
     def add_certificate_config(self, account_ctx, region, group_id, cert_id, cert_config):
-        if group_id == 'netenv.websites.test.us-east-1.applications.workloads.groups.instoremed.resources.cdn.factory.frontend.viewer_certificate':
-            breakpoint()
         if group_id not in self.cert_config_map.keys():
             self.cert_config_map[group_id] = []
 

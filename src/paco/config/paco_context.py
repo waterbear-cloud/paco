@@ -317,22 +317,25 @@ This directory contains several sub-directories that Paco uses:
             return
 
         # Locate a model object and summarize it
-        paco_ref = 'paco.ref {}'.format(self.config_scope)
-        obj = get_model_obj_from_ref(paco_ref, self.project)
-        print('Object selected to {}:'.format(self.command))
-        print('  Name: {}'.format(
-            getattr(obj, 'name', 'unnamed')
-        ))
-        print('  Type: {}'.format(obj.__class__.__name__))
-        if getattr(obj, 'title', None):
-            print('  Title: {}'.format(obj.title))
-        if hasattr(obj, 'paco_ref_parts'):
-            print('  Reference: {}'.format(obj.paco_ref_parts))
-        print()
+        # init commands do not have a config_scope
+        # ToDo: the 'accounts' scope does resolve properly
+        if self.config_scope not in [None, 'accounts']:
+            paco_ref = 'paco.ref {}'.format(self.config_scope)
+            obj = get_model_obj_from_ref(paco_ref, self.project)
+            print('Object selected to {}:'.format(self.command))
+            print('  Name: {}'.format(
+                getattr(obj, 'name', 'unnamed')
+            ))
+            print('  Type: {}'.format(obj.__class__.__name__))
+            if getattr(obj, 'title', None):
+                print('  Title: {}'.format(obj.title))
+            if hasattr(obj, 'paco_ref_parts'):
+                print('  Reference: {}'.format(obj.paco_ref_parts))
+            print()
 
-        # Check Notifications and warn about Alarms without any notifications
-        if self.warn:
-            self.check_notification_config()
+            # Check Notifications and warn about Alarms without any notifications
+            if self.warn:
+                self.check_notification_config()
 
         # Settings
         self.master_account = AccountContext(
@@ -341,7 +344,7 @@ This directory contains several sub-directories that Paco uses:
             mfa_account=None
         )
         os.environ['AWS_DEFAULT_REGION'] = self.project['credentials'].aws_default_region
-        if master_only:
+        if master_only or self.config_scope == 'accounts':
             return
 
         # Initialize Controllers so they can initialize their
