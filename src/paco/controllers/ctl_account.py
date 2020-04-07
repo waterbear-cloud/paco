@@ -115,7 +115,6 @@ field, if the child account YAML does not already exist."""
                 # Ask for Each Account Input
                 account_config = {
                     'account_type': 'AWS',
-                    'admin_delegate_role_name': 'Paco-Admin-Delegate-Role',
                     'region': None,
                     'title': None,
                     'root_email': None,
