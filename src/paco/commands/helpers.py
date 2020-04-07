@@ -294,7 +294,7 @@ def paco_home_option(func):
     func = click.option(
         "--home",
         type=click.Path(exists=True, file_okay=False, resolve_path=True),
-        help="Path to an Paco project configuration folder. Can also be set with the environment variable PACO_HOME.",
+        help="Path to a Paco project configuration folder. Can also be set with the environment variable PACO_HOME.",
     )(func)
     return func
 

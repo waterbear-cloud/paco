@@ -73,7 +73,7 @@ def init_credentials(ctx, home='.'):
 @click.pass_context
 def init_accounts(ctx, home='.'):
     """
-    Initializes the accounts for an Paco project.
+    Initializes the accounts for a Paco project.
     """
     paco_ctx = ctx.obj
     paco_ctx.command = 'init accounts'
@@ -88,7 +88,7 @@ def init_accounts(ctx, home='.'):
 @click.pass_context
 def init_netenv(ctx, home='.'):
     """
-    Initializes a netenv resource for an Paco project.
+    Initializes a netenv resource for a Paco project.
     """
     paco_ctx = ctx.obj
     paco_ctx.command = 'init netenv'

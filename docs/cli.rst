@@ -36,9 +36,9 @@ The ``paco init`` is divided into sub-commands:
 
 * ``paco init project <project-name>``: Creates a new directory with a boilerplate Paco project in it.
 
-* ``paco init credentials``: Initializes the .credentials file for an Paco project.
+* ``paco init credentials``: Initializes the .credentials file for a Paco project.
 
-*  ``paco init accounts``: Initializes the accounts for an Paco project.
+*  ``paco init accounts``: Initializes the accounts for a Paco project.
 
 Cloud commands
 --------------

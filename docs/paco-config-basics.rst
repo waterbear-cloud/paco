@@ -23,7 +23,7 @@ File format overview
 --------------------
 
 Paco configuration is a directory of files and sub-directories that
-make up an Paco project. All of the files are in YAML_ format.
+make up a Paco project. All of the files are in YAML_ format.
 
 In the top-level directory are sub-directories that contain YAML
 files each with a different format. This directories are:
@@ -50,7 +50,7 @@ The ``project.yaml`` contains gloabl information about the Paco project. It also
 an ``paco_project_version`` field that is loaded from ``paco-project-version.txt``.
 
 The YAML files are organized as nested key-value dictionaries. In each sub-directory,
-key names map to relevant Paco schemas. An Paco schema is a set of fields that describe
+key names map to relevant Paco schemas. A Paco schema is a set of fields that describe
 the field name, type and constraints.
 
 An example of how this hierarchy looks, in a NetworksEnvironent file, a key name ``network:``
@@ -344,7 +344,7 @@ To refer to a service created in the Services directory, use an ``paco.ref servi
 ``paco.ref service.notification.<account>.<region>.applications.notification.groups.lambda.resources.snstopic``
 
 Services are plug-ins that extend Paco with additional functionality. For example, custom notification, patching, back-ups
-and cost optimization services could be developed and installed into an Paco application to provide custom business
+and cost optimization services could be developed and installed into a Paco application to provide custom business
 functionality.
 
 paco.sub
