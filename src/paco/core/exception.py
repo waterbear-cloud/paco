@@ -80,3 +80,6 @@ class InvalidPacoConfigFile(PacoBaseException):
 
 class InvalidAccountPermission(PacoBaseException):
     title = "User permission attempts to grant to an account not in the User's account_whitelist"
+
+class InvalidAlarmConfiguration(PacoBaseException):
+    title = "Alarm configuration is incorrect or unsupported by Paco"

@@ -2,17 +2,17 @@
 CloudFormation template for CloudWatch Alarms
 """
 
-import paco.models.services
-import json
-import troposphere
 from paco import utils
-import paco.models
 from paco.models import schemas
 from paco.models import vocabulary
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.models.locations import get_parent_by_interface
 from paco.utils import prefixed_name
-from paco.core.exception import InvalidLogSetConfiguration
+from paco.core.exception import InvalidLogSetConfiguration, InvalidAlarmConfiguration
+import paco.models
+import paco.models.services
+import json
+import troposphere
 
 
 class CFBaseAlarm(StackTemplate):
@@ -134,8 +134,53 @@ class CWAlarms(CFBaseAlarm):
             alarm_id,
             alarm_set_id,
         ):
-        # Add Parameters
-        if schemas.IResource.providedBy(resource):
+        alarms_are_enabled = False
+        # Dimension Parameters
+        # First calculate multiple parameters for complex resources with multiple sub-resources like IoTAnalyticsPipeline
+        if schemas.IIoTAnalyticsPipeline.providedBy(resource):
+            params_needed = {}
+            dataset_params = {}
+            for alarm in alarms:
+                if alarm.metric_name not in params_needed:
+                    params_needed[alarm.metric_name] = [alarm]
+                else:
+                    params_needed[alarm.metric_name].append(alarm)
+            for metric_name, alarms in params_needed.items():
+                if metric_name == 'IncomingMessages':
+                    value = resource.paco_ref + '.channel.name'
+                    pipeline_name_param = self.create_cfn_parameter(
+                        name='ChannelName',
+                        param_type='String',
+                        description='The ChannelName for the dimension.',
+                        value=value
+                    )
+                elif metric_name == 'ActivityExecutionError':
+                    value = resource.paco_ref + '.pipeline.name'
+                    pipeline_name_param = self.create_cfn_parameter(
+                        name='PipelineName',
+                        param_type='String',
+                        description='The PipelineName for the dimension.',
+                        value=value
+                    )
+                elif metric_name == 'ActionExecution':
+                    dataset_names = {}
+                    for alarm in alarms:
+                        for dimension in alarm.dimensions:
+                            if dimension.name.lower() == 'datasetname':
+                                dataset_names[dimension.value] = None
+                    for dataset_name in dataset_names:
+                        value = f'{resource.paco_ref}.dataset.{dataset_name}.name'
+                        dataset_params[dataset_name] = self.create_cfn_parameter(
+                            name=f'{dataset_name}DatasetName',
+                            param_type='String',
+                            description=f'The DatasetName for {dataset_name}.',
+                            value=value
+                        )
+                        # stash the dataset name on the alarm so it can be used to create the Dimension
+                        alarm._dataset_param = dataset_params[dataset_name]
+
+        # simple Resources with a single name and dimension
+        elif schemas.IResource.providedBy(resource):
             value = resource.paco_ref + '.name'
             if schemas.IElastiCacheRedis.providedBy(resource):
                 # Primary node uses the aws name with '-001' appended to it
@@ -148,7 +193,7 @@ class CWAlarms(CFBaseAlarm):
                 description='The resource id or name for the metric dimension.',
                 value=value
             )
-        alarms_are_enabled = False
+
         for alarm in alarms:
             if alarm.enabled == True:
                 alarms_are_enabled = True
@@ -208,17 +253,40 @@ HINT: Ensure that the monitoring.log_sets for the resource is enabled and that t
             # MetricFilter LogGroup Alarms must have no dimensions
             dimensions = []
             if not schemas.ICloudWatchLogAlarm.providedBy(alarm):
+                # simple metric Resources with a single Dimension based on the resource type
                 if schemas.IResource.providedBy(resource) and len(alarm.dimensions) < 1:
                     dimensions.append(
                         {'Name': vocabulary.cloudwatch[resource.type]['dimension'],
                          'Value': troposphere.Ref(dimension_param)}
                     )
-                elif schemas.IASG.providedBy(resource):
+                # complex metric Resources that have more than one Dimension to select
+                elif schemas.IASG.providedBy(resource) or schemas.IIoTTopicRule.providedBy(resource):
                     dimensions.append(
                         {'Name': vocabulary.cloudwatch[resource.type]['dimension'],
                         'Value': troposphere.Ref(dimension_param)}
                     )
+                elif schemas.IIoTAnalyticsPipeline.providedBy(resource):
+                    # IoTAnalyticsPipeline can alarm on Channel, Pipeline, Datastore and Dataset dimensions
+                    if alarm.metric_name == 'ActivityExecutionError':
+                        dimensions.append(
+                            {'Name': 'PipelineName',
+                            'Value': troposphere.Ref(pipeline_name_param)}
+                        )
+                    elif alarm.metric_name == 'IncomingMessages':
+                        dimensions.append(
+                            {'Name': 'ChannelName',
+                            'Value': troposphere.Ref(channel_name_param)}
+                        )
+                    elif alarm.metric_name == 'ActionExecution':
+                        dimensions.append(
+                            {'Name': 'DatasetName',
+                            'Value': troposphere.Ref(alarm._dataset_param)}
+                        )
+                    else:
+                        raise InvalidAlarmConfiguration(f"Unsuported metric_name '{alarm.metric_name}' specified for IoTAnalyticsPipeline alarm:\n{alarm.paco_ref_parts}")
                 for dimension in alarm.dimensions:
+                    if schemas.IIoTAnalyticsPipeline.providedBy(resource) and dimension.name == 'DatasetName':
+                        continue
                     dimensions.append(
                         {'Name': dimension.name, 'Value': troposphere.Ref(dimension.parameter)}
                     )

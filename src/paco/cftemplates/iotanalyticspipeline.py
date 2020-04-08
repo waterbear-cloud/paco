@@ -267,6 +267,12 @@ class IoTAnalyticsPipeline(StackTemplate):
             iot_dataset_resource.DependsOn = iotap_datastore_resource
             self.template.add_resource(iot_dataset_resource)
 
+            self.create_output(
+                title=f'{dataset.name}DatasetName',
+                description=f'IoT Analytics Dataset {dataset.name}',
+                value=troposphere.Ref(iot_dataset_resource),
+                ref=self.resource.paco_ref_parts + '.dataset.' + dataset.name + '.name',
+            )
 
 def convert_expire_to_cfn_dict(expire):
     if expire == 0:
