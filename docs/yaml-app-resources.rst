@@ -4601,7 +4601,7 @@ IoTTopicRuleIoTAnalyticsAction
     * - pipeline
       - PacoReference |star|
       - IoT Analytics pipeline
-      - Paco Reference to `IotAnalyticsPipeline`_.
+      - Paco Reference to `IoTAnalyticsPipeline`_.
       - 
 
 
@@ -4631,7 +4631,7 @@ IoTTopicRuleLambdaAction
 
 
 
-IotAnalyticsPipeline
+IoTAnalyticsPipeline
 ---------------------
 
 
@@ -4699,9 +4699,9 @@ with an SQL Query to create subsets of a Datastore suitable for analysis with to
 
     
 
-.. _IotAnalyticsPipeline:
+.. _IoTAnalyticsPipeline:
 
-.. list-table:: :guilabel:`IotAnalyticsPipeline`
+.. list-table:: :guilabel:`IoTAnalyticsPipeline`
     :widths: 15 28 30 16 11
     :header-rows: 1
 
@@ -5647,7 +5647,63 @@ Route53 Health Check
 S3Bucket
 ---------
 
-S3 Bucket
+S3Bucket is an object storage resource in the Amazon S3 service.
+
+S3Buckets may be declared either in the global ``resource/s3.yaml`` file or in a network environment in
+as an application resource.
+
+S3Buckets in an application context will use the same ``account`` and ``region`` as the application, although
+it is still possible to override this to use other accouns and regions if desired.
+
+.. sidebar:: Prescribed Automation
+
+    ``deletion_policy``: The ``deletion_policy:`` field supports a ``delete`` or ``keep`` values. The ``delete``
+    choice will delete all objects from the S3 Bucket if a Paco delete command is applied. Otherwise AWS will not
+    allow you to delete an S3 Bucket that is not empty until all objects are deleted.
+
+    ``resource_suffix``: The ``policy`` field allows you to declare S3 Bucket policies. These policies need to be
+    restricted to the S3 Bucket resource itself. The ``resource_suffix`` will be prefixed with the S3 Bucket ARN
+    and you only need to declare keys within the bucket.
+
+.. code-block:: yaml
+    :caption: example S3Bucket resource
+
+    type: S3Bucket
+    title: My S3 Bucket
+    enabled: true
+    order: 10
+    account: paco.ref accounts.data
+    region: us-west-2
+    deletion_policy: "delete"
+    notifications:
+        lambdas:
+         - paco.ref netenv.mynet.applications.app.groups.serverless.resources.mylambda
+    cloudfront_origin: false
+    external_resource: false
+    versioning: false
+    policy:
+      - principal:
+          Service: iotanalytics.amazonaws.com
+        effect: 'Allow'
+        action:
+          - s3:Get*
+          - s3:ListBucket
+          - s3:ListBucketMultipartUploads
+          - s3:ListMultipartUploadParts
+        resource_suffix:
+          - '/*'
+          - ''
+      - aws:
+          - paco.sub '${paco.ref netenv.mynet.applications.app.groups.site.resources.demo.instance_iam_role.arn}'
+        effect: 'Allow'
+        action:
+          - 's3:Get*'
+          - 's3:List*'
+        resource_suffix:
+          - '/*'
+          - ''
+
+
 
 .. _S3Bucket:
 

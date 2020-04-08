@@ -387,7 +387,40 @@ IAMUser
 ^^^^^^^^
 
 
-IAM User
+IAM User represents a user that will exist in one account, but can also
+have delegate IAM Roles in other accounts that they are allowed to assume.
+
+.. code-block:: yaml
+    :caption: example IAM User
+
+    enabled: true
+    account: paco.ref accounts.master
+    username: yourusername
+    description: 'Your Name - Paco Administrator'
+    console_access_enabled: true
+    programmatic_access:
+      enabled: true
+      access_key_1_version: 1
+      access_key_2_version: 0
+    account_whitelist: all
+    permissions:
+      administrator:
+        type: Administrator
+        accounts: all
+      custom:
+        accounts: dev
+        managed_policies:
+           - 'AWSDirectConnectReadOnlyAccess'
+           - 'AmazonGlacierReadOnlyAccess'
+        policies:
+          - name: "AWS Polly full access"
+            statement:
+              - effect: Allow
+                action:
+                  - 'polly:*'
+                resource:
+                  - '*'
+
     
 
 .. _IAMUser:
