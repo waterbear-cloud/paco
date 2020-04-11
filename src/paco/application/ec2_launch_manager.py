@@ -143,7 +143,9 @@ class EC2LaunchManager():
             self.paco_base_path = '/opt/aim'
 
     def get_cache_id(self, resource):
-        "Return a cache id unique to a resource"
+        """Return a cache id unique to an ASG resource.
+Cache id is an aggregate of all bundle cache ids and the ec2lm functions script cache id.
+        """
         cache_context = '.'.join([resource.app_name, resource.group_name, resource.name])
         bucket_name = self.get_ec2lm_bucket_name(resource)
         ec2lm_functions_cache_id = ''
@@ -170,6 +172,7 @@ class EC2LaunchManager():
         s3_client.delete_object(Bucket=bucket_name, Key=bundle_s3_key)
 
     def stack_hook_cache_id(self, hook, bundle):
+        "Cache method to return a bundle's cache id"
         return bundle.cache_id
 
     def add_bundle_to_s3_bucket(self, bundle):
@@ -219,11 +222,13 @@ class EC2LaunchManager():
         s3_ctl.add_stack_hooks(resource_ref=bundle.bucket_ref, stack_hooks=stack_hooks)
 
     def ec2lm_functions_hook_cache_id(self, hook, s3_bucket_ref):
+        "Cache method for EC2LM functions cache id"
         s3_ctl = self.paco_ctx.get_controller('S3')
         bucket_name = s3_ctl.get_bucket_name(s3_bucket_ref)
         return utils.md5sum(str_data=self.ec2lm_functions_script[bucket_name])
 
     def ec2lm_functions_hook(self, hook, s3_bucket_ref):
+        "Hook method for ec2lm functions"
         s3_ctl = self.paco_ctx.get_controller('S3')
         bucket_name = s3_ctl.get_bucket_name(s3_bucket_ref)
         s3_client = self.account_ctx.get_aws_client('s3')
@@ -299,10 +304,12 @@ class EC2LaunchManager():
         self.ec2lm_buckets[s3_bucket_ref] = bucket
 
     def get_ec2lm_bucket_name(self, resource):
+        "Paco reference to the ec2lm bucket for a resource"
         s3_ctl = self.paco_ctx.get_controller('S3')
         return s3_ctl.get_bucket_name(resource.paco_ref_parts + '.ec2lm')
 
     def add_ec2lm_function_swap(self, ec2lm_bucket_name):
+        "Add swap functions to ec2lm functions script"
         self.ec2lm_functions_script[ec2lm_bucket_name] += """
 # Swap
 function swap_on() {
@@ -332,6 +339,7 @@ function swap_on() {
 """
 
     def add_ec2lm_function_wget(self, ec2lm_bucket_name, instance_ami_type_generic):
+        "Add install wget script to ec2lm functions script"
         self.ec2lm_functions_script[ec2lm_bucket_name] += """
 # HTTP Client Path
 function ec2lm_install_wget() {
@@ -359,9 +367,9 @@ function ec2lm_install_wget() {
 
         script_table = {
             'ec2lm_bucket_name': ec2lm_bucket_name,
-            'paco_environment': self.app_engine.env_ctx.env_id,
-            'paco_network_environment': self.app_engine.env_ctx.netenv_id,
-            'paco_environment_ref': self.app_engine.env_ctx.config.paco_ref_parts,
+            'paco_environment': resource.env_name,
+            'paco_network_environment': resource.netenv_name,
+            'paco_environment_ref': resource.env_obj.paco_ref_parts,
             'aws_account_id': self.account_ctx.id,
             'launch_bundle_names': ' '.join(self.launch_bundle_names),
             'paco_base_path': self.paco_base_path,
@@ -600,7 +608,7 @@ aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
         return user_data_script
 
     def user_data_secrets(self, resource):
-        "Return UserData script for Secrets and add managed policy"
+        "ec2lm functions script for Secrets and adds managed policy to allow access to secrets"
         secrets_script = """
 function ec2lm_get_secret() {
     aws secretsmanager get-secret-value --secret-id "$1" --query SecretString --region $REGION --output text
@@ -654,6 +662,7 @@ statement:
         return secrets_script
 
     def add_bundle(self, bundle):
+        "Build and add a bundle to the ec2lm S3 Bucket"
         bundle.build()
         if bundle.bucket_ref not in self.launch_bundles:
             self.init_ec2lm_s3_bucket(bundle.resource)
@@ -663,6 +672,7 @@ statement:
         self.launch_bundles[bundle.bucket_ref].append(bundle)
 
     def remove_bundle(self, bundle):
+        "Remove a bundle from the ec2lm S3 Bucket"
         if bundle.bucket_ref not in self.launch_bundles:
             self.init_ec2lm_s3_bucket(bundle.resource)
             self.launch_bundles[bundle.bucket_ref] = []
@@ -1057,10 +1067,7 @@ statement:
             policy_config_yaml=policy_config_yaml,
             extra_ref_names=['ec2lm','eip'],
         )
-
         eip_lb.set_launch_script(launch_script)
-
-        # Save Configuration
         self.add_bundle(eip_lb)
 
     def lb_add_cloudwatchagent(self, bundle_name, resource):
@@ -1265,8 +1272,6 @@ statement:
                 stack_tags=self.stack_tags,
                 support_resource_ref_ext='log_groups',
             )
-
-        # Save Configuration
         self.add_bundle(cw_lb)
 
     def lb_add_ssm(self, bundle_name, resource):
