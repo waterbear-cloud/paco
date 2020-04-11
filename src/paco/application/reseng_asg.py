@@ -68,11 +68,7 @@ role_name: %s""" % ("ASGInstance")
 
         # Create ASG stack
         ec2_manager_user_data_script = self.app_engine.ec2_launch_manager.user_data_script(
-            self.app_id,
-            self.grp_id,
-            self.res_id,
             self.resource,
-            instance_iam_role_ref,
             self.stack_name
         )
         self.stack_group.add_new_stack(
@@ -84,7 +80,7 @@ role_name: %s""" % ("ASGInstance")
                 'env_ctx': self.env_ctx,
                 'role_profile_arn': role_profile_arn,
                 'ec2_manager_user_data_script': ec2_manager_user_data_script,
-                'ec2_manager_cache_id': self.app_engine.ec2_launch_manager.get_cache_id(self.resource, self.app_id, self.grp_id),
+                'ec2_manager_cache_id': self.app_engine.ec2_launch_manager.get_cache_id(self.resource),
             },
         )
 

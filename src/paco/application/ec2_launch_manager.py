@@ -34,44 +34,25 @@ from paco.core.exception import PacoErrorCode
 
 class LaunchBundle():
     """
-    A collection of files to support initializing a new EC2 instances
-    that have been zipped and stored in S3.
+    A zip file sent to an S3 Bucket to support initializing a new EC2 instance.
     """
 
-    def __init__(
-        self,
-        paco_ctx,
-        name,
-        manager,
-        app_id,
-        group_id,
-        resource_id,
-        resource_config,
-    ):
-        self.paco_ctx = paco_ctx
+    def __init__(self, resource, manager, name):
         self.name = name
         self.manager = manager
-        self.app_id = app_id
-        self.group_id = group_id
-        self.resource_id = resource_id
-        self.resource_config = resource_config
+        self.resource = resource
         self.build_path = os.path.join(
             self.manager.build_path,
-            self.group_id,
-            self.resource_id
+            self.resource.group_name,
+            self.resource.name,
         )
         self.bundle_files = []
-        self.package_path = None
         self.cache_id = ""
-        self.s3_key = None
-        instance_iam_role_arn_ref = self.resource_config.paco_ref + '.instance_iam_role.arn'
-        self.instance_iam_role_arn = self.paco_ctx.get_ref(instance_iam_role_arn_ref)
-        self.bucket_ref = resource_config.paco_ref_parts + '.ec2lm'
+        self.bucket_ref = resource.paco_ref_parts + '.ec2lm'
         self.bundles_path = os.path.join(self.build_path, 'LaunchBundles')
         self.bundle_folder = self.name
         self.package_filename = str.join('.', [self.bundle_folder, 'tgz'])
         self.package_path = os.path.join(self.bundles_path, self.package_filename)
-
 
     def set_launch_script(self, launch_script):
         """Set the script run to launch the bundle. By convention, this file
@@ -112,17 +93,11 @@ class LaunchBundle():
             contents_md5 += md5sum(str_data=bundle_file['contents'])
 
         self.cache_id = md5sum(str_data=contents_md5)
-
         lb_tar = tarfile.open(self.package_filename, "w:gz")
         lb_tar.add(self.bundle_folder, recursive=True)
         lb_tar.close()
         os.chdir(orig_cwd)
 
-        if self.instance_iam_role_arn == None:
-            raise StackException(
-                    PacoErrorCode.Unknown,
-                    message="ec2_launch_manager: LaunchBundle: build: Unable to locate value for ref: " + instance_iam_role_arn_ref
-                )
 
 class EC2LaunchManager():
     """
@@ -142,7 +117,6 @@ class EC2LaunchManager():
         self.paco_ctx = paco_ctx
         self.app_engine = app_engine
         self.application = application
-        self.app_id = application.name
         self.account_ctx = account_ctx
         self.aws_region = aws_region
         self.stack_group = stack_group
@@ -161,23 +135,23 @@ class EC2LaunchManager():
             self.application.paco_ref_parts,
             self.account_ctx.get_name(),
             self.aws_region,
-            self.app_id
+            self.application.name,
         )
         self.paco_base_path = '/opt/paco'
         # legacy_flag: aim_name_2019_11_28 - Use AIM name
         if self.paco_ctx.legacy_flag('aim_name_2019_11_28') == True:
             self.paco_base_path = '/opt/aim'
 
-    def get_cache_id(self, resource, app_id, grp_id):
-        cache_context = '.'.join([app_id, grp_id, resource.name])
+    def get_cache_id(self, resource):
+        "Return a cache id unique to a resource"
+        cache_context = '.'.join([resource.app_name, resource.group_name, resource.name])
         bucket_name = self.get_ec2lm_bucket_name(resource)
         ec2lm_functions_cache_id = ''
         if bucket_name in self.ec2lm_functions_script.keys():
             ec2lm_functions_cache_id = utils.md5sum(str_data=self.ec2lm_functions_script[bucket_name])
-
         if cache_context not in self.cache_id:
             return ec2lm_functions_cache_id
-        return self.cache_id[cache_context]+ec2lm_functions_cache_id
+        return self.cache_id[cache_context] + ec2lm_functions_cache_id
 
     def upload_bundle_stack_hook(self, hook, bundle):
         "Uploads the launch bundle to an S3 bucket"
@@ -201,7 +175,7 @@ class EC2LaunchManager():
     def add_bundle_to_s3_bucket(self, bundle):
         """Adds stack hook which will upload launch bundle to an S3 bucket when
         the stack is created or updated."""
-        cache_context = '.'.join([bundle.app_id, bundle.group_id, bundle.resource_id])
+        cache_context = '.'.join([bundle.resource.app_name, bundle.resource.group_name, bundle.resource.name])
         if cache_context not in self.cache_id:
             self.cache_id[cache_context] = ''
         self.cache_id[cache_context] += bundle.cache_id
@@ -224,7 +198,7 @@ class EC2LaunchManager():
     def remove_bundle_from_s3_bucket(self, bundle):
         """Adds stack hook which will remove a launch bundle from an S3 bucket when
         the stack is created or updated."""
-        cache_context = '.'.join([bundle.app_id, bundle.group_id, bundle.resource_id])
+        cache_context = '.'.join([bundle.resource.app_name, bundle.resource.group_name, bundle.resource.name])
         if cache_context not in self.cache_id:
             self.cache_id[cache_context] = ''
         self.cache_id[cache_context] += bundle.cache_id
@@ -259,14 +233,14 @@ class EC2LaunchManager():
             Key="ec2lm_functions.bash"
         )
 
-    def init_ec2lm_s3_bucket(self, resource, instance_iam_role_arn):
+    def init_ec2lm_s3_bucket(self, resource):
         "Initialize the EC2LM S3 Bucket stack if it does not already exist"
         bucket_config_dict = {
             'enabled': True,
             'bucket_name': 'lb',
             'deletion_policy': 'delete',
             'policy': [ {
-                'aws': [ "%s" % (instance_iam_role_arn) ],
+                'aws': [ "%s" % (resource._instance_iam_role_arn) ],
                 'effect': 'Allow',
                 'action': [
                     's3:Get*',
@@ -314,7 +288,6 @@ class EC2LaunchManager():
             cache_method=self.ec2lm_functions_hook_cache_id,
             hook_arg=s3_bucket_ref
         )
-
         s3_ctl.add_bucket(
             bucket,
             config_ref=s3_bucket_ref,
@@ -369,21 +342,20 @@ function ec2lm_install_wget() {
 }
 """ % ec2lm_commands.user_data_script['install_wget'][instance_ami_type_generic]
 
-    def add_ec2lm_function_secrets(self, ec2lm_bucket_name, resource, grp_id, instance_iam_role_ref):
+    def add_ec2lm_function_secrets(self, ec2lm_bucket_name, resource):
         """Adds functions for getting secrets from Secrets Manager"""
-        self.ec2lm_functions_script[ec2lm_bucket_name] += self.user_data_secrets(resource, grp_id, instance_iam_role_ref)
+        self.ec2lm_functions_script[ec2lm_bucket_name] += self.user_data_secrets(resource)
 
-    def init_ec2lm_function(self, ec2lm_bucket_name, resource, instance_iam_role_ref, stack_name):
-
+    def init_ec2lm_function(self, ec2lm_bucket_name, resource, stack_name):
+        """Init EC2LM functions and add managed policy"""
         oldest_health_check_timeout = 0
-        if resource.rolling_update_policy != None:
-            if resource.target_groups != None and len(resource.target_groups) > 0:
-                for target_group in resource.target_groups:
-                    if paco.models.references.is_ref(target_group):
-                        target_group_obj = self.paco_ctx.get_ref(target_group)
-                        health_check_timeout = (target_group_obj.healthy_threshold*target_group_obj.health_check_interval)
-                        if oldest_health_check_timeout < health_check_timeout:
-                            oldest_health_check_timeout = health_check_timeout
+        if resource.target_groups != None and len(resource.target_groups) > 0:
+            for target_group in resource.target_groups:
+                if paco.models.references.is_ref(target_group):
+                    target_group_obj = self.paco_ctx.get_ref(target_group)
+                    health_check_timeout = (target_group_obj.healthy_threshold * target_group_obj.health_check_interval)
+                    if oldest_health_check_timeout < health_check_timeout:
+                        oldest_health_check_timeout = health_check_timeout
 
         script_table = {
             'ec2lm_bucket_name': ec2lm_bucket_name,
@@ -396,7 +368,6 @@ function ec2lm_install_wget() {
             'tool_name_legacy_flag': 'AIM' if self.paco_ctx.legacy_flag('aim_name_2019_11_28') == True else 'PACO',
             'oldest_health_check_timeout': oldest_health_check_timeout
         }
-
         script_template = """
 INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
 AVAIL_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
@@ -525,6 +496,7 @@ statement:
     resource:
       - '*'
 """.format(iam_policy_name)
+
         # Signal Resource permissions if its needed
         if resource.rolling_update_policy.wait_on_resource_signals == True:
             rolling_update_policy_table = {
@@ -550,7 +522,7 @@ statement:
             extra_ref_names=['ec2lm','ec2lm'],
         )
 
-    def user_data_script(self, app_id, grp_id, resource_id, resource, instance_iam_role_ref, stack_name):
+    def user_data_script(self, resource, stack_name):
         """BASH script that will load the launch bundle from user_data"""
 
         script_fmt = """#!/bin/bash
@@ -587,17 +559,8 @@ aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
 {0[launch_bundles]}
 """
 
-        instance_iam_role_arn_ref = 'paco.ref ' + instance_iam_role_ref + '.arn'
-        instance_iam_role_arn = self.paco_ctx.get_ref(instance_iam_role_arn_ref)
-        if instance_iam_role_arn == None:
-            raise StackException(
-                    PacoErrorCode.Unknown,
-                    message="ec2_launch_manager: user_data_script: Unable to locate value for ref: " + instance_iam_role_arn_ref
-                )
-        self.init_ec2lm_s3_bucket(resource, instance_iam_role_arn)
-
+        self.init_ec2lm_s3_bucket(resource)
         ec2lm_bucket_name = self.get_ec2lm_bucket_name(resource)
-
         script_table = {
             'cache_id': None,
             'ec2lm_bucket_name': ec2lm_bucket_name,
@@ -613,7 +576,7 @@ aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
             script_table['launch_bundles'] = 'ec2lm_launch_bundles\n'
 
         # EC2LM Functions
-        self.init_ec2lm_function(ec2lm_bucket_name, resource, instance_iam_role_ref, stack_name)
+        self.init_ec2lm_function(ec2lm_bucket_name, resource, stack_name)
         self.add_ec2lm_function_swap(ec2lm_bucket_name)
         self.add_ec2lm_function_wget(ec2lm_bucket_name, resource.instance_ami_type_generic)
 
@@ -621,7 +584,7 @@ aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
             script_table['pre_script'] = resource.user_data_pre_script
 
         if resource.secrets != None and len(resource.secrets) > 0:
-            self.add_ec2lm_function_secrets(ec2lm_bucket_name, resource, grp_id, instance_iam_role_ref)
+            self.add_ec2lm_function_secrets(ec2lm_bucket_name, resource)
 
         if resource.launch_options.update_packages == True:
             script_table['update_packages'] = ec2lm_commands.user_data_script['update_packages'][resource.instance_ami_type_generic]
@@ -636,7 +599,8 @@ aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
 
         return user_data_script
 
-    def user_data_secrets(self, resource, grp_id, instance_iam_role_ref):
+    def user_data_secrets(self, resource):
+        "Return UserData script for Secrets and add managed policy"
         secrets_script = """
 function ec2lm_get_secret() {
     aws secretsmanager get-secret-value --secret-id "$1" --query SecretString --region $REGION --output text
@@ -692,7 +656,7 @@ statement:
     def add_bundle(self, bundle):
         bundle.build()
         if bundle.bucket_ref not in self.launch_bundles:
-            self.init_ec2lm_s3_bucket(bundle.resource_config, bundle.instance_iam_role_arn)
+            self.init_ec2lm_s3_bucket(bundle.resource)
             self.launch_bundles[bundle.bucket_ref] = []
         # Add the bundle to the S3 Context ID bucket
         self.add_bundle_to_s3_bucket(bundle)
@@ -700,11 +664,11 @@ statement:
 
     def remove_bundle(self, bundle):
         if bundle.bucket_ref not in self.launch_bundles:
-            self.init_ec2lm_s3_bucket(bundle.resource_config, bundle.instance_iam_role_arn)
+            self.init_ec2lm_s3_bucket(bundle.resource)
             self.launch_bundles[bundle.bucket_ref] = []
         self.remove_bundle_from_s3_bucket(bundle)
 
-    def lb_add_cfn_init(self, bundle_name, instance_iam_role_ref, resource):
+    def lb_add_cfn_init(self, bundle_name, resource):
         """Creates a launch bundle to download and run cfn-init"""
         # Check if this bundle is enabled with config such as:
         #  asg:
@@ -713,18 +677,7 @@ statement:
         #        - SomeSet
 
         # Create the Launch Bundle and configure it
-        app_name = get_parent_by_interface(resource, schemas.IApplication).name
-        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
-
-        cfn_init_lb = LaunchBundle(
-            self.paco_ctx,
-            bundle_name,
-            self,
-            app_name,
-            group_name,
-            resource.name,
-            resource,
-        )
+        cfn_init_lb = LaunchBundle(resource, self, bundle_name)
 
         if resource.cfn_init == None or \
             len(resource.launch_options.cfn_init_config_sets) == 0:
@@ -757,24 +710,14 @@ statement:
         # Save Configuration
         self.add_bundle(cfn_init_lb)
 
-    def lb_add_efs(self, bundle_name, instance_iam_role_ref, resource):
+    def lb_add_efs(self, bundle_name, resource):
         """Creates a launch bundle to configure EFS mounts:
 
          - Installs an entry in /etc/fstab
          - On launch runs mount
         """
-        app_name = get_parent_by_interface(resource, schemas.IApplication).name
-        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
        # Create the Launch Bundle and configure it
-        efs_lb = LaunchBundle(
-            self.paco_ctx,
-            bundle_name,
-            self,
-            app_name,
-            group_name,
-            resource.name,
-            resource,
-        )
+        efs_lb = LaunchBundle(resource, self, bundle_name)
 
         efs_enabled = False
         if len(resource.efs_mounts) >= 0:
@@ -859,25 +802,14 @@ statement:
         # Save Configuration
         self.add_bundle(efs_lb)
 
-    def lb_add_ebs(self, bundle_name, instance_iam_role_ref, resource):
+    def lb_add_ebs(self, bundle_name, resource):
         """Creates a launch bundle to configure EBS Volume mounts:
 
          - Installs an entry in /etc/fstab
          - On launch runs mount
         """
-        app_name = get_parent_by_interface(resource, schemas.IApplication).name
-        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
-
         # Create the Launch Bundle and configure it
-        ebs_lb = LaunchBundle(
-            self.paco_ctx,
-            bundle_name,
-            self,
-            app_name,
-            group_name,
-            resource.name,
-            resource,
-        )
+        ebs_lb = LaunchBundle(resource, self, bundle_name)
 
         if len(resource.ebs_volume_mounts) == 0:
             self.remove_bundle(ebs_lb)
@@ -1056,22 +988,10 @@ statement:
         # Save Configuration
         self.add_bundle(ebs_lb)
 
-    def lb_add_eip(self, bundle_name, instance_iam_role_ref, resource):
+    def lb_add_eip(self, bundle_name, resource):
         """Creates a launch bundle to configure Elastic IPs"""
-
-        app_name = get_parent_by_interface(resource, schemas.IApplication).name
-        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
-
         # Create the Launch Bundle and configure it
-        eip_lb = LaunchBundle(
-            self.paco_ctx,
-            bundle_name,
-            self,
-            app_name,
-            group_name,
-            resource.name,
-            resource,
-        )
+        eip_lb = LaunchBundle(resource, self, bundle_name)
 
         if resource.eip == None:
             self.remove_bundle(eip_lb)
@@ -1143,12 +1063,7 @@ statement:
         # Save Configuration
         self.add_bundle(eip_lb)
 
-    def lb_add_cloudwatchagent(
-        self,
-        bundle_name,
-        instance_iam_role_ref,
-        resource
-    ):
+    def lb_add_cloudwatchagent(self, bundle_name, resource):
         """Creates a launch bundle to install and configure a CloudWatch Agent:
 
          - Adds a launch script to install the agent
@@ -1159,19 +1074,9 @@ statement:
            to do what it needs to do (e.g. send metrics and logs to CloudWatch)
         """
         monitoring = resource.monitoring
-        app_name = get_parent_by_interface(resource, schemas.IApplication).name
-        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
 
         # Create the Launch Bundle and configure it
-        cw_lb = LaunchBundle(
-            self.paco_ctx,
-            bundle_name,
-            self,
-            app_name,
-            group_name,
-            resource.name,
-            resource,
-        )
+        cw_lb = LaunchBundle(resource, self, bundle_name)
 
         if resource.monitoring == None or resource.monitoring.enabled == False:
             self.remove_bundle(cw_lb)
@@ -1364,20 +1269,10 @@ statement:
         # Save Configuration
         self.add_bundle(cw_lb)
 
-    def lb_add_ssm(self, bundle_name, instance_iam_role_ref, resource):
+    def lb_add_ssm(self, bundle_name, resource):
         """Creates a launch bundle to install and configure the SSM agent"""
         # Create the Launch Bundle
-        app_name = get_parent_by_interface(resource, schemas.IApplication).name
-        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
-        ssm_lb = LaunchBundle(
-            self.paco_ctx,
-            bundle_name,
-            self,
-            app_name,
-            group_name,
-            resource.name,
-            resource,
-        )
+        ssm_lb = LaunchBundle(resource, self, bundle_name)
 
         # Remove bundle if not enabled and return
         if not resource.launch_options.ssm_agent:
@@ -1458,14 +1353,14 @@ statement:
 
     def process_bundles(self, resource, instance_iam_role_ref):
         "Initialize launch bundle S3 bucket and iterate through all launch bundles and add every applicable bundle"
-        instance_iam_role_arn_ref = 'paco.ref ' + instance_iam_role_ref + '.arn'
-        instance_iam_role_arn = self.paco_ctx.get_ref(instance_iam_role_arn_ref)
-        if instance_iam_role_arn == None:
+        resource._instance_iam_role_arn_ref = 'paco.ref ' + instance_iam_role_ref + '.arn'
+        resource._instance_iam_role_arn = self.paco_ctx.get_ref(resource._instance_iam_role_arn_ref)
+        if resource._instance_iam_role_arn == None:
             raise StackException(
                     PacoErrorCode.Unknown,
                     message="ec2_launch_manager: user_data_script: Unable to locate value for ref: " + instance_iam_role_arn_ref
                 )
-        self.init_ec2lm_s3_bucket(resource, instance_iam_role_arn)
+        self.init_ec2lm_s3_bucket(resource)
         for bundle_name in self.launch_bundle_names:
             bundle_method = getattr(self, 'lb_add_' + bundle_name.replace('-', '_').lower())
-            bundle_method(bundle_name, instance_iam_role_ref, resource)
+            bundle_method(bundle_name, resource)
