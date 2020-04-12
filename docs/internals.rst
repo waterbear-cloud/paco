@@ -145,7 +145,9 @@ To create a hook, call ``StackHooks.add()`` method with:
 
  - ``name``: This will be displayed on the command-line interface.
 
- - ``stack_action``: Must be one of ``create``, ``update`` or ``delete``.
+ - ``stack_action``: Must be one of ``create``, ``update`` or ``delete``. The ``update`` action is called every time
+   an existing stack is in scope, if the hook's ``cache_method`` returns a different cache id or the cache does not exist.
+   ``update`` hooks should be designed to be idempotent and able to be re-run multiple times.
 
  - ``stack_timing``: Must be one of ``pre`` or ``post``.
 
@@ -153,7 +155,7 @@ To create a hook, call ``StackHooks.add()`` method with:
    iteslf and the ``hook_arg`` value.
 
  - ``cache_method``: Optional. A method that will return a cache id. If this value does not change between provisions,
-   then the hook will be skipped. This only applied to hooks on the ``update`` stack action.
+   then the hook will be skipped. This only applies to hooks on the ``update`` stack action.
 
  - ``hook_arg``: Optional. A value which is supplied as an argument to the ``hook_method`` with it is invoked.
 
