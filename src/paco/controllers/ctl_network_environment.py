@@ -143,7 +143,7 @@ class EnvironmentContext():
             for stack in stack_grp.stacks:
                 if isinstance(stack, StackGroup):
                     continue
-                config_dict = stack.get_stack_output_config()
+                config_dict = stack.output_config_dict
                 if config_dict == None:
                     continue
                 merged_config = utils.dict_of_dicts_merge(merged_config, config_dict)

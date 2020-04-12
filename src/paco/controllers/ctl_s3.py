@@ -104,7 +104,7 @@ class S3Context():
         else:
             if change_protected == False:
                 if stack_hooks == None:
-                    stack_hooks = StackHooks(self.paco_ctx)
+                    stack_hooks = StackHooks()
                 # S3 Delete on Stack Delete hook
                 stack_hooks.add(
                     'S3StackGroup', 'delete', 'pre',

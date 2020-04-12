@@ -182,7 +182,7 @@ Cache id is an aggregate of all bundle cache ids and the ec2lm functions script 
         if cache_context not in self.cache_id:
             self.cache_id[cache_context] = ''
         self.cache_id[cache_context] += bundle.cache_id
-        stack_hooks = StackHooks(self.paco_ctx)
+        stack_hooks = StackHooks()
         stack_hooks.add(
             name='UploadBundle.'+bundle.name,
             stack_action='create',
@@ -205,7 +205,7 @@ Cache id is an aggregate of all bundle cache ids and the ec2lm functions script 
         if cache_context not in self.cache_id:
             self.cache_id[cache_context] = ''
         self.cache_id[cache_context] += bundle.cache_id
-        stack_hooks = StackHooks(self.paco_ctx)
+        stack_hooks = StackHooks()
         stack_hooks.add(
             name='DeleteBundle.'+bundle.name,
             stack_action='create',
@@ -276,7 +276,7 @@ Cache id is an aggregate of all bundle cache ids and the ec2lm functions script 
         )
 
         # EC2LM Common Functions StackHooks
-        stack_hooks = StackHooks(self.paco_ctx)
+        stack_hooks = StackHooks()
         stack_hooks.add(
             name='UploadEC2LMFunctions',
             stack_action='create',
@@ -369,7 +369,7 @@ function ec2lm_install_wget() {
             'ec2lm_bucket_name': ec2lm_bucket_name,
             'paco_environment': resource.env_name,
             'paco_network_environment': resource.netenv_name,
-            'paco_environment_ref': resource.env_obj.paco_ref_parts,
+            'paco_environment_ref': resource.env_obj.paco_ref_parts + '.' + resource.region_name,
             'aws_account_id': self.account_ctx.id,
             'launch_bundle_names': ' '.join(self.launch_bundle_names),
             'paco_base_path': self.paco_base_path,

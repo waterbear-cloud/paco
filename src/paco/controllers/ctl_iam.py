@@ -523,7 +523,7 @@ class IAMController(Controller):
             account_ctx = self.paco_ctx.get_account_context('paco.ref accounts.'+account_name)
             self.iam_user_stack_groups[account_name] = IAMUserStackGroup(self.paco_ctx, account_ctx, account_name, self)
 
-        stack_hooks = StackHooks(self.paco_ctx)
+        stack_hooks = StackHooks()
         for user_name in self.iam.users.keys():
             user_config = self.iam.users[user_name]
             # Stack hooks for managing access keys

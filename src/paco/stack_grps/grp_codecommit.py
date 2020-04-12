@@ -30,7 +30,7 @@ class CodeCommitStackGroup(StackGroup):
         self.repo_list = repo_list
 
     def init(self):
-        stack_hooks = StackHooks(self.paco_ctx)
+        stack_hooks = StackHooks()
         for hook_action in ['create', 'update']:
             stack_hooks.add(
                 name='CodeCommitSSHPublicKey',
