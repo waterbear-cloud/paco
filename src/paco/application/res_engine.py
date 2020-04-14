@@ -21,7 +21,7 @@ class ResourceEngine():
         self.account_ctx = self.app_engine.account_ctx
         if self.app_engine.env_ctx != None:
             self.env_ctx = self.app_engine.env_ctx
-            self.env = self.env_ctx.config
+            self.env = self.env_ctx.env_region
         self.app_id = self.app_engine.app.name
         self.gen_iam_role_id = self.app_engine.gen_iam_role_id
 

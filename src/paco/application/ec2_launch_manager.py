@@ -144,7 +144,7 @@ class EC2LaunchManager():
 
     def get_cache_id(self, resource):
         """Return a cache id unique to an ASG resource.
-Cache id is an aggregate of all bundle cache ids and the ec2lm functions script cache id.
+        Cache id is an aggregate of all bundle cache ids and the ec2lm functions script cache id.
         """
         cache_context = '.'.join([resource.app_name, resource.group_name, resource.name])
         bucket_name = self.get_ec2lm_bucket_name(resource)

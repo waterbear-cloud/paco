@@ -11,6 +11,7 @@ from paco.controllers.ctl_cloudwatch import CloudWatchController
 from paco.controllers.ctl_snstopics import SNTopicsGroupsController
 from paco.controllers.ctl_cloudtrail import CloudTrailController
 from paco.controllers.ctl_iotpolicy import IoTPolicyController
+from paco.controllers.ctl_ssm import SSMController
 
 klass = {
     'netenv': NetEnvController,
@@ -27,4 +28,5 @@ klass = {
     'snstopics': SNTopicsGroupsController,
     'cloudtrail': CloudTrailController,
     'iotpolicy': IoTPolicyController,
+    'ssm': SSMController,
 }

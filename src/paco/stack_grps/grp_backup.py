@@ -16,7 +16,7 @@ class BackupVaultsStackGroup(StackGroup):
         super().__init__(
             paco_ctx,
             account_ctx,
-            env_ctx.netenv_id,
+            env_ctx.netenv.name,
             "BackupVaults",
             env_ctx
         )
@@ -45,7 +45,7 @@ class BackupVaultsStackGroup(StackGroup):
             return None
 
         netenv = get_parent_by_interface(self.config, schemas.INetworkEnvironment)
-        iam_role_id = 'Backup-{}-{}'.format(netenv.name, self.env_ctx.env_id)
+        iam_role_id = 'Backup-{}-{}'.format(netenv.name, self.env_ctx.env.name)
         policy_arns = [
             'arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup',
             'arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores'

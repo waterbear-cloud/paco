@@ -49,7 +49,7 @@ class ASG(StackTemplate):
         )
 
         # if the network for the ASG is disabled, only use an empty placeholder
-        if not self.env_ctx.config.network.is_enabled():
+        if not self.env_ctx.env_region.network.is_enabled():
             return
 
         security_group_list_param = self.create_cfn_ref_list_param(

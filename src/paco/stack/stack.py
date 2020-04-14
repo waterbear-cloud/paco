@@ -194,7 +194,7 @@ class StackHooks():
                 for hook in timing_config:
                     self.stack.log_action("Init", "Hook", message=": {}: {}: {}".format(hook['name'], timing_id, stack_action_id))
 
-    def add(self, name, stack_action, stack_timing, hook_method, cache_method, hook_arg=None):
+    def add(self, name, stack_action, stack_timing, hook_method, cache_method=None, hook_arg=None):
         "Add a hook"
         hook = {
             'name': name,
@@ -1201,16 +1201,8 @@ your cache may be out of sync. Try running again the with the --nocache option.
         stack_parameters = self.generate_stack_parameters(action=self.action)
         self.confirm_stack_parameter_changes(stack_parameters)
         self.validate_template_changes()
-        self.log_action("Provision", "Update")
-
-        if True == False and self.paco_ctx.yes == False:
-            print("A Stack is about to be modified: {}".format(self.get_name()))
-            answer = self.paco_ctx.input_confirm_action("Make changes to the stack?")
-            if answer == False:
-                print("Stack update aborted.")
-                return
-
         self.hooks.run("update", "pre", self)
+        self.log_action("Provision", "Update")
         while True:
             try:
                 self.cfn_client.update_stack(

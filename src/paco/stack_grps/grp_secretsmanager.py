@@ -8,7 +8,7 @@ class SecretsManagerStackGroup(StackGroup):
         super().__init__(
             paco_ctx,
             account_ctx,
-            env_ctx.netenv_id,
+            env_ctx.netenv.name,
             "Secrets",
             env_ctx
         )

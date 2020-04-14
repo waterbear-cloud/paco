@@ -83,3 +83,6 @@ class InvalidAccountPermission(PacoBaseException):
 
 class InvalidAlarmConfiguration(PacoBaseException):
     title = "Alarm configuration is incorrect or unsupported by Paco"
+
+class InvalidSSMDocument(PacoBaseException):
+    title = "SSM Document is not in Active state"

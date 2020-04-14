@@ -36,7 +36,7 @@ class ELB(StackTemplate):
         #   - Add a hash?
         #   - Check for duplicates with validating template
         load_balancer_name = self.create_resource_name_join(
-            name_list=[self.env_ctx.netenv_id, self.env_ctx.env_id, app_name, self.resource.name],
+            name_list=[self.env_ctx.netenv.name, self.env_ctx.env.name, app_name, self.resource.name],
             separator='',
             camel_case=True
         )
@@ -46,7 +46,7 @@ class ELB(StackTemplate):
         self.set_parameter('Scheme', elb_config['scheme'])
 
         # Segment SubnetList is a Segment stack Output based on availability zones
-        subnet_list_key = 'SubnetList' + str(self.env_ctx.availability_zones())
+        subnet_list_key = 'SubnetList' + str(self.env_ctx.env_region.network.availability_zones)
         self.set_parameter(StackOutputParam('SubnetList', segment_stack, subnet_list_key, self))
 
         # Security Group List

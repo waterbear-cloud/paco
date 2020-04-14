@@ -43,7 +43,7 @@ class SecurityGroups(StackTemplate):
             name='VPC',
             param_type='AWS::EC2::VPC::Id',
             description='The VPC Id',
-            value='paco.ref netenv.{}.<environment>.<region>.network.vpc.id'.format(self.env_ctx.netenv_id),
+            value='paco.ref netenv.{}.<environment>.<region>.network.vpc.id'.format(self.env_ctx.netenv.name),
         )
 
         # Security Group and Ingress/Egress Resources
@@ -67,7 +67,7 @@ class SecurityGroups(StackTemplate):
     def create_group(self, sg_group_id, sg_name, sg_config, template, vpc_id_param):
         # GroupName
         group_name = self.create_resource_name_join(
-            [ self.env_ctx.netenv_id, self.env_ctx.env_id, sg_group_id, sg_name ],
+            [ self.env_ctx.netenv.name, self.env_ctx.env.name, sg_group_id, sg_name ],
             separator='-',
             camel_case=True,
             filter_id='SecurityGroup.GroupName'

@@ -19,7 +19,7 @@ class Segment(StackTemplate):
         self.set_aws_name('Segments', segment_config.name)
 
         vpc_stack = self.env_ctx.get_vpc_stack()
-        availability_zones = self.env_ctx.availability_zones()
+        availability_zones = self.env_ctx.env_region.network.availability_zones
 
         # Initialize Parameters
         # VPC
