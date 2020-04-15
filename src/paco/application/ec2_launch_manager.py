@@ -1274,6 +1274,41 @@ statement:
             )
         self.add_bundle(cw_lb)
 
+    def add_update_instance_ssm_document(self):
+        "Add paco_ec2lm_update_instance SSM Document to the model"
+        ssm_documents = self.paco_ctx.project['resource']['ssm'].ssm_documents
+        if 'paco_ec2lm_update_instance' not in ssm_documents:
+            ssm_doc = SSMDocument('paco_ec2lm_update_instance', ssm_documents)
+            ssm_doc.add_location(self.account_ctx.paco_ref, self.env_region.name)
+            ssm_doc.content = """{
+    "schemaVersion": "2.2",
+    "description": "Paco EC2 LaunchManager update instance state",
+    "parameters": {
+        "Message": {
+        "type": "String",
+        "description": "Example",
+        "default": "BigTimeDawg!"
+        }
+    },
+    "mainSteps": [
+        {
+        "action": "aws:runShellScript",
+        "name": "updogShell",
+        "inputs": {
+            "runCommand": [ "echo '{{Message}}' >> /var/updog" ]
+        }
+        }
+    ]
+}"""
+            ssm_doc.document_type = 'Command'
+            ssm_doc.enabled = True
+            ssm_documents['paco_ec2lm_update_instance'] = ssm_doc
+        else:
+            ssm_documents['paco_ec2lm_update_instance'].locations.add_location(
+                self.account_ctx.paco_ref,
+                self.aws_region,
+            )
+
     def lb_add_ssm(self, bundle_name, resource):
         """Creates a launch bundle to install and configure the SSM agent"""
         # Create the Launch Bundle
@@ -1282,6 +1317,8 @@ statement:
         # Remove bundle if not enabled and return
         if not resource.launch_options.ssm_agent:
             return self.remove_bundle(cw_lb)
+
+        # Ensure paco_ec2lm_update_instance SSM Document is available
 
         # Install SSM Agent - except where it is pre-baked in the image
         if resource.instance_ami_type_generic != 'amazon' and resource.instance_ami_type not in ('ubuntu_16_snap', 'ubuntu_18'):

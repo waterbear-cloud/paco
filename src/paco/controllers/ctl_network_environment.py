@@ -70,36 +70,6 @@ class EnvironmentRegionContext():
         self.secrets_stack_grp.init()
         self.stack_grps.append(self.secrets_stack_grp)
 
-        # EC2LM SSM Commands
-        if self.env_region.has_ec2lm_resources():
-            # add SSM Document for EC2LM Command
-            ssm_doc = SSMDocument('paco_ec2lm_update_instance', self.env_region.ssm_documents)
-            ssm_doc.content = {
-                "schemaVersion": "2.2",
-                "description": "Paco EC2 LaunchManager update instance state",
-                "parameters": {
-                    "Message": {
-                    "type": "String",
-                    "description": "Example",
-                    "default": "BigTimeDawg!"
-                    }
-                },
-                "mainSteps": [
-                    {
-                    "action": "aws:runShellScript",
-                    "name": "updogShell",
-                    "inputs": {
-                        "runCommand": [ "echo '{{Message}}' >> /var/updog" ]
-                    }
-                    }
-                ]
-            }
-            ssm_doc.document_type = 'Command'
-            ssm_doc.enabled = True
-            ssm_ctl = self.paco_ctx.get_controller('SSM')
-            ssm_ctl.add_ssm_document(ssm_doc)
-            self.env_region.ssm_documents['paco_ec2lm_update_instance'] = ssm_doc
-
         # Network Stack: VPC, Subnets, Etc
         self.network_stack_grp = NetworkStackGroup(
             self.paco_ctx,
@@ -140,9 +110,6 @@ class EnvironmentRegionContext():
     def get_aws_name(self):
         aws_name = '-'.join([self.netenv_ctl.get_aws_name(), self.env.name])
         return aws_name
-
-    def get_segment_stack(self, segment_id):
-        return self.network_stack_grp.get_segment_stack(segment_id)
 
     def get_vpc_stack(self):
         return self.network_stack_grp.get_vpc_stack()
@@ -192,9 +159,10 @@ class EnvironmentRegionContext():
 
     def provision(self):
         self.paco_ctx.log_start('Provision', self.env_region)
-        # provision SSM Documents first
-        ssm_ctl = self.paco_ctx.get_controller('SSM')
-        ssm_ctl.provision(self.env_region.region)
+        # provision EC2LM SSM Document first
+        if self.env_region.has_ec2lm_resources():
+            ssm_ctl = self.paco_ctx.get_controller('SSM')
+            ssm_ctl.provision(f'resource.ssm.ssm_documents.paco_ec2lm_update_instance.{self.account_ctx.name}.{self.env_region.name}')
         if len(self.stack_grps) > 0:
             for stack_grp in self.stack_grps:
                 stack_grp.provision()

@@ -97,7 +97,6 @@ role_name: %s""" % ("ASGInstance")
             stack_tags=self.stack_tags,
             stack_hooks=stack_hooks,
             extra_context={
-                'env_ctx': self.env_ctx,
                 'role_profile_arn': role_profile_arn,
                 'ec2_manager_user_data_script': ec2_manager_user_data_script,
                 'ec2_manager_cache_id': self.ec2lm_cache_id,

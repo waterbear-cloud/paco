@@ -16,9 +16,9 @@ class ALB(StackTemplate):
         alb_config = stack.resource
         self.env_ctx = env_ctx
         self.config_ref = alb_config.paco_ref_parts
-        segment_stack = self.env_ctx.get_segment_stack(alb_config.segment)
         super().__init__(stack, paco_ctx)
         self.set_aws_name('ALB', self.resource_group_name, alb_config.name)
+        self.network = alb_config.env_region_obj.network
 
         # Init Troposphere template
         self.init_template('Application Load Balancer')
@@ -80,12 +80,12 @@ class ALB(StackTemplate):
         )
 
         # Segment SubnetList is a Segment stack Output based on availability zones
-        subnet_list_key = 'SubnetList' + str(self.env_ctx.env_region.network.availability_zones)
+        subnet_list_ref = self.network.vpc.segments[alb_config.segment].paco_ref + '.subnet_id_list'
         subnet_list_param = self.create_cfn_parameter(
             param_type='List<AWS::EC2::Subnet::Id>',
             name='SubnetList',
             description='A list of subnets where the ALBs instances will be provisioned',
-            value=StackOutputParam('SubnetList', segment_stack, subnet_list_key, self)
+            value=subnet_list_ref,
         )
         security_group_list_param = self.create_cfn_ref_list_param(
             param_type='List<AWS::EC2::SecurityGroup::Id>',

@@ -78,8 +78,9 @@ Add this manually or run `paco provision accounts` for this project.
     def get_name(self):
         return self.name
 
-    def gen_ref(self):
-        return 'paco.ref accounts.%s' % (self.get_name())
+    @property
+    def paco_ref(self):
+        return f'paco.ref accounts.{self.name}'
 
     def get_temporary_credentials(self):
         return self.aws_session.get_temporary_credentials()

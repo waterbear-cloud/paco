@@ -18,16 +18,13 @@ class ASG(StackTemplate):
         self,
         stack,
         paco_ctx,
-        env_ctx,
         role_profile_arn,
         ec2_manager_user_data_script,
         ec2_manager_cache_id
     ):
         self.asg_config = asg_config = stack.resource
         asg_config_ref = asg_config.paco_ref_parts
-        self.env_ctx = env_ctx
         self.ec2_manager_cache_id = ec2_manager_cache_id
-        segment_stack = self.env_ctx.get_segment_stack(asg_config.segment)
         super().__init__(stack, paco_ctx)
         self.set_aws_name('ASG', self.resource_group_name, self.resource_name)
 
@@ -49,7 +46,7 @@ class ASG(StackTemplate):
         )
 
         # if the network for the ASG is disabled, only use an empty placeholder
-        if not self.env_ctx.env_region.network.is_enabled():
+        if not self.asg_config.env_region_obj.network.is_enabled():
             return
 
         security_group_list_param = self.create_cfn_ref_list_param(
@@ -132,7 +129,7 @@ class ASG(StackTemplate):
         )
         template.add_resource(launch_config_res)
 
-        subnet_list_ref = 'paco.ref {}'.format(segment_stack.template.config_ref)
+        subnet_list_ref = asg_config.env_region_obj.network.vpc.segments[asg_config.segment].paco_ref
         if asg_config.availability_zone == 'all':
             subnet_list_ref += '.subnet_id_list'
         else:

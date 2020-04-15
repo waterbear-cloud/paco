@@ -128,6 +128,11 @@ ssm_agent = {
         "object": "amazon-ssm-agent.deb",
         "install": "dpkg -i"
     },
+    "ubuntu": {
+        "path": "/debian_amd64",
+        "object": "amazon-ssm-agent.deb",
+        "install": "dpkg -i"
+    },
     "centos_7": {
         "path": "/linux_amd64",
         "object": "amazon-ssm-agent.rpm",
