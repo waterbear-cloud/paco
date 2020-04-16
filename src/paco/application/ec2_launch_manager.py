@@ -353,6 +353,12 @@ function swap_on() {
     fi
     swapon -s
     free
+    # Enable swap on reboot
+    CRON_FILE=/tmp/paco-swap.cron
+    crontab -l |grep -v 'paco-swap-launch-bundle' >$CRON_FILE
+    echo -e "\n@reboot /sbin/swapon /swapfile # paco-swap-launch-bundle" >>$CRON_FILE
+    crontab $CRON_FILE
+
     echo "EC2LM: Swap: Done"
 }
 """
