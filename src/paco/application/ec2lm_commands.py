@@ -160,29 +160,36 @@ cloudwatch_agent = {
 	"amazon": {
 		"path": "/amazon_linux/amd64/latest",
 		"object": "amazon-cloudwatch-agent.rpm",
-		"install": "rpm -U", },
+		"install": "rpm -U",
+        "uninstall": "rpm -e" },
 	"centos": {
 		"path": "/centos/amd64/latest",
 		"object": "amazon-cloudwatch-agent.rpm",
-		"install": "rpm -U" },
+		"install": "rpm -U",
+        "uninstall": "rpm -e" },
 	"suse": {
 		"path": "/suse/amd64/latest",
 		"object": "amazon-cloudwatch-agent.rpm",
-		"install": "rpm -U" },
+		"install": "rpm -U"
+        "uninstall": "rpm -e" },
 	"debian": {
 		"path": "/debian/amd64/latest",
 		"object": "amazon-cloudwatch-agent.deb" ,
-		"install": "dpkg -i -E" },
+		"install": "dpkg -i -E",
+        "uninstall": "dpkg -P" },
 	"ubuntu": {
 		"path": "/ubuntu/amd64/latest",
 		"object": "amazon-cloudwatch-agent.deb",
-		"install": "dpkg -i -E" },
+		"install": "dpkg -i -E",
+        "uninstall": "dpkg -P amazon-cloudwatch-agent"  },
 	"microsoft": {
 		"path": "/windows/amd64/latest",
 		"object": "amazon-cloudwatch-agent.msi",
-		"install": "msiexec /i" },
+		"install": "msiexec /i",
+        "uninstall": "" },
 	"redhat": {
 		"path": "/redhat/arm64/latest",
 		"object": "amazon-cloudwatch-agent.rpm",
-		"install": "rpm -U" },
+		"install": "rpm -U",
+        "uninstall": "rpm -e" },
 }

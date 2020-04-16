@@ -54,11 +54,26 @@ class LaunchBundle():
         self.package_filename = str.join('.', [self.bundle_folder, 'tgz'])
         self.package_path = os.path.join(self.bundles_path, self.package_filename)
 
-    def set_launch_script(self, launch_script):
+
+    def set_launch_script(self, launch_script, enabled=True):
         """Set the script run to launch the bundle. By convention, this file
         is named 'launch.sh', and is a reserved filename in a launch bundle.
         """
-        self.add_file("launch.sh", launch_script)
+        if enabled == True:
+            launch_bundle_enabled="true"
+        else:
+           launch_bundle_enabled="false"
+        enabled_script = """
+# This script is auto-generated. Do not edit.
+LAUNCH_BUNDLE_ENABLED=%s
+if [ "$LAUNCH_BUNDLE_ENABLED" == "true" ] ; then
+    run_launch_bundle
+else
+    disable_launch_bundle
+fi
+""" % (launch_bundle_enabled)
+
+        self.add_file("launch.sh", launch_script + enabled_script)
 
     def add_file(self, name, contents):
         """Add a file to the launch bundle"""
@@ -441,6 +456,22 @@ function ec2lm_timeout() {{
 
 # Launch Bundles
 function ec2lm_launch_bundles() {{
+    # EC2LM Lock
+
+    EC2LM_LOCK_FILE="/var/lock/ec2lm.lock”
+    if [ ! -f $EC2LM_LOCK_FILE ]; then
+        :>$EC2LM_LOCK_FILE
+    fi
+
+    # lock it
+    exec 100>$EC2LM_LOCK_FILE
+    echo "EC2LM: LaunchBundles: Obtaining lock."
+    flock -n 100
+    if [ $? -ne 0 ]  ; then
+        echo “EC2LM: LaunchBundles: Error: Unable to obtain EC2LM lock.”
+        exit 1
+    fi
+
     mkdir -p $EC2LM_FOLDER/LaunchBundles/
     cd $EC2LM_FOLDER/LaunchBundles/
 
@@ -449,9 +480,19 @@ function ec2lm_launch_bundles() {{
     do
         BUNDLE_FOLDER=$BUNDLE_NAME
         BUNDLE_PACKAGE=$BUNDLE_NAME".tgz"
+        BUNDLE_PACKAGE_CACHE_ID=$BUNDLE_PACKAGE".cache"
         if [ ! -f "$BUNDLE_PACKAGE" ] ; then
-            echo "EC2LM: LaunchBundles: Skipping disabled package: $BUNDLE_PACKAGE"
+            echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Skipping missing package: $BUNDLE_PACKAGE"
             continue
+        fi
+        # Check if this bundle has changed
+        NEW_BUNDLE_CACHE_ID=$(md5sum $BUNDLE_PACKAGE | awk '{print $1}')
+        if [ -f $BUNDLE_PACKAGE_CACHE_ID ] ; then
+            OLD_BUNDLE_CACHE_ID=$(cat $BUNDLE_PACKAGE_CACHE_ID)
+            if [ "$NEW_BUNDLE_CACHE_ID" == "$OLD_BUNDLE_CACHE_ID" ] ; then
+                echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Skipping unchanged bundle: $BUNDLE_PACKAGE: $NEW_BUNDLE_CACHE_ID != $OLD_BUNDLE_CACHE_ID"
+                continue
+            fi
         fi
         echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Unpacking $BUNDLE_PACKAGE"
         tar xvfz $BUNDLE_PACKAGE
@@ -460,6 +501,9 @@ function ec2lm_launch_bundles() {{
         cd $BUNDLE_FOLDER
         chmod u+x ./launch.sh
         ./launch.sh
+        # Save the Bundle Cache ID after launch completion
+        echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Saving new cache id: $NEW_BUNDLE_CACHE_ID"
+        echo -n "$BUNDLE_CACHE_ID" >$BUNDLE_PACKAGE_CACHE_ID
         cd ..
         echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Done"
     done
@@ -715,7 +759,7 @@ statement:
     cfn_base_path
 )
 
-        cfn_init_lb.set_launch_script(launch_script)
+        cfn_init_lb.set_launch_script(launch_script, enabled=True)
 
         # Save Configuration
         self.add_bundle(cfn_init_lb)
@@ -739,17 +783,17 @@ statement:
                 efs_id_hash = utils.md5sum(str_data=efs_mount.target)
                 process_mount_targets += "process_mount_target {} {}\n".format(efs_mount.folder, efs_id_hash)
 
-        if efs_enabled == False:
-            self.remove_bundle(efs_lb)
-            return
+        #if efs_enabled == False:
+        #    self.remove_bundle(efs_lb)
+        #    return
 
         # TODO: Add ubuntu and other distro support
         launch_script_template = """#!/bin/bash
-
-# CachId: 2019-09-15.01
 INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
 AVAIL_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
 REGION="$(echo \"$AVAIL_ZONE\" | sed 's/[a-z]$//')"
+EFS_MOUNT_FOLDER_LIST="./efs_mount_folder_list
+EFS_ID_LIST="./efs_id_list
 
 function process_mount_target()
 {
@@ -770,14 +814,40 @@ function process_mount_target()
     echo "$EFS_ID:/ $MOUNT_FOLDER efs defaults,_netdev,fsc 0 0" >>/tmp/fstab.efs_new
     mv /tmp/fstab.efs_new /etc/fstab
     chmod 0664 /etc/fstab
+    echo "$MOUNT_FOLDER" >>$EFS_MOUNT_FOLDER_LIST".new"
+    echo "$EFS_ID" >>$EFS_ID_LIST".new"
 }
 
-%s
-%s
+function run_launch_bundle() {
+    # Install EFS Utils
+    %s
+    # Enabled EFS Utils
+    %s
 
-%s
+    # Process Mounts
+    :>$EFS_MOUNT_FOLDER_LIST".new"
+    :>$EFS_ID_LIST".new"
+    %s
+    mv $EFS_MOUNT_FOLDER_LIST".new" $EFS_MOUNT_FOLDER_LIST
+    mv $EFS_ID_LIST".new" $EFS_ID_LIST
 
-%s
+    # Mount EFS folders
+    %s
+}
+
+function disable_launch_bundle() {
+    for MOUNT_FOLDER in $(cat $EFS_MOUNT_FOLDER_LIST)
+    do
+        umount $MOUNT_FOLDER
+    done
+
+    for EFS_ID in $(cat $EFS_ID_LIST)
+    do
+        grep -v -E "^$EFS_ID:/" /etc/fstab >/tmp/fstab.efs_new
+        mv /tmp/fstab.efs_new /etc/fstab
+        chmod 0664 /etc/fstab
+    done
+}
 """
 
         launch_script = launch_script_template % (
@@ -807,7 +877,7 @@ statement:
             extra_ref_names=['ec2lm','efs']
         )
 
-        efs_lb.set_launch_script(launch_script)
+        efs_lb.set_launch_script(launch_script, efs_enabled)
 
         # Save Configuration
         self.add_bundle(efs_lb)
@@ -821,9 +891,9 @@ statement:
         # Create the Launch Bundle and configure it
         ebs_lb = LaunchBundle(resource, self, bundle_name)
 
-        if len(resource.ebs_volume_mounts) == 0:
-            self.remove_bundle(ebs_lb)
-            return
+        #if len(resource.ebs_volume_mounts) == 0:
+        #    self.remove_bundle(ebs_lb)
+        #    return
 
         # TODO: Add ubuntu and other distro support
         launch_script_template = """#!/bin/bash
@@ -941,16 +1011,40 @@ function process_volume_mount()
     # Mount Volume
     echo "EC2LM: EBS: Mounting $MOUNT_FOLDER"
     mount $MOUNT_FOLDER
+    echo "$MOUNT_FOLDER" >>$EBS_MOUNT_FOLDER_LIST
+    echo "$VOLUME_UUID" >>$EBS_VOLUME_UUID_LIST
     echo "EC2LM: EBS: Process Volume Mount: Done"
 
     return 0
 }
 
-%s
+function run_launch_bundle()
+{
+    # Process Mounts
+    :>$EBS_MOUNT_FOLDER_LIST".new"
+    :>$EBS_VOLUME_UUID_LIST".new"
+    %s
+    mv $EBS_MOUNT_FOLDER_LIST".new" $EBS_MOUNT_FOLDER_LIST
+    mv $EBS_VOLUME_UUID_LIST".new" $EBS_VOLUME_UUID_LIST
+}
+
+function disable_launch_bundle()
+{
+    for MOUNT_FOLDER in $(cat $EBS_MOUNT_FOLDER_LIST)
+    do
+        umount $MOUNT_FOLDER
+    done
+
+    for VOLUME_UUID in $(cat $EBS_VOLUME_UUID_LIST)
+    do
+        grep -v -E "^UUID=$VOLUME_UUID" /etc/fstab >/tmp/fstab.ebs_new
+        mv /tmp/fstab.ebs_new /etc/fstab
+    done
+}
 
 """
         process_mount_volumes = ""
-        is_enabled = False
+        ebs_enabled = False
         for ebs_volume_mount in resource.ebs_volume_mounts:
             if ebs_volume_mount.enabled == False:
                 continue
@@ -960,11 +1054,7 @@ function process_volume_mount()
                 ebs_volume_id_hash,
                 ebs_volume_mount.filesystem,
                 ebs_volume_mount.device)
-            is_enabled = True
-
-        if is_enabled == False:
-            return
-
+            ebs_enabled = True
 
         launch_script = launch_script_template % (
             self.paco_base_path,
@@ -993,7 +1083,7 @@ statement:
             policy_config_yaml=policy_config_yaml,
             extra_ref_names=['ec2lm','ebs'],
         )
-        ebs_lb.set_launch_script(launch_script)
+        ebs_lb.set_launch_script(launch_script, ebs_enabled)
 
         # Save Configuration
         self.add_bundle(ebs_lb)
@@ -1011,6 +1101,7 @@ statement:
         launch_script = """#!/bin/bash
 . {}/EC2Manager/ec2lm_functions.bash
 """.format(self.paco_base_path)
+
         launch_script += """
 
 function ec2lm_eip_is_associated() {
@@ -1023,28 +1114,36 @@ function ec2lm_eip_is_associated() {
     return 1
 }
 
-# Allocation ID
-EIP_ALLOCATION_EC2_TAG_KEY_NAME="Paco-EIP-Allocation-Id"
-echo "EC2LM: EIP: Getting Allocation ID from EC2 Tag $EIP_ALLOCATION_EC2_TAG_KEY_NAME"
-EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=$EIP_ALLOCATION_EC2_TAG_KEY_NAME" --query 'Tags[0].Value' |tr -d '"')
+function run_launch_bundle()
+{
+    # Allocation ID
+    EIP_ALLOCATION_EC2_TAG_KEY_NAME="Paco-EIP-Allocation-Id"
+    echo "EC2LM: EIP: Getting Allocation ID from EC2 Tag $EIP_ALLOCATION_EC2_TAG_KEY_NAME"
+    EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=$EIP_ALLOCATION_EC2_TAG_KEY_NAME" --query 'Tags[0].Value' |tr -d '"')
 
-# IP Address
-echo "EC2LM: EIP: Getting IP Address for $EIP_ALLOC_ID"
-EIP_IP=$(aws ec2 describe-addresses --allocation-ids $EIP_ALLOC_ID --query 'Addresses[0].PublicIp' --region $REGION | tr -d '"')
+    # IP Address
+    echo "EC2LM: EIP: Getting IP Address for $EIP_ALLOC_ID"
+    EIP_IP=$(aws ec2 describe-addresses --allocation-ids $EIP_ALLOC_ID --query 'Addresses[0].PublicIp' --region $REGION | tr -d '"')
 
-# Association
-echo "EC2LM: EIP: Assocating $EIP_ALLOC_ID - $EIP_IP"
-aws ec2 associate-address --instance-id $INSTANCE_ID --allocation-id $EIP_ALLOC_ID --region $REGION
+    # Association
+    echo "EC2LM: EIP: Assocating $EIP_ALLOC_ID - $EIP_IP"
+    aws ec2 associate-address --instance-id $INSTANCE_ID --allocation-id $EIP_ALLOC_ID --region $REGION
 
-# Wait for Association
-TIMEOUT_SECS=300
-OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_eip_is_associated $EIP_IP)
-RES=$?
-if [ $RES -lt 2 ] ; then
-    echo "$OUTPUT"
-else
-    echo "EC2LM: EIP: Error: $OUTPUT"
-fi
+    # Wait for Association
+    TIMEOUT_SECS=300
+    OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_eip_is_associated $EIP_IP)
+    RES=$?
+    if [ $RES -lt 2 ] ; then
+        echo "$OUTPUT"
+    else
+        echo "EC2LM: EIP: Error: $OUTPUT"
+    fi
+}
+
+function disable_launch_bundle()
+{
+    # TODO: Disassocaite IP Address.
+}
 """
         iam_policy_name = '-'.join([resource.name, 'eip'])
         policy_config_yaml = """
@@ -1095,41 +1194,47 @@ echo "EC2LM: CloudWatch: Begin"
 # Load EC2 Launch Manager helper functions
 . {0[paco_base_path]:s}/EC2Manager/ec2lm_functions.bash
 
-# Download the agent
-LB_DIR=$(pwd)
-mkdir /tmp/paco/
-cd /tmp/paco/
-ec2lm_install_wget # built in function
+function run_launch_bundle() {
+    # Download the agent
+    LB_DIR=$(pwd)
+    mkdir /tmp/paco/
+    cd /tmp/paco/
+    ec2lm_install_wget # built in function
 
-echo "EC2LM: CloudWatch: Downloading agent"
-wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{0[agent_path]:s}/{0[agent_object]:s}
-wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{0[agent_path]:s}/{0[agent_object]:s}.sig
+    echo "EC2LM: CloudWatch: Downloading agent"
+    wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{0[agent_path]:s}/{0[agent_object]:s}
+    wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{0[agent_path]:s}/{0[agent_object]:s}.sig
 
-# Verify the agent
-echo "EC2LM: CloudWatch: Downloading and importing agent GPG key"
-TRUSTED_FINGERPRINT=$(echo "9376 16F3 450B 7D80 6CBD 9725 D581 6730 3B78 9C72" | tr -d ' ')
-wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent/assets/amazon-cloudwatch-agent.gpg
-gpg --import amazon-cloudwatch-agent.gpg
+    # Verify the agent
+    echo "EC2LM: CloudWatch: Downloading and importing agent GPG key"
+    TRUSTED_FINGERPRINT=$(echo "9376 16F3 450B 7D80 6CBD 9725 D581 6730 3B78 9C72" | tr -d ' ')
+    wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent/assets/amazon-cloudwatch-agent.gpg
+    gpg --import amazon-cloudwatch-agent.gpg
 
-echo "EC2LM: CloudWatch: Verify agent signature"
-KEY_ID="$(gpg --list-packets amazon-cloudwatch-agent.gpg 2>&1 | awk '/keyid:/{{ print $2 }}' | tr -d ' ')"
-FINGERPRINT="$(gpg --fingerprint ${{KEY_ID}} 2>&1 | tr -d ' ')"
-OBJECT_FINGERPRINT="$(gpg --verify {0[agent_object]:s}.sig {0[agent_object]:s} 2>&1 | tr -d ' ')"
-if [[ ${{FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* || ${{OBJECT_FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* ]]; then
-    # Log error here
-    echo "ERROR: CloudWatch Agent signature invalid: ${{KEY_ID}}: ${{OBJECT_FINGERPRINT}}"
-    exit 1
-fi
+    echo "EC2LM: CloudWatch: Verify agent signature"
+    KEY_ID="$(gpg --list-packets amazon-cloudwatch-agent.gpg 2>&1 | awk '/keyid:/{{ print $2 }}' | tr -d ' ')"
+    FINGERPRINT="$(gpg --fingerprint ${{KEY_ID}} 2>&1 | tr -d ' ')"
+    OBJECT_FINGERPRINT="$(gpg --verify {0[agent_object]:s}.sig {0[agent_object]:s} 2>&1 | tr -d ' ')"
+    if [[ ${{FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* || ${{OBJECT_FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* ]]; then
+        # Log error here
+        echo "ERROR: CloudWatch Agent signature invalid: ${{KEY_ID}}: ${{OBJECT_FINGERPRINT}}"
+        exit 1
+    fi
 
-# Install the agent
-echo "EC2LM: CloudWatch: Installing agent: {0[install_command]:s} {0[agent_object]}"
-{0[install_command]:s} {0[agent_object]}
+    # Install the agent
+    echo "EC2LM: CloudWatch: Installing agent: {0[install_command]:s} {0[agent_object]}"
+    {0[install_command]:s} {0[agent_object]}
 
-cd ${{LB_DIR}}
+    cd ${{LB_DIR}}
 
-echo "EC2LM: CloudWatch: Updating configuration"
-/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:amazon-cloudwatch-agent.json -s
-echo "EC2LM: CloudWatch: Done"
+    echo "EC2LM: CloudWatch: Updating configuration"
+    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:amazon-cloudwatch-agent.json -s
+    echo "EC2LM: CloudWatch: Done"
+}
+
+function disable_launch_bundle() {
+    {0[uninstall_command]:s}
+}
 """
 
 
@@ -1137,6 +1242,7 @@ echo "EC2LM: CloudWatch: Done"
             'agent_path': ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['path'],
             'agent_object': ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['object'],
             'install_command': ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['install'],
+            'uninstall_command': ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['uninstall'],
             'paco_base_path': self.paco_base_path,
         }
         launch_script = launch_script_template.format(launch_script_table)
