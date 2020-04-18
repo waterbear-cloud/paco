@@ -27,6 +27,7 @@ from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
 from paco.models.references import Reference
 from paco.models.base import Named
+from paco.models.resources import SSMDocument
 from paco.utils import md5sum, prefixed_name
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
@@ -243,7 +244,7 @@ class EC2LaunchManager():
         return utils.md5sum(str_data=self.ec2lm_functions_script[bucket_name])
 
     def ec2lm_functions_hook(self, hook, s3_bucket_ref):
-        "Hook method for ec2lm functions"
+        "Hook to upload ec2lm_functions.bash to S3"
         s3_ctl = self.paco_ctx.get_controller('S3')
         bucket_name = s3_ctl.get_bucket_name(s3_bucket_ref)
         s3_client = self.account_ctx.get_aws_client('s3')
@@ -252,6 +253,33 @@ class EC2LaunchManager():
             Body=self.ec2lm_functions_script[bucket_name],
             Key="ec2lm_functions.bash"
         )
+
+    def ec2lm_update_instances_hook(self, hook, bucket_resource):
+        "Hook to upload ec2lm_cache_id.md5 to S3 and invoke SSM Run Command on paco_ec2lm_update_instance"
+        # update ec2lm_cache_id.md5 file
+        s3_bucket_ref, resource = bucket_resource
+        s3_ctl = self.paco_ctx.get_controller('S3')
+        bucket_name = s3_ctl.get_bucket_name(s3_bucket_ref)
+        s3_client = self.account_ctx.get_aws_client('s3')
+        s3_client.put_object(
+            Bucket=bucket_name,
+            Body=self.get_cache_id(resource),
+            Key="ec2lm_cache_id.md5"
+        )
+        # send SSM command to update existing instances
+        ssm_client = self.account_ctx.get_aws_client('ssm', aws_region=self.aws_region)
+        ssm_client.send_command(
+            Targets=[{
+                'Key': 'tag:aws:cloudformation:stack-name',
+                'Values': [resource.stack.get_name()]
+            },],
+            DocumentName='paco_ec2lm_update_instance',
+        )
+
+    def ec2lm_update_instances_cache(self, hook, bucket_resource):
+        "Cache method for EC2LM resource"
+        s3_bucket_ref, resource = bucket_resource
+        return self.get_cache_id(resource)
 
     def init_ec2lm_s3_bucket(self, resource):
         "Initialize the EC2LM S3 Bucket stack if it does not already exist"
@@ -317,6 +345,7 @@ class EC2LaunchManager():
 
         # save the bucket to the EC2LaunchManager
         self.ec2lm_buckets[s3_bucket_ref] = bucket
+        return bucket
 
     def get_ec2lm_bucket_name(self, resource):
         "Paco reference to the ec2lm bucket for a resource"
@@ -486,7 +515,7 @@ function ec2lm_launch_bundles() {{
             continue
         fi
         # Check if this bundle has changed
-        NEW_BUNDLE_CACHE_ID=$(md5sum $BUNDLE_PACKAGE | awk '{print $1}')
+        NEW_BUNDLE_CACHE_ID=$(md5sum $BUNDLE_PACKAGE | awk '{{print $1}}')
         if [ -f $BUNDLE_PACKAGE_CACHE_ID ] ; then
             OLD_BUNDLE_CACHE_ID=$(cat $BUNDLE_PACKAGE_CACHE_ID)
             if [ "$NEW_BUNDLE_CACHE_ID" == "$OLD_BUNDLE_CACHE_ID" ] ; then
@@ -1385,7 +1414,7 @@ statement:
         ssm_documents = self.paco_ctx.project['resource']['ssm'].ssm_documents
         if 'paco_ec2lm_update_instance' not in ssm_documents:
             ssm_doc = SSMDocument('paco_ec2lm_update_instance', ssm_documents)
-            ssm_doc.add_location(self.account_ctx.paco_ref, self.env_region.name)
+            ssm_doc.add_location(self.account_ctx.paco_ref, self.aws_region)
             ssm_doc.content = """{
     "schemaVersion": "2.2",
     "description": "Paco EC2 LaunchManager update instance state",
@@ -1410,7 +1439,7 @@ statement:
             ssm_doc.enabled = True
             ssm_documents['paco_ec2lm_update_instance'] = ssm_doc
         else:
-            ssm_documents['paco_ec2lm_update_instance'].locations.add_location(
+            ssm_documents['paco_ec2lm_update_instance'].add_location(
                 self.account_ctx.paco_ref,
                 self.aws_region,
             )
@@ -1501,6 +1530,7 @@ statement:
 
     def process_bundles(self, resource, instance_iam_role_ref):
         "Initialize launch bundle S3 bucket and iterate through all launch bundles and add every applicable bundle"
+        self.add_update_instance_ssm_document()
         resource._instance_iam_role_arn_ref = 'paco.ref ' + instance_iam_role_ref + '.arn'
         resource._instance_iam_role_arn = self.paco_ctx.get_ref(resource._instance_iam_role_arn_ref)
         if resource._instance_iam_role_arn == None:
@@ -1508,7 +1538,8 @@ statement:
                     PacoErrorCode.Unknown,
                     message="ec2_launch_manager: user_data_script: Unable to locate value for ref: " + instance_iam_role_arn_ref
                 )
-        self.init_ec2lm_s3_bucket(resource)
+        bucket = self.init_ec2lm_s3_bucket(resource)
         for bundle_name in self.launch_bundle_names:
             bundle_method = getattr(self, 'lb_add_' + bundle_name.replace('-', '_').lower())
             bundle_method(bundle_name, resource)
+        return bucket

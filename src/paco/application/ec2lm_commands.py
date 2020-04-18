@@ -170,7 +170,7 @@ cloudwatch_agent = {
 	"suse": {
 		"path": "/suse/amd64/latest",
 		"object": "amazon-cloudwatch-agent.rpm",
-		"install": "rpm -U"
+		"install": "rpm -U",
         "uninstall": "rpm -e" },
 	"debian": {
 		"path": "/debian/amd64/latest",
