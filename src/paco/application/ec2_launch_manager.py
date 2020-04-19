@@ -256,14 +256,15 @@ class EC2LaunchManager():
 
     def ec2lm_update_instances_hook(self, hook, bucket_resource):
         "Hook to upload ec2lm_cache_id.md5 to S3 and invoke SSM Run Command on paco_ec2lm_update_instance"
-        # update ec2lm_cache_id.md5 file
         s3_bucket_ref, resource = bucket_resource
+        cache_id = self.get_cache_id(resource)
+        # update ec2lm_cache_id.md5 file
         s3_ctl = self.paco_ctx.get_controller('S3')
         bucket_name = s3_ctl.get_bucket_name(s3_bucket_ref)
         s3_client = self.account_ctx.get_aws_client('s3')
         s3_client.put_object(
             Bucket=bucket_name,
-            Body=self.get_cache_id(resource),
+            Body=cache_id,
             Key="ec2lm_cache_id.md5"
         )
         # send SSM command to update existing instances
@@ -274,6 +275,7 @@ class EC2LaunchManager():
                 'Values': [resource.stack.get_name()]
             },],
             DocumentName='paco_ec2lm_update_instance',
+            Parameters={ 'CacheId': [cache_id] },
         )
 
     def ec2lm_update_instances_cache(self, hook, bucket_resource):
@@ -420,7 +422,8 @@ function ec2lm_install_wget() {
             'tool_name_legacy_flag': 'AIM' if self.paco_ctx.legacy_flag('aim_name_2019_11_28') == True else 'PACO',
             'oldest_health_check_timeout': oldest_health_check_timeout
         }
-        script_template = """
+        script_template = """#!/bin/bash
+
 INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
 AVAIL_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
 REGION="$(echo \"$AVAIL_ZONE\" | sed 's/[a-z]$//')"
@@ -485,14 +488,13 @@ function ec2lm_timeout() {{
 
 # Launch Bundles
 function ec2lm_launch_bundles() {{
-    # EC2LM Lock
+    CACHE_ID=$1
 
-    EC2LM_LOCK_FILE="/var/lock/ec2lm.lock”
+    # EC2LM Lock file
+    EC2LM_LOCK_FILE='/var/lock/ec2lm.lock'
     if [ ! -f $EC2LM_LOCK_FILE ]; then
         :>$EC2LM_LOCK_FILE
     fi
-
-    # lock it
     exec 100>$EC2LM_LOCK_FILE
     echo "EC2LM: LaunchBundles: Obtaining lock."
     flock -n 100
@@ -501,6 +503,7 @@ function ec2lm_launch_bundles() {{
         exit 1
     fi
 
+    # Run launch bundles
     mkdir -p $EC2LM_FOLDER/LaunchBundles/
     cd $EC2LM_FOLDER/LaunchBundles/
 
@@ -1415,26 +1418,30 @@ statement:
         if 'paco_ec2lm_update_instance' not in ssm_documents:
             ssm_doc = SSMDocument('paco_ec2lm_update_instance', ssm_documents)
             ssm_doc.add_location(self.account_ctx.paco_ref, self.aws_region)
-            ssm_doc.content = """{
-    "schemaVersion": "2.2",
-    "description": "Paco EC2 LaunchManager update instance state",
-    "parameters": {
-        "Message": {
-        "type": "String",
-        "description": "Example",
-        "default": "BigTimeDawg!"
-        }
-    },
-    "mainSteps": [
-        {
-        "action": "aws:runShellScript",
-        "name": "updogShell",
-        "inputs": {
-            "runCommand": [ "echo '{{Message}}' >> /var/updog" ]
-        }
-        }
-    ]
-}"""
+            content = {
+                "schemaVersion": "2.2",
+                "description": "Paco EC2 LaunchManager update instance state",
+                "parameters": {
+                    "CacheId": {
+                        "type": "String",
+                        "description": "EC2LM Cache Id"
+                    }
+                },
+                "mainSteps": [
+                    {
+                        "action": "aws:runShellScript",
+                        "name": "updateEC2LMInstance",
+                        "inputs": {
+                            "runCommand": [
+                                '#!/bin/bash',
+                                f'. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash',
+                                'ec2lm_launch_bundles ' + '{{CacheId}}',
+                            ]
+                        }
+                    }
+                ]
+            }
+            ssm_doc.content = json.dumps(content)
             ssm_doc.document_type = 'Command'
             ssm_doc.enabled = True
             ssm_documents['paco_ec2lm_update_instance'] = ssm_doc

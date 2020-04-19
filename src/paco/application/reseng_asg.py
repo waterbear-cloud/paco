@@ -74,7 +74,7 @@ role_name: %s""" % ("ASGInstance")
             self.stack_name
         )
         self.ec2lm_cache_id = self.app_engine.ec2_launch_manager.get_cache_id(self.resource)
-        self.stack_tags.add_tag('Paco-EC2LM-CacheId', self.ec2lm_cache_id)
+        #self.stack_tags.add_tag('Paco-EC2LM-CacheId', self.ec2lm_cache_id)
         # self.stale_instances = False
         # stack_hooks = StackHooks()
         # stack_hooks.add(
