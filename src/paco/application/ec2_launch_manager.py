@@ -179,14 +179,6 @@ class EC2LaunchManager():
         bundle_s3_key = os.path.join("LaunchBundles", bundle.package_filename)
         s3_client.upload_file(bundle.package_path, bucket_name, bundle_s3_key)
 
-    def remove_bundle_stack_hook(self, hook, bundle):
-        "Remove the launch bundle from an S3 bucket"
-        s3_ctl = self.paco_ctx.get_controller('S3')
-        bucket_name = s3_ctl.get_bucket_name(bundle.bucket_ref)
-        s3_client = self.account_ctx.get_aws_client('s3')
-        bundle_s3_key = os.path.join("LaunchBundles", bundle.package_filename)
-        s3_client.delete_object(Bucket=bucket_name, Key=bundle_s3_key)
-
     def stack_hook_cache_id(self, hook, bundle):
         "Cache method to return a bundle's cache id"
         return bundle.cache_id
@@ -210,29 +202,6 @@ class EC2LaunchManager():
         stack_hooks.add(
             'UploadBundle.'+bundle.name, 'update', 'post',
             self.upload_bundle_stack_hook, self.stack_hook_cache_id, bundle
-        )
-        s3_ctl = self.paco_ctx.get_controller('S3')
-        s3_ctl.add_stack_hooks(resource_ref=bundle.bucket_ref, stack_hooks=stack_hooks)
-
-    def remove_bundle_from_s3_bucket(self, bundle):
-        """Adds stack hook which will remove a launch bundle from an S3 bucket when
-        the stack is created or updated."""
-        cache_context = '.'.join([bundle.resource.app_name, bundle.resource.group_name, bundle.resource.name])
-        if cache_context not in self.cache_id:
-            self.cache_id[cache_context] = ''
-        self.cache_id[cache_context] += bundle.cache_id
-        stack_hooks = StackHooks()
-        stack_hooks.add(
-            name='DeleteBundle.'+bundle.name,
-            stack_action='create',
-            stack_timing='post',
-            hook_method=self.remove_bundle_stack_hook,
-            cache_method=self.stack_hook_cache_id,
-            hook_arg=bundle
-        )
-        stack_hooks.add(
-            'DeleteBundle.'+bundle.name, 'update', 'post',
-            self.remove_bundle_stack_hook, self.stack_hook_cache_id, bundle
         )
         s3_ctl = self.paco_ctx.get_controller('S3')
         s3_ctl.add_stack_hooks(resource_ref=bundle.bucket_ref, stack_hooks=stack_hooks)
@@ -411,29 +380,22 @@ function ec2lm_install_wget() {
                     if oldest_health_check_timeout < health_check_timeout:
                         oldest_health_check_timeout = health_check_timeout
 
-        script_table = {
-            'ec2lm_bucket_name': ec2lm_bucket_name,
-            'paco_environment': resource.env_name,
-            'paco_network_environment': resource.netenv_name,
-            'paco_environment_ref': resource.env_obj.paco_ref_parts + '.' + resource.region_name,
-            'aws_account_id': self.account_ctx.id,
-            'launch_bundle_names': ' '.join(self.launch_bundle_names),
-            'paco_base_path': self.paco_base_path,
-            'tool_name_legacy_flag': 'AIM' if self.paco_ctx.legacy_flag('aim_name_2019_11_28') == True else 'PACO',
-            'oldest_health_check_timeout': oldest_health_check_timeout
-        }
-        script_template = """#!/bin/bash
-
-INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+        launch_bundle_names = ' '.join(self.launch_bundle_names)
+        paco_environment_ref = resource.env_obj.paco_ref_parts + '.' + resource.region_name,
+        if self.paco_ctx.legacy_flag('aim_name_2019_11_28') == True:
+            tool_name = 'AIM'
+        else:
+            tool_name = 'PACO'
+        self.ec2lm_functions_script[ec2lm_bucket_name] = f"""INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
 AVAIL_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
 REGION="$(echo \"$AVAIL_ZONE\" | sed 's/[a-z]$//')"
 export AWS_DEFAULT_REGION=$REGION
-EC2LM_AWS_ACCOUNT_ID="{0[aws_account_id]:s}"
+EC2LM_AWS_ACCOUNT_ID="{self.account_ctx.id}"
 EC2LM_STACK_NAME=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=aws:cloudformation:stack-name" --query 'Tags[0].Value' |tr -d '"')
-EC2LM_FOLDER='{0[paco_base_path]:s}/EC2Manager/'
-EC2LM_{0[tool_name_legacy_flag]:s}_NETWORK_ENVIRONMENT="{0[paco_network_environment]:s}"
-EC2LM_{0[tool_name_legacy_flag]:s}_ENVIRONMENT="{0[paco_environment]:s}"
-EC2LM_{0[tool_name_legacy_flag]:s}_ENVIRONMENT_REF={0[paco_environment_ref]:s}
+EC2LM_FOLDER='{self.paco_base_path}/EC2Manager/'
+EC2LM_{tool_name}_NETWORK_ENVIRONMENT="{resource.netenv_name}"
+EC2LM_{tool_name}_ENVIRONMENT="{resource.env_name}"
+EC2LM_{tool_name}_ENVIRONMENT_REF={paco_environment_ref}
 
 # Escape a string for sed replacements
 function sed_escape() {{
@@ -490,8 +452,15 @@ function ec2lm_timeout() {{
 function ec2lm_launch_bundles() {{
     CACHE_ID=$1
 
+    # Compare new EC2LM contents cache id with existing
+    OLD_CACHE_ID=$(<$EC2LM_FOLDER/ec2lm_cache_id.md5)
+    if [ $CACHE_ID == $OLD_CACHE_ID ] ; then
+        echo "Cache Id unchanged. Skipping ec2lm_launch_bundles."
+        exit
+    fi
+
     # EC2LM Lock file
-    EC2LM_LOCK_FILE='/var/lock/ec2lm.lock'
+    EC2LM_LOCK_FILE='/var/lock/paco_ec2lm.lock'
     if [ ! -f $EC2LM_LOCK_FILE ]; then
         :>$EC2LM_LOCK_FILE
     fi
@@ -503,12 +472,15 @@ function ec2lm_launch_bundles() {{
         exit 1
     fi
 
+    # Synchronize lateset bundle contents
+    aws s3 sync s3://{ec2lm_bucket_name}/ --region=$REGION $EC2LM_FOLDER
+
     # Run launch bundles
     mkdir -p $EC2LM_FOLDER/LaunchBundles/
     cd $EC2LM_FOLDER/LaunchBundles/
 
     echo "EC2LM: LaunchBundles: Loading"
-    for BUNDLE_NAME in {0[launch_bundle_names]:s}
+    for BUNDLE_NAME in {launch_bundle_names}
     do
         BUNDLE_FOLDER=$BUNDLE_NAME
         BUNDLE_PACKAGE=$BUNDLE_NAME".tgz"
@@ -559,8 +531,8 @@ function ec2lm_signal_asg_resource() {{
         # ASG Rolling Update
         ASG_LOGICAL_ID=$(ec2lm_instance_tag_value 'aws:cloudformation:logical-id')
         # Sleep 90 seconds to allow ALB healthcheck to succeed otherwise older instances will begin to shutdown
-        echo "EC2LM: Sleeping for {0[oldest_health_check_timeout]} seconds to allow target healthcheck to succeed."
-        sleep {0[oldest_health_check_timeout]}
+        echo "EC2LM: Sleeping for {oldest_health_check_timeout} seconds to allow target healthcheck to succeed."
+        sleep {oldest_health_check_timeout}
         echo "EC2LM: Signaling ASG Resource: $EC2LM_STACK_NAME: $ASG_LOGICAL_ID: $INSTANCE_ID: $STATUS"
         aws cloudformation signal-resource --region $REGION --stack $EC2LM_STACK_NAME --logical-resource-id $ASG_LOGICAL_ID --unique-id $INSTANCE_ID --status $STATUS
     else
@@ -568,7 +540,9 @@ function ec2lm_signal_asg_resource() {{
     fi
 }}
 """
-        self.ec2lm_functions_script[ec2lm_bucket_name] = script_template.format(script_table)
+
+        # Add a base IAM Managed Policy
+        # allow access to EC2 Tags
         iam_policy_name = '-'.join([resource.name, 'ec2lm'])
         policy_config_yaml = """
 policy_name: '{}'
@@ -581,7 +555,7 @@ statement:
       - '*'
 """.format(iam_policy_name)
 
-        # Signal Resource permissions if its needed
+        # allow cloudformation SignalResource and DescribeStacks if needed
         if resource.rolling_update_policy.wait_on_resource_signals == True:
             rolling_update_policy_table = {
                 'region': self.aws_region,
@@ -747,28 +721,18 @@ statement:
         self.add_bundle_to_s3_bucket(bundle)
         self.launch_bundles[bundle.bucket_ref].append(bundle)
 
-    def remove_bundle(self, bundle):
-        "Remove a bundle from the ec2lm S3 Bucket"
-        if bundle.bucket_ref not in self.launch_bundles:
-            self.init_ec2lm_s3_bucket(bundle.resource)
-            self.launch_bundles[bundle.bucket_ref] = []
-        self.remove_bundle_from_s3_bucket(bundle)
-
     def lb_add_cfn_init(self, bundle_name, resource):
         """Creates a launch bundle to download and run cfn-init"""
+        cfn_init_lb = LaunchBundle(resource, self, bundle_name)
+
         # Check if this bundle is enabled with config such as:
         #  asg:
         #    launch_options:
         #      cfn_init_config_sets:
         #        - SomeSet
-
-        # Create the Launch Bundle and configure it
-        cfn_init_lb = LaunchBundle(resource, self, bundle_name)
-
-        if resource.cfn_init == None or \
-            len(resource.launch_options.cfn_init_config_sets) == 0:
-            self.remove_bundle(cfn_init_lb)
-            return
+        cfn_init_enabled = True
+        if resource.cfn_init == None or len(resource.launch_options.cfn_init_config_sets) == 0:
+            cfn_init_enabled = False
 
         # cfn-init base path
         if resource.instance_ami_type_generic in ['amazon', 'centos']:
@@ -778,22 +742,24 @@ statement:
             # other OS types will install cfn-init into the Paco directory
             cfn_base_path = self.paco_base_path
 
-        launch_script = """#!/bin/bash
-. %s/EC2Manager/ec2lm_functions.bash
-%s
-%s/bin/cfn-init --stack=$EC2LM_STACK_NAME --resource=LaunchConfiguration --region=$REGION --configsets=%s
-%s/bin/cfn-signal -e $? --stack $EC2LM_STACK_NAME --resource=LaunchConfiguration --region=$REGION
-""" % (
-    self.paco_base_path,
-    ec2lm_commands.user_data_script['install_cfn_init'][resource.instance_ami_type_generic],
-    cfn_base_path,
-    ','.join(resource.launch_options.cfn_init_config_sets),
-    cfn_base_path
-)
+        # ToDo: manage cfn-hup daemon?
+        install_cfn_init_command = ec2lm_commands.user_data_script['install_cfn_init'][resource.instance_ami_type_generic]
+        config_sets_str = ','.join(resource.launch_options.cfn_init_config_sets)
+        launch_script = f"""#!/bin/bash
+function run_launch_bundle() {{
+    . {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
+    {install_cfn_init_command}
+    {cfn_base_path}/bin/cfn-init --stack=$EC2LM_STACK_NAME --resource=LaunchConfiguration --region=$REGION --configsets={config_sets_str}
+    {cfn_base_path}/bin/cfn-signal -e $? --stack $EC2LM_STACK_NAME --resource=LaunchConfiguration --region=$REGION
+}}
 
-        cfn_init_lb.set_launch_script(launch_script, enabled=True)
+function disable_launch_bundle() {{
+    # Nothing to do
+    :
+}}
+"""
 
-        # Save Configuration
+        cfn_init_lb.set_launch_script(launch_script, cfn_init_enabled)
         self.add_bundle(cfn_init_lb)
 
     def lb_add_efs(self, bundle_name, resource):
@@ -815,17 +781,19 @@ statement:
                 efs_id_hash = utils.md5sum(str_data=efs_mount.target)
                 process_mount_targets += "process_mount_target {} {}\n".format(efs_mount.folder, efs_id_hash)
 
-        #if efs_enabled == False:
-        #    self.remove_bundle(efs_lb)
-        #    return
-
         # TODO: Add ubuntu and other distro support
         launch_script_template = """#!/bin/bash
 INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
 AVAIL_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
 REGION="$(echo \"$AVAIL_ZONE\" | sed 's/[a-z]$//')"
-EFS_MOUNT_FOLDER_LIST="./efs_mount_folder_list
-EFS_ID_LIST="./efs_id_list
+EFS_MOUNT_FOLDER_LIST=''
+EFS_ID_LIST=''
+if [ -f ./efs_mount_folder_list ] ; then
+    EFS_MOUNT_FOLDER_LIST="./efs_mount_folder_list
+fi
+if [ -f ./efs_mount_folder_list ] ; then
+    EFS_ID_LIST="./efs_id_list
+fi
 
 function process_mount_target()
 {
@@ -868,17 +836,19 @@ function run_launch_bundle() {
 }
 
 function disable_launch_bundle() {
-    for MOUNT_FOLDER in $(cat $EFS_MOUNT_FOLDER_LIST)
-    do
-        umount $MOUNT_FOLDER
-    done
+    if [ "$EFS_MOUNT_FOLDER_LIST" != "" ] ; then
+        for MOUNT_FOLDER in $(cat $EFS_MOUNT_FOLDER_LIST)
+        do
+            umount $MOUNT_FOLDER
+        done
 
-    for EFS_ID in $(cat $EFS_ID_LIST)
-    do
-        grep -v -E "^$EFS_ID:/" /etc/fstab >/tmp/fstab.efs_new
-        mv /tmp/fstab.efs_new /etc/fstab
-        chmod 0664 /etc/fstab
-    done
+        for EFS_ID in $(cat $EFS_ID_LIST)
+        do
+            grep -v -E "^$EFS_ID:/" /etc/fstab >/tmp/fstab.efs_new
+            mv /tmp/fstab.efs_new /etc/fstab
+            chmod 0664 /etc/fstab
+        done
+    fi
 }
 """
 
@@ -922,10 +892,6 @@ statement:
         """
         # Create the Launch Bundle and configure it
         ebs_lb = LaunchBundle(resource, self, bundle_name)
-
-        #if len(resource.ebs_volume_mounts) == 0:
-        #    self.remove_bundle(ebs_lb)
-        #    return
 
         # TODO: Add ubuntu and other distro support
         launch_script_template = """#!/bin/bash
@@ -1060,18 +1026,21 @@ function run_launch_bundle()
     mv $EBS_VOLUME_UUID_LIST".new" $EBS_VOLUME_UUID_LIST
 }
 
+# Remove any previous mounts that existed
 function disable_launch_bundle()
 {
-    for MOUNT_FOLDER in $(cat $EBS_MOUNT_FOLDER_LIST)
-    do
-        umount $MOUNT_FOLDER
-    done
+    if [ "$EFS_MOUNT_FOLDER_LIST" != "" ] ; then
+        for MOUNT_FOLDER in $(cat $EBS_MOUNT_FOLDER_LIST)
+        do
+            umount $MOUNT_FOLDER
+        done
 
-    for VOLUME_UUID in $(cat $EBS_VOLUME_UUID_LIST)
-    do
-        grep -v -E "^UUID=$VOLUME_UUID" /etc/fstab >/tmp/fstab.ebs_new
-        mv /tmp/fstab.ebs_new /etc/fstab
-    done
+        for VOLUME_UUID in $(cat $EBS_VOLUME_UUID_LIST)
+        do
+            grep -v -E "^UUID=$VOLUME_UUID" /etc/fstab >/tmp/fstab.ebs_new
+            mv /tmp/fstab.ebs_new /etc/fstab
+        done
+    fi
 }
 
 """
@@ -1125,9 +1094,9 @@ statement:
         # Create the Launch Bundle and configure it
         eip_lb = LaunchBundle(resource, self, bundle_name)
 
+        enabled = True
         if resource.eip == None:
-            self.remove_bundle(eip_lb)
-            return
+            enabled = False
 
         # TODO: Add ubuntu and other distro support
         launch_script = """#!/bin/bash
@@ -1175,6 +1144,7 @@ function run_launch_bundle()
 function disable_launch_bundle()
 {
     # TODO: Disassocaite IP Address.
+    :
 }
 """
         iam_policy_name = '-'.join([resource.name, 'eip'])
@@ -1198,7 +1168,7 @@ statement:
             policy_config_yaml=policy_config_yaml,
             extra_ref_names=['ec2lm','eip'],
         )
-        eip_lb.set_launch_script(launch_script)
+        eip_lb.set_launch_script(launch_script, enabled)
         self.add_bundle(eip_lb)
 
     def lb_add_cloudwatchagent(self, bundle_name, resource):
@@ -1216,17 +1186,22 @@ statement:
         # Create the Launch Bundle and configure it
         cw_lb = LaunchBundle(resource, self, bundle_name)
 
+        cw_enabled = True
         if resource.monitoring == None or resource.monitoring.enabled == False:
-            self.remove_bundle(cw_lb)
-            return
+            cw_enabled = False
 
         # Launch script
-        launch_script_template = """#!/bin/bash
+        agent_path = ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['path']
+        agent_object = ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['object']
+        install_command = ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['install']
+        installed_command = ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['installed']
+        uninstall_command = ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['uninstall']
+        launch_script = f"""#!/bin/bash
 echo "EC2LM: CloudWatch: Begin"
 # Load EC2 Launch Manager helper functions
-. {0[paco_base_path]:s}/EC2Manager/ec2lm_functions.bash
+. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
 
-function run_launch_bundle() {
+function run_launch_bundle() {{
     # Download the agent
     LB_DIR=$(pwd)
     mkdir /tmp/paco/
@@ -1234,8 +1209,8 @@ function run_launch_bundle() {
     ec2lm_install_wget # built in function
 
     echo "EC2LM: CloudWatch: Downloading agent"
-    wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{0[agent_path]:s}/{0[agent_object]:s}
-    wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{0[agent_path]:s}/{0[agent_object]:s}.sig
+    wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{agent_path}/{agent_object}
+    wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{agent_path}/{agent_object}.sig
 
     # Verify the agent
     echo "EC2LM: CloudWatch: Downloading and importing agent GPG key"
@@ -1246,7 +1221,7 @@ function run_launch_bundle() {
     echo "EC2LM: CloudWatch: Verify agent signature"
     KEY_ID="$(gpg --list-packets amazon-cloudwatch-agent.gpg 2>&1 | awk '/keyid:/{{ print $2 }}' | tr -d ' ')"
     FINGERPRINT="$(gpg --fingerprint ${{KEY_ID}} 2>&1 | tr -d ' ')"
-    OBJECT_FINGERPRINT="$(gpg --verify {0[agent_object]:s}.sig {0[agent_object]:s} 2>&1 | tr -d ' ')"
+    OBJECT_FINGERPRINT="$(gpg --verify {agent_object}.sig {agent_object} 2>&1 | tr -d ' ')"
     if [[ ${{FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* || ${{OBJECT_FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* ]]; then
         # Log error here
         echo "ERROR: CloudWatch Agent signature invalid: ${{KEY_ID}}: ${{OBJECT_FINGERPRINT}}"
@@ -1254,162 +1229,154 @@ function run_launch_bundle() {
     fi
 
     # Install the agent
-    echo "EC2LM: CloudWatch: Installing agent: {0[install_command]:s} {0[agent_object]}"
-    {0[install_command]:s} {0[agent_object]}
+    echo "EC2LM: CloudWatch: Installing agent: {install_command} {agent_object}"
+    {install_command} {agent_object}
 
     cd ${{LB_DIR}}
 
     echo "EC2LM: CloudWatch: Updating configuration"
     /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:amazon-cloudwatch-agent.json -s
     echo "EC2LM: CloudWatch: Done"
-}
+}}
 
-function disable_launch_bundle() {
-    {0[uninstall_command]:s}
-}
+function disable_launch_bundle() {{
+    $({installed_command} &> /dev/null)
+    if [[ $? -eq 0 ]]; then
+        {uninstall_command}
+    fi
+}}
 """
 
-
-        launch_script_table = {
-            'agent_path': ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['path'],
-            'agent_object': ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['object'],
-            'install_command': ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['install'],
-            'uninstall_command': ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['uninstall'],
-            'paco_base_path': self.paco_base_path,
-        }
-        launch_script = launch_script_template.format(launch_script_table)
-
-        # Agent Configuration file
-        # /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
-        agent_config = {
-            "agent": {
-                "metrics_collection_interval": 60,
-                "region": self.aws_region,
-                "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
-                #"debug": True
-            }
-        }
-
-        # if there is metrics, add to the cwagent config
-        if monitoring.metrics:
-            agent_config["metrics"] = {
-                "metrics_collected": {},
-                "append_dimensions": {
-                    #"ImageId": "${aws:ImageId}",
-                    #"InstanceId": "${aws:InstanceId}",
-                    #"InstanceType": "${aws:InstanceType}",
-                    "AutoScalingGroupName": "${aws:AutoScalingGroupName}"
-                },
-                "aggregation_dimensions" : [["AutoScalingGroupName"]]
-            }
-            collected = agent_config['metrics']['metrics_collected']
-            for metric in monitoring.metrics:
-                if metric.collection_interval:
-                    interval = metric.collection_interval
-                else:
-                    interval = monitoring.collection_interval
-                collected[metric.name] = {
-                    "measurement": metric.measurements,
-                    "collection_interval": interval,
+        if cw_enabled:
+            # Agent Configuration file
+            # /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+            agent_config = {
+                "agent": {
+                    "metrics_collection_interval": 60,
+                    "region": self.aws_region,
+                    "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
                 }
-                if metric.resources and len(metric.resources) > 0:
-                    collected[metric.name]['resources'] = metric.resources
-                if metric.name == 'disk':
-                    collected[metric.name]['drop_device'] = metric.drop_device
+            }
 
+            # if there is metrics, add to the cwagent config
+            if monitoring.metrics:
+                agent_config["metrics"] = {
+                    "metrics_collected": {},
+                    "append_dimensions": {
+                        #"ImageId": "${aws:ImageId}",
+                        #"InstanceId": "${aws:InstanceId}",
+                        #"InstanceType": "${aws:InstanceType}",
+                        "AutoScalingGroupName": "${aws:AutoScalingGroupName}"
+                    },
+                    "aggregation_dimensions" : [["AutoScalingGroupName"]]
+                }
+                collected = agent_config['metrics']['metrics_collected']
+                for metric in monitoring.metrics:
+                    if metric.collection_interval:
+                        interval = metric.collection_interval
+                    else:
+                        interval = monitoring.collection_interval
+                    collected[metric.name] = {
+                        "measurement": metric.measurements,
+                        "collection_interval": interval,
+                    }
+                    if metric.resources and len(metric.resources) > 0:
+                        collected[metric.name]['resources'] = metric.resources
+                    if metric.name == 'disk':
+                        collected[metric.name]['drop_device'] = metric.drop_device
 
-        # if there is logging, add it to the cwagent config
-        if monitoring.log_sets:
-            agent_config["logs"] = {
-                "logs_collected": {
-                    "files": {
-                        "collect_list": []
+            # if there is logging, add it to the cwagent config
+            if monitoring.log_sets:
+                agent_config["logs"] = {
+                    "logs_collected": {
+                        "files": {
+                            "collect_list": []
+                        }
                     }
                 }
-            }
-            collect_list = agent_config['logs']['logs_collected']['files']['collect_list']
-            for log_source in monitoring.log_sets.get_all_log_sources():
-                log_group = get_parent_by_interface(log_source, schemas.ICloudWatchLogGroup)
-                prefixed_log_group_name = prefixed_name(resource, log_group.get_full_log_group_name(), self.paco_ctx.legacy_flag)
-                source_config = {
-                    "file_path": log_source.path,
-                    "log_group_name": prefixed_log_group_name,
-                    "log_stream_name": log_source.log_stream_name,
-                    "encoding": log_source.encoding,
-                    "timezone": log_source.timezone
-                }
-                if log_source.multi_line_start_pattern:
-                    source_config["multi_line_start_pattern"] = log_source.multi_line_start_pattern
-                if log_source.timestamp_format:
-                    source_config["timestamp_format"] = log_source.timestamp_format
-                collect_list.append(source_config)
+                collect_list = agent_config['logs']['logs_collected']['files']['collect_list']
+                for log_source in monitoring.log_sets.get_all_log_sources():
+                    log_group = get_parent_by_interface(log_source, schemas.ICloudWatchLogGroup)
+                    prefixed_log_group_name = prefixed_name(resource, log_group.get_full_log_group_name(), self.paco_ctx.legacy_flag)
+                    source_config = {
+                        "file_path": log_source.path,
+                        "log_group_name": prefixed_log_group_name,
+                        "log_stream_name": log_source.log_stream_name,
+                        "encoding": log_source.encoding,
+                        "timezone": log_source.timezone
+                    }
+                    if log_source.multi_line_start_pattern:
+                        source_config["multi_line_start_pattern"] = log_source.multi_line_start_pattern
+                    if log_source.timestamp_format:
+                        source_config["timestamp_format"] = log_source.timestamp_format
+                    collect_list.append(source_config)
 
-        # Convert CW Agent data structure to JSON string
-        agent_config = json.dumps(agent_config)
+            # Convert CW Agent data structure to JSON string
+            agent_config = json.dumps(agent_config)
+            cw_lb.add_file('amazon-cloudwatch-agent.json', agent_config)
 
-        # Create instance managed policy for the agent
-        iam_policy_name = '-'.join([resource.name, 'cloudwatchagent'])
-        policy_config_yaml = """
-policy_name: '{}'
-enabled: true
-statement:
-  - effect: Allow
-    resource: "*"
-    action:
-      - "cloudwatch:PutMetricData"
-      - "autoscaling:Describe*"
-      - "ec2:DescribeTags"
-""".format(iam_policy_name)
-        if monitoring.log_sets:
-            # append a logs:CreateLogGroup to the AllResources sid
-            policy_config_yaml += """      - "logs:CreateLogGroup"\n"""
-            log_group_resources = ""
-            log_stream_resources = ""
-            for log_group in monitoring.log_sets.get_all_log_groups():
-                log_group_resources += "      - arn:aws:logs:{}:{}:log-group:{}:*\n".format(
-                    self.aws_region, self.account_ctx.id, prefixed_name(resource, log_group.get_full_log_group_name(), self.paco_ctx.legacy_flag)
+            # Create instance managed policy for the agent
+            iam_policy_name = '-'.join([resource.name, 'cloudwatchagent'])
+            policy_config_yaml = """
+    policy_name: '{}'
+    enabled: true
+    statement:
+    - effect: Allow
+        resource: "*"
+        action:
+        - "cloudwatch:PutMetricData"
+        - "autoscaling:Describe*"
+        - "ec2:DescribeTags"
+    """.format(iam_policy_name)
+            if monitoring.log_sets:
+                # append a logs:CreateLogGroup to the AllResources sid
+                policy_config_yaml += """      - "logs:CreateLogGroup"\n"""
+                log_group_resources = ""
+                log_stream_resources = ""
+                for log_group in monitoring.log_sets.get_all_log_groups():
+                    log_group_resources += "      - arn:aws:logs:{}:{}:log-group:{}:*\n".format(
+                        self.aws_region, self.account_ctx.id, prefixed_name(resource, log_group.get_full_log_group_name(), self.paco_ctx.legacy_flag)
+                    )
+                    log_stream_resources += "      - arn:aws:logs:{}:{}:log-group:{}:log-stream:*\n".format(
+                        self.aws_region, self.account_ctx.id, prefixed_name(resource, log_group.get_full_log_group_name(), self.paco_ctx.legacy_flag)
+                    )
+                policy_config_yaml += """
+    - effect: Allow
+        action:
+        - "logs:DescribeLogStreams"
+        - "logs:DescribeLogGroups"
+        - "logs:CreateLogStream"
+        resource:
+    {}
+    - effect: Allow
+        action:
+        - "logs:PutLogEvents"
+        resource:
+    {}
+    """.format(log_group_resources, log_stream_resources)
+
+            policy_name = 'policy_ec2lm_cloudwatchagent'
+            iam_ctl = self.paco_ctx.get_controller('IAM')
+            iam_ctl.add_managed_policy(
+                role=resource.instance_iam_role,
+                resource=resource,
+                policy_name='policy',
+                policy_config_yaml=policy_config_yaml,
+                extra_ref_names=['ec2lm','cloudwatchagent'],
+            )
+
+            # Create the CloudWatch Log Groups so that Retention and MetricFilters can be set
+            if monitoring.log_sets:
+                self.stack_group.add_new_stack(
+                    self.aws_region,
+                    resource,
+                    paco.cftemplates.LogGroups,
+                    stack_tags=self.stack_tags,
+                    support_resource_ref_ext='log_groups',
                 )
-                log_stream_resources += "      - arn:aws:logs:{}:{}:log-group:{}:log-stream:*\n".format(
-                    self.aws_region, self.account_ctx.id, prefixed_name(resource, log_group.get_full_log_group_name(), self.paco_ctx.legacy_flag)
-                )
-            policy_config_yaml += """
-  - effect: Allow
-    action:
-      - "logs:DescribeLogStreams"
-      - "logs:DescribeLogGroups"
-      - "logs:CreateLogStream"
-    resource:
-{}
-  - effect: Allow
-    action:
-     - "logs:PutLogEvents"
-    resource:
-{}
-""".format(log_group_resources, log_stream_resources)
-
-        policy_name = 'policy_ec2lm_cloudwatchagent'
-        iam_ctl = self.paco_ctx.get_controller('IAM')
-        iam_ctl.add_managed_policy(
-            role=resource.instance_iam_role,
-            resource=resource,
-            policy_name='policy',
-            policy_config_yaml=policy_config_yaml,
-            extra_ref_names=['ec2lm','cloudwatchagent'],
-        )
 
         # Set the launch script
-        cw_lb.set_launch_script(launch_script)
-        cw_lb.add_file('amazon-cloudwatch-agent.json', agent_config)
-
-        # Create the CloudWatch Log Groups so that Retention and MetricFilters can be set
-        if monitoring.log_sets:
-            self.stack_group.add_new_stack(
-                self.aws_region,
-                resource,
-                paco.cftemplates.LogGroups,
-                stack_tags=self.stack_tags,
-                support_resource_ref_ext='log_groups',
-            )
+        cw_lb.set_launch_script(launch_script, cw_enabled)
         self.add_bundle(cw_lb)
 
     def add_update_instance_ssm_document(self):
@@ -1455,16 +1422,20 @@ statement:
         """Creates a launch bundle to install and configure the SSM agent"""
         # Create the Launch Bundle
         ssm_lb = LaunchBundle(resource, self, bundle_name)
-
-        # Remove bundle if not enabled and return
+        ssm_enabled = True
         if not resource.launch_options.ssm_agent:
-            return self.remove_bundle(cw_lb)
-
-        # Ensure paco_ec2lm_update_instance SSM Document is available
+            ssm_enabled = False
 
         # Install SSM Agent - except where it is pre-baked in the image
+        ssm_installed = 'true'
+        download_url = ''
+        agent_install = ''
+        agent_object = ''
         if resource.instance_ami_type_generic != 'amazon' and resource.instance_ami_type not in ('ubuntu_16_snap', 'ubuntu_18'):
+            ssm_installed = 'false'
             agent_config = ec2lm_commands.ssm_agent[resource.instance_ami_type]
+            agent_install = agent_config["install"]
+            agent_object = agent_config["object"]
             # use regional URL for faster download
             if self.aws_region in ec2lm_commands.ssm_regions:
                 download_url = f'https://s3.{self.aws_region}.amazonaws.com/amazon-ssm-{self.aws_region}/latest'
@@ -1472,30 +1443,45 @@ statement:
                 download_url = f'https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest'
             download_url += f'{agent_config["path"]}/{agent_config["object"]}'
 
-            launch_script = f"""#!/bin/bash
+        # ToDo: disable_launch_bundle? ... once it's disabled, SSM won't be able to re-enable itself
+        launch_script = f"""#!/bin/bash
+
 echo "EC2LM: SSM Agent: Begin"
-# Load EC2 Launch Manager helper functions
-. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
+SSM_INSTALLED={ssm_installed}
 
-# Download the agent
-LB_DIR=$(pwd)
-mkdir /tmp/paco/
-cd /tmp/paco/
-# ensure wget is installed
-ec2lm_install_wget
+function run_launch_bundle() {{
+    if [ "$SSM_INSTALLED" == "false" ] ; then
+        # Load EC2 Launch Manager helper functions
+        . {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
 
-echo "EC2LM: SSM: Downloading agent"
-wget -nv {download_url}
+        # Download the agent
+        LB_DIR=$(pwd)
+        mkdir /tmp/paco/
+        cd /tmp/paco/
+        # ensure wget is installed
+        ec2lm_install_wget
 
-# Install the agent
-echo "EC2LM: SSM: Installing agent: {agent_config["install"]} {agent_config["object"]}"
-{agent_config["install"]} {agent_config["object"]}
+        echo "EC2LM: SSM: Downloading agent"
+        wget -nv {download_url}
+
+        # Install the agent
+        echo "EC2LM: SSM: Installing agent: {agent_install} {agent_object}"
+        {agent_install} {agent_object}
+    fi
+}}
+
+function disable_launch_bundle() {{
+    :
+}}
 """
-            ssm_lb.set_launch_script(launch_script)
 
-        # Create instance managed policy for the agent
-        iam_policy_name = '-'.join([resource.name, 'ssmagent-policy'])
-        policy_config_yaml = """
+        ssm_lb.set_launch_script(launch_script, ssm_enabled)
+        self.add_bundle(ssm_lb)
+
+        if ssm_enabled:
+            # Create instance managed policy for the agent
+            iam_policy_name = '-'.join([resource.name, 'ssmagent-policy'])
+            policy_config_yaml = """
 policy_name: '{}'
 enabled: true
 statement:
@@ -1523,17 +1509,14 @@ statement:
     resource:
       - '*'
 """.format(iam_policy_name)
-        iam_ctl = self.paco_ctx.get_controller('IAM')
-        iam_ctl.add_managed_policy(
-            role=resource.instance_iam_role,
-            resource=resource,
-            policy_name='policy',
-            policy_config_yaml=policy_config_yaml,
-            extra_ref_names=['ec2lm','ssmagent'],
-        )
-
-        # Save Configuration
-        self.add_bundle(ssm_lb)
+            iam_ctl = self.paco_ctx.get_controller('IAM')
+            iam_ctl.add_managed_policy(
+                role=resource.instance_iam_role,
+                resource=resource,
+                policy_name='policy',
+                policy_config_yaml=policy_config_yaml,
+                extra_ref_names=['ec2lm','ssmagent'],
+            )
 
     def process_bundles(self, resource, instance_iam_role_ref):
         "Initialize launch bundle S3 bucket and iterate through all launch bundles and add every applicable bundle"
