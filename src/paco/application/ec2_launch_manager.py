@@ -381,7 +381,6 @@ function ec2lm_install_wget() {
                         oldest_health_check_timeout = health_check_timeout
 
         launch_bundle_names = ' '.join(self.launch_bundle_names)
-        paco_environment_ref = resource.env_obj.paco_ref_parts + '.' + resource.region_name,
         if self.paco_ctx.legacy_flag('aim_name_2019_11_28') == True:
             tool_name = 'AIM'
         else:
@@ -395,7 +394,7 @@ EC2LM_STACK_NAME=$(aws ec2 describe-tags --region $REGION --filter "Name=resourc
 EC2LM_FOLDER='{self.paco_base_path}/EC2Manager/'
 EC2LM_{tool_name}_NETWORK_ENVIRONMENT="{resource.netenv_name}"
 EC2LM_{tool_name}_ENVIRONMENT="{resource.env_name}"
-EC2LM_{tool_name}_ENVIRONMENT_REF={paco_environment_ref}
+EC2LM_{tool_name}_ENVIRONMENT_REF={resource.env_region_obj.paco_ref_parts}
 
 # Escape a string for sed replacements
 function sed_escape() {{
@@ -454,7 +453,7 @@ function ec2lm_launch_bundles() {{
 
     # Compare new EC2LM contents cache id with existing
     OLD_CACHE_ID=$(<$EC2LM_FOLDER/ec2lm_cache_id.md5)
-    if [ $CACHE_ID == $OLD_CACHE_ID ] ; then
+    if [ "$CACHE_ID" == "$OLD_CACHE_ID" ] ; then
         echo "Cache Id unchanged. Skipping ec2lm_launch_bundles."
         exit
     fi
@@ -472,7 +471,7 @@ function ec2lm_launch_bundles() {{
         exit 1
     fi
 
-    # Synchronize lateset bundle contents
+    # Synchronize latest bundle contents
     aws s3 sync s3://{ec2lm_bucket_name}/ --region=$REGION $EC2LM_FOLDER
 
     # Run launch bundles
@@ -1098,7 +1097,9 @@ statement:
         if resource.eip == None:
             enabled = False
 
-        # TODO: Add ubuntu and other distro support
+        # XXX ToDo: if EIP is added then removed then added, the instance losses it's EIP Tag?
+        # XXX ToDo: also if new EIP is created, it isn't propagated to the Tag of the old instance
+        # ToDo: Add ubuntu and other distro support
         launch_script = """#!/bin/bash
 . {}/EC2Manager/ec2lm_functions.bash
 """.format(self.paco_base_path)
