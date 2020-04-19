@@ -1199,42 +1199,43 @@ statement:
         uninstall_command = ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['uninstall']
         launch_script = f"""#!/bin/bash
 echo "EC2LM: CloudWatch: Begin"
-# Load EC2 Launch Manager helper functions
 . {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
 
 function run_launch_bundle() {{
-    # Download the agent
+    $({installed_command} &> /dev/null)
     LB_DIR=$(pwd)
-    mkdir /tmp/paco/
-    cd /tmp/paco/
-    ec2lm_install_wget # built in function
+    if [[ $? -ne 0 ]]; then
+        # Download the agent
+        mkdir /tmp/paco/
+        cd /tmp/paco/
+        ec2lm_install_wget # built in function
 
-    echo "EC2LM: CloudWatch: Downloading agent"
-    wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{agent_path}/{agent_object}
-    wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{agent_path}/{agent_object}.sig
+        echo "EC2LM: CloudWatch: Downloading agent"
+        wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{agent_path}/{agent_object}
+        wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{agent_path}/{agent_object}.sig
 
-    # Verify the agent
-    echo "EC2LM: CloudWatch: Downloading and importing agent GPG key"
-    TRUSTED_FINGERPRINT=$(echo "9376 16F3 450B 7D80 6CBD 9725 D581 6730 3B78 9C72" | tr -d ' ')
-    wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent/assets/amazon-cloudwatch-agent.gpg
-    gpg --import amazon-cloudwatch-agent.gpg
+        # Verify the agent
+        echo "EC2LM: CloudWatch: Downloading and importing agent GPG key"
+        TRUSTED_FINGERPRINT=$(echo "9376 16F3 450B 7D80 6CBD 9725 D581 6730 3B78 9C72" | tr -d ' ')
+        wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent/assets/amazon-cloudwatch-agent.gpg
+        gpg --import amazon-cloudwatch-agent.gpg
 
-    echo "EC2LM: CloudWatch: Verify agent signature"
-    KEY_ID="$(gpg --list-packets amazon-cloudwatch-agent.gpg 2>&1 | awk '/keyid:/{{ print $2 }}' | tr -d ' ')"
-    FINGERPRINT="$(gpg --fingerprint ${{KEY_ID}} 2>&1 | tr -d ' ')"
-    OBJECT_FINGERPRINT="$(gpg --verify {agent_object}.sig {agent_object} 2>&1 | tr -d ' ')"
-    if [[ ${{FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* || ${{OBJECT_FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* ]]; then
-        # Log error here
-        echo "ERROR: CloudWatch Agent signature invalid: ${{KEY_ID}}: ${{OBJECT_FINGERPRINT}}"
-        exit 1
+        echo "EC2LM: CloudWatch: Verify agent signature"
+        KEY_ID="$(gpg --list-packets amazon-cloudwatch-agent.gpg 2>&1 | awk '/keyid:/{{ print $2 }}' | tr -d ' ')"
+        FINGERPRINT="$(gpg --fingerprint ${{KEY_ID}} 2>&1 | tr -d ' ')"
+        OBJECT_FINGERPRINT="$(gpg --verify {agent_object}.sig {agent_object} 2>&1 | tr -d ' ')"
+        if [[ ${{FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* || ${{OBJECT_FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* ]]; then
+            # Log error here
+            echo "ERROR: CloudWatch Agent signature invalid: ${{KEY_ID}}: ${{OBJECT_FINGERPRINT}}"
+            exit 1
+        fi
+
+        # Install the agent
+        echo "EC2LM: CloudWatch: Installing agent: {install_command} {agent_object}"
+        {install_command} {agent_object}
     fi
 
-    # Install the agent
-    echo "EC2LM: CloudWatch: Installing agent: {install_command} {agent_object}"
-    {install_command} {agent_object}
-
     cd ${{LB_DIR}}
-
     echo "EC2LM: CloudWatch: Updating configuration"
     /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:amazon-cloudwatch-agent.json -s
     echo "EC2LM: CloudWatch: Done"
@@ -1318,44 +1319,49 @@ function disable_launch_bundle() {{
 
             # Create instance managed policy for the agent
             iam_policy_name = '-'.join([resource.name, 'cloudwatchagent'])
-            policy_config_yaml = """
-    policy_name: '{}'
-    enabled: true
-    statement:
-    - effect: Allow
-        resource: "*"
-        action:
-        - "cloudwatch:PutMetricData"
-        - "autoscaling:Describe*"
-        - "ec2:DescribeTags"
-    """.format(iam_policy_name)
+            policy_config_yaml = f"""
+policy_name: '{iam_policy_name}'
+enabled: true
+statement:
+  - effect: Allow
+    resource: "*"
+    action:
+      - "cloudwatch:PutMetricData"
+      - "autoscaling:Describe*"
+      - "ec2:DescribeTags"
+"""
             if monitoring.log_sets:
-                # append a logs:CreateLogGroup to the AllResources sid
+                # allow a logs:CreateLogGroup action
                 policy_config_yaml += """      - "logs:CreateLogGroup"\n"""
                 log_group_resources = ""
                 log_stream_resources = ""
                 for log_group in monitoring.log_sets.get_all_log_groups():
+                    prefixed_name = prefixed_name(resource, log_group.get_full_log_group_name(), self.paco_ctx.legacy_flag)
                     log_group_resources += "      - arn:aws:logs:{}:{}:log-group:{}:*\n".format(
-                        self.aws_region, self.account_ctx.id, prefixed_name(resource, log_group.get_full_log_group_name(), self.paco_ctx.legacy_flag)
+                        self.aws_region,
+                        self.account_ctx.id,
+                        prefixed_name,
                     )
                     log_stream_resources += "      - arn:aws:logs:{}:{}:log-group:{}:log-stream:*\n".format(
-                        self.aws_region, self.account_ctx.id, prefixed_name(resource, log_group.get_full_log_group_name(), self.paco_ctx.legacy_flag)
+                        self.aws_region,
+                        self.account_ctx.id,
+                        prefixed_name,
                     )
-                policy_config_yaml += """
-    - effect: Allow
-        action:
-        - "logs:DescribeLogStreams"
-        - "logs:DescribeLogGroups"
-        - "logs:CreateLogStream"
-        resource:
-    {}
-    - effect: Allow
-        action:
-        - "logs:PutLogEvents"
-        resource:
-    {}
-    """.format(log_group_resources, log_stream_resources)
-
+                policy_config_yaml += f"""
+{log_group_action}
+  - effect: Allow
+    action:
+      - "logs:DescribeLogStreams"
+      - "logs:DescribeLogGroups"
+      - "logs:CreateLogStream"
+  resource:
+{log_group_resources}
+  - effect: Allow
+  action:
+    - "logs:PutLogEvents"
+  resource:
+{log_stream_resources}
+"""
             policy_name = 'policy_ec2lm_cloudwatchagent'
             iam_ctl = self.paco_ctx.get_controller('IAM')
             iam_ctl.add_managed_policy(
