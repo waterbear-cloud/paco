@@ -8,8 +8,7 @@ For example, if an ASG of instances has monitoring configuration,
 the CloudWatch Agent will be installed and configured to collect
 the metrics needed to support that monitoring.
 
-Note that EC2 Launch Mangaer is linux-centric and won't work
-on Windows instances.
+EC2 Launch Mangaer is currently linux-centric and does not yet work with Windows instances.
 """
 
 
@@ -1188,21 +1187,26 @@ statement:
          - Adds an IAM Policy to the instance IAM role that will allow the agent
            to do what it needs to do (e.g. send metrics and logs to CloudWatch)
         """
-        monitoring = resource.monitoring
-
-        # Create the Launch Bundle and configure it
         cw_lb = LaunchBundle(resource, self, bundle_name)
 
+        # is the cloudwatchagent bundle enabled?
+        monitoring = resource.monitoring
         cw_enabled = True
-        if resource.monitoring == None or resource.monitoring.enabled == False:
+        if monitoring == None or monitoring.enabled == False:
             cw_enabled = False
 
         # Launch script
         agent_path = ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['path']
-        agent_object = ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['object']
-        install_command = ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['install']
-        installed_command = ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['installed']
-        uninstall_command = ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['uninstall']
+        if resource.instance_ami_type_family == 'redhat':
+            agent_object = 'amazon-cloudwatch-agent.rpm'
+            install_command = f'rpm -U {agent_object}'
+            installed_command = 'rpm -q amazon-cloudwatch-agent'
+            uninstall_command = 'rpm -e amazon-cloudwatch-agent'
+        elif resource.instance_ami_type_family == 'debian':
+            agent_object = 'amazon-cloudwatch-agent.deb'
+            install_command = f'dpkg -i -E {agent_object}'
+            installed_command = 'dpkg --status amazon-cloudwatch-agent'
+            uninstall_command = 'dpkg -P amazon-cloudwatch-agent'
         launch_script = f"""#!/bin/bash
 echo "EC2LM: CloudWatch: Begin"
 . {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
@@ -1237,8 +1241,8 @@ function run_launch_bundle() {{
         fi
 
         # Install the agent
-        echo "EC2LM: CloudWatch: Installing agent: {install_command} {agent_object}"
-        {install_command} {agent_object}
+        echo "EC2LM: CloudWatch: Installing agent: {install_command}"
+        {install_command}
     fi
 
     cd ${{LB_DIR}}
@@ -1254,7 +1258,6 @@ function disable_launch_bundle() {{
     fi
 }}
 """
-
         if cw_enabled:
             # Agent Configuration file
             # /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
@@ -1440,12 +1443,14 @@ statement:
             ssm_enabled = False
 
         # Install SSM Agent - except where it is pre-baked in the image
-        ssm_installed = 'true'
         download_url = ''
         agent_install = ''
         agent_object = ''
+        if resource.instance_ami_type_family == 'redhat':
+            installed_command = 'rpm -q amazon-ssm-agent'
+        elif resource.instance_ami_type_family == 'debian':
+            installed_command = 'dpkg --status amazon-ssm-agent'
         if resource.instance_ami_type_generic != 'amazon' and resource.instance_ami_type not in ('ubuntu_16_snap', 'ubuntu_18'):
-            ssm_installed = 'false'
             agent_config = ec2lm_commands.ssm_agent[resource.instance_ami_type]
             agent_install = agent_config["install"]
             agent_object = agent_config["object"]
@@ -1456,11 +1461,16 @@ statement:
                 download_url = f'https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest'
             download_url += f'{agent_config["path"]}/{agent_config["object"]}'
 
-        # ToDo: disable_launch_bundle? ... once it's disabled, SSM won't be able to re-enable itself
         launch_script = f"""#!/bin/bash
 
 echo "EC2LM: SSM Agent: Begin"
-SSM_INSTALLED={ssm_installed}
+
+$({installed_command} &> /dev/null)
+if [[ $? -eq 0 ]]; then
+    SSM_INSTALLED=true
+else
+    SSM_INSTALLED=false
+fi
 
 function run_launch_bundle() {{
     if [ "$SSM_INSTALLED" == "false" ] ; then
@@ -1484,6 +1494,7 @@ function run_launch_bundle() {{
 }}
 
 function disable_launch_bundle() {{
+    # No-op: Paco will not remove SSM agent
     :
 }}
 """
