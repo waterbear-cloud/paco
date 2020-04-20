@@ -721,52 +721,59 @@ statement:
         self.launch_bundles[bundle.bucket_ref].append(bundle)
 
     def lb_add_cfn_init(self, bundle_name, resource):
-        """Creates a launch bundle to download and run cfn-init"""
+        """Launch bundle to install and run cfn-init configsets"""
         cfn_init_lb = LaunchBundle(resource, self, bundle_name)
 
-        # Check if this bundle is enabled with config such as:
-        #  asg:
-        #    launch_options:
-        #      cfn_init_config_sets:
-        #        - SomeSet
         cfn_init_enabled = True
         if resource.cfn_init == None or len(resource.launch_options.cfn_init_config_sets) == 0:
             cfn_init_enabled = False
 
         # cfn-init base path
         if resource.instance_ami_type_generic in ['amazon', 'centos']:
-            # Amazon Linux has cfn-init pre-installed at /opt/aws/
+            # Amazon Linux and CentOS have cfn-init pre-installed at /opt/aws/
             cfn_base_path = '/opt/aws'
         else:
             # other OS types will install cfn-init into the Paco directory
             cfn_base_path = self.paco_base_path
 
-        # ToDo: manage cfn-hup daemon?
         install_cfn_init_command = ec2lm_commands.user_data_script['install_cfn_init'][resource.instance_ami_type_generic]
         config_sets_str = ','.join(resource.launch_options.cfn_init_config_sets)
         launch_script = f"""#!/bin/bash
-function run_launch_bundle() {{
-    . {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
-    {install_cfn_init_command}
+. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
+
+function run_launch_configuration() {{
     {cfn_base_path}/bin/cfn-init --stack=$EC2LM_STACK_NAME --resource=LaunchConfiguration --region=$REGION --configsets={config_sets_str}
-    {cfn_base_path}/bin/cfn-signal -e $? --stack $EC2LM_STACK_NAME --resource=LaunchConfiguration --region=$REGION
+}}
+
+function run_launch_bundle() {{
+    # cfn-init configsets are only run by Paco during initial launch
+    if [ ! -f ./initialized-configsets.txt ]; then
+        {install_cfn_init_command}
+        echo "{config_sets_str}" >> ./initialized-configsets.txt
+        run_launch_configuration
+        {cfn_base_path}/bin/cfn-signal -e $? --stack $EC2LM_STACK_NAME --resource=LaunchConfiguration --region=$REGION
+    fi
 }}
 
 function disable_launch_bundle() {{
-    # Nothing to do
-    :
+    # touch the initialized-configsets.txt file to prevent a later addition
+    # of a cfn-init ConfigSet from running unexpectedly
+    touch ./initialized-configsets.txt
 }}
-"""
 
+# enable local running of launch configset with:
+# $EC2LM_FOLDER/LaunchBundles/cfn-init/launch.sh run
+RUN_LAUNCH_CFN=$1
+if [ "$RUN_LAUNCH_CFN" == "run" ] ; then
+    run_launch_configuration
+fi
+
+"""
         cfn_init_lb.set_launch_script(launch_script, cfn_init_enabled)
         self.add_bundle(cfn_init_lb)
 
     def lb_add_efs(self, bundle_name, resource):
-        """Creates a launch bundle to configure EFS mounts:
-
-         - Installs an entry in /etc/fstab
-         - On launch runs mount
-        """
+        """Launch bundle to configure EFS mounts"""
        # Create the Launch Bundle and configure it
         efs_lb = LaunchBundle(resource, self, bundle_name)
 
@@ -1100,10 +1107,9 @@ statement:
         # XXX ToDo: if EIP is added then removed then added, the instance losses it's EIP Tag?
         # XXX ToDo: also if new EIP is created, it isn't propagated to the Tag of the old instance
         # ToDo: Add ubuntu and other distro support
-        launch_script = """#!/bin/bash
-. {}/EC2Manager/ec2lm_functions.bash
-""".format(self.paco_base_path)
-
+        launch_script = f"""#!/bin/bash
+. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
+"""
         launch_script += """
 
 function ec2lm_eip_is_associated() {
