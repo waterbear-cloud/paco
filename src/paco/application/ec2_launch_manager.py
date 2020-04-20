@@ -238,6 +238,7 @@ class EC2LaunchManager():
         )
         # send SSM command to update existing instances
         ssm_client = self.account_ctx.get_aws_client('ssm', aws_region=self.aws_region)
+        ssm_log_group_name = prefixed_name(resource, 'paco_ssm', self.paco_ctx.legacy_flag)
         ssm_client.send_command(
             Targets=[{
                 'Key': 'tag:aws:cloudformation:stack-name',
@@ -245,6 +246,10 @@ class EC2LaunchManager():
             },],
             DocumentName='paco_ec2lm_update_instance',
             Parameters={ 'CacheId': [cache_id] },
+            CloudWatchOutputConfig={
+                'CloudWatchLogGroupName': ssm_log_group_name,
+                'CloudWatchOutputEnabled': True,
+            },
         )
 
     def ec2lm_update_instances_cache(self, hook, bucket_resource):
@@ -1367,16 +1372,6 @@ statement:
                 extra_ref_names=['ec2lm','cloudwatchagent'],
             )
 
-            # Create the CloudWatch Log Groups so that Retention and MetricFilters can be set
-            if monitoring.log_sets:
-                self.stack_group.add_new_stack(
-                    self.aws_region,
-                    resource,
-                    paco.cftemplates.LogGroups,
-                    stack_tags=self.stack_tags,
-                    support_resource_ref_ext='log_groups',
-                )
-
         # Set the launch script
         cw_lb.set_launch_script(launch_script, cw_enabled)
         self.add_bundle(cw_lb)
@@ -1491,8 +1486,11 @@ function disable_launch_bundle() {{
         if ssm_enabled:
             # Create instance managed policy for the agent
             iam_policy_name = '-'.join([resource.name, 'ssmagent-policy'])
-            policy_config_yaml = """
-policy_name: '{}'
+            ssm_prefixed_name = prefixed_name(resource, 'paco_ssm', self.paco_ctx.legacy_flag)
+            ssm_log_group_arn = f"arn:aws:logs:{self.aws_region}:{self.account_ctx.id}:log-group:*"
+            ssm_log_stream_arn = f"arn:aws:logs:{self.aws_region}:{self.account_ctx.id}:log-group:{ssm_prefixed_name}:log-stream:*"
+            policy_config_yaml = f"""
+policy_name: '{iam_policy_name}'
 enabled: true
 statement:
   - effect: Allow
@@ -1518,7 +1516,20 @@ statement:
       - s3:GetEncryptionConfiguration
     resource:
       - '*'
-""".format(iam_policy_name)
+  - effect: Allow
+    action:
+      - logs:CreateLogGroup
+      - logs:CreateLogStream
+      - logs:DescribeLogGroups
+      - logs:DescribeLogStreams
+    resource:
+      - {ssm_log_group_arn}
+  - effect: Allow
+    action:
+      - logs:PutLogEvents
+    resource:
+      - {ssm_log_stream_arn}
+"""
             iam_ctl = self.paco_ctx.get_controller('IAM')
             iam_ctl.add_managed_policy(
                 role=resource.instance_iam_role,
@@ -1542,4 +1553,14 @@ statement:
         for bundle_name in self.launch_bundle_names:
             bundle_method = getattr(self, 'lb_add_' + bundle_name.replace('-', '_').lower())
             bundle_method(bundle_name, resource)
+
+        # Create CloudWatch Log Groups for SSM and CloudWatch Agent
+        if resource.launch_options.ssm_agent or (resource.monitoring != None and resource.monitoring.log_sets):
+            self.stack_group.add_new_stack(
+                self.aws_region,
+                resource,
+                paco.cftemplates.LogGroups,
+                stack_tags=self.stack_tags,
+                support_resource_ref_ext='log_groups',
+            )
         return bucket
