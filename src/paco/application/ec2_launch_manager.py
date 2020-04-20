@@ -13,6 +13,7 @@ EC2 Launch Mangaer is currently linux-centric and does not yet work with Windows
 
 
 import paco.cftemplates
+import paco.models.references
 import json
 import os
 import pathlib
@@ -786,8 +787,8 @@ fi
                 efs_id_hash = utils.md5sum(str_data=efs_mount.target)
                 process_mount_targets += "process_mount_target {} {}\n".format(efs_mount.folder, efs_id_hash)
 
-        # TODO: Add ubuntu and other distro support
-        launch_script_template = """#!/bin/bash
+        launch_script = f"""#!/bin/bash
+
 INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
 AVAIL_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
 REGION="$(echo \"$AVAIL_ZONE\" | sed 's/[a-z]$//')"
@@ -801,16 +802,16 @@ if [ -f ./efs_mount_folder_list ] ; then
 fi
 
 function process_mount_target()
-{
+{{
     MOUNT_FOLDER=$1
     EFS_ID_HASH=$2
 
-    # Get EFSID from Tag
+    # Get EFS ID from Tag
     EFS_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=efs-id-$EFS_ID_HASH" --query 'Tags[0].Value' |tr -d '"')
 
     # Setup the mount folder
     if [ -e $MOUNT_FOLDER ] ; then
-        mv $MOUNT_FOLDER ${MOUNT_FOLDER%%/}.old
+        mv $MOUNT_FOLDER ${{MOUNT_FOLDER%%/}}.old
     fi
     mkdir -p $MOUNT_FOLDER
 
@@ -821,26 +822,26 @@ function process_mount_target()
     chmod 0664 /etc/fstab
     echo "$MOUNT_FOLDER" >>$EFS_MOUNT_FOLDER_LIST".new"
     echo "$EFS_ID" >>$EFS_ID_LIST".new"
-}
+}}
 
-function run_launch_bundle() {
+function run_launch_bundle() {{
     # Install EFS Utils
-    %s
-    # Enabled EFS Utils
-    %s
+    {ec2lm_commands.user_data_script['install_efs_utils'][resource.instance_ami_type_generic]}
+    # Enable EFS Utils
+    {ec2lm_commands.user_data_script['enable_efs_utils'][resource.instance_ami_type_generic]}
 
     # Process Mounts
     :>$EFS_MOUNT_FOLDER_LIST".new"
     :>$EFS_ID_LIST".new"
-    %s
+    {process_mount_targets}
     mv $EFS_MOUNT_FOLDER_LIST".new" $EFS_MOUNT_FOLDER_LIST
     mv $EFS_ID_LIST".new" $EFS_ID_LIST
 
     # Mount EFS folders
-    %s
-}
+    {ec2lm_commands.user_data_script['mount_efs'][resource.instance_ami_type_generic]}
+}}
 
-function disable_launch_bundle() {
+function disable_launch_bundle() {{
     if [ "$EFS_MOUNT_FOLDER_LIST" != "" ] ; then
         for MOUNT_FOLDER in $(cat $EFS_MOUNT_FOLDER_LIST)
         do
@@ -854,39 +855,9 @@ function disable_launch_bundle() {
             chmod 0664 /etc/fstab
         done
     fi
-}
+}}
 """
-
-        launch_script = launch_script_template % (
-            ec2lm_commands.user_data_script['install_efs_utils'][resource.instance_ami_type_generic],
-            ec2lm_commands.user_data_script['enable_efs_utils'][resource.instance_ami_type_generic],
-            process_mount_targets,
-            ec2lm_commands.user_data_script['mount_efs'][resource.instance_ami_type_generic])
-
-        iam_policy_name = '-'.join([resource.name, 'efs'])
-        policy_config_yaml = """
-policy_name: '{}'
-enabled: true
-statement:
-  - effect: Allow
-    action:
-      - "ec2:DescribeTags"
-    resource:
-      - '*'
-""".format(iam_policy_name)
-
-        iam_ctl = self.paco_ctx.get_controller('IAM')
-        iam_ctl.add_managed_policy(
-            role=resource.instance_iam_role,
-            resource=resource,
-            policy_name='policy',
-            policy_config_yaml=policy_config_yaml,
-            extra_ref_names=['ec2lm','efs']
-        )
-
         efs_lb.set_launch_script(launch_script, efs_enabled)
-
-        # Save Configuration
         self.add_bundle(efs_lb)
 
     def lb_add_ebs(self, bundle_name, resource):
@@ -895,10 +866,8 @@ statement:
          - Installs an entry in /etc/fstab
          - On launch runs mount
         """
-        # Create the Launch Bundle and configure it
         ebs_lb = LaunchBundle(resource, self, bundle_name)
 
-        # TODO: Add ubuntu and other distro support
         launch_script_template = """#!/bin/bash
 
 . %s/EC2Manager/ec2lm_functions.bash
@@ -1103,30 +1072,45 @@ statement:
         if resource.eip == None:
             enabled = False
 
-        # XXX ToDo: if EIP is added then removed then added, the instance losses it's EIP Tag?
-        # XXX ToDo: also if new EIP is created, it isn't propagated to the Tag of the old instance
-        # ToDo: Add ubuntu and other distro support
-        launch_script = f"""#!/bin/bash
-. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
-"""
-        launch_script += """
+        # get the EIP Stack Name
+        if paco.models.references.is_ref(resource.eip) == True:
+            eip_value = resource.eip + '.allocation_id'
+            ref = Reference(eip_value)
+            ref.set_region(self.aws_region)
+            eip_stack = ref.resolve(self.paco_ctx.project, account_ctx=self.account_ctx)
+            eip_stack_name = eip_stack.get_name()
+        elif resource.eip != None:
+            # ToDo: Paco EC2LM does not yet support direct EIP values
+            eip_value = resource.eip
+            raise AttributeError('Direct EIP value not yet supported by EC2LM')
+        else:
+            eip_stack_name = ''
 
-function ec2lm_eip_is_associated() {
+        launch_script = f"""#!/bin/bash
+
+. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
+
+EIP_STATE_FILE=$EC2LM_FOLDER/LaunchBundles/EIP/eip-association-id.txt
+
+function ec2lm_eip_is_associated() {{
     EIP_IP=$1
     PUBLIC_IP=$(curl http://169.254.169.254/latest/meta-data/public-ipv4/)
     if [ "$PUBLIC_IP" == "$EIP_IP" ] ; then
         echo "EC2LM: EIP: Association Successful"
+        # save association id to allow later disassociation
+        EIP_ASSOCIATION_ID=$(aws ec2 describe-addresses --allocation-ids $EIP_ALLOC_ID --query 'Addresses[0].AssociationId' --region $REGION | tr -d '"')
+        echo "$EIP_ASSOCIATION_ID" >> $EIP_STATE_FILE
         return 0
     fi
     return 1
-}
+}}
 
 function run_launch_bundle()
-{
+{{
     # Allocation ID
     EIP_ALLOCATION_EC2_TAG_KEY_NAME="Paco-EIP-Allocation-Id"
     echo "EC2LM: EIP: Getting Allocation ID from EC2 Tag $EIP_ALLOCATION_EC2_TAG_KEY_NAME"
-    EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=$EIP_ALLOCATION_EC2_TAG_KEY_NAME" --query 'Tags[0].Value' |tr -d '"')
+    EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-type,Values=elastic-ip" "Name=tag:aws:cloudformation:stack-name,Values={eip_stack_name}" --query 'Tags[0].ResourceId' |tr -d '"')
 
     # IP Address
     echo "EC2LM: EIP: Getting IP Address for $EIP_ALLOC_ID"
@@ -1145,14 +1129,18 @@ function run_launch_bundle()
     else
         echo "EC2LM: EIP: Error: $OUTPUT"
     fi
-}
+}}
 
 function disable_launch_bundle()
-{
-    # TODO: Disassocaite IP Address.
-    :
-}
+{{
+    EIP_ASSOCIATION_ID=$(<$EIP_STATE_FILE)
+    aws ec2 disassociate-address --association-id $EIP_ASSOCIATION_ID --region $REGION
+}}
 """
+        eip_lb.set_launch_script(launch_script, enabled)
+        self.add_bundle(eip_lb)
+
+        # IAM Managed Policy to allow EIP
         iam_policy_name = '-'.join([resource.name, 'eip'])
         policy_config_yaml = """
 policy_name: '{}'
@@ -1161,11 +1149,11 @@ statement:
   - effect: Allow
     action:
       - 'ec2:AssociateAddress'
+      - 'ec2:DisassociateAddress'
       - 'ec2:DescribeAddresses'
     resource:
       - '*'
 """.format(iam_policy_name)
-
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
             role=resource.instance_iam_role,
@@ -1174,8 +1162,6 @@ statement:
             policy_config_yaml=policy_config_yaml,
             extra_ref_names=['ec2lm','eip'],
         )
-        eip_lb.set_launch_script(launch_script, enabled)
-        self.add_bundle(eip_lb)
 
     def lb_add_cloudwatchagent(self, bundle_name, resource):
         """Creates a launch bundle to install and configure a CloudWatch Agent:
