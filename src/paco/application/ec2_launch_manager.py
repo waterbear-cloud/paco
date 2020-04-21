@@ -54,7 +54,6 @@ class LaunchBundle():
         self.package_filename = str.join('.', [self.bundle_folder, 'tgz'])
         self.package_path = os.path.join(self.bundles_path, self.package_filename)
 
-
     def set_launch_script(self, launch_script, enabled=True):
         """Set the script run to launch the bundle. By convention, this file
         is named 'launch.sh', and is a reserved filename in a launch bundle.
@@ -63,16 +62,15 @@ class LaunchBundle():
             launch_bundle_enabled="true"
         else:
            launch_bundle_enabled="false"
-        enabled_script = """
+        enabled_script = f"""
 # This script is auto-generated. Do not edit.
-LAUNCH_BUNDLE_ENABLED=%s
+LAUNCH_BUNDLE_ENABLED={launch_bundle_enabled}
 if [ "$LAUNCH_BUNDLE_ENABLED" == "true" ] ; then
     run_launch_bundle
 else
     disable_launch_bundle
 fi
-""" % (launch_bundle_enabled)
-
+"""
         self.add_file("launch.sh", launch_script + enabled_script)
 
     def add_file(self, name, contents):
@@ -84,34 +82,25 @@ fi
         self.bundle_files.append(file_config)
 
     def build(self):
-        """Builds the launch bundle:
-
-         - Creates files for bundle in a bundles tmp dir
-
-         - Tar gzips files
-
-         - Sets ref to S3 bucket and instance IAM role arn
+        """Builds the launch bundle. Puts the files for the bundle in a bundles tmp dir
+        and then creates a gzip archive.
+        Updates the bundle cache id based on the contents of the bundle.
         """
         orig_cwd = os.getcwd()
         pathlib.Path(self.bundles_path).mkdir(parents=True, exist_ok=True)
         os.chdir(self.bundles_path)
-
-        # mkdir Bundle/
         pathlib.Path(self.bundle_folder).mkdir(parents=True, exist_ok=True)
-
-        # Launch script
         contents_md5 = ""
         for bundle_file in self.bundle_files:
             file_path = os.path.join(self.bundle_folder, bundle_file['name'])
             with open(file_path, "w") as output_fd:
                 output_fd.write(bundle_file['contents'])
             contents_md5 += md5sum(str_data=bundle_file['contents'])
-
-        self.cache_id = md5sum(str_data=contents_md5)
         lb_tar = tarfile.open(self.package_filename, "w:gz")
         lb_tar.add(self.bundle_folder, recursive=True)
         lb_tar.close()
         os.chdir(orig_cwd)
+        self.cache_id = md5sum(str_data=contents_md5)
 
 
 class EC2LaunchManager():
@@ -547,8 +536,8 @@ function ec2lm_signal_asg_resource() {{
         # Add a base IAM Managed Policy
         # allow access to EC2 Tags
         iam_policy_name = '-'.join([resource.name, 'ec2lm'])
-        policy_config_yaml = """
-policy_name: '{}'
+        policy_config_yaml = f"""
+policy_name: '{iam_policy_name}'
 enabled: true
 statement:
   - effect: Allow
@@ -556,24 +545,17 @@ statement:
       - "ec2:DescribeTags"
     resource:
       - '*'
-""".format(iam_policy_name)
-
+"""
         # allow cloudformation SignalResource and DescribeStacks if needed
         if resource.rolling_update_policy.wait_on_resource_signals == True:
-            rolling_update_policy_table = {
-                'region': self.aws_region,
-                'stack_name': stack_name,
-                'account': self.account_ctx.id
-            }
-            policy_config_yaml += """
+            policy_config_yaml += f"""
   - effect: Allow
     action:
       - "cloudformation:SignalResource"
       - "cloudformation:DescribeStacks"
     resource:
-      - 'arn:aws:cloudformation:{0[region]}:{0[account]}:stack/{0[stack_name]}/*'
-""".format(rolling_update_policy_table)
-
+      - 'arn:aws:cloudformation:{self.aws_region}:{self.account_ctx.id}:stack/{stack_name}/*'
+"""
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
             role=resource.instance_iam_role,
@@ -585,7 +567,6 @@ statement:
 
     def user_data_script(self, resource, stack_name):
         """BASH script that will load the launch bundle from user_data"""
-
         script_fmt = """#!/bin/bash
 echo "EC2LM: Start"
 echo "EC2LM: Script: $0"
@@ -692,17 +673,16 @@ function ec2lm_replace_secret_in_file() {
             template_params.append(param)
             secret_arn_list_yaml += "      - !Ref SecretArn" + secret_hash + "\n"
 
-        policy_config_yaml = """
-policy_name: '{}'
+        policy_config_yaml = f"""
+policy_name: '{iam_policy_name}'
 enabled: true
 statement:
   - effect: Allow
     action:
       - secretsmanager:GetSecretValue
     resource:
-{}
-""".format(iam_policy_name, secret_arn_list_yaml)
-
+{secret_arn_list_yaml}
+"""
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
             role=resource.instance_iam_role,
@@ -872,19 +852,30 @@ function disable_launch_bundle() {{
         self.add_bundle(efs_lb)
 
     def lb_add_ebs(self, bundle_name, resource):
-        """Creates a launch bundle to configure EBS Volume mounts:
-
-         - Installs an entry in /etc/fstab
-         - On launch runs mount
-        """
+        """Launch bundle to configure EBS Volume mounts"""
         ebs_lb = LaunchBundle(resource, self, bundle_name)
 
-        launch_script_template = """#!/bin/bash
+        # is EBS enabled? if yes, prep mount commands
+        ebs_enabled = False
+        process_mount_volumes = ""
+        for ebs_volume_mount in resource.ebs_volume_mounts:
+            if ebs_volume_mount.enabled == False:
+                continue
+            ebs_volume_id_hash = utils.md5sum(str_data=ebs_volume_mount.volume)
+            process_mount_volumes += "process_volume_mount {} {} {} {}\n".format(
+                ebs_volume_mount.folder,
+                ebs_volume_id_hash,
+                ebs_volume_mount.filesystem,
+                ebs_volume_mount.device)
+            ebs_enabled = True
 
-. %s/EC2Manager/ec2lm_functions.bash
+        # ToDo: convert to using stack name to find EBS volume id
+        launch_script = f"""#!/bin/bash
+
+. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
 
 # Attach EBS Volume
-function ec2lm_attach_ebs_volume() {
+function ec2lm_attach_ebs_volume() {{
     EBS_VOLUME_ID=$1
     EBS_DEVICE=$2
 
@@ -895,38 +886,38 @@ function ec2lm_attach_ebs_volume() {
         return 0
     fi
     return 1
-}
+}}
 
 # Checks if a volume has been attached
 # ec2lm_volume_is_attached <device>
 # Return: 0 == True
 #         1 == False
-function ec2lm_volume_is_attached() {
+function ec2lm_volume_is_attached() {{
     DEVICE=$1
     OUTPUT=$(file -s $DEVICE)
     if [[ $OUTPUT == *"No such file or directory"* ]] ; then
         return 1
     fi
     return 0
-}
+}}
 
 # Checks if a volume has been attached
 # ec2lm_volume_is_attached <device>
 # Return: 0 == True
 #         1 == False
-function ec2lm_get_volume_uuid() {
+function ec2lm_get_volume_uuid() {{
     EBS_DEVICE=$1
     VOLUME_UUID=$(/sbin/blkid $EBS_DEVICE |grep UUID |cut -d'"' -f 2)
-    if [ "${VOLUME_UUID}" != "" ] ; then
+    if [ "${{VOLUME_UUID}}" != "" ] ; then
         echo $VOLUME_UUID
         return 0
     fi
     return 1
-}
+}}
 
 # Attach and Mount an EBS Volume
 function process_volume_mount()
-{
+{{
     MOUNT_FOLDER=$1
     EBS_VOLUME_ID_HASH=$2
     FILESYSTEM=$3
@@ -939,7 +930,7 @@ function process_volume_mount()
 
     # Setup the mount folder
     if [ -e $MOUNT_FOLDER ] ; then
-        mv $MOUNT_FOLDER ${MOUNT_FOLDER%%/}.old
+        mv $MOUNT_FOLDER ${{MOUNT_FOLDER%%/}}.old
     fi
     mkdir -p $MOUNT_FOLDER
 
@@ -999,21 +990,21 @@ function process_volume_mount()
     echo "EC2LM: EBS: Process Volume Mount: Done"
 
     return 0
-}
+}}
 
 function run_launch_bundle()
-{
+{{
     # Process Mounts
     :>$EBS_MOUNT_FOLDER_LIST".new"
     :>$EBS_VOLUME_UUID_LIST".new"
-    %s
+    {process_mount_volumes}
     mv $EBS_MOUNT_FOLDER_LIST".new" $EBS_MOUNT_FOLDER_LIST
     mv $EBS_VOLUME_UUID_LIST".new" $EBS_VOLUME_UUID_LIST
-}
+}}
 
 # Remove any previous mounts that existed
 function disable_launch_bundle()
-{
+{{
     if [ "$EFS_MOUNT_FOLDER_LIST" != "" ] ; then
         for MOUNT_FOLDER in $(cat $EBS_MOUNT_FOLDER_LIST)
         do
@@ -1026,30 +1017,16 @@ function disable_launch_bundle()
             mv /tmp/fstab.ebs_new /etc/fstab
         done
     fi
-}
+}}
 
 """
-        process_mount_volumes = ""
-        ebs_enabled = False
-        for ebs_volume_mount in resource.ebs_volume_mounts:
-            if ebs_volume_mount.enabled == False:
-                continue
-            ebs_volume_id_hash = utils.md5sum(str_data=ebs_volume_mount.volume)
-            process_mount_volumes += "process_volume_mount {} {} {} {}\n".format(
-                ebs_volume_mount.folder,
-                ebs_volume_id_hash,
-                ebs_volume_mount.filesystem,
-                ebs_volume_mount.device)
-            ebs_enabled = True
+        ebs_lb.set_launch_script(launch_script, ebs_enabled)
+        self.add_bundle(ebs_lb)
 
-        launch_script = launch_script_template % (
-            self.paco_base_path,
-            process_mount_volumes
-        )
-
+        # IAM Managed Policy for attach volume
         iam_policy_name = '-'.join([resource.name, 'ebs'])
-        policy_config_yaml = """
-policy_name: '{}'
+        policy_config_yaml = f"""
+policy_name: '{iam_policy_name}'
 enabled: true
 statement:
   - effect: Allow
@@ -1058,8 +1035,7 @@ statement:
     resource:
       - 'arn:aws:ec2:*:*:volume/*'
       - 'arn:aws:ec2:*:*:instance/*'
-""".format(iam_policy_name)
-
+"""
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
             role=resource.instance_iam_role,
@@ -1068,10 +1044,6 @@ statement:
             policy_config_yaml=policy_config_yaml,
             extra_ref_names=['ec2lm','ebs'],
         )
-        ebs_lb.set_launch_script(launch_script, ebs_enabled)
-
-        # Save Configuration
-        self.add_bundle(ebs_lb)
 
     def lb_add_eip(self, bundle_name, resource):
         """Creates a launch bundle to configure Elastic IPs"""
