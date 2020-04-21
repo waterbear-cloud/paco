@@ -13,7 +13,6 @@ EC2 Launch Mangaer is currently linux-centric and does not yet work with Windows
 
 
 import paco.cftemplates
-import paco.models.references
 import json
 import os
 import pathlib
@@ -25,7 +24,7 @@ from paco import utils
 from paco.application import ec2lm_commands
 from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
-from paco.models.references import Reference
+from paco.models.references import Reference, is_ref, resolve_ref
 from paco.models.base import Named
 from paco.models.resources import SSMDocument
 from paco.utils import md5sum, prefixed_name
@@ -379,7 +378,7 @@ function ec2lm_install_wget() {
         oldest_health_check_timeout = 0
         if resource.target_groups != None and len(resource.target_groups) > 0:
             for target_group in resource.target_groups:
-                if paco.models.references.is_ref(target_group):
+                if is_ref(target_group):
                     target_group_obj = self.paco_ctx.get_ref(target_group)
                     health_check_timeout = (target_group_obj.healthy_threshold * target_group_obj.health_check_interval)
                     if oldest_health_check_timeout < health_check_timeout:
@@ -778,8 +777,7 @@ fi
         self.add_bundle(cfn_init_lb)
 
     def lb_add_efs(self, bundle_name, resource):
-        """Launch bundle to configure EFS mounts"""
-       # Create the Launch Bundle and configure it
+        """Launch bundle to configure and mount EFS"""
         efs_lb = LaunchBundle(resource, self, bundle_name)
 
         efs_enabled = False
@@ -789,30 +787,37 @@ fi
                 if efs_mount.enabled == False:
                     continue
                 efs_enabled = True
-                efs_id_hash = utils.md5sum(str_data=efs_mount.target)
-                process_mount_targets += "process_mount_target {} {}\n".format(efs_mount.folder, efs_id_hash)
+                if is_ref(efs_mount.target) == True:
+                    stack = resolve_ref(efs_mount.target, self.paco_ctx.project, self.account_ctx)
+                    efs_stack_name = stack.get_name()
+                else:
+                    # ToDo: Paco EC2LM does not yet support string EFS Ids
+                    raise AttributeError('String EIP Id values not yet supported by EC2LM')
+
+                process_mount_targets += "process_mount_target {} {}\n".format(efs_mount.folder, efs_stack_name)
+
+        # ToDo: add other unsupported OSes here (Suse? CentOS 6)
+        if resource.instance_ami_type in ('ubuntu_14'):
+            raise AttributeError(f"OS type {resource.instance_ami_type} does not support EFS")
+        install_efs_utils = ec2lm_commands.user_data_script['install_efs_utils'][resource.instance_ami_type_generic]
+        mount_efs = ec2lm_commands.user_data_script['mount_efs'][resource.instance_ami_type_generic]
+        if resource.instance_ami_type == 'ubuntu_16':
+            install_efs_utils = ec2lm_commands.user_data_script['install_efs_utils'][resource.instance_ami_type]
+            mount_efs = ec2lm_commands.user_data_script['mount_efs'][resource.instance_ami_type]
 
         launch_script = f"""#!/bin/bash
 
-INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
-AVAIL_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
-REGION="$(echo \"$AVAIL_ZONE\" | sed 's/[a-z]$//')"
-EFS_MOUNT_FOLDER_LIST=''
-EFS_ID_LIST=''
-if [ -f ./efs_mount_folder_list ] ; then
-    EFS_MOUNT_FOLDER_LIST="./efs_mount_folder_list
-fi
-if [ -f ./efs_mount_folder_list ] ; then
-    EFS_ID_LIST="./efs_id_list
-fi
+. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
+EFS_MOUNT_FOLDER_LIST=./efs_mount_folder_list
+EFS_ID_LIST=./efs_id_list
 
 function process_mount_target()
 {{
     MOUNT_FOLDER=$1
-    EFS_ID_HASH=$2
+    EFS_STACK_NAME=$2
 
     # Get EFS ID from Tag
-    EFS_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=efs-id-$EFS_ID_HASH" --query 'Tags[0].Value' |tr -d '"')
+    EFS_ID=$(aws efs describe-file-systems --region $REGION --no-paginate --query "FileSystems[].{{Tags: Tags[?Key=='Paco-Stack-Name'].Value, FileSystemId: FileSystemId}} | [].{{stack: Tags[0], fs: FileSystemId}} | [?stack=='$EFS_STACK_NAME'].fs | [0]" | tr -d '"')
 
     # Setup the mount folder
     if [ -e $MOUNT_FOLDER ] ; then
@@ -831,7 +836,7 @@ function process_mount_target()
 
 function run_launch_bundle() {{
     # Install EFS Utils
-    {ec2lm_commands.user_data_script['install_efs_utils'][resource.instance_ami_type_generic]}
+    {install_efs_utils}
     # Enable EFS Utils
     {ec2lm_commands.user_data_script['enable_efs_utils'][resource.instance_ami_type_generic]}
 
@@ -843,7 +848,7 @@ function run_launch_bundle() {{
     mv $EFS_ID_LIST".new" $EFS_ID_LIST
 
     # Mount EFS folders
-    {ec2lm_commands.user_data_script['mount_efs'][resource.instance_ami_type_generic]}
+    {mount_efs}
 }}
 
 function disable_launch_bundle() {{
@@ -860,6 +865,7 @@ function disable_launch_bundle() {{
             chmod 0664 /etc/fstab
         done
     fi
+    rm $EFS_MOUNT_FOLDER_LIST $EFS_ID_LIST
 }}
 """
         efs_lb.set_launch_script(launch_script, efs_enabled)
@@ -1040,7 +1046,6 @@ function disable_launch_bundle()
             self.paco_base_path,
             process_mount_volumes
         )
-            #ec2lm_commands.user_data_script['mount_efs'][resource.instance_ami_type_generic])
 
         iam_policy_name = '-'.join([resource.name, 'ebs'])
         policy_config_yaml = """
@@ -1078,15 +1083,11 @@ statement:
             enabled = False
 
         # get the EIP Stack Name
-        if paco.models.references.is_ref(resource.eip) == True:
-            eip_value = resource.eip + '.allocation_id'
-            ref = Reference(eip_value)
-            ref.set_region(self.aws_region)
-            eip_stack = ref.resolve(self.paco_ctx.project, account_ctx=self.account_ctx)
+        if is_ref(resource.eip) == True:
+            eip_stack = resolve_ref(resource.eip, self.paco_ctx.project, self.account_ctx)
             eip_stack_name = eip_stack.get_name()
         elif resource.eip != None:
             # ToDo: Paco EC2LM does not yet support direct EIP values
-            eip_value = resource.eip
             raise AttributeError('Direct EIP value not yet supported by EC2LM')
         else:
             eip_stack_name = ''
