@@ -740,7 +740,7 @@ fi
                 process_mount_targets += "process_mount_target {} {}\n".format(efs_mount.folder, efs_stack_name)
 
         # ToDo: add other unsupported OSes here (Suse? CentOS 6)
-        if resource.instance_ami_type in ('ubuntu_14'):
+        if resource.instance_ami_type in ['ubuntu_14',]:
             raise AttributeError(f"OS type {resource.instance_ami_type} does not support EFS")
         install_efs_utils = ec2lm_commands.user_data_script['install_efs_utils'][resource.instance_ami_type_generic]
         mount_efs = ec2lm_commands.user_data_script['mount_efs'][resource.instance_ami_type_generic]
