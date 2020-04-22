@@ -2,7 +2,7 @@ from paco import utils
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
-from paco.models.references import Reference
+from paco.models.references import Reference, resolve_ref
 import os
 import troposphere
 import troposphere.ec2
@@ -81,17 +81,20 @@ class NATGateway(StackTemplate):
                     separator_ch='-',
                     camel_case=True
                 )
-
+                # ToDo: expose latest ami id as an API and call it directly
+                latest_image_ref = Reference('paco.ref function.aws.ec2.ami.latest.amazon-linux-nat')
+                latest_image_ref.set_region(self.aws_region)
+                nat_ami_id = latest_image_ref.resolve(self.paco_ctx.project, self.account_ctx)
                 ec2_resource[az_idx] = troposphere.ec2.Instance(
                     title = self.create_cfn_logical_id_join(
                         str_list = ['EC2NATInstance', str(az_idx)],
                         camel_case=True),
-                    template = self.template,
-                    SubnetId = troposphere.Ref(subnet_id_param),
-                    ImageId = self.paco_ctx.get_ref('paco.ref function.aws.ec2.ami.latest.amazon-linux-nat', self.account_ctx),
-                    InstanceType = nat_config.ec2_instance_type,
-                    KeyName = self.paco_ctx.get_ref(nat_config.ec2_key_pair+'.keypair_name'),
-                    SecurityGroupIds = troposphere.Ref(security_group_list_param),
+                    template=self.template,
+                    SubnetId=troposphere.Ref(subnet_id_param),
+                    ImageId=nat_ami_id,
+                    InstanceType=nat_config.ec2_instance_type,
+                    KeyName=self.paco_ctx.get_ref(nat_config.ec2_key_pair+'.keypair_name'),
+                    SecurityGroupIds=troposphere.Ref(security_group_list_param),
                     SourceDestCheck=False,
                     Tags=troposphere.ec2.Tags(Name=instance_name)
                 )

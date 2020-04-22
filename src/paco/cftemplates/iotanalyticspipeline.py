@@ -243,7 +243,7 @@ class IoTAnalyticsPipeline(StackTemplate):
             for delivery_rule in dataset.content_delivery_rules.values():
                 delivery_dict = {
                     'Destination': {},
-                    'EntryName': delivery_rule.name,
+                #    'EntryName': delivery_rule.name,
                 }
                 if delivery_rule.s3_destination != None:
                     bucket = get_model_obj_from_ref(delivery_rule.s3_destination.bucket, self.paco_ctx.project)
@@ -252,6 +252,7 @@ class IoTAnalyticsPipeline(StackTemplate):
                         'Key': delivery_rule.s3_destination.key,
                         'RoleArn': troposphere.Ref(role_arn_param),
                     }
+                cfn_export_dict['ContentDeliveryRules'].append(delivery_dict)
 
             cfn_export_dict['RetentionPeriod'] = convert_expire_to_cfn_dict(dataset.expire_events_after_days)
             if dataset.version_history != None:
