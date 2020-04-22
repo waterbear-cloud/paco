@@ -316,54 +316,8 @@ class EC2LaunchManager():
         s3_ctl = self.paco_ctx.get_controller('S3')
         return s3_ctl.get_bucket_name(resource.paco_ref_parts + '.ec2lm')
 
-    def add_ec2lm_function_swap(self, ec2lm_bucket_name):
-        "Add swap functions to ec2lm functions script"
-        self.ec2lm_functions_script[ec2lm_bucket_name] += """
-# Swap
-function swap_on() {
-    SWAP_SIZE_GB=$1
-    if [ -e /swapfile ] ; then
-        CUR_SWAP_FILE_SIZE=$(stat -c '%s' /swapfile)
-        if [ $CUR_SWAP_FILE_SIZE -eq $(($SWAP_SIZE_GB*1073741824)) ] ; then
-            swapon /swapfile
-            if [ $? -eq 0 ] ; then
-                echo "EC2LM: Swap: Enabling existing ${SWAP_SIZE_GB}GB Swapfile: /swapfile"
-            fi
-        fi
-    fi
-    if [ "$(swapon -s|grep -v Filename|wc -c)" == "0" ]; then
-        echo "EC2LM: Swap: Enabling a ${SWAP_SIZE_GB}GB Swapfile: /swapfile"
-        dd if=/dev/zero of=/swapfile bs=1024 count=$(($SWAP_SIZE_GB*1024))k
-        chmod 0600 /swapfile
-        mkswap /swapfile
-        swapon /swapfile
-    else
-        echo "EC2LM: Swap: Swap already enabled"
-    fi
-    swapon -s
-    free
-    echo "EC2LM: Swap: Done"
-}
-"""
-
-    def add_ec2lm_function_wget(self, ec2lm_bucket_name, instance_ami_type_generic):
-        "Add install wget script to ec2lm functions script"
-        self.ec2lm_functions_script[ec2lm_bucket_name] += """
-# HTTP Client Path
-function ec2lm_install_wget() {
-    CLIENT_PATH=$(which wget)
-    if [ $? -eq 1 ] ; then
-        %s
-    fi
-}
-""" % ec2lm_commands.user_data_script['install_wget'][instance_ami_type_generic]
-
-    def add_ec2lm_function_secrets(self, ec2lm_bucket_name, resource):
-        """Adds functions for getting secrets from Secrets Manager"""
-        self.ec2lm_functions_script[ec2lm_bucket_name] += self.user_data_secrets(resource)
-
     def init_ec2lm_function(self, ec2lm_bucket_name, resource, stack_name):
-        """Init EC2LM functions and add managed policy"""
+        """Init ec2lm_functions.bash script and add managed policies"""
         oldest_health_check_timeout = 0
         if resource.target_groups != None and len(resource.target_groups) > 0:
             for target_group in resource.target_groups:
@@ -460,7 +414,7 @@ function ec2lm_launch_bundles() {{
     echo "EC2LM: LaunchBundles: Obtaining lock."
     flock -n 100
     if [ $? -ne 0 ]  ; then
-        echo “EC2LM: LaunchBundles: Error: Unable to obtain EC2LM lock.”
+        echo “[ERROR] EC2LM LaunchBundles: Unable to obtain EC2LM lock.”
         exit 1
     fi
 
@@ -531,10 +485,45 @@ function ec2lm_signal_asg_resource() {{
         echo "EC2LM: Resource Signaling: Not a rolling update: skipping"
     fi
 }}
-"""
 
-        # Add a base IAM Managed Policy
-        # allow access to EC2 Tags
+# Swap
+function swap_on() {{
+    SWAP_SIZE_GB=$1
+    if [ -e /swapfile ] ; then
+        CUR_SWAP_FILE_SIZE=$(stat -c '%s' /swapfile)
+        if [ $CUR_SWAP_FILE_SIZE -eq $(($SWAP_SIZE_GB*1073741824)) ] ; then
+            swapon /swapfile
+            if [ $? -eq 0 ] ; then
+                echo "EC2LM: Swap: Enabling existing ${{SWAP_SIZE_GB}}GB Swapfile: /swapfile"
+            fi
+        fi
+    fi
+    if [ "$(swapon -s|grep -v Filename|wc -c)" == "0" ]; then
+        echo "EC2LM: Swap: Enabling a ${{SWAP_SIZE_GB}}GB Swapfile: /swapfile"
+        dd if=/dev/zero of=/swapfile bs=1024 count=$(($SWAP_SIZE_GB*1024))k
+        chmod 0600 /swapfile
+        mkswap /swapfile
+        swapon /swapfile
+    else
+        echo "EC2LM: Swap: Swap already enabled"
+    fi
+    swapon -s
+    free
+    echo "EC2LM: Swap: Done"
+}}
+
+# Install Wget
+function ec2lm_install_wget() {{
+    CLIENT_PATH=$(which wget)
+    if [ $? -eq 1 ] ; then
+        {ec2lm_commands.user_data_script['install_wget'][resource.instance_ami_type_generic]}
+    fi
+}}
+"""
+        if resource.secrets != None and len(resource.secrets) > 0:
+            self.ec2lm_functions_script[ec2lm_bucket_name] += self.add_secrets_function_policy(resource)
+
+        # Add a base IAM Managed Policy to allow access to EC2 Tags
         iam_policy_name = '-'.join([resource.name, 'ec2lm'])
         policy_config_yaml = f"""
 policy_name: '{iam_policy_name}'
@@ -567,9 +556,26 @@ statement:
 
     def user_data_script(self, resource, stack_name):
         """BASH script that will load the launch bundle from user_data"""
-        script_fmt = """#!/bin/bash
-echo "EC2LM: Start"
-echo "EC2LM: Script: $0"
+        self.init_ec2lm_s3_bucket(resource)
+        ec2lm_bucket_name = self.get_ec2lm_bucket_name(resource)
+
+        # EC2LM Functions and Managed Policies
+        self.init_ec2lm_function(ec2lm_bucket_name, resource, stack_name)
+
+        # Checks and warnings
+        update_packages =''
+        if resource.launch_options.update_packages == True:
+            update_packages = ec2lm_commands.user_data_script['update_packages'][resource.instance_ami_type_generic]
+        if self.paco_ctx.warn:
+            if resource.rolling_update_policy != None and \
+                resource.rolling_update_policy.wait_on_resource_signals == True and \
+                    resource.user_data_script.find('ec2lm_signal_asg_resource') == -1:
+                print("WARNING: {}.rolling_update_policy.wait_on_resource_signals == True".format(resource.paco_ref_parts))
+                print("'ec2lm_signal_asg_resource <SUCCESS|FAILURE>' was not detected in your user_data_script for this resource.")
+
+        # Return UserData script
+        return f"""#!/bin/bash
+echo "Paco EC2LM: Script: $0"
 
 # Runs pip
 function ec2lm_pip() {{
@@ -583,66 +589,24 @@ function ec2lm_pip() {{
     done
 }}
 
-{0[pre_script]}
-{0[update_packages]}
-{0[install_aws_cli]}
+{resource.user_data_pre_script}
+{update_packages}
+{ec2lm_commands.user_data_script['install_aws_cli'][resource.instance_ami_type_generic]}
 
-EC2LM_FOLDER='{0[paco_base_path]}/EC2Manager/'
+EC2LM_FOLDER='{self.paco_base_path}/EC2Manager/'
 EC2LM_FUNCTIONS=ec2lm_functions.bash
-if [ -d $EC2LM_FOLDER ]; then
-    mkdir -p /tmp/ec2lm_backups/
-    mv $EC2LM_FOLDER /tmp/ec2lm_backups/
-fi
 mkdir -p $EC2LM_FOLDER/
-aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
+aws s3 sync s3://{ec2lm_bucket_name}/ --region={resource.region_name} $EC2LM_FOLDER
 
 . $EC2LM_FOLDER/$EC2LM_FUNCTIONS
 
-{0[launch_bundles]}
+# Run every Paco EC2LM launch bundle
+ec2lm_launch_bundles
+
 """
 
-        self.init_ec2lm_s3_bucket(resource)
-        ec2lm_bucket_name = self.get_ec2lm_bucket_name(resource)
-        script_table = {
-            'cache_id': None,
-            'ec2lm_bucket_name': ec2lm_bucket_name,
-            'install_aws_cli': ec2lm_commands.user_data_script['install_aws_cli'][resource.instance_ami_type_generic],
-            'launch_bundles': 'echo "EC2LM: No launch bundles to load."\n',
-            'update_packages': '',
-            'pre_script': '',
-            'region': resource.region_name,
-            'paco_base_path': self.paco_base_path
-        }
-        # Launch Bundles
-        if len(self.launch_bundles.keys()) > 0:
-            script_table['launch_bundles'] = 'ec2lm_launch_bundles\n'
-
-        # EC2LM Functions
-        self.init_ec2lm_function(ec2lm_bucket_name, resource, stack_name)
-        self.add_ec2lm_function_swap(ec2lm_bucket_name)
-        self.add_ec2lm_function_wget(ec2lm_bucket_name, resource.instance_ami_type_generic)
-
-        if resource.user_data_pre_script != None:
-            script_table['pre_script'] = resource.user_data_pre_script
-
-        if resource.secrets != None and len(resource.secrets) > 0:
-            self.add_ec2lm_function_secrets(ec2lm_bucket_name, resource)
-
-        if resource.launch_options.update_packages == True:
-            script_table['update_packages'] = ec2lm_commands.user_data_script['update_packages'][resource.instance_ami_type_generic]
-
-        user_data_script = script_fmt.format(script_table)
-        if self.paco_ctx.warn:
-            if resource.rolling_update_policy != None and \
-                resource.rolling_update_policy.wait_on_resource_signals == True and \
-                    resource.user_data_script.find('ec2lm_signal_asg_resource') == -1:
-                print("WARNING: {}.rolling_update_policy.wait_on_resource_signals == True".format(resource.paco_ref_parts))
-                print("'ec2lm_signal_asg_resource <SUCCESS|FAILURE>' was not detected in your user_data_script for this resource.")
-
-        return user_data_script
-
-    def user_data_secrets(self, resource):
-        "ec2lm functions script for Secrets and adds managed policy to allow access to secrets"
+    def add_secrets_function_policy(self, resource):
+        "Add ec2lm_functions.bash function for Secrets and managed policy to allow access to secrets"
         secrets_script = """
 function ec2lm_get_secret() {
     aws secretsmanager get-secret-value --secret-id "$1" --query SecretString --region $REGION --output text
@@ -773,7 +737,6 @@ fi
                 else:
                     # ToDo: Paco EC2LM does not yet support string EFS Ids
                     raise AttributeError('String EIP Id values not yet supported by EC2LM')
-
                 process_mount_targets += "process_mount_target {} {}\n".format(efs_mount.folder, efs_stack_name)
 
         # ToDo: add other unsupported OSes here (Suse? CentOS 6)
@@ -852,24 +815,25 @@ function disable_launch_bundle() {{
         self.add_bundle(efs_lb)
 
     def lb_add_ebs(self, bundle_name, resource):
-        """Launch bundle to configure EBS Volume mounts"""
+        """Launch bundle to configure and mount EBS Volumes"""
         ebs_lb = LaunchBundle(resource, self, bundle_name)
 
-        # is EBS enabled? if yes, prep mount commands
+        # is EBS enabled? if yes, create process_volume_mount commands
         ebs_enabled = False
         process_mount_volumes = ""
         for ebs_volume_mount in resource.ebs_volume_mounts:
             if ebs_volume_mount.enabled == False:
                 continue
-            ebs_volume_id_hash = utils.md5sum(str_data=ebs_volume_mount.volume)
+            ebs_enabled = True
+            ebs_stack = resolve_ref(ebs_volume_mount.volume, self.paco_ctx.project, self.account_ctx)
+            ebs_stack_name = ebs_stack.get_name()
             process_mount_volumes += "process_volume_mount {} {} {} {}\n".format(
                 ebs_volume_mount.folder,
-                ebs_volume_id_hash,
+                ebs_stack_name,
                 ebs_volume_mount.filesystem,
-                ebs_volume_mount.device)
-            ebs_enabled = True
+                ebs_volume_mount.device
+            )
 
-        # ToDo: convert to using stack name to find EBS volume id
         launch_script = f"""#!/bin/bash
 
 . {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
@@ -919,14 +883,14 @@ function ec2lm_get_volume_uuid() {{
 function process_volume_mount()
 {{
     MOUNT_FOLDER=$1
-    EBS_VOLUME_ID_HASH=$2
+    EBS_STACK_NAME=$2
     FILESYSTEM=$3
     EBS_DEVICE=$4
 
     echo "EC2LM: EBS: Process Volume Mount: Begin"
 
-    # Get EBS Volume Tags and Device
-    EBS_VOLUME_ID=$(ec2lm_instance_tag_value "ebs-volume-id-$EBS_VOLUME_ID_HASH")
+    # Get EBS Volume Id
+    EBS_VOLUME_ID=$(aws ec2 describe-volumes --filters Name=tag:aws:cloudformation:stack-name,Values=$EBS_STACK_NAME --query "Volumes[*].VolumeId | [0]" --region $REGION | tr -d '"')
 
     # Setup the mount folder
     if [ -e $MOUNT_FOLDER ] ; then
@@ -938,8 +902,8 @@ function process_volume_mount()
     echo "EC2LM: EBS: Attaching $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE: Timeout = $TIMEOUT_SECS"
     OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_attach_ebs_volume $EBS_VOLUME_ID $EBS_DEVICE)
     if [ $? -eq 1 ] ; then
-        echo "EC2LM: EBS: Unable to attach $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE"
-        echo "EC2LM: EBS: Error: $OUTPUT"
+        echo "[ERROR] EC2LM: EBS: Unable to attach $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE"
+        echo "[ERROR] EC2LM: EBS: $OUTPUT"
         cat /tmp/ec2lm_attach.output
         exit 1
     fi
@@ -950,7 +914,7 @@ function process_volume_mount()
     OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_volume_is_attached $EBS_DEVICE)
     if [ $? -eq 1 ] ; then
         echo "EC2LM: EBS: Error: Unable to detect the attached volume $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE."
-        echo "EC2LM: EBS: Error: $OUTPUT"
+        echo "[ERROR] EC2LM: EBS: $OUTPUT"
         exit 1
     fi
 
@@ -967,8 +931,8 @@ function process_volume_mount()
     TIMEOUT_SECS=30
     VOLUME_UUID=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_get_volume_uuid $EBS_DEVICE)
     if [ $? -eq 1 ] ; then
-        echo "EC2LM: EBS: Unable to get volume UUID for $EBS_DEVICE"
-        echo "EC2LM: EBS: Error: $OUTPUT"
+        echo "[ERROR] EC2LM: EBS: Unable to get volume UUID for $EBS_DEVICE"
+        echo "[ERROR] EC2LM: EBS: Error: $OUTPUT"
         /sbin/blkid
         exit 1
     fi
@@ -1018,12 +982,11 @@ function disable_launch_bundle()
         done
     fi
 }}
-
 """
         ebs_lb.set_launch_script(launch_script, ebs_enabled)
         self.add_bundle(ebs_lb)
 
-        # IAM Managed Policy for attach volume
+        # IAM Managed Policy to allow attaching volumes
         iam_policy_name = '-'.join([resource.name, 'ebs'])
         policy_config_yaml = f"""
 policy_name: '{iam_policy_name}'
@@ -1200,7 +1163,7 @@ function run_launch_bundle() {{
         OBJECT_FINGERPRINT="$(gpg --verify {agent_object}.sig {agent_object} 2>&1 | tr -d ' ')"
         if [[ ${{FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* || ${{OBJECT_FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* ]]; then
             # Log error here
-            echo "ERROR: CloudWatch Agent signature invalid: ${{KEY_ID}}: ${{OBJECT_FINGERPRINT}}"
+            echo "[ERROR] CloudWatch Agent signature invalid: ${{KEY_ID}}: ${{OBJECT_FINGERPRINT}}"
             exit 1
         fi
 
@@ -1452,7 +1415,6 @@ function disable_launch_bundle() {{
     :
 }}
 """
-
         ssm_lb.set_launch_script(launch_script, ssm_enabled)
         self.add_bundle(ssm_lb)
 
@@ -1460,6 +1422,8 @@ function disable_launch_bundle() {{
             # Create instance managed policy for the agent
             iam_policy_name = '-'.join([resource.name, 'ssmagent-policy'])
             ssm_prefixed_name = prefixed_name(resource, 'paco_ssm', self.paco_ctx.legacy_flag)
+            # allows instance to create a LogGroup with any name - this is a requirement of the SSM Agent
+            # if you limit the resource to just the LogGroups names you want SSM to use, the agent will not work
             ssm_log_group_arn = f"arn:aws:logs:{self.aws_region}:{self.account_ctx.id}:log-group:*"
             ssm_log_stream_arn = f"arn:aws:logs:{self.aws_region}:{self.account_ctx.id}:log-group:{ssm_prefixed_name}:log-stream:*"
             policy_config_yaml = f"""
