@@ -4,7 +4,9 @@ Changelog for Paco
 6.2.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+###
+
+- Added a GitHub WebHook to CodePipeline if ``poll_for_source_changes`` is false for a GitHub.Source action.
 
 
 6.2.0 (2020-04-04)
