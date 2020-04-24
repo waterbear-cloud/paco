@@ -35,7 +35,17 @@ pip install awscli
 	'install_efs_utils': {
 		'amazon': 'yum install -y amazon-efs-utils cachefilesd',
 		'centos': 'yum install -y amazon-efs-utils cachefilesd',
-		'ubuntu': 'apt-get install cachefilesd -y'
+		'ubuntu': 'apt-get install cachefilesd -y',
+        'ubuntu_16': """
+    apt-get install cachefilesd git binutils make -y
+    LB_DIR=$(pwd)
+    cd /tmp
+    git clone https://github.com/aws/efs-utils
+    cd efs-utils/
+    ./build-deb.sh
+    apt-get -y install ./build/amazon-efs-utils*deb
+    cd ${LB_DIR}
+""",
 	},
 	'install_cfn_init': {
 		'amazon': '',
@@ -67,6 +77,7 @@ systemctl enable cachefilesd
 	'mount_efs': {
 		'amazon': 'mount -a -t efs',
 		'ubuntu': 'mount -a -t nfs',
+        'ubuntu_16': 'mount -a -t efs',
 		'centos': 'mount -a -t nfs'
 	}
 
@@ -133,6 +144,11 @@ ssm_agent = {
         "object": "amazon-ssm-agent.deb",
         "install": "dpkg -i"
     },
+    "centos": {
+        "path": "/linux_amd64",
+        "object": "amazon-ssm-agent.rpm",
+        "install": "yum install -y"
+    },
     "centos_7": {
         "path": "/linux_amd64",
         "object": "amazon-ssm-agent.rpm",
@@ -155,34 +171,27 @@ ssm_agent = {
     },
 }
 
-# Create the CloudWatch agent launch scripts and configuration
+# CloudWatch agent path
 cloudwatch_agent = {
 	"amazon": {
 		"path": "/amazon_linux/amd64/latest",
-		"object": "amazon-cloudwatch-agent.rpm",
-		"install": "rpm -U", },
-	"centos": {
-		"path": "/centos/amd64/latest",
-		"object": "amazon-cloudwatch-agent.rpm",
-		"install": "rpm -U" },
-	"suse": {
-		"path": "/suse/amd64/latest",
-		"object": "amazon-cloudwatch-agent.rpm",
-		"install": "rpm -U" },
-	"debian": {
-		"path": "/debian/amd64/latest",
-		"object": "amazon-cloudwatch-agent.deb" ,
-		"install": "dpkg -i -E" },
-	"ubuntu": {
-		"path": "/ubuntu/amd64/latest",
-		"object": "amazon-cloudwatch-agent.deb",
-		"install": "dpkg -i -E" },
-	"microsoft": {
-		"path": "/windows/amd64/latest",
-		"object": "amazon-cloudwatch-agent.msi",
-		"install": "msiexec /i" },
+    },
 	"redhat": {
 		"path": "/redhat/arm64/latest",
-		"object": "amazon-cloudwatch-agent.rpm",
-		"install": "rpm -U" },
+    },
+	"centos": {
+		"path": "/centos/amd64/latest",
+    },
+	"suse": {
+		"path": "/suse/amd64/latest",
+    },
+	"debian": {
+		"path": "/debian/amd64/latest",
+    },
+	"ubuntu": {
+		"path": "/ubuntu/amd64/latest",
+    },
+	"microsoft": {
+		"path": "/windows/amd64/latest",
+    },
 }
