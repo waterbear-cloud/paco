@@ -115,11 +115,12 @@ class Lambda(StackTemplate):
 
         # Lambda VPC
         if awslambda.vpc_config != None:
-            vpc_security_group = self.create_cfn_parameter(
+            vpc_security_group = self.create_cfn_ref_list_param(
                 name='VpcSecurityGroupIdList',
                 param_type='List<AWS::EC2::SecurityGroup::Id>',
                 description='VPC Security Group Id List',
                 value=awslambda.vpc_config.security_groups,
+                ref_attribute='id',
             )
             # Segment SubnetList is a Segment stack Output based on availability zones
             segment_ref = awslambda.vpc_config.segments[0] + '.subnet_id_list'
