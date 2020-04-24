@@ -736,7 +736,7 @@ fi
                     efs_stack_name = stack.get_name()
                 else:
                     # ToDo: Paco EC2LM does not yet support string EFS Ids
-                    raise AttributeError('String EIP Id values not yet supported by EC2LM')
+                    raise AttributeError('String EFS Id values not yet supported by EC2LM')
                 process_mount_targets += "process_mount_target {} {}\n".format(efs_mount.folder, efs_stack_name)
 
         # ToDo: add other unsupported OSes here (Suse? CentOS 6)
@@ -1018,14 +1018,13 @@ statement:
             enabled = False
 
         # get the EIP Stack Name
+        eip_alloc_id = ''
+        eip_stack_name = ''
         if is_ref(resource.eip) == True:
             eip_stack = resolve_ref(resource.eip, self.paco_ctx.project, self.account_ctx)
             eip_stack_name = eip_stack.get_name()
         elif resource.eip != None:
-            # ToDo: Paco EC2LM does not yet support direct EIP values
-            raise AttributeError('Direct EIP value not yet supported by EC2LM')
-        else:
-            eip_stack_name = ''
+            eip_alloc_id = resource.eip
 
         launch_script = f"""#!/bin/bash
 
@@ -1051,7 +1050,10 @@ function run_launch_bundle()
     # Allocation ID
     EIP_ALLOCATION_EC2_TAG_KEY_NAME="Paco-EIP-Allocation-Id"
     echo "EC2LM: EIP: Getting Allocation ID from EC2 Tag $EIP_ALLOCATION_EC2_TAG_KEY_NAME"
-    EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-type,Values=elastic-ip" "Name=tag:aws:cloudformation:stack-name,Values={eip_stack_name}" --query 'Tags[0].ResourceId' |tr -d '"')
+    EIP_ALLOC_ID={eip_alloc_id}
+    if [ "$EIP_ALLOC_ID" == "" ] ; then
+        EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-type,Values=elastic-ip" "Name=tag:aws:cloudformation:stack-name,Values={eip_stack_name}" --query 'Tags[0].ResourceId' |tr -d '"')
+    fi
 
     # IP Address
     echo "EC2LM: EIP: Getting IP Address for $EIP_ALLOC_ID"
