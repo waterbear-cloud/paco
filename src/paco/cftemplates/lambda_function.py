@@ -167,27 +167,21 @@ class Lambda(StackTemplate):
         if awslambda.environment != None and awslambda.environment.variables != None:
             for var in awslambda.environment.variables:
                 name = var.key.replace('_','')
-                self.create_cfn_parameter(
+                env_param = self.create_cfn_parameter(
                     name='EnvVar{}'.format(name),
                     param_type='String',
                     description='Env var for {}'.format(name),
                     value=var.value,
                 )
+                var_export[var.key] = troposphere.Ref(env_param)
             if awslambda.sdb_cache == True:
-                awslambda.add_environment_variable(
-                    'SDB_CACHE_DOMAIN', troposphere.Ref('LambdaSDBCacheDomain')
-                )
+                var_export['SDB_CACHE_DOMAIN'] = troposphere.Ref('LambdaSDBCacheDomain')
             if len(awslambda.log_group_names) > 0:
                 # Add PACO_LOG_GROUPS Environment Variable
-                awslambda.add_environment_variable(
-                    'PACO_LOG_GROUPS',
-                    ','.join(
-                        [prefixed_name(awslambda, loggroup_name, self.paco_ctx.legacy_flag) for loggroup_name in awslambda.log_group_names]
-                    )
-                )
-            for var in awslambda.environment.variables:
-                var_export[var.key] = var.value
-
+                var_export['PACO_LOG_GROUPS'] = [
+                    prefixed_name(awslambda, loggroup_name, self.paco_ctx.legacy_flag)
+                    for loggroup_name in awslambda.log_group_names
+                ]
         cfn_export_dict['Environment'] = { 'Variables': var_export }
 
         # Lambda resource
