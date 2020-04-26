@@ -9,6 +9,10 @@ from paco.core.exception import StackException
 
 
 @click.command(name='set', short_help='Sets the value of a resource.')
+@click.option(
+    '-s', '--src',
+    type=click.STRING,
+)
 @paco_home_option
 @cloud_args
 @cloud_options
@@ -23,7 +27,8 @@ def set_command(
     disable_validation,
     quiet_changes_only,
     config_scope,
-    home='.'
+    home='.',
+    src='',
 ):
     """Set the value of a cloud resource"""
     command = 'set'
@@ -40,7 +45,7 @@ def set_command(
         home
     )
     controller = paco_ctx.get_controller(controller_type, command, obj)
-    controller.set_command(obj)
+    controller.set_command(obj, src)
 
 set_command.help = """
 Set the value of a cloud resource.

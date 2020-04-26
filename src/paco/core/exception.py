@@ -86,3 +86,12 @@ class InvalidAlarmConfiguration(PacoBaseException):
 
 class InvalidSSMDocument(PacoBaseException):
     title = "SSM Document is not in Active state"
+
+class UnknownSetCommand(PacoBaseException):
+    title = "Unknown scope for set command"
+
+class InvalidFilesystemPath(PacoBaseException):
+    title = "Inavlid filesystem path"
+
+class MissingRequiredOption(PacoBaseException):
+    title = "Missing required option for object type"

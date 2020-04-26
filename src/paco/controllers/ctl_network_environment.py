@@ -1,9 +1,11 @@
 from paco import utils
 from paco.controllers.controllers import Controller
-from paco.core.exception import StackException
-from paco.core.exception import PacoErrorCode
+from paco.core.exception import StackException, PacoErrorCode, UnknownSetCommand, InvalidFilesystemPath, MissingRequiredOption
 from paco.core.yaml import YAML
 from paco.models.resources import SSMDocument
+from paco.models import schemas
+from paco.models.locations import get_parent_by_interface
+from paco.models.references import get_model_obj_from_ref
 from paco.stack_grps.grp_application import ApplicationStackGroup
 from paco.stack_grps.grp_network import NetworkStackGroup
 from paco.stack_grps.grp_secretsmanager import SecretsManagerStackGroup
@@ -13,6 +15,8 @@ import click
 import getpass
 import os
 import pathlib
+import shutil
+import tempfile
 
 
 yaml=YAML(typ="safe", pure=True)
@@ -193,7 +197,7 @@ class NetEnvController(Controller):
         self.env = None
         self.env_region = None
         netenv_arg = model_obj.paco_ref_parts
-        netenv_parts = netenv_arg.split('.', 3)[1:]
+        netenv_parts = netenv_arg.split('.', 4)[1:]
         self.netenv = self.paco_ctx.project['netenv'][netenv_parts[0]]
         self.env = self.netenv[netenv_parts[1]]
         if len(netenv_parts) > 2:
@@ -230,14 +234,56 @@ class NetEnvController(Controller):
             SecretString=secret_string
         )
 
-    def set_command(self, resource):
-        if resource.paco_ref_parts.find('.secrets_manager.'):
-            parts = resource.paco_ref_parts.split('.')
-            environment = parts[2]
-            region = parts[3]
-            account_ctx = self.paco_ctx.get_account_context(account_ref=self.netenv[environment][region].network.aws_account)
+    def set_command(self, resource, src=None):
+        "Set a cloud resource or property"
+        secrets_manager = get_parent_by_interface(resource, schemas.ISecretsManager)
+        if secrets_manager != None:
+            account_ctx = self.paco_ctx.get_account_context(account_ref=self.env_region.network.aws_account)
             secret_name = resource.paco_ref_parts
-            self.secrets_manager(secret_name, account_ctx, region)
+            self.secrets_manager(secret_name, account_ctx, self.env_region.name)
+        else:
+            if schemas.ILambda.providedBy(resource):
+                self.upload_lambda_code(resource, src)
+        raise UnknownSetCommand(f"Unable to apply set command for resource of type '{resource.__class__.__name__}'\nObject: {resource.paco_ref_parts}")
+
+    def upload_lambda_code(self, resource, src):
+        "Zip up a source directory and upload a new Lambda code object to S3"
+        if src == None:
+            raise MissingRequiredOption("Must supply the -s, --src option for to set a Lambda code object.")
+        src_dir = pathlib.Path(src)
+        if not src_dir.exists():
+            raise InvalidFilesystemPath(f"Source directory for Lambda code does not exist: {src}")
+
+        # patch make_archive so that it includes symbolic links
+        # ToDo: excludes __pycache__ - make the excluded files depend upon Lambda runtime
+        from paco.utils.zip import patched_make_zipfile
+        shutil._ARCHIVE_FORMATS['zip'] = (patched_make_zipfile, [], "ZIP file")
+
+        # create zip file
+        zip_output = tempfile.gettempdir() + os.sep + resource.code.s3_key
+        print(f"Creating Zip file from directory {src_dir} at {zip_output}")
+        shutil.make_archive(zip_output, 'zip', str(src_dir))
+        with open(zip_output,"rb") as f:
+            zip_binary = f.read()
+
+        # Update function code for Lambda
+        account_ctx = self.paco_ctx.get_account_context(account_ref=self.env_region.network.aws_account)
+        lambda_client = account_ctx.get_aws_client('lambda', self.env_region.name)
+        bucket_name = get_model_obj_from_ref(resource.code.s3_bucket, self.paco_ctx.project).get_aws_name()
+        function_name = resource.stack.get_outputs_value('FunctionName')
+        print(f"Uploading code for Lambda {resource.name} ({function_name})")
+        lambda_client.update_function_code(
+            FunctionName=function_name,
+            ZipFile=zip_binary,
+            # S3Bucket=bucket_name,
+            # S3Key=resource.code.s3_key,
+        )
+        # S3ObjectVersion='string',
+        # Publish=True|False,
+        # DryRun=True|False,
+        # RevisionId='string'
+
+        print(f"Lambda {resource.name} has been updated.")
 
     def validate(self):
         self.paco_ctx.log_start("Validate", self.netenv)

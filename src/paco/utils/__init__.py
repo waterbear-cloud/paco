@@ -178,3 +178,4 @@ def list_to_comma_string(list_to_convert):
         str_list += comma + item
         comma = ','
     return str_list
+
