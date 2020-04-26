@@ -16,10 +16,15 @@ class EBS(StackTemplate):
 
         # EBS Resource
         ebs_dict = {
-            'Size': ebs_config.size_gib,
             'VolumeType': ebs_config.volume_type,
             'AvailabilityZone': vocabulary.aws_regions[self.aws_region]['zones'][ebs_config.availability_zone-1]
         }
+        # Snapshot overrides Size
+        if ebs_config.snapshot_id != None and ebs_config.snapshot_id != '':
+            ebs_dict['SnapshotId'] = ebs_config.snapshot_id
+        else:
+            ebs_dict['Size'] = ebs_config.size_gib
+
         ebs_res = troposphere.ec2.Volume.from_dict(
             'EBS',
             ebs_dict

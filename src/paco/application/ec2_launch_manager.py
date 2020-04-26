@@ -316,8 +316,62 @@ class EC2LaunchManager():
         s3_ctl = self.paco_ctx.get_controller('S3')
         return s3_ctl.get_bucket_name(resource.paco_ref_parts + '.ec2lm')
 
-    def init_ec2lm_function(self, ec2lm_bucket_name, resource, stack_name):
-        """Init ec2lm_functions.bash script and add managed policies"""
+    def add_ec2lm_function_swap(self, ec2lm_bucket_name):
+        self.ec2lm_functions_script[ec2lm_bucket_name] += """
+# Swap
+function swap_on() {
+    SWAP_SIZE_GB=$1
+    if [ -e /swapfile ] ; then
+        CUR_SWAP_FILE_SIZE=$(stat -c '%s' /swapfile)
+        if [ $CUR_SWAP_FILE_SIZE -eq $(($SWAP_SIZE_GB*1073741824)) ] ; then
+            set +e
+            swapon /swapfile
+            set -e
+            if [ $? -eq 0 ] ; then
+                echo "EC2LM: Swap: Enabling existing ${SWAP_SIZE_GB}GB Swapfile: /swapfile"
+            fi
+        fi
+    fi
+    if [ "$(swapon -s|grep -v Filename|wc -c)" == "0" ]; then
+        echo "EC2LM: Swap: Enabling a ${SWAP_SIZE_GB}GB Swapfile: /swapfile"
+        dd if=/dev/zero of=/swapfile bs=1024 count=$(($SWAP_SIZE_GB*1024))k
+        chmod 0600 /swapfile
+        mkswap /swapfile
+        swapon /swapfile
+    else
+        echo "EC2LM: Swap: Swap already enabled"
+    fi
+    swapon -s
+    free
+    # Enable swap on reboot
+    CRON_FILE=/tmp/paco-swap.cron
+    set +e
+    crontab -l |grep -v 'paco-swap-launch-bundle' >$CRON_FILE
+    set -e
+    echo -e "\n@reboot /sbin/swapon /swapfile # paco-swap-launch-bundle" >>$CRON_FILE
+    crontab $CRON_FILE
+
+    echo "EC2LM: Swap: Done"
+}
+"""
+
+    def add_ec2lm_function_wget(self, ec2lm_bucket_name, instance_ami_type):
+        self.ec2lm_functions_script[ec2lm_bucket_name] += """
+# HTTP Client Path
+function ec2lm_install_wget() {
+    CLIENT_PATH=$(which wget)
+    if [ $? -eq 1 ] ; then
+        %s
+    fi
+}
+""" % vocabulary.user_data_script['install_wget'][instance_ami_type]
+
+    def add_ec2lm_function_secrets(self, ec2lm_bucket_name, resource, grp_id, instance_iam_role_ref):
+        """Adds functions for getting secrets from Secrets Manager"""
+        self.ec2lm_functions_script[ec2lm_bucket_name] += self.user_data_secrets(resource, grp_id, instance_iam_role_ref)
+
+    def init_ec2lm_function(self, ec2lm_bucket_name, resource, instance_iam_role_ref, stack_name):
+
         oldest_health_check_timeout = 0
         if resource.target_groups != None and len(resource.target_groups) > 0:
             for target_group in resource.target_groups:
@@ -473,13 +527,14 @@ function ec2lm_signal_asg_resource() {{
         return 1
     fi
     STACK_STATUS=$(aws cloudformation describe-stacks --stack $EC2LM_STACK_NAME --region $REGION --query "Stacks[0].StackStatus" | tr -d '"')
+    echo "EC2LM: Signal ASG Resource: Stack status: $STACK_STATUS"
     if [[ "$STACK_STATUS" == *"PROGRESS" ]]; then
         # ASG Rolling Update
         ASG_LOGICAL_ID=$(ec2lm_instance_tag_value 'aws:cloudformation:logical-id')
         # Sleep 90 seconds to allow ALB healthcheck to succeed otherwise older instances will begin to shutdown
-        echo "EC2LM: Sleeping for {oldest_health_check_timeout} seconds to allow target healthcheck to succeed."
-        sleep {oldest_health_check_timeout}
-        echo "EC2LM: Signaling ASG Resource: $EC2LM_STACK_NAME: $ASG_LOGICAL_ID: $INSTANCE_ID: $STATUS"
+        echo "EC2LM: Signal ASG Resource: Sleeping for {0[oldest_health_check_timeout]} seconds to allow target healthcheck to succeed."
+        sleep {0[oldest_health_check_timeout]}
+        echo "EC2LM: Signal ASG Resource: Signaling ASG Resource: $EC2LM_STACK_NAME: $ASG_LOGICAL_ID: $INSTANCE_ID: $STATUS"
         aws cloudformation signal-resource --region $REGION --stack $EC2LM_STACK_NAME --logical-resource-id $ASG_LOGICAL_ID --unique-id $INSTANCE_ID --status $STATUS
     else
         echo "EC2LM: Resource Signaling: Not a rolling update: skipping"
