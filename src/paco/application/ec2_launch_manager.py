@@ -370,7 +370,7 @@ function ec2lm_install_wget() {
         """Adds functions for getting secrets from Secrets Manager"""
         self.ec2lm_functions_script[ec2lm_bucket_name] += self.user_data_secrets(resource, grp_id, instance_iam_role_ref)
 
-    def init_ec2lm_function(self, ec2lm_bucket_name, resource, instance_iam_role_ref, stack_name):
+    def init_ec2lm_function(self, ec2lm_bucket_name, resource, stack_name):
 
         oldest_health_check_timeout = 0
         if resource.target_groups != None and len(resource.target_groups) > 0:
@@ -532,8 +532,8 @@ function ec2lm_signal_asg_resource() {{
         # ASG Rolling Update
         ASG_LOGICAL_ID=$(ec2lm_instance_tag_value 'aws:cloudformation:logical-id')
         # Sleep 90 seconds to allow ALB healthcheck to succeed otherwise older instances will begin to shutdown
-        echo "EC2LM: Signal ASG Resource: Sleeping for {0[oldest_health_check_timeout]} seconds to allow target healthcheck to succeed."
-        sleep {0[oldest_health_check_timeout]}
+        echo "EC2LM: Signal ASG Resource: Sleeping for {oldest_health_check_timeout} seconds to allow target healthcheck to succeed."
+        sleep {oldest_health_check_timeout}
         echo "EC2LM: Signal ASG Resource: Signaling ASG Resource: $EC2LM_STACK_NAME: $ASG_LOGICAL_ID: $INSTANCE_ID: $STATUS"
         aws cloudformation signal-resource --region $REGION --stack $EC2LM_STACK_NAME --logical-resource-id $ASG_LOGICAL_ID --unique-id $INSTANCE_ID --status $STATUS
     else
