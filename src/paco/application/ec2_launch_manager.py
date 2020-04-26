@@ -336,7 +336,9 @@ function swap_on() {
     if [ -e /swapfile ] ; then
         CUR_SWAP_FILE_SIZE=$(stat -c '%s' /swapfile)
         if [ $CUR_SWAP_FILE_SIZE -eq $(($SWAP_SIZE_GB*1073741824)) ] ; then
+            set +e
             swapon /swapfile
+            set -e
             if [ $? -eq 0 ] ; then
                 echo "EC2LM: Swap: Enabling existing ${SWAP_SIZE_GB}GB Swapfile: /swapfile"
             fi
@@ -355,7 +357,9 @@ function swap_on() {
     free
     # Enable swap on reboot
     CRON_FILE=/tmp/paco-swap.cron
+    set +e
     crontab -l |grep -v 'paco-swap-launch-bundle' >$CRON_FILE
+    set -e
     echo -e "\n@reboot /sbin/swapon /swapfile # paco-swap-launch-bundle" >>$CRON_FILE
     crontab $CRON_FILE
 
@@ -505,13 +509,14 @@ function ec2lm_signal_asg_resource() {{
         return 1
     fi
     STACK_STATUS=$(aws cloudformation describe-stacks --stack $EC2LM_STACK_NAME --region $REGION --query "Stacks[0].StackStatus" | tr -d '"')
+    echo "EC2LM: Signal ASG Resource: Stack status: $STACK_STATUS"
     if [[ "$STACK_STATUS" == *"PROGRESS" ]]; then
         # ASG Rolling Update
         ASG_LOGICAL_ID=$(ec2lm_instance_tag_value 'aws:cloudformation:logical-id')
         # Sleep 90 seconds to allow ALB healthcheck to succeed otherwise older instances will begin to shutdown
-        echo "EC2LM: Sleeping for {0[oldest_health_check_timeout]} seconds to allow target healthcheck to succeed."
+        echo "EC2LM: Signal ASG Resource: Sleeping for {0[oldest_health_check_timeout]} seconds to allow target healthcheck to succeed."
         sleep {0[oldest_health_check_timeout]}
-        echo "EC2LM: Signaling ASG Resource: $EC2LM_STACK_NAME: $ASG_LOGICAL_ID: $INSTANCE_ID: $STATUS"
+        echo "EC2LM: Signal ASG Resource: Signaling ASG Resource: $EC2LM_STACK_NAME: $ASG_LOGICAL_ID: $INSTANCE_ID: $STATUS"
         aws cloudformation signal-resource --region $REGION --stack $EC2LM_STACK_NAME --logical-resource-id $ASG_LOGICAL_ID --unique-id $INSTANCE_ID --status $STATUS
     else
         echo "EC2LM: Resource Signaling: Not a rolling update: skipping"
