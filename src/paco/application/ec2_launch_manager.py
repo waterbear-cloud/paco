@@ -1098,7 +1098,7 @@ function ec2lm_eip_is_associated() {{
         echo "EC2LM: EIP: Association Successful"
         # save association id to allow later disassociation
         EIP_ASSOCIATION_ID=$(aws ec2 describe-addresses --allocation-ids $EIP_ALLOC_ID --query 'Addresses[0].AssociationId' --region $REGION | tr -d '"')
-        echo "$EIP_ASSOCIATION_ID" >> $EIP_STATE_FILE
+        echo "$EIP_ASSOCIATION_ID" > $EIP_STATE_FILE
         return 0
     fi
     return 1
@@ -1108,8 +1108,15 @@ function run_launch_bundle()
 {{
     # Allocation ID
     EIP_ALLOCATION_EC2_TAG_KEY_NAME="Paco-EIP-Allocation-Id"
-    echo "EC2LM: EIP: Getting Allocation ID from EC2 Tag $EIP_ALLOCATION_EC2_TAG_KEY_NAME"
+    echo "EC2LM: EIP: Getting Allocation ID from EIP matching stack: {eip_stack_name}"
     EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-type,Values=elastic-ip" "Name=tag:aws:cloudformation:stack-name,Values={eip_stack_name}" --query 'Tags[0].ResourceId' |tr -d '"')
+    if [ "$EIP_ALLOC_ID" == "null" ] ; then
+        EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-type,Values=elastic-ip" "Name=tag:Paco-Stack-Name,Values={eip_stack_name}" --query 'Tags[0].ResourceId' |tr -d '"')
+        if [ "$EIP_ALLOC_ID" == "null" ] ; then
+            echo "EC2LM: EIP: ERROR: Unable to get EIP Allocation ID"
+            exit 1
+        fi
+    fi
 
     # IP Address
     echo "EC2LM: EIP: Getting IP Address for $EIP_ALLOC_ID"
@@ -1197,9 +1204,10 @@ echo "EC2LM: CloudWatch: Begin"
 . {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
 
 function run_launch_bundle() {{
-    $({installed_command} &> /dev/null)
     LB_DIR=$(pwd)
-    if [[ $? -ne 0 ]]; then
+    $({installed_command} &> /dev/null)
+    RES=$?
+    if [[ $RES -ne 0 ]]; then
         # Download the agent
         mkdir /tmp/paco/
         cd /tmp/paco/
