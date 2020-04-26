@@ -316,7 +316,7 @@ class CodePipeline(StackTemplate):
                 'Repo': troposphere.Ref(github_repo_param),
                 'Branch': troposphere.Ref(github_deploy_branch_name_param),
                 'OAuthToken': "{{resolve:secretsmanager:%s}}" % github_access_token,
-                'PollForSourceChanges': False
+                'PollForSourceChanges': True
             },
             'OutputArtifacts': [ troposphere.codepipeline.OutputArtifacts(Name=output_artifact_name) ]
         }
