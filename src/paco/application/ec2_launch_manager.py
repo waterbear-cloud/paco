@@ -494,7 +494,7 @@ function ec2lm_launch_bundles() {{
         if [ -f $BUNDLE_PACKAGE_CACHE_ID ] ; then
             OLD_BUNDLE_CACHE_ID=$(cat $BUNDLE_PACKAGE_CACHE_ID)
             if [ "$NEW_BUNDLE_CACHE_ID" == "$OLD_BUNDLE_CACHE_ID" ] ; then
-                echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Skipping unchanged bundle: $BUNDLE_PACKAGE: $NEW_BUNDLE_CACHE_ID != $OLD_BUNDLE_CACHE_ID"
+                echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Skipping unchanged bundle: $BUNDLE_PACKAGE: $NEW_BUNDLE_CACHE_ID == $OLD_BUNDLE_CACHE_ID"
                 continue
             fi
         fi
@@ -507,8 +507,8 @@ function ec2lm_launch_bundles() {{
         ./launch.sh
         # Save the Bundle Cache ID after launch completion
         echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Saving new cache id: $NEW_BUNDLE_CACHE_ID"
-        echo -n "$BUNDLE_CACHE_ID" >$BUNDLE_PACKAGE_CACHE_ID
         cd ..
+        echo -n "$NEW_BUNDLE_CACHE_ID" >$BUNDLE_PACKAGE_CACHE_ID
         echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Done"
     done
 }}
