@@ -291,13 +291,26 @@ class ASG(StackTemplate):
             elif update_policy.pause_time == '':
                 update_policy.pause_time = 'PT0S'
 
+            min_instances_in_service_param = self.create_cfn_parameter(
+            param_type='String',
+            name='MinInstancesInService',
+            description='Roling update minimum instances to remain in service during update.',
+            value=update_policy.min_instances_in_service
+            )
+
             # UpdatePolicy properties
             asg_res.UpdatePolicy = troposphere.policies.UpdatePolicy(
                 AutoScalingRollingUpdate=troposphere.policies.AutoScalingRollingUpdate(
                     MaxBatchSize=update_policy.max_batch_size,
-                    MinInstancesInService=update_policy.min_instances_in_service,
+                    MinInstancesInService=troposphere.Ref(min_instances_in_service_param),
                     PauseTime=update_policy.pause_time,
-                    WaitOnResourceSignals=update_policy.wait_on_resource_signals
+                    WaitOnResourceSignals=update_policy.wait_on_resource_signals,
+                    SuspendProcesses=[
+                        'HealthCheck',
+                        'ReplaceUnhealthy',
+                        'AlarmNotification',
+                        'ScheduledActions'
+                    ]
                 )
             )
 
