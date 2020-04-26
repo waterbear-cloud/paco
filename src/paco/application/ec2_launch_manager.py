@@ -850,20 +850,23 @@ function run_launch_bundle() {{
 }}
 
 function disable_launch_bundle() {{
-    if [ "$EFS_MOUNT_FOLDER_LIST" != "" ] ; then
+    # Remove them if they exist
+    if [ -e "$EFS_MOUNT_FOLDER_LIST" ] ; then
         for MOUNT_FOLDER in $(cat $EFS_MOUNT_FOLDER_LIST)
         do
             umount $MOUNT_FOLDER
         done
-
+        rm $EFS_MOUNT_FOLDER_LIST
+    fi
+    if [ -e "$EFS_ID_LSIT" ] ; then
         for EFS_ID in $(cat $EFS_ID_LIST)
         do
             grep -v -E "^$EFS_ID:/" /etc/fstab >/tmp/fstab.efs_new
             mv /tmp/fstab.efs_new /etc/fstab
             chmod 0664 /etc/fstab
         done
+        rm $EFS_ID_LIST
     fi
-    rm $EFS_MOUNT_FOLDER_LIST $EFS_ID_LIST
 }}
 """
         efs_lb.set_launch_script(launch_script, efs_enabled)
