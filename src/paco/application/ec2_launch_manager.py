@@ -1454,6 +1454,8 @@ else
     SSM_INSTALLED=false
 fi
 
+echo "EC2LM: SSM Agent: End"
+
 function run_launch_bundle() {{
     if [ "$SSM_INSTALLED" == "false" ] ; then
         # Load EC2 Launch Manager helper functions
