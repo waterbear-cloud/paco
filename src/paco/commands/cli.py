@@ -7,6 +7,7 @@ from paco.commands.cmd_describe import describe_command
 from paco.commands.cmd_validate import validate_command
 from paco.commands.cmd_shell import shell_command
 from paco.commands.cmd_set import set_command
+from paco.commands.cmd_lambda import lambda_group
 from paco.commands.helpers import pass_paco_context
 
 
@@ -25,5 +26,6 @@ cli.add_command(validate_command)
 cli.add_command(provision_command)
 cli.add_command(delete_command)
 cli.add_command(set_command)
+cli.add_command(lambda_group)
 #cli.add_command(describe_command)
 #cli.add_command(shell_command)

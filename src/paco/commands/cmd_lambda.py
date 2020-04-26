@@ -7,15 +7,24 @@ from paco.commands.helpers import (
 )
 from paco.core.exception import StackException
 
+@click.group(name="lambda")
+@pass_paco_context
+def lambda_group(paco_ctx):
+    command = 'lambda'
 
-@click.command(name='set', short_help='Sets the value of a resource.')
-@paco_home_option
+lambda_group.help = """
+Manage Lambda function(s).
+
+"""
+
+@lambda_group.command(name="deploy")
 @cloud_args
 @cloud_options
-@pass_paco_context
+@paco_home_option
+@click.pass_context
 @handle_exceptions
-def set_command(
-    paco_ctx,
+def lambda_deploy(
+    ctx,
     verbose,
     nocache,
     yes,
@@ -25,8 +34,11 @@ def set_command(
     config_scope,
     home='.',
 ):
-    """Set the value of a cloud resource"""
-    command = 'set'
+    """
+    Deploy Lambda code to AWS.
+    """
+    paco_ctx = ctx.obj
+    command = 'lambda deploy'
     controller_type, obj = init_cloud_command(
         command,
         paco_ctx,
@@ -40,9 +52,4 @@ def set_command(
         home
     )
     controller = paco_ctx.get_controller(controller_type, command, obj)
-    controller.set_command(obj)
-
-set_command.help = """
-Set the value of a cloud resource.
-
-""" + config_types
+    controller.lambda_deploy_command(obj)
