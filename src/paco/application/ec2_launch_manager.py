@@ -440,7 +440,7 @@ function ec2lm_launch_bundles() {{
         if [ -f $BUNDLE_PACKAGE_CACHE_ID ] ; then
             OLD_BUNDLE_CACHE_ID=$(cat $BUNDLE_PACKAGE_CACHE_ID)
             if [ "$NEW_BUNDLE_CACHE_ID" == "$OLD_BUNDLE_CACHE_ID" ] ; then
-                echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Skipping unchanged bundle: $BUNDLE_PACKAGE: $NEW_BUNDLE_CACHE_ID != $OLD_BUNDLE_CACHE_ID"
+                echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Skipping unchanged bundle: $BUNDLE_PACKAGE: $NEW_BUNDLE_CACHE_ID == $OLD_BUNDLE_CACHE_ID"
                 continue
             fi
         fi
@@ -453,8 +453,8 @@ function ec2lm_launch_bundles() {{
         ./launch.sh
         # Save the Bundle Cache ID after launch completion
         echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Saving new cache id: $NEW_BUNDLE_CACHE_ID"
-        echo -n "$BUNDLE_CACHE_ID" >$BUNDLE_PACKAGE_CACHE_ID
         cd ..
+        echo -n "$NEW_BUNDLE_CACHE_ID" >$BUNDLE_PACKAGE_CACHE_ID
         echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Done"
     done
 }}
@@ -473,13 +473,14 @@ function ec2lm_signal_asg_resource() {{
         return 1
     fi
     STACK_STATUS=$(aws cloudformation describe-stacks --stack $EC2LM_STACK_NAME --region $REGION --query "Stacks[0].StackStatus" | tr -d '"')
+    echo "EC2LM: Signal ASG Resource: Stack status: $STACK_STATUS"
     if [[ "$STACK_STATUS" == *"PROGRESS" ]]; then
         # ASG Rolling Update
         ASG_LOGICAL_ID=$(ec2lm_instance_tag_value 'aws:cloudformation:logical-id')
         # Sleep 90 seconds to allow ALB healthcheck to succeed otherwise older instances will begin to shutdown
-        echo "EC2LM: Sleeping for {oldest_health_check_timeout} seconds to allow target healthcheck to succeed."
+        echo "EC2LM: Signal ASG Resource: Sleeping for {oldest_health_check_timeout} seconds to allow target healthcheck to succeed."
         sleep {oldest_health_check_timeout}
-        echo "EC2LM: Signaling ASG Resource: $EC2LM_STACK_NAME: $ASG_LOGICAL_ID: $INSTANCE_ID: $STATUS"
+        echo "EC2LM: Signal ASG Resource: Signaling ASG Resource: $EC2LM_STACK_NAME: $ASG_LOGICAL_ID: $INSTANCE_ID: $STATUS"
         aws cloudformation signal-resource --region $REGION --stack $EC2LM_STACK_NAME --logical-resource-id $ASG_LOGICAL_ID --unique-id $INSTANCE_ID --status $STATUS
     else
         echo "EC2LM: Resource Signaling: Not a rolling update: skipping"
@@ -795,20 +796,23 @@ function run_launch_bundle() {{
 }}
 
 function disable_launch_bundle() {{
-    if [ "$EFS_MOUNT_FOLDER_LIST" != "" ] ; then
+    # Remove them if they exist
+    if [ -e "$EFS_MOUNT_FOLDER_LIST" ] ; then
         for MOUNT_FOLDER in $(cat $EFS_MOUNT_FOLDER_LIST)
         do
             umount $MOUNT_FOLDER
         done
-
+        rm $EFS_MOUNT_FOLDER_LIST
+    fi
+    if [ -e "$EFS_ID_LSIT" ] ; then
         for EFS_ID in $(cat $EFS_ID_LIST)
         do
             grep -v -E "^$EFS_ID:/" /etc/fstab >/tmp/fstab.efs_new
             mv /tmp/fstab.efs_new /etc/fstab
             chmod 0664 /etc/fstab
         done
+        rm $EFS_ID_LIST
     fi
-    rm $EFS_MOUNT_FOLDER_LIST $EFS_ID_LIST
 }}
 """
         efs_lb.set_launch_script(launch_script, efs_enabled)
@@ -1039,7 +1043,7 @@ function ec2lm_eip_is_associated() {{
         echo "EC2LM: EIP: Association Successful"
         # save association id to allow later disassociation
         EIP_ASSOCIATION_ID=$(aws ec2 describe-addresses --allocation-ids $EIP_ALLOC_ID --query 'Addresses[0].AssociationId' --region $REGION | tr -d '"')
-        echo "$EIP_ASSOCIATION_ID" >> $EIP_STATE_FILE
+        echo "$EIP_ASSOCIATION_ID" > $EIP_STATE_FILE
         return 0
     fi
     return 1
@@ -1049,10 +1053,14 @@ function run_launch_bundle()
 {{
     # Allocation ID
     EIP_ALLOCATION_EC2_TAG_KEY_NAME="Paco-EIP-Allocation-Id"
-    echo "EC2LM: EIP: Getting Allocation ID from EC2 Tag $EIP_ALLOCATION_EC2_TAG_KEY_NAME"
-    EIP_ALLOC_ID={eip_alloc_id}
-    if [ "$EIP_ALLOC_ID" == "" ] ; then
-        EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-type,Values=elastic-ip" "Name=tag:aws:cloudformation:stack-name,Values={eip_stack_name}" --query 'Tags[0].ResourceId' |tr -d '"')
+    echo "EC2LM: EIP: Getting Allocation ID from EIP matching stack: {eip_stack_name}"
+    EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-type,Values=elastic-ip" "Name=tag:aws:cloudformation:stack-name,Values={eip_stack_name}" --query 'Tags[0].ResourceId' |tr -d '"')
+    if [ "$EIP_ALLOC_ID" == "null" ] ; then
+        EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-type,Values=elastic-ip" "Name=tag:Paco-Stack-Name,Values={eip_stack_name}" --query 'Tags[0].ResourceId' |tr -d '"')
+        if [ "$EIP_ALLOC_ID" == "null" ] ; then
+            echo "EC2LM: EIP: ERROR: Unable to get EIP Allocation ID"
+            exit 1
+        fi
     fi
 
     # IP Address
@@ -1141,9 +1149,10 @@ echo "EC2LM: CloudWatch: Begin"
 . {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
 
 function run_launch_bundle() {{
-    $({installed_command} &> /dev/null)
     LB_DIR=$(pwd)
-    if [[ $? -ne 0 ]]; then
+    $({installed_command} &> /dev/null)
+    RES=$?
+    if [[ $RES -ne 0 ]]; then
         # Download the agent
         mkdir /tmp/paco/
         cd /tmp/paco/
@@ -1389,6 +1398,8 @@ if [[ $? -eq 0 ]]; then
 else
     SSM_INSTALLED=false
 fi
+
+echo "EC2LM: SSM Agent: End"
 
 function run_launch_bundle() {{
     if [ "$SSM_INSTALLED" == "false" ] ; then
