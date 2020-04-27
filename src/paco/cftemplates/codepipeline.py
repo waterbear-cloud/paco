@@ -110,6 +110,27 @@ class CodePipeline(StackTemplate):
         else:
             self.create_pipeine_from_sourcebuilddeploy(deploy_region)
 
+    def add_github_webhook(self, pipeline_res, stage, action):
+        "Add a CodePipeline WebHook"
+        logical_id = f'Webhook{stage.name}{action.name}'
+        github_access_token = Reference(action.github_access_token).ref
+        cfn_export_dict= {
+            'Authentication': 'GITHUB_HMAC',
+            'AuthenticationConfiguration': {
+                'SecretToken': "{{resolve:secretsmanager:%s}}" % github_access_token,
+            },
+            'Filters': [{'JsonPath': "$.ref", 'MatchEquals': 'refs/heads/{Branch}'}],
+            'TargetAction': f'GitHub{stage.name}{action.name}',
+            'RegisterWithThirdParty': True,
+            'TargetPipeline': troposphere.Ref(pipeline_res),
+            'TargetPipelineVersion': troposphere.GetAtt(pipeline_res, 'Version'),
+        }
+        webhook_resource = troposphere.codepipeline.Webhook.from_dict(
+            logical_id,
+            cfn_export_dict,
+        )
+        self.template.add_resource(webhook_resource)
+
     def create_pipeline_from_stages(self):
         "Create CodePipeline Stages/Actions resources based on the .stages field"
         # create the Stages/Actions resources
@@ -206,6 +227,14 @@ class CodePipeline(StackTemplate):
             )
         )
 
+        # Add GitHub WebHook after pipeline_res is created
+        for stage in self.pipeline.stages.values():
+            for action in stage.values():
+                if not action.is_enabled():
+                    continue
+                if action.type == 'GitHub.Source' and action.poll_for_source_changes == False:
+                    self.add_github_webhook(pipeline_res, stage, action)
+
     # methods to return Properties dictionaries specific to their Action.Type
     # begin create_<action_type>_properties
     def create_lambda_invoke_properties(self, stage, action, info):
@@ -284,12 +313,6 @@ class CodePipeline(StackTemplate):
         }
 
     def create_github_source_properties(self, stage, action, info):
-        #github_token_param = self.create_cfn_parameter(
-        #    param_type='AWS::SSM::Parameter::Value<String>',
-        #    name=self.create_cfn_logical_id('GitHubTokenSSMParameterName' + stage.name + action.name),
-        #    description='',
-        #    value=action.github_access_token
-        #)
         github_access_token = Reference(action.github_access_token).ref
         github_owner_param = self.create_cfn_parameter(
             param_type='String',
@@ -316,7 +339,7 @@ class CodePipeline(StackTemplate):
                 'Repo': troposphere.Ref(github_repo_param),
                 'Branch': troposphere.Ref(github_deploy_branch_name_param),
                 'OAuthToken': "{{resolve:secretsmanager:%s}}" % github_access_token,
-                'PollForSourceChanges': False
+                'PollForSourceChanges': action.poll_for_source_changes,
             },
             'OutputArtifacts': [ troposphere.codepipeline.OutputArtifacts(Name=output_artifact_name) ]
         }
@@ -525,7 +548,7 @@ class CodePipeline(StackTemplate):
                         'Repo': troposphere.Ref(github_repo_param),
                         'Branch': troposphere.Ref(github_deploy_branch_name_param),
                         'OAuthToken': "{{resolve:secretsmanager:%s}}" % github_access_token, #troposphere.Ref(github_token_param),
-                        'PollForSourceChanges': False
+                        'PollForSourceChanges': False,
                     },
                     OutputArtifacts = [
                         troposphere.codepipeline.OutputArtifacts(

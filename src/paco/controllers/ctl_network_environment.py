@@ -196,11 +196,11 @@ class NetEnvController(Controller):
         self.env = None
         self.env_region = None
         netenv_arg = model_obj.paco_ref_parts
-        netenv_parts = netenv_arg.split('.', 4)[1:]
-        self.netenv = self.paco_ctx.project['netenv'][netenv_parts[0]]
-        self.env = self.netenv[netenv_parts[1]]
-        if len(netenv_parts) > 2:
-            self.env_region = self.env[netenv_parts[2]]
+        netenv_parts = netenv_arg.split('.', 4)
+        self.netenv = self.paco_ctx.project['netenv'][netenv_parts[1]]
+        self.env = self.netenv[netenv_parts[2]]
+        if len(netenv_parts) > 3:
+            self.env_region = self.env[netenv_parts[3]]
 
         # if no region specified, apply to every region in the environment
         if self.env_region == None:
