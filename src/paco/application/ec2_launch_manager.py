@@ -574,6 +574,12 @@ statement:
                 print("WARNING: {}.rolling_update_policy.wait_on_resource_signals == True".format(resource.paco_ref_parts))
                 print("'ec2lm_signal_asg_resource <SUCCESS|FAILURE>' was not detected in your user_data_script for this resource.")
 
+        # Newer Ubuntu (>20) does not have Python 2
+        if resource.instance_ami_type in ('ubuntu_20',):
+            install_aws_cli = ec2lm_commands.user_data_script['install_aws_cli'][resource.instance_ami_type]
+        else:
+            install_aws_cli = ec2lm_commands.user_data_script['install_aws_cli'][resource.instance_ami_type_generic]
+
         # Return UserData script
         return f"""#!/bin/bash
 echo "Paco EC2LM: Script: $0"
@@ -592,7 +598,7 @@ function ec2lm_pip() {{
 
 {resource.user_data_pre_script}
 {update_packages}
-{ec2lm_commands.user_data_script['install_aws_cli'][resource.instance_ami_type_generic]}
+{install_aws_cli}
 
 EC2LM_FOLDER='{self.paco_base_path}/EC2Manager/'
 EC2LM_FUNCTIONS=ec2lm_functions.bash
@@ -685,7 +691,12 @@ statement:
             # other OS types will install cfn-init into the Paco directory
             cfn_base_path = self.paco_base_path
 
-        install_cfn_init_command = ec2lm_commands.user_data_script['install_cfn_init'][resource.instance_ami_type_generic]
+        if resource.instance_ami_type in ec2lm_commands.user_data_script['install_cfn_init']:
+            install_cfn_init_command = ec2lm_commands.user_data_script['install_cfn_init'][resource.instance_ami_type]
+        else:
+            install_cfn_init_command = ec2lm_commands.user_data_script['install_cfn_init'][resource.instance_ami_type_generic]
+        install_cfn_init_command = install_cfn_init_command.format(cfn_base_path=cfn_base_path)
+
         config_sets_str = ','.join(resource.launch_options.cfn_init_config_sets)
         launch_script = f"""#!/bin/bash
 . {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
@@ -1377,7 +1388,7 @@ statement:
             installed_command = 'rpm -q amazon-ssm-agent'
         elif resource.instance_ami_type_family == 'debian':
             installed_command = 'dpkg --status amazon-ssm-agent'
-        if resource.instance_ami_type_generic != 'amazon' and resource.instance_ami_type not in ('ubuntu_16_snap', 'ubuntu_18'):
+        if resource.instance_ami_type_generic != 'amazon' and resource.instance_ami_type not in ('ubuntu_16_snap', 'ubuntu_18', 'ubuntu_20'):
             agent_config = ec2lm_commands.ssm_agent[resource.instance_ami_type]
             agent_install = agent_config["install"]
             agent_object = agent_config["object"]

@@ -25,6 +25,10 @@ user_data_script = {
 apt-get -y install python-pip
 pip install awscli
 """,
+		'ubuntu_20': """apt-get update
+apt-get -y install python3-pip
+pip3 install awscli
+""",
 		'centos': 'ec2lm_pip install awscli'
 	},
 	'install_wget': {
@@ -50,10 +54,19 @@ pip install awscli
 	'install_cfn_init': {
 		'amazon': '',
 		'ubuntu': """
-mkdir -p /opt/paco/bin
+mkdir -p {cfn_base_path}/bin
 apt-get install -y python-setuptools
 wget https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
-easy_install --script-dir /opt/paco/bin aws-cfn-bootstrap-latest.tar.gz
+easy_install --script-dir {cfn_base_path}/bin aws-cfn-bootstrap-latest.tar.gz
+""",
+		'ubuntu_20': """
+mkdir -p {cfn_base_path}/bin
+apt-get install -y python2 python-setuptools
+wget https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+tar -xzvf aws-cfn-bootstrap-latest.tar.gz
+cd aws-cfn-bootstrap-1.4/
+python2 setup.py install --install-scripts {cfn_base_path}/bin
+sed -i "s~/usr/bin/env python$~/usr/bin/env python2~" {cfn_base_path}/bin/cfn-*
 """,
 		'centos': """
 yum install -y pystache python-daemon
