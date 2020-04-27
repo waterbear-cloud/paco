@@ -7,7 +7,7 @@ from paco.models.locations import get_parent_by_interface
 from paco.models.loader import get_all_nodes
 from paco.models.references import resolve_ref, get_model_obj_from_ref, Reference
 from paco.models import schemas
-from paco.aws_api.awslambda.code import upload_lambda_code
+from paco.aws_api.awslambda.code import init_lambda_code
 from paco.utils import hash_smaller, prefixed_name
 from pathlib import Path
 import awacs.sdb
@@ -166,9 +166,9 @@ class Lambda(StackTemplate):
                     'ZipFile': zip_path.read_text()
                 }
             elif zip_path.is_dir():
-                # create deploy artifact, upload to Paco bucket and set S3Bucket/S3Key
-                #
-                bucket_name, artifact_name = upload_lambda_code(
+                # get S3Bucket/S3Key or if it does not exist, it will create the bucket and artifact
+                # and then upload the artifact
+                bucket_name, artifact_name = init_lambda_code(
                     self.paco_ctx.paco_buckets,
                     self.stack.resource,
                     awslambda.code.zipfile,

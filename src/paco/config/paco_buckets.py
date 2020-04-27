@@ -15,7 +15,7 @@ class PacoBuckets():
     def __init__(self, project):
         self.project = project
 
-    def generate_bucket_name(self, account_ctx, region):
+    def get_bucket_name(self, account_ctx, region):
         "Name of an Paco S3 Bucket in an account and region"
         short_region = aws_regions[region]['short_name']
         name = f"paco-{self.project.name}-{account_ctx.name}-{short_region}"
@@ -28,17 +28,16 @@ class PacoBuckets():
         "Upload a file to a Paco Bucket"
         if not self.is_bucket_created(account_ctx, region):
             self.create_bucket(account_ctx, region)
-        bucket_name = self.generate_bucket_name(account_ctx, region)
+        bucket_name = self.get_bucket_name(account_ctx, region)
         s3_client = account_ctx.get_aws_client('s3', region)
         s3_client.upload_file(file_location, bucket_name, s3_key)
         return bucket_name
 
     def create_bucket(self, account_ctx, region):
         "Create a Paco S3 Bucket for an account and region"
-        bucket_name = self.generate_bucket_name(account_ctx, region)
+        bucket_name = self.get_bucket_name(account_ctx, region)
         s3_client = account_ctx.get_aws_client('s3', region)
         # ToDo: check if bucket exists and handle
-        breakpoint()
         s3_client.create_bucket(
             ACL='private',
             Bucket=bucket_name,
@@ -53,12 +52,28 @@ class PacoBuckets():
 
     def is_bucket_created(self, account_ctx, region):
         "True if the S3 Bucket for the account and region exists"
-        bucket_name = self.generate_bucket_name(account_ctx, region)
+        bucket_name = self.get_bucket_name(account_ctx, region)
         s3_client = account_ctx.get_aws_client('s3', region)
         try:
             s3_client.get_bucket_location(Bucket=bucket_name)
         except ClientError as error:
             if error.response['Error']['Code'] != 'NoSuchBucket':
+                raise error
+            else:
+                return False
+        return True
+
+    def is_object_in_bucket(self, s3_key, account_ctx, region):
+        "True if s3_key exists as an object in the S3 Bucket"
+        bucket_name = self.get_bucket_name(account_ctx, region)
+        s3_client = account_ctx.get_aws_client('s3', region)
+        try:
+            s3_client.get_object(
+                Bucket=bucket_name,
+                Key=s3_key,
+            )
+        except ClientError as error:
+            if error.response['Error']['Code'] != 'NoSuchKey':
                 raise error
             else:
                 return False

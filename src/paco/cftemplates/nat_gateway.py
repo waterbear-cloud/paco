@@ -82,6 +82,7 @@ class NATGateway(StackTemplate):
                     camel_case=True
                 )
                 # ToDo: expose latest ami id as an API and call it directly
+                # SLOW: takes a couple seconds to resolve this every Paco run
                 latest_image_ref = Reference('paco.ref function.aws.ec2.ami.latest.amazon-linux-nat')
                 latest_image_ref.set_region(self.aws_region)
                 nat_ami_id = latest_image_ref.resolve(self.paco_ctx.project, self.account_ctx)

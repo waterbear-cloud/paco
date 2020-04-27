@@ -15,6 +15,14 @@ def create_zip_artifact(artifact_name, src_dir):
     shutil.make_archive(zip_output, 'zip', str(src_dir))
     return zip_output
 
+def init_lambda_code(paco_buckets, resource, src, account_ctx, aws_region):
+    "Creates an S3 Bucket and uploads an artifact only if one does not yet exist"
+    artifact_name = f'LambdaArtifacts/{resource.paco_ref_parts}.zip'
+    if paco_buckets.is_object_in_bucket(artifact_name, account_ctx, aws_region):
+        return paco_buckets.get_bucket_name(account_ctx, aws_region), artifact_name
+    else:
+        return upload_lambda_code(paco_buckets, resource, src, account_ctx, aws_region)
+
 def upload_lambda_code(paco_buckets, resource, src, account_ctx, aws_region):
     "Zip up a source directory into an artifact and upload it to a Paco Bucket"
     src_dir = Path(src)
@@ -25,7 +33,6 @@ def upload_lambda_code(paco_buckets, resource, src, account_ctx, aws_region):
     # upload to Paco Bucket
     bucket_name = paco_buckets.upload_file(zip_output, artifact_name, account_ctx, aws_region)
     return bucket_name, artifact_name
-
 
 def update_lambda_code(resource, function_name, src, account_ctx, aws_region):
     "Update Lambda function code"
