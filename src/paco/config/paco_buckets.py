@@ -68,12 +68,12 @@ class PacoBuckets():
         bucket_name = self.get_bucket_name(account_ctx, region)
         s3_client = account_ctx.get_aws_client('s3', region)
         try:
-            s3_client.get_object(
+            response = s3_client.head_object(
                 Bucket=bucket_name,
                 Key=s3_key,
             )
         except ClientError as error:
-            if error.response['Error']['Code'] != 'NoSuchKey':
+            if error.response['ResponseMetadata']['HTTPStatusCode'] != 404:
                 raise error
             else:
                 return False
