@@ -88,6 +88,12 @@ class ElasticsearchDomain(StackTemplate):
 
         # Outputs
         self.create_output(
+            title='Name',
+            value=troposphere.Ref(esdomain_resource),
+            description='ElasticsearchDomain name',
+            ref=esdomain.paco_ref_parts + '.name',
+        )
+        self.create_output(
             title='Arn',
             description='Arn of the domain. The same value as DomainArn.',
             value=troposphere.GetAtt(esdomain_resource, 'Arn'),
