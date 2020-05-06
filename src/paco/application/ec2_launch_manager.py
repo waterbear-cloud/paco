@@ -398,11 +398,19 @@ function ec2lm_timeout() {{
 function ec2lm_launch_bundles() {{
     CACHE_ID=$1
 
+    IGNORE_CACHE=false
+    if [ "$CACHE_ID" == "on_launch" ] ; then
+        IGNORE_CACHE=true
+    fi
+
     # Compare new EC2LM contents cache id with existing
     OLD_CACHE_ID=$(<$EC2LM_FOLDER/ec2lm_cache_id.md5)
-    if [ "$CACHE_ID" == "$OLD_CACHE_ID" ] ; then
-        echo "Cache Id unchanged. Skipping ec2lm_launch_bundles."
-        exit
+
+    if [ "$IGNORE_CACHE" == "false" ] ; then
+        if [ "$CACHE_ID" == "$OLD_CACHE_ID" ] ; then
+            echo "Cache Id unchanged. Skipping ec2lm_launch_bundles."
+            exit
+        fi
     fi
 
     # EC2LM Lock file
@@ -437,11 +445,13 @@ function ec2lm_launch_bundles() {{
         fi
         # Check if this bundle has changed
         NEW_BUNDLE_CACHE_ID=$(md5sum $BUNDLE_PACKAGE | awk '{{print $1}}')
-        if [ -f $BUNDLE_PACKAGE_CACHE_ID ] ; then
-            OLD_BUNDLE_CACHE_ID=$(cat $BUNDLE_PACKAGE_CACHE_ID)
-            if [ "$NEW_BUNDLE_CACHE_ID" == "$OLD_BUNDLE_CACHE_ID" ] ; then
-                echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Skipping unchanged bundle: $BUNDLE_PACKAGE: $NEW_BUNDLE_CACHE_ID == $OLD_BUNDLE_CACHE_ID"
-                continue
+        if [ "$IGNORE_CACHE" == "false" ] ; then
+            if [ -f $BUNDLE_PACKAGE_CACHE_ID ] ; then
+                OLD_BUNDLE_CACHE_ID=$(cat $BUNDLE_PACKAGE_CACHE_ID)
+                if [ "$NEW_BUNDLE_CACHE_ID" == "$OLD_BUNDLE_CACHE_ID" ] ; then
+                    echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Skipping unchanged bundle: $BUNDLE_PACKAGE: $NEW_BUNDLE_CACHE_ID == $OLD_BUNDLE_CACHE_ID"
+                    continue
+                fi
             fi
         fi
         echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Unpacking $BUNDLE_PACKAGE"
@@ -607,8 +617,8 @@ aws s3 sync s3://{ec2lm_bucket_name}/ --region={resource.region_name} $EC2LM_FOL
 
 . $EC2LM_FOLDER/$EC2LM_FUNCTIONS
 
-# Run every Paco EC2LM launch bundle
-ec2lm_launch_bundles
+# Run every Paco EC2LM launch bundle on launch
+ec2lm_launch_bundles on_launch
 
 """
 
@@ -1398,6 +1408,7 @@ statement:
             else:
                 download_url = f'https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest'
             download_url += f'{agent_config["path"]}/{agent_config["object"]}'
+
 
         launch_script = f"""#!/bin/bash
 
