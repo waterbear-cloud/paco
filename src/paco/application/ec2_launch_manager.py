@@ -829,6 +829,28 @@ function disable_launch_bundle() {{
         efs_lb.set_launch_script(launch_script, efs_enabled)
         self.add_bundle(efs_lb)
 
+        # IAM Managed Policy to allow EFS
+        if efs_enabled:
+            iam_policy_name = '-'.join([resource.name, 'efs'])
+            policy_config_yaml = """
+policy_name: '{}'
+enabled: true
+statement:
+  - effect: Allow
+    action:
+      - 'elasticfilesystem:DescribeFileSystems'
+    resource:
+      - '*'
+""".format(iam_policy_name)
+            iam_ctl = self.paco_ctx.get_controller('IAM')
+            iam_ctl.add_managed_policy(
+                role=resource.instance_iam_role,
+                resource=resource,
+                policy_name='policy',
+                policy_config_yaml=policy_config_yaml,
+                extra_ref_names=['ec2lm','efs'],
+            )
+
     def lb_add_ebs(self, bundle_name, resource):
         """Launch bundle to configure and mount EBS Volumes"""
         ebs_lb = LaunchBundle(resource, self, bundle_name)
@@ -852,6 +874,9 @@ function disable_launch_bundle() {{
         launch_script = f"""#!/bin/bash
 
 . {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
+
+EBS_MOUNT_FOLDER_LIST=ebs_mount_folder_list
+EBS_VOLUME_UUID_LIST=ebs_volume_uuid_list
 
 # Attach EBS Volume
 function ec2lm_attach_ebs_volume() {{
@@ -964,8 +989,8 @@ function process_volume_mount()
     # Mount Volume
     echo "EC2LM: EBS: Mounting $MOUNT_FOLDER"
     mount $MOUNT_FOLDER
-    echo "$MOUNT_FOLDER" >>$EBS_MOUNT_FOLDER_LIST
-    echo "$VOLUME_UUID" >>$EBS_VOLUME_UUID_LIST
+    echo "$MOUNT_FOLDER" >>$EBS_MOUNT_FOLDER_LIST".new"
+    echo "$VOLUME_UUID" >>$EBS_VOLUME_UUID_LIST".new"
     echo "EC2LM: EBS: Process Volume Mount: Done"
 
     return 0
@@ -1002,8 +1027,9 @@ function disable_launch_bundle()
         self.add_bundle(ebs_lb)
 
         # IAM Managed Policy to allow attaching volumes
-        iam_policy_name = '-'.join([resource.name, 'ebs'])
-        policy_config_yaml = f"""
+        if ebs_enabled:
+            iam_policy_name = '-'.join([resource.name, 'ebs'])
+            policy_config_yaml = f"""
 policy_name: '{iam_policy_name}'
 enabled: true
 statement:
@@ -1013,15 +1039,20 @@ statement:
     resource:
       - 'arn:aws:ec2:*:*:volume/*'
       - 'arn:aws:ec2:*:*:instance/*'
+  - effect: Allow
+    action:
+      - "ec2:DescribeVolumes"
+    resource:
+      - "*"
 """
-        iam_ctl = self.paco_ctx.get_controller('IAM')
-        iam_ctl.add_managed_policy(
-            role=resource.instance_iam_role,
-            resource=resource,
-            policy_name='policy',
-            policy_config_yaml=policy_config_yaml,
-            extra_ref_names=['ec2lm','ebs'],
-        )
+            iam_ctl = self.paco_ctx.get_controller('IAM')
+            iam_ctl.add_managed_policy(
+                role=resource.instance_iam_role,
+                resource=resource,
+                policy_name='policy',
+                policy_config_yaml=policy_config_yaml,
+                extra_ref_names=['ec2lm','ebs'],
+            )
 
     def lb_add_eip(self, bundle_name, resource):
         """Creates a launch bundle to configure Elastic IPs"""
@@ -1103,8 +1134,9 @@ function disable_launch_bundle()
         self.add_bundle(eip_lb)
 
         # IAM Managed Policy to allow EIP
-        iam_policy_name = '-'.join([resource.name, 'eip'])
-        policy_config_yaml = """
+        if enabled:
+            iam_policy_name = '-'.join([resource.name, 'eip'])
+            policy_config_yaml = """
 policy_name: '{}'
 enabled: true
 statement:
@@ -1116,14 +1148,14 @@ statement:
     resource:
       - '*'
 """.format(iam_policy_name)
-        iam_ctl = self.paco_ctx.get_controller('IAM')
-        iam_ctl.add_managed_policy(
-            role=resource.instance_iam_role,
-            resource=resource,
-            policy_name='policy',
-            policy_config_yaml=policy_config_yaml,
-            extra_ref_names=['ec2lm','eip'],
-        )
+            iam_ctl = self.paco_ctx.get_controller('IAM')
+            iam_ctl.add_managed_policy(
+                role=resource.instance_iam_role,
+                resource=resource,
+                policy_name='policy',
+                policy_config_yaml=policy_config_yaml,
+                extra_ref_names=['ec2lm','eip'],
+            )
 
     def lb_add_cloudwatchagent(self, bundle_name, resource):
         """Creates a launch bundle to install and configure a CloudWatch Agent:
