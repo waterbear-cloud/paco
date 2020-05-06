@@ -284,6 +284,12 @@ HINT: Ensure that the monitoring.log_sets for the resource is enabled and that t
                         )
                     else:
                         raise InvalidAlarmConfiguration(f"Unsuported metric_name '{alarm.metric_name}' specified for IoTAnalyticsPipeline alarm:\n{alarm.paco_ref_parts}")
+                # Add ClientId (account id) dimension for ElasticsearchDomain
+                if schemas.IElasticsearchDomain.providedBy(resource):
+                    dimensions.append(
+                        {'Name': 'ClientId',
+                        'Value': self.stack.account_ctx.id }
+                    )
                 for dimension in alarm.dimensions:
                     if schemas.IIoTAnalyticsPipeline.providedBy(resource) and dimension.name == 'DatasetName':
                         continue

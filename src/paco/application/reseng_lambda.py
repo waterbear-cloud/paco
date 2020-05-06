@@ -31,6 +31,7 @@ role_name: %s""" % ("LambdaFunction")
         # the Lambda LogGroups and not leave it wide open like AWSLambdaBasicExecutionRole does.
 
         if self.resource.vpc_config != None:
+            # ToDo: Security: restrict resource
             vpc_config_policy = """
 name: VPCAccess
 statement:
