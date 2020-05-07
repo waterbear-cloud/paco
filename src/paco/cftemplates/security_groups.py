@@ -147,6 +147,8 @@ class SecurityGroups(StackTemplate):
                 # Source and Destination
                 if sg_rule_config.cidr_ip != '':
                     rule_dict['CidrIp'] = sg_rule_config.cidr_ip
+                elif sg_rule_config.cidr_ip_v6 != '':
+                    rule_dict['CidrIpv6'] = sg_rule_config.cidr_ip_v6
                 elif getattr(sg_rule_config, 'source_security_group', '') != '':
                     if references.is_ref(sg_rule_config.source_security_group):
                         rule_dict['SourceSecurityGroupId'] = self.create_group_param_ref(
