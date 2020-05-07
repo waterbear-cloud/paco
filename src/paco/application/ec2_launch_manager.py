@@ -398,15 +398,15 @@ function ec2lm_timeout() {{
 function ec2lm_launch_bundles() {{
     CACHE_ID=$1
 
-    IGNORE_CACHE=false
+    export EC2LM_IGNORE_CACHE=false
     if [ "$CACHE_ID" == "on_launch" ] ; then
-        IGNORE_CACHE=true
+        export EC2LM_IGNORE_CACHE=true
     fi
 
     # Compare new EC2LM contents cache id with existing
     OLD_CACHE_ID=$(<$EC2LM_FOLDER/ec2lm_cache_id.md5)
 
-    if [ "$IGNORE_CACHE" == "false" ] ; then
+    if [ "$EC2LM_IGNORE_CACHE" == "false" ] ; then
         if [ "$CACHE_ID" == "$OLD_CACHE_ID" ] ; then
             echo "Cache Id unchanged. Skipping ec2lm_launch_bundles."
             exit
@@ -445,7 +445,7 @@ function ec2lm_launch_bundles() {{
         fi
         # Check if this bundle has changed
         NEW_BUNDLE_CACHE_ID=$(md5sum $BUNDLE_PACKAGE | awk '{{print $1}}')
-        if [ "$IGNORE_CACHE" == "false" ] ; then
+        if [ "$EC2LM_IGNORE_CACHE" == "false" ] ; then
             if [ -f $BUNDLE_PACKAGE_CACHE_ID ] ; then
                 OLD_BUNDLE_CACHE_ID=$(cat $BUNDLE_PACKAGE_CACHE_ID)
                 if [ "$NEW_BUNDLE_CACHE_ID" == "$OLD_BUNDLE_CACHE_ID" ] ; then
@@ -717,7 +717,7 @@ function run_launch_configuration() {{
 
 function run_launch_bundle() {{
     # cfn-init configsets are only run by Paco during initial launch
-    if [ ! -f ./initialized-configsets.txt ]; then
+    if [[ ! -f ./initialized-configsets.txt  || "$EC2LM_IGNORE_CACHE" == "true" ]]; then
         {install_cfn_init_command}
         echo "{config_sets_str}" >> ./initialized-configsets.txt
         run_launch_configuration
