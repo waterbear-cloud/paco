@@ -2,7 +2,6 @@ from paco.cftemplates.cftemplates import StackTemplate
 from paco.cftemplates.vpc import VPC
 from paco.cftemplates.segment import Segment
 from paco.cftemplates.security_groups import SecurityGroups
-from paco.cftemplates.elb import ELB
 from paco.cftemplates.alb import ALB
 from paco.cftemplates.asg import ASG
 from paco.cftemplates.iam_managed_policies import IAMManagedPolicies
@@ -14,7 +13,6 @@ from paco.cftemplates.codedeploy import CodeDeploy
 from paco.cftemplates.codebuild import CodeBuild
 from paco.cftemplates.codepipeline import CodePipeline
 from paco.cftemplates.route53 import Route53
-from paco.cftemplates.ec2 import EC2
 from paco.cftemplates.nat_gateway import NATGateway
 from paco.cftemplates.kms import KMS
 from paco.cftemplates.cw_alarms import CWAlarms
@@ -43,3 +41,4 @@ from paco.cftemplates.dashboard import CloudWatchDashboard
 from paco.cftemplates.elasticsearch import ElasticsearchDomain
 from paco.cftemplates.iottopicrule import IoTTopicRule
 from paco.cftemplates.iotanalyticspipeline import IoTAnalyticsPipeline
+from paco.cftemplates.ssmdocument import SSMDocument

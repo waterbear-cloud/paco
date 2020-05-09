@@ -13,7 +13,7 @@ class NetworkStackGroup(StackGroup):
         super().__init__(
             paco_ctx,
             account_ctx,
-            env_ctx.netenv_id,
+            env_ctx.netenv.name,
             "Net",
             env_ctx
         )
@@ -24,7 +24,7 @@ class NetworkStackGroup(StackGroup):
     def init(self):
         # Network Stack Templates
         # VPC Stack
-        vpc_config = self.env_ctx.config.network.vpc
+        vpc_config = self.env_ctx.env_region.network.vpc
         if vpc_config == None:
             # NetworkEnvironment with no network - serverless
             return
@@ -127,7 +127,7 @@ class NetworkStackGroup(StackGroup):
 
         # VPC Peering Stack
         if vpc_config.peering != None:
-            peering_config = self.env_ctx.config.network.vpc.peering
+            peering_config = self.env_ctx.env_region.network.vpc.peering
             for peer_id in peering_config.keys():
                 peer_config = vpc_config.peering[peer_id]
                 peer_config.resolve_ref_obj = self

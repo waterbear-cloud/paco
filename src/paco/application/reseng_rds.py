@@ -11,6 +11,15 @@ class DBParameterGroupResourceEngine(ResourceEngine):
             stack_tags=self.stack_tags,
         )
 
+class RDSPostgresqlResourceEngine(ResourceEngine):
+    def init_resource(self):
+        self.stack_group.add_new_stack(
+            self.aws_region,
+            self.resource,
+            paco.cftemplates.RDS,
+            stack_tags=self.stack_tags,
+        )
+
 class RDSMysqlResourceEngine(ResourceEngine):
     def init_resource(self):
         self.stack_group.add_new_stack(

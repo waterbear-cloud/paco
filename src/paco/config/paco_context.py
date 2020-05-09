@@ -15,6 +15,7 @@ from paco.models import references
 from paco.models import load_project_from_yaml
 from paco.models.references import get_model_obj_from_ref
 from paco.core.yaml import read_yaml_file
+from paco.config.paco_buckets import PacoBuckets
 from shutil import copyfile
 from deepdiff import DeepDiff
 
@@ -78,8 +79,9 @@ Add this manually or run `paco provision accounts` for this project.
     def get_name(self):
         return self.name
 
-    def gen_ref(self):
-        return 'paco.ref accounts.%s' % (self.get_name())
+    @property
+    def paco_ref(self):
+        return f'paco.ref accounts.{self.name}'
 
     def get_temporary_credentials(self):
         return self.aws_session.get_temporary_credentials()
@@ -241,6 +243,7 @@ class PacoContext(object):
         self.command = None
         self.config_scope = None
         self.disable_validation = False
+        self.paco_buckets = None
 
     def get_account_context(self, account_ref=None, account_name=None, netenv_ref=None):
         if account_ref != None:
@@ -311,6 +314,7 @@ This directory contains several sub-directories that Paco uses:
         # Load the model from YAML
         print("Loading Paco project: %s" % (self.home))
         self.project = load_project_from_yaml(self.project_folder, None, warn=self.warn)
+        self.paco_buckets = PacoBuckets(self.project)
         if self.verbose:
             print("Finished loading.")
         if project_only == True:
@@ -322,16 +326,17 @@ This directory contains several sub-directories that Paco uses:
         if self.config_scope not in [None, 'accounts']:
             paco_ref = 'paco.ref {}'.format(self.config_scope)
             obj = get_model_obj_from_ref(paco_ref, self.project)
-            print('Object selected to {}:'.format(self.command))
-            print('  Name: {}'.format(
-                getattr(obj, 'name', 'unnamed')
-            ))
-            print('  Type: {}'.format(obj.__class__.__name__))
-            if getattr(obj, 'title', None):
-                print('  Title: {}'.format(obj.title))
-            if hasattr(obj, 'paco_ref_parts'):
-                print('  Reference: {}'.format(obj.paco_ref_parts))
-            print()
+            if self.verbose:
+                print('Object selected to {}:'.format(self.command))
+                print('  Name: {}'.format(
+                    getattr(obj, 'name', 'unnamed')
+                ))
+                print('  Type: {}'.format(obj.__class__.__name__))
+                if getattr(obj, 'title', None):
+                    print('  Title: {}'.format(obj.title))
+                if hasattr(obj, 'paco_ref_parts'):
+                    print('  Reference: {}'.format(obj.paco_ref_parts))
+                print()
 
             # Check Notifications and warn about Alarms without any notifications
             if self.warn:
@@ -347,11 +352,10 @@ This directory contains several sub-directories that Paco uses:
         if master_only or self.config_scope == 'accounts':
             return
 
-        # Initialize Controllers so they can initialize their
-        # resolve_ref_obj's to allow reference lookups
+        # Initialize Controllers so they can set their resolve_ref_obj's for reference lookups
         self.get_controller('Route53')
         self.get_controller('CodeCommit')
-        self.get_controller('S3').init({'name': 'buckets'})
+        self.get_controller('S3')
         self.get_controller('SNSTopics')
 
         # Load the Service plug-ins

@@ -1046,6 +1046,8 @@ Console to switch between performance and debug configuration quickl in an emerg
 
 {IRDSMysql}
 
+{IRDSPostgresql}
+
 {IRDSAurora}
 
 {IDBParameterGroup}

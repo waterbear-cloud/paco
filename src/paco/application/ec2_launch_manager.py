@@ -8,8 +8,7 @@ For example, if an ASG of instances has monitoring configuration,
 the CloudWatch Agent will be installed and configured to collect
 the metrics needed to support that monitoring.
 
-Note that EC2 Launch Mangaer is linux-centric and won't work
-on Windows instances.
+EC2 Launch Mangaer is currently linux-centric and does not yet work with Windows instances.
 """
 
 
@@ -22,10 +21,12 @@ import tarfile
 from paco.stack import StackHooks, Stack, StackTags
 from paco import models
 from paco import utils
-from paco.models import schemas, vocabulary
+from paco.application import ec2lm_commands
+from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
-from paco.models.references import Reference
+from paco.models.references import Reference, is_ref, resolve_ref
 from paco.models.base import Named
+from paco.models.resources import SSMDocument
 from paco.utils import md5sum, prefixed_name
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
@@ -33,50 +34,44 @@ from paco.core.exception import PacoErrorCode
 
 class LaunchBundle():
     """
-    A collection of files to support initializing a new EC2 instances
-    that have been zipped and stored in S3.
+    A zip file sent to an S3 Bucket to support initializing a new EC2 instance.
     """
 
-    def __init__(
-        self,
-        paco_ctx,
-        name,
-        manager,
-        app_id,
-        group_id,
-        resource_id,
-        resource_config,
-    ):
-        self.paco_ctx = paco_ctx
+    def __init__(self, resource, manager, name):
         self.name = name
         self.manager = manager
-        self.app_id = app_id
-        self.group_id = group_id
-        self.resource_id = resource_id
-        self.resource_config = resource_config
+        self.resource = resource
         self.build_path = os.path.join(
             self.manager.build_path,
-            self.group_id,
-            self.resource_id
+            self.resource.group_name,
+            self.resource.name,
         )
         self.bundle_files = []
-        self.package_path = None
         self.cache_id = ""
-        self.s3_key = None
-        instance_iam_role_arn_ref = self.resource_config.paco_ref + '.instance_iam_role.arn'
-        self.instance_iam_role_arn = self.paco_ctx.get_ref(instance_iam_role_arn_ref)
-        self.bucket_ref = resource_config.paco_ref_parts + '.ec2lm'
+        self.bucket_ref = resource.paco_ref_parts + '.ec2lm'
         self.bundles_path = os.path.join(self.build_path, 'LaunchBundles')
         self.bundle_folder = self.name
         self.package_filename = str.join('.', [self.bundle_folder, 'tgz'])
         self.package_path = os.path.join(self.bundles_path, self.package_filename)
 
-
-    def set_launch_script(self, launch_script):
+    def set_launch_script(self, launch_script, enabled=True):
         """Set the script run to launch the bundle. By convention, this file
         is named 'launch.sh', and is a reserved filename in a launch bundle.
         """
-        self.add_file("launch.sh", launch_script)
+        if enabled == True:
+            launch_bundle_enabled="true"
+        else:
+           launch_bundle_enabled="false"
+        enabled_script = f"""
+# This script is auto-generated. Do not edit.
+LAUNCH_BUNDLE_ENABLED={launch_bundle_enabled}
+if [ "$LAUNCH_BUNDLE_ENABLED" == "true" ] ; then
+    run_launch_bundle
+else
+    disable_launch_bundle
+fi
+"""
+        self.add_file("launch.sh", launch_script + enabled_script)
 
     def add_file(self, name, contents):
         """Add a file to the launch bundle"""
@@ -87,41 +82,26 @@ class LaunchBundle():
         self.bundle_files.append(file_config)
 
     def build(self):
-        """Builds the launch bundle:
-
-         - Creates files for bundle in a bundles tmp dir
-
-         - Tar gzips files
-
-         - Sets ref to S3 bucket and instance IAM role arn
+        """Builds the launch bundle. Puts the files for the bundle in a bundles tmp dir
+        and then creates a gzip archive.
+        Updates the bundle cache id based on the contents of the bundle.
         """
         orig_cwd = os.getcwd()
         pathlib.Path(self.bundles_path).mkdir(parents=True, exist_ok=True)
         os.chdir(self.bundles_path)
-
-        # mkdir Bundle/
         pathlib.Path(self.bundle_folder).mkdir(parents=True, exist_ok=True)
-
-        # Launch script
         contents_md5 = ""
         for bundle_file in self.bundle_files:
             file_path = os.path.join(self.bundle_folder, bundle_file['name'])
             with open(file_path, "w") as output_fd:
                 output_fd.write(bundle_file['contents'])
             contents_md5 += md5sum(str_data=bundle_file['contents'])
-
-        self.cache_id = md5sum(str_data=contents_md5)
-
         lb_tar = tarfile.open(self.package_filename, "w:gz")
         lb_tar.add(self.bundle_folder, recursive=True)
         lb_tar.close()
         os.chdir(orig_cwd)
+        self.cache_id = md5sum(str_data=contents_md5)
 
-        if self.instance_iam_role_arn == None:
-            raise StackException(
-                    PacoErrorCode.Unknown,
-                    message="ec2_launch_manager: LaunchBundle: build: Unable to locate value for ref: " + instance_iam_role_arn_ref
-                )
 
 class EC2LaunchManager():
     """
@@ -141,7 +121,6 @@ class EC2LaunchManager():
         self.paco_ctx = paco_ctx
         self.app_engine = app_engine
         self.application = application
-        self.app_id = application.name
         self.account_ctx = account_ctx
         self.aws_region = aws_region
         self.stack_group = stack_group
@@ -153,30 +132,32 @@ class EC2LaunchManager():
         self.stack_tags = stack_tags
         self.ec2lm_functions_script = {}
         self.ec2lm_buckets = {}
-        self.launch_bundle_names = ['EIP', 'CloudWatchAgent', 'EFS', 'EBS', 'cfn-init']
+        self.launch_bundle_names = ['SSM', 'EIP', 'CloudWatchAgent', 'EFS', 'EBS', 'cfn-init']
         self.build_path = os.path.join(
             self.paco_ctx.build_path,
             'EC2LaunchManager',
             self.application.paco_ref_parts,
             self.account_ctx.get_name(),
             self.aws_region,
-            self.app_id
+            self.application.name,
         )
         self.paco_base_path = '/opt/paco'
         # legacy_flag: aim_name_2019_11_28 - Use AIM name
         if self.paco_ctx.legacy_flag('aim_name_2019_11_28') == True:
             self.paco_base_path = '/opt/aim'
 
-    def get_cache_id(self, resource, app_id, grp_id):
-        cache_context = '.'.join([app_id, grp_id, resource.name])
+    def get_cache_id(self, resource):
+        """Return a cache id unique to an ASG resource.
+        Cache id is an aggregate of all bundle cache ids and the ec2lm functions script cache id.
+        """
+        cache_context = '.'.join([resource.app_name, resource.group_name, resource.name])
         bucket_name = self.get_ec2lm_bucket_name(resource)
         ec2lm_functions_cache_id = ''
         if bucket_name in self.ec2lm_functions_script.keys():
             ec2lm_functions_cache_id = utils.md5sum(str_data=self.ec2lm_functions_script[bucket_name])
-
         if cache_context not in self.cache_id:
             return ec2lm_functions_cache_id
-        return self.cache_id[cache_context]+ec2lm_functions_cache_id
+        return self.cache_id[cache_context] + ec2lm_functions_cache_id
 
     def upload_bundle_stack_hook(self, hook, bundle):
         "Uploads the launch bundle to an S3 bucket"
@@ -186,25 +167,18 @@ class EC2LaunchManager():
         bundle_s3_key = os.path.join("LaunchBundles", bundle.package_filename)
         s3_client.upload_file(bundle.package_path, bucket_name, bundle_s3_key)
 
-    def remove_bundle_stack_hook(self, hook, bundle):
-        "Remove the launch bundle from an S3 bucket"
-        s3_ctl = self.paco_ctx.get_controller('S3')
-        bucket_name = s3_ctl.get_bucket_name(bundle.bucket_ref)
-        s3_client = self.account_ctx.get_aws_client('s3')
-        bundle_s3_key = os.path.join("LaunchBundles", bundle.package_filename)
-        s3_client.delete_object(Bucket=bucket_name, Key=bundle_s3_key)
-
     def stack_hook_cache_id(self, hook, bundle):
+        "Cache method to return a bundle's cache id"
         return bundle.cache_id
 
     def add_bundle_to_s3_bucket(self, bundle):
         """Adds stack hook which will upload launch bundle to an S3 bucket when
         the stack is created or updated."""
-        cache_context = '.'.join([bundle.app_id, bundle.group_id, bundle.resource_id])
+        cache_context = '.'.join([bundle.resource.app_name, bundle.resource.group_name, bundle.resource.name])
         if cache_context not in self.cache_id:
             self.cache_id[cache_context] = ''
         self.cache_id[cache_context] += bundle.cache_id
-        stack_hooks = StackHooks(self.paco_ctx)
+        stack_hooks = StackHooks()
         stack_hooks.add(
             name='UploadBundle.'+bundle.name,
             stack_action='create',
@@ -220,35 +194,14 @@ class EC2LaunchManager():
         s3_ctl = self.paco_ctx.get_controller('S3')
         s3_ctl.add_stack_hooks(resource_ref=bundle.bucket_ref, stack_hooks=stack_hooks)
 
-    def remove_bundle_from_s3_bucket(self, bundle):
-        """Adds stack hook which will remove a launch bundle from an S3 bucket when
-        the stack is created or updated."""
-        cache_context = '.'.join([bundle.app_id, bundle.group_id, bundle.resource_id])
-        if cache_context not in self.cache_id:
-            self.cache_id[cache_context] = ''
-        self.cache_id[cache_context] += bundle.cache_id
-        stack_hooks = StackHooks(self.paco_ctx)
-        stack_hooks.add(
-            name='DeleteBundle.'+bundle.name,
-            stack_action='create',
-            stack_timing='post',
-            hook_method=self.remove_bundle_stack_hook,
-            cache_method=self.stack_hook_cache_id,
-            hook_arg=bundle
-        )
-        stack_hooks.add(
-            'DeleteBundle.'+bundle.name, 'update', 'post',
-            self.remove_bundle_stack_hook, self.stack_hook_cache_id, bundle
-        )
-        s3_ctl = self.paco_ctx.get_controller('S3')
-        s3_ctl.add_stack_hooks(resource_ref=bundle.bucket_ref, stack_hooks=stack_hooks)
-
     def ec2lm_functions_hook_cache_id(self, hook, s3_bucket_ref):
+        "Cache method for EC2LM functions cache id"
         s3_ctl = self.paco_ctx.get_controller('S3')
         bucket_name = s3_ctl.get_bucket_name(s3_bucket_ref)
         return utils.md5sum(str_data=self.ec2lm_functions_script[bucket_name])
 
     def ec2lm_functions_hook(self, hook, s3_bucket_ref):
+        "Hook to upload ec2lm_functions.bash to S3"
         s3_ctl = self.paco_ctx.get_controller('S3')
         bucket_name = s3_ctl.get_bucket_name(s3_bucket_ref)
         s3_client = self.account_ctx.get_aws_client('s3')
@@ -258,14 +211,48 @@ class EC2LaunchManager():
             Key="ec2lm_functions.bash"
         )
 
-    def init_ec2lm_s3_bucket(self, resource, instance_iam_role_arn):
+    def ec2lm_update_instances_hook(self, hook, bucket_resource):
+        "Hook to upload ec2lm_cache_id.md5 to S3 and invoke SSM Run Command on paco_ec2lm_update_instance"
+        s3_bucket_ref, resource = bucket_resource
+        cache_id = self.get_cache_id(resource)
+        # update ec2lm_cache_id.md5 file
+        s3_ctl = self.paco_ctx.get_controller('S3')
+        bucket_name = s3_ctl.get_bucket_name(s3_bucket_ref)
+        s3_client = self.account_ctx.get_aws_client('s3')
+        s3_client.put_object(
+            Bucket=bucket_name,
+            Body=cache_id,
+            Key="ec2lm_cache_id.md5"
+        )
+        # send SSM command to update existing instances
+        ssm_client = self.account_ctx.get_aws_client('ssm', aws_region=self.aws_region)
+        ssm_log_group_name = prefixed_name(resource, 'paco_ssm', self.paco_ctx.legacy_flag)
+        ssm_client.send_command(
+            Targets=[{
+                'Key': 'tag:aws:cloudformation:stack-name',
+                'Values': [resource.stack.get_name()]
+            },],
+            DocumentName='paco_ec2lm_update_instance',
+            Parameters={ 'CacheId': [cache_id] },
+            CloudWatchOutputConfig={
+                'CloudWatchLogGroupName': ssm_log_group_name,
+                'CloudWatchOutputEnabled': True,
+            },
+        )
+
+    def ec2lm_update_instances_cache(self, hook, bucket_resource):
+        "Cache method for EC2LM resource"
+        s3_bucket_ref, resource = bucket_resource
+        return self.get_cache_id(resource)
+
+    def init_ec2lm_s3_bucket(self, resource):
         "Initialize the EC2LM S3 Bucket stack if it does not already exist"
         bucket_config_dict = {
             'enabled': True,
             'bucket_name': 'lb',
             'deletion_policy': 'delete',
             'policy': [ {
-                'aws': [ "%s" % (instance_iam_role_arn) ],
+                'aws': [ "%s" % (resource._instance_iam_role_arn) ],
                 'effect': 'Allow',
                 'action': [
                     's3:Get*',
@@ -296,7 +283,7 @@ class EC2LaunchManager():
         )
 
         # EC2LM Common Functions StackHooks
-        stack_hooks = StackHooks(self.paco_ctx)
+        stack_hooks = StackHooks()
         stack_hooks.add(
             name='UploadEC2LMFunctions',
             stack_action='create',
@@ -313,7 +300,6 @@ class EC2LaunchManager():
             cache_method=self.ec2lm_functions_hook_cache_id,
             hook_arg=s3_bucket_ref
         )
-
         s3_ctl.add_bucket(
             bucket,
             config_ref=s3_bucket_ref,
@@ -323,100 +309,39 @@ class EC2LaunchManager():
 
         # save the bucket to the EC2LaunchManager
         self.ec2lm_buckets[s3_bucket_ref] = bucket
+        return bucket
 
     def get_ec2lm_bucket_name(self, resource):
+        "Paco reference to the ec2lm bucket for a resource"
         s3_ctl = self.paco_ctx.get_controller('S3')
         return s3_ctl.get_bucket_name(resource.paco_ref_parts + '.ec2lm')
 
-    def add_ec2lm_function_swap(self, ec2lm_bucket_name):
-        self.ec2lm_functions_script[ec2lm_bucket_name] += """
-# Swap
-function swap_on() {
-    SWAP_SIZE_GB=$1
-    if [ -e /swapfile ] ; then
-        CUR_SWAP_FILE_SIZE=$(stat -c '%s' /swapfile)
-        if [ $CUR_SWAP_FILE_SIZE -eq $(($SWAP_SIZE_GB*1073741824)) ] ; then
-            set +e
-            swapon /swapfile
-            set -e
-            if [ $? -eq 0 ] ; then
-                echo "EC2LM: Swap: Enabling existing ${SWAP_SIZE_GB}GB Swapfile: /swapfile"
-            fi
-        fi
-    fi
-    if [ "$(swapon -s|grep -v Filename|wc -c)" == "0" ]; then
-        echo "EC2LM: Swap: Enabling a ${SWAP_SIZE_GB}GB Swapfile: /swapfile"
-        dd if=/dev/zero of=/swapfile bs=1024 count=$(($SWAP_SIZE_GB*1024))k
-        chmod 0600 /swapfile
-        mkswap /swapfile
-        swapon /swapfile
-    else
-        echo "EC2LM: Swap: Swap already enabled"
-    fi
-    swapon -s
-    free
-    # Enable swap on reboot
-    CRON_FILE=/tmp/paco-swap.cron
-    set +e
-    crontab -l |grep -v 'paco-swap-launch-bundle' >$CRON_FILE
-    set -e
-    echo -e "\n@reboot /sbin/swapon /swapfile # paco-swap-launch-bundle" >>$CRON_FILE
-    crontab $CRON_FILE
-
-    echo "EC2LM: Swap: Done"
-}
-"""
-
-    def add_ec2lm_function_wget(self, ec2lm_bucket_name, instance_ami_type):
-        self.ec2lm_functions_script[ec2lm_bucket_name] += """
-# HTTP Client Path
-function ec2lm_install_wget() {
-    CLIENT_PATH=$(which wget)
-    if [ $? -eq 1 ] ; then
-        %s
-    fi
-}
-""" % vocabulary.user_data_script['install_wget'][instance_ami_type]
-
-    def add_ec2lm_function_secrets(self, ec2lm_bucket_name, resource, grp_id, instance_iam_role_ref):
-        """Adds functions for getting secrets from Secrets Manager"""
-        self.ec2lm_functions_script[ec2lm_bucket_name] += self.user_data_secrets(resource, grp_id, instance_iam_role_ref)
-
-    def init_ec2lm_function(self, ec2lm_bucket_name, resource, instance_iam_role_ref, stack_name):
-
+    def init_ec2lm_function(self, ec2lm_bucket_name, resource, stack_name):
+        """Init ec2lm_functions.bash script and add managed policies"""
         oldest_health_check_timeout = 0
-        if resource.rolling_update_policy != None:
-            if resource.target_groups != None and len(resource.target_groups) > 0:
-                for target_group in resource.target_groups:
-                    if paco.models.references.is_ref(target_group):
-                        target_group_obj = self.paco_ctx.get_ref(target_group)
-                        health_check_timeout = (target_group_obj.healthy_threshold*target_group_obj.health_check_interval)
-                        if oldest_health_check_timeout < health_check_timeout:
-                            oldest_health_check_timeout = health_check_timeout
+        if resource.target_groups != None and len(resource.target_groups) > 0:
+            for target_group in resource.target_groups:
+                if is_ref(target_group):
+                    target_group_obj = self.paco_ctx.get_ref(target_group)
+                    health_check_timeout = (target_group_obj.healthy_threshold * target_group_obj.health_check_interval)
+                    if oldest_health_check_timeout < health_check_timeout:
+                        oldest_health_check_timeout = health_check_timeout
 
-        script_table = {
-            'ec2lm_bucket_name': ec2lm_bucket_name,
-            'paco_environment': self.app_engine.env_ctx.env_id,
-            'paco_network_environment': self.app_engine.env_ctx.netenv_id,
-            'paco_environment_ref': self.app_engine.env_ctx.config.paco_ref_parts,
-            'aws_account_id': self.account_ctx.id,
-            'launch_bundle_names': ' '.join(self.launch_bundle_names),
-            'paco_base_path': self.paco_base_path,
-            'tool_name_legacy_flag': 'AIM' if self.paco_ctx.legacy_flag('aim_name_2019_11_28') == True else 'PACO',
-            'oldest_health_check_timeout': oldest_health_check_timeout
-        }
-
-        script_template = """
-INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+        launch_bundle_names = ' '.join(self.launch_bundle_names)
+        if self.paco_ctx.legacy_flag('aim_name_2019_11_28') == True:
+            tool_name = 'AIM'
+        else:
+            tool_name = 'PACO'
+        self.ec2lm_functions_script[ec2lm_bucket_name] = f"""INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
 AVAIL_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
 REGION="$(echo \"$AVAIL_ZONE\" | sed 's/[a-z]$//')"
 export AWS_DEFAULT_REGION=$REGION
-EC2LM_AWS_ACCOUNT_ID="{0[aws_account_id]:s}"
+EC2LM_AWS_ACCOUNT_ID="{self.account_ctx.id}"
 EC2LM_STACK_NAME=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=aws:cloudformation:stack-name" --query 'Tags[0].Value' |tr -d '"')
-EC2LM_FOLDER='{0[paco_base_path]:s}/EC2Manager/'
-EC2LM_{0[tool_name_legacy_flag]:s}_NETWORK_ENVIRONMENT="{0[paco_network_environment]:s}"
-EC2LM_{0[tool_name_legacy_flag]:s}_ENVIRONMENT="{0[paco_environment]:s}"
-EC2LM_{0[tool_name_legacy_flag]:s}_ENVIRONMENT_REF={0[paco_environment_ref]:s}
+EC2LM_FOLDER='{self.paco_base_path}/EC2Manager/'
+EC2LM_{tool_name}_NETWORK_ENVIRONMENT="{resource.netenv_name}"
+EC2LM_{tool_name}_ENVIRONMENT="{resource.env_name}"
+EC2LM_{tool_name}_ENVIRONMENT_REF={resource.env_region_obj.paco_ref_parts}
 
 # Escape a string for sed replacements
 function sed_escape() {{
@@ -471,17 +396,63 @@ function ec2lm_timeout() {{
 
 # Launch Bundles
 function ec2lm_launch_bundles() {{
+    CACHE_ID=$1
+
+    export EC2LM_IGNORE_CACHE=false
+    if [ "$CACHE_ID" == "on_launch" ] ; then
+        export EC2LM_IGNORE_CACHE=true
+    fi
+
+    # Compare new EC2LM contents cache id with existing
+    OLD_CACHE_ID=$(<$EC2LM_FOLDER/ec2lm_cache_id.md5)
+
+    if [ "$EC2LM_IGNORE_CACHE" == "false" ] ; then
+        if [ "$CACHE_ID" == "$OLD_CACHE_ID" ] ; then
+            echo "Cache Id unchanged. Skipping ec2lm_launch_bundles."
+            exit
+        fi
+    fi
+
+    # EC2LM Lock file
+    EC2LM_LOCK_FILE='/var/lock/paco_ec2lm.lock'
+    if [ ! -f $EC2LM_LOCK_FILE ]; then
+        :>$EC2LM_LOCK_FILE
+    fi
+    exec 100>$EC2LM_LOCK_FILE
+    echo "EC2LM: LaunchBundles: Obtaining lock."
+    flock -n 100
+    if [ $? -ne 0 ]  ; then
+        echo “[ERROR] EC2LM LaunchBundles: Unable to obtain EC2LM lock.”
+        exit 1
+    fi
+
+    # Synchronize latest bundle contents
+    aws s3 sync s3://{ec2lm_bucket_name}/ --region=$REGION $EC2LM_FOLDER
+
+    # Run launch bundles
     mkdir -p $EC2LM_FOLDER/LaunchBundles/
     cd $EC2LM_FOLDER/LaunchBundles/
 
     echo "EC2LM: LaunchBundles: Loading"
-    for BUNDLE_NAME in {0[launch_bundle_names]:s}
+    for BUNDLE_NAME in {launch_bundle_names}
     do
         BUNDLE_FOLDER=$BUNDLE_NAME
         BUNDLE_PACKAGE=$BUNDLE_NAME".tgz"
+        BUNDLE_PACKAGE_CACHE_ID=$BUNDLE_PACKAGE".cache"
         if [ ! -f "$BUNDLE_PACKAGE" ] ; then
-            echo "EC2LM: LaunchBundles: Skipping disabled package: $BUNDLE_PACKAGE"
+            echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Skipping missing package: $BUNDLE_PACKAGE"
             continue
+        fi
+        # Check if this bundle has changed
+        NEW_BUNDLE_CACHE_ID=$(md5sum $BUNDLE_PACKAGE | awk '{{print $1}}')
+        if [ "$EC2LM_IGNORE_CACHE" == "false" ] ; then
+            if [ -f $BUNDLE_PACKAGE_CACHE_ID ] ; then
+                OLD_BUNDLE_CACHE_ID=$(cat $BUNDLE_PACKAGE_CACHE_ID)
+                if [ "$NEW_BUNDLE_CACHE_ID" == "$OLD_BUNDLE_CACHE_ID" ] ; then
+                    echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Skipping unchanged bundle: $BUNDLE_PACKAGE: $NEW_BUNDLE_CACHE_ID == $OLD_BUNDLE_CACHE_ID"
+                    continue
+                fi
+            fi
         fi
         echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Unpacking $BUNDLE_PACKAGE"
         tar xvfz $BUNDLE_PACKAGE
@@ -490,7 +461,10 @@ function ec2lm_launch_bundles() {{
         cd $BUNDLE_FOLDER
         chmod u+x ./launch.sh
         ./launch.sh
+        # Save the Bundle Cache ID after launch completion
+        echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Saving new cache id: $NEW_BUNDLE_CACHE_ID"
         cd ..
+        echo -n "$NEW_BUNDLE_CACHE_ID" >$BUNDLE_PACKAGE_CACHE_ID
         echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Done"
     done
 }}
@@ -514,19 +488,56 @@ function ec2lm_signal_asg_resource() {{
         # ASG Rolling Update
         ASG_LOGICAL_ID=$(ec2lm_instance_tag_value 'aws:cloudformation:logical-id')
         # Sleep 90 seconds to allow ALB healthcheck to succeed otherwise older instances will begin to shutdown
-        echo "EC2LM: Signal ASG Resource: Sleeping for {0[oldest_health_check_timeout]} seconds to allow target healthcheck to succeed."
-        sleep {0[oldest_health_check_timeout]}
+        echo "EC2LM: Signal ASG Resource: Sleeping for {oldest_health_check_timeout} seconds to allow target healthcheck to succeed."
+        sleep {oldest_health_check_timeout}
         echo "EC2LM: Signal ASG Resource: Signaling ASG Resource: $EC2LM_STACK_NAME: $ASG_LOGICAL_ID: $INSTANCE_ID: $STATUS"
         aws cloudformation signal-resource --region $REGION --stack $EC2LM_STACK_NAME --logical-resource-id $ASG_LOGICAL_ID --unique-id $INSTANCE_ID --status $STATUS
     else
         echo "EC2LM: Resource Signaling: Not a rolling update: skipping"
     fi
 }}
+
+# Swap
+function swap_on() {{
+    SWAP_SIZE_GB=$1
+    if [ -e /swapfile ] ; then
+        CUR_SWAP_FILE_SIZE=$(stat -c '%s' /swapfile)
+        if [ $CUR_SWAP_FILE_SIZE -eq $(($SWAP_SIZE_GB*1073741824)) ] ; then
+            swapon /swapfile
+            if [ $? -eq 0 ] ; then
+                echo "EC2LM: Swap: Enabling existing ${{SWAP_SIZE_GB}}GB Swapfile: /swapfile"
+            fi
+        fi
+    fi
+    if [ "$(swapon -s|grep -v Filename|wc -c)" == "0" ]; then
+        echo "EC2LM: Swap: Enabling a ${{SWAP_SIZE_GB}}GB Swapfile: /swapfile"
+        dd if=/dev/zero of=/swapfile bs=1024 count=$(($SWAP_SIZE_GB*1024))k
+        chmod 0600 /swapfile
+        mkswap /swapfile
+        swapon /swapfile
+    else
+        echo "EC2LM: Swap: Swap already enabled"
+    fi
+    swapon -s
+    free
+    echo "EC2LM: Swap: Done"
+}}
+
+# Install Wget
+function ec2lm_install_wget() {{
+    CLIENT_PATH=$(which wget)
+    if [ $? -eq 1 ] ; then
+        {ec2lm_commands.user_data_script['install_wget'][resource.instance_ami_type_generic]}
+    fi
+}}
 """
-        self.ec2lm_functions_script[ec2lm_bucket_name] = script_template.format(script_table)
+        if resource.secrets != None and len(resource.secrets) > 0:
+            self.ec2lm_functions_script[ec2lm_bucket_name] += self.add_secrets_function_policy(resource)
+
+        # Add a base IAM Managed Policy to allow access to EC2 Tags
         iam_policy_name = '-'.join([resource.name, 'ec2lm'])
-        policy_config_yaml = """
-policy_name: '{}'
+        policy_config_yaml = f"""
+policy_name: '{iam_policy_name}'
 enabled: true
 statement:
   - effect: Allow
@@ -534,23 +545,17 @@ statement:
       - "ec2:DescribeTags"
     resource:
       - '*'
-""".format(iam_policy_name)
-        # Signal Resource permissions if its needed
+"""
+        # allow cloudformation SignalResource and DescribeStacks if needed
         if resource.rolling_update_policy.wait_on_resource_signals == True:
-            rolling_update_policy_table = {
-                'region': self.aws_region,
-                'stack_name': stack_name,
-                'account': self.account_ctx.id
-            }
-            policy_config_yaml += """
+            policy_config_yaml += f"""
   - effect: Allow
     action:
       - "cloudformation:SignalResource"
       - "cloudformation:DescribeStacks"
     resource:
-      - 'arn:aws:cloudformation:{0[region]}:{0[account]}:stack/{0[stack_name]}/*'
-""".format(rolling_update_policy_table)
-
+      - 'arn:aws:cloudformation:{self.aws_region}:{self.account_ctx.id}:stack/{stack_name}/*'
+"""
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
             role=resource.instance_iam_role,
@@ -560,13 +565,34 @@ statement:
             extra_ref_names=['ec2lm','ec2lm'],
         )
 
-    def user_data_script(self, app_id, grp_id, resource_id, resource, instance_iam_role_ref, stack_name):
+    def user_data_script(self, resource, stack_name):
         """BASH script that will load the launch bundle from user_data"""
+        self.init_ec2lm_s3_bucket(resource)
+        ec2lm_bucket_name = self.get_ec2lm_bucket_name(resource)
 
-        script_fmt = """#!/bin/bash
-echo "EC2LM: Start"
-echo "EC2LM: Script: $0"
-echo "EC2LM: CacheId: {0[cache_id]}"
+        # EC2LM Functions and Managed Policies
+        self.init_ec2lm_function(ec2lm_bucket_name, resource, stack_name)
+
+        # Checks and warnings
+        update_packages =''
+        if resource.launch_options.update_packages == True:
+            update_packages = ec2lm_commands.user_data_script['update_packages'][resource.instance_ami_type_generic]
+        if self.paco_ctx.warn:
+            if resource.rolling_update_policy != None and \
+                resource.rolling_update_policy.wait_on_resource_signals == True and \
+                    resource.user_data_script.find('ec2lm_signal_asg_resource') == -1:
+                print("WARNING: {}.rolling_update_policy.wait_on_resource_signals == True".format(resource.paco_ref_parts))
+                print("'ec2lm_signal_asg_resource <SUCCESS|FAILURE>' was not detected in your user_data_script for this resource.")
+
+        # Newer Ubuntu (>20) does not have Python 2
+        if resource.instance_ami_type in ('ubuntu_20',):
+            install_aws_cli = ec2lm_commands.user_data_script['install_aws_cli'][resource.instance_ami_type]
+        else:
+            install_aws_cli = ec2lm_commands.user_data_script['install_aws_cli'][resource.instance_ami_type_generic]
+
+        # Return UserData script
+        return f"""#!/bin/bash
+echo "Paco EC2LM: Script: $0"
 
 # Runs pip
 function ec2lm_pip() {{
@@ -580,76 +606,24 @@ function ec2lm_pip() {{
     done
 }}
 
-{0[pre_script]}
-{0[update_packages]}
-{0[install_aws_cli]}
+{resource.user_data_pre_script}
+{update_packages}
+{install_aws_cli}
 
-EC2LM_FOLDER='{0[paco_base_path]}/EC2Manager/'
+EC2LM_FOLDER='{self.paco_base_path}/EC2Manager/'
 EC2LM_FUNCTIONS=ec2lm_functions.bash
-if [ -d $EC2LM_FOLDER ]; then
-    mkdir -p /tmp/ec2lm_backups/
-    mv $EC2LM_FOLDER /tmp/ec2lm_backups/
-fi
 mkdir -p $EC2LM_FOLDER/
-aws s3 sync s3://{0[ec2lm_bucket_name]:s}/ --region={0[region]} $EC2LM_FOLDER
+aws s3 sync s3://{ec2lm_bucket_name}/ --region={resource.region_name} $EC2LM_FOLDER
 
 . $EC2LM_FOLDER/$EC2LM_FUNCTIONS
 
-{0[launch_bundles]}
+# Run every Paco EC2LM launch bundle on launch
+ec2lm_launch_bundles on_launch &> /tmp/paco-ec2lm_launch_bundles
+
 """
 
-        instance_iam_role_arn_ref = 'paco.ref ' + instance_iam_role_ref + '.arn'
-        instance_iam_role_arn = self.paco_ctx.get_ref(instance_iam_role_arn_ref)
-        if instance_iam_role_arn == None:
-            raise StackException(
-                    PacoErrorCode.Unknown,
-                    message="ec2_launch_manager: user_data_script: Unable to locate value for ref: " + instance_iam_role_arn_ref
-                )
-        self.init_ec2lm_s3_bucket(resource, instance_iam_role_arn)
-
-        ec2lm_bucket_name = self.get_ec2lm_bucket_name(resource)
-
-        script_table = {
-            'cache_id': None,
-            'ec2lm_bucket_name': ec2lm_bucket_name,
-            'install_aws_cli': vocabulary.user_data_script['install_aws_cli'][resource.instance_ami_type],
-            'launch_bundles': 'echo "EC2LM: No launch bundles to load."\n',
-            'update_packages': '',
-            'pre_script': '',
-            'region': resource.region_name,
-            'paco_base_path': self.paco_base_path
-        }
-        # Launch Bundles
-        if len(self.launch_bundles.keys()) > 0:
-            script_table['launch_bundles'] = 'ec2lm_launch_bundles\n'
-
-        # EC2LM Functions
-        self.init_ec2lm_function(ec2lm_bucket_name, resource, instance_iam_role_ref, stack_name)
-        self.add_ec2lm_function_swap(ec2lm_bucket_name)
-        self.add_ec2lm_function_wget(ec2lm_bucket_name, resource.instance_ami_type)
-
-        if resource.user_data_pre_script != None:
-            script_table['pre_script'] = resource.user_data_pre_script
-
-        if resource.secrets != None and len(resource.secrets) > 0:
-            self.add_ec2lm_function_secrets(ec2lm_bucket_name, resource, grp_id, instance_iam_role_ref)
-
-        if resource.launch_options != None:
-            if resource.launch_options.update_packages == True:
-                script_table['update_packages'] = vocabulary.user_data_script['update_packages'][resource.instance_ami_type]
-
-        script_table['cache_id'] = self.get_cache_id(resource, app_id, grp_id)
-        user_data_script = script_fmt.format(script_table)
-        if self.paco_ctx.warn:
-            if resource.rolling_update_policy != None and \
-                resource.rolling_update_policy.wait_on_resource_signals == True and \
-                    resource.user_data_script.find('ec2lm_signal_asg_resource') == -1:
-                print("WARNING: {}.rolling_update_policy.wait_on_resource_signals == True".format(resource.paco_ref_parts))
-                print("'ec2lm_signal_asg_resource <SUCCESS|FAILURE>' was not detected in your user_data_script for this resource.")
-
-        return user_data_script
-
-    def user_data_secrets(self, resource, grp_id, instance_iam_role_ref):
+    def add_secrets_function_policy(self, resource):
+        "Add ec2lm_functions.bash function for Secrets and managed policy to allow access to secrets"
         secrets_script = """
 function ec2lm_get_secret() {
     aws secretsmanager get-secret-value --secret-id "$1" --query SecretString --region $REGION --output text
@@ -680,17 +654,16 @@ function ec2lm_replace_secret_in_file() {
             template_params.append(param)
             secret_arn_list_yaml += "      - !Ref SecretArn" + secret_hash + "\n"
 
-        policy_config_yaml = """
-policy_name: '{}'
+        policy_config_yaml = f"""
+policy_name: '{iam_policy_name}'
 enabled: true
 statement:
   - effect: Allow
     action:
       - secretsmanager:GetSecretValue
     resource:
-{}
-""".format(iam_policy_name, secret_arn_list_yaml)
-
+{secret_arn_list_yaml}
+"""
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_managed_policy(
             role=resource.instance_iam_role,
@@ -703,93 +676,75 @@ statement:
         return secrets_script
 
     def add_bundle(self, bundle):
+        "Build and add a bundle to the ec2lm S3 Bucket"
         bundle.build()
         if bundle.bucket_ref not in self.launch_bundles:
-            self.init_ec2lm_s3_bucket(bundle.resource_config, bundle.instance_iam_role_arn)
+            self.init_ec2lm_s3_bucket(bundle.resource)
             self.launch_bundles[bundle.bucket_ref] = []
         # Add the bundle to the S3 Context ID bucket
         self.add_bundle_to_s3_bucket(bundle)
         self.launch_bundles[bundle.bucket_ref].append(bundle)
 
-    def remove_bundle(self, bundle):
-        if bundle.bucket_ref not in self.launch_bundles:
-            self.init_ec2lm_s3_bucket(bundle.resource_config, bundle.instance_iam_role_arn)
-            self.launch_bundles[bundle.bucket_ref] = []
-        self.remove_bundle_from_s3_bucket(bundle)
+    def lb_add_cfn_init(self, bundle_name, resource):
+        """Launch bundle to install and run cfn-init configsets"""
+        cfn_init_lb = LaunchBundle(resource, self, bundle_name)
 
-    def lb_add_cfn_init(self, bundle_name, instance_iam_role_ref, resource):
-        """Creates a launch bundle to download and run cfn-init"""
-        # Check if this bundle is enabled with config such as:
-        #  asg:
-        #    launch_options:
-        #      cfn_init_config_sets:
-        #        - SomeSet
-
-        # Create the Launch Bundle and configure it
-        app_name = get_parent_by_interface(resource, schemas.IApplication).name
-        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
-
-        cfn_init_lb = LaunchBundle(
-            self.paco_ctx,
-            bundle_name,
-            self,
-            app_name,
-            group_name,
-            resource.name,
-            resource,
-        )
-
-        if resource.cfn_init == None or \
-            resource.launch_options == None or \
-            resource.launch_options.cfn_init_config_sets == None or \
-            len(resource.launch_options.cfn_init_config_sets) == 0:
-            self.remove_bundle(cfn_init_lb)
-            return
+        cfn_init_enabled = True
+        if resource.cfn_init == None or len(resource.launch_options.cfn_init_config_sets) == 0:
+            cfn_init_enabled = False
 
         # cfn-init base path
-        if resource.instance_ami_type in ['amazon', 'centos']:
-            # Amazon Linux has cfn-init pre-installed at /opt/aws/
+        if resource.instance_ami_type_generic in ['amazon', 'centos']:
+            # Amazon Linux and CentOS have cfn-init pre-installed at /opt/aws/
             cfn_base_path = '/opt/aws'
         else:
             # other OS types will install cfn-init into the Paco directory
             cfn_base_path = self.paco_base_path
 
-        launch_script = """#!/bin/bash
-. %s/EC2Manager/ec2lm_functions.bash
-%s
-%s/bin/cfn-init --stack=$EC2LM_STACK_NAME --resource=LaunchConfiguration --region=$REGION --configsets=%s
-%s/bin/cfn-signal -e $? --stack $EC2LM_STACK_NAME --resource=LaunchConfiguration --region=$REGION
-""" % (
-    self.paco_base_path,
-    vocabulary.user_data_script['install_cfn_init'][resource.instance_ami_type],
-    cfn_base_path,
-    ','.join(resource.launch_options.cfn_init_config_sets),
-    cfn_base_path
-)
+        if resource.instance_ami_type in ec2lm_commands.user_data_script['install_cfn_init']:
+            install_cfn_init_command = ec2lm_commands.user_data_script['install_cfn_init'][resource.instance_ami_type]
+        else:
+            install_cfn_init_command = ec2lm_commands.user_data_script['install_cfn_init'][resource.instance_ami_type_generic]
+        install_cfn_init_command = install_cfn_init_command.format(cfn_base_path=cfn_base_path)
 
-        cfn_init_lb.set_launch_script(launch_script)
+        config_sets_str = ','.join(resource.launch_options.cfn_init_config_sets)
+        launch_script = f"""#!/bin/bash
+. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
 
-        # Save Configuration
+function run_launch_configuration() {{
+    {cfn_base_path}/bin/cfn-init --stack=$EC2LM_STACK_NAME --resource=LaunchConfiguration --region=$REGION --configsets={config_sets_str}
+}}
+
+function run_launch_bundle() {{
+    # cfn-init configsets are only run by Paco during initial launch
+    if [[ ! -f ./initialized-configsets.txt  || "$EC2LM_IGNORE_CACHE" == "true" ]]; then
+        {install_cfn_init_command}
+        echo "{config_sets_str}" >> ./initialized-configsets.txt
+        run_launch_configuration
+        {cfn_base_path}/bin/cfn-signal -e $? --stack $EC2LM_STACK_NAME --resource=LaunchConfiguration --region=$REGION
+    fi
+}}
+
+function disable_launch_bundle() {{
+    # touch the initialized-configsets.txt file to prevent a later addition
+    # of a cfn-init ConfigSet from running unexpectedly
+    touch ./initialized-configsets.txt
+}}
+
+# enable local running of launch configset with:
+# $EC2LM_FOLDER/LaunchBundles/cfn-init/launch.sh run
+RUN_LAUNCH_CFN=$1
+if [ "$RUN_LAUNCH_CFN" == "run" ] ; then
+    run_launch_configuration
+fi
+
+"""
+        cfn_init_lb.set_launch_script(launch_script, cfn_init_enabled)
         self.add_bundle(cfn_init_lb)
 
-    def lb_add_efs(self, bundle_name, instance_iam_role_ref, resource):
-        """Creates a launch bundle to configure EFS mounts:
-
-         - Installs an entry in /etc/fstab
-         - On launch runs mount
-        """
-        app_name = get_parent_by_interface(resource, schemas.IApplication).name
-        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
-       # Create the Launch Bundle and configure it
-        efs_lb = LaunchBundle(
-            self.paco_ctx,
-            bundle_name,
-            self,
-            app_name,
-            group_name,
-            resource.name,
-            resource,
-        )
+    def lb_add_efs(self, bundle_name, resource):
+        """Launch bundle to configure and mount EFS"""
+        efs_lb = LaunchBundle(resource, self, bundle_name)
 
         efs_enabled = False
         if len(resource.efs_mounts) >= 0:
@@ -798,32 +753,40 @@ statement:
                 if efs_mount.enabled == False:
                     continue
                 efs_enabled = True
-                efs_id_hash = utils.md5sum(str_data=efs_mount.target)
-                process_mount_targets += "process_mount_target {} {}\n".format(efs_mount.folder, efs_id_hash)
+                if is_ref(efs_mount.target) == True:
+                    stack = resolve_ref(efs_mount.target, self.paco_ctx.project, self.account_ctx)
+                    efs_stack_name = stack.get_name()
+                else:
+                    # ToDo: Paco EC2LM does not yet support string EFS Ids
+                    raise AttributeError('String EFS Id values not yet supported by EC2LM')
+                process_mount_targets += "process_mount_target {} {}\n".format(efs_mount.folder, efs_stack_name)
 
-        if efs_enabled == False:
-            self.remove_bundle(efs_lb)
-            return
+        # ToDo: add other unsupported OSes here (Suse? CentOS 6)
+        if resource.instance_ami_type in ['ubuntu_14',]:
+            raise AttributeError(f"OS type {resource.instance_ami_type} does not support EFS")
+        install_efs_utils = ec2lm_commands.user_data_script['install_efs_utils'][resource.instance_ami_type_generic]
+        mount_efs = ec2lm_commands.user_data_script['mount_efs'][resource.instance_ami_type_generic]
+        if resource.instance_ami_type == 'ubuntu_16':
+            install_efs_utils = ec2lm_commands.user_data_script['install_efs_utils'][resource.instance_ami_type]
+            mount_efs = ec2lm_commands.user_data_script['mount_efs'][resource.instance_ami_type]
 
-        # TODO: Add ubuntu and other distro support
-        launch_script_template = """#!/bin/bash
+        launch_script = f"""#!/bin/bash
 
-# CachId: 2019-09-15.01
-INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
-AVAIL_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
-REGION="$(echo \"$AVAIL_ZONE\" | sed 's/[a-z]$//')"
+. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
+EFS_MOUNT_FOLDER_LIST=./efs_mount_folder_list
+EFS_ID_LIST=./efs_id_list
 
 function process_mount_target()
-{
+{{
     MOUNT_FOLDER=$1
-    EFS_ID_HASH=$2
+    EFS_STACK_NAME=$2
 
-    # Get EFSID from Tag
-    EFS_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=efs-id-$EFS_ID_HASH" --query 'Tags[0].Value' |tr -d '"')
+    # Get EFS ID from Tag
+    EFS_ID=$(aws efs describe-file-systems --region $REGION --no-paginate --query "FileSystems[].{{Tags: Tags[?Key=='Paco-Stack-Name'].Value, FileSystemId: FileSystemId}} | [].{{stack: Tags[0], fs: FileSystemId}} | [?stack=='$EFS_STACK_NAME'].fs | [0]" | tr -d '"')
 
     # Setup the mount folder
     if [ -e $MOUNT_FOLDER ] ; then
-        mv $MOUNT_FOLDER ${MOUNT_FOLDER%%/}.old
+        mv $MOUNT_FOLDER ${{MOUNT_FOLDER%%/}}.old
     fi
     mkdir -p $MOUNT_FOLDER
 
@@ -832,79 +795,101 @@ function process_mount_target()
     echo "$EFS_ID:/ $MOUNT_FOLDER efs defaults,_netdev,fsc 0 0" >>/tmp/fstab.efs_new
     mv /tmp/fstab.efs_new /etc/fstab
     chmod 0664 /etc/fstab
-}
+    echo "$MOUNT_FOLDER" >>$EFS_MOUNT_FOLDER_LIST".new"
+    echo "$EFS_ID" >>$EFS_ID_LIST".new"
+}}
 
-%s
-%s
+function run_launch_bundle() {{
+    # Install EFS Utils
+    {install_efs_utils}
+    # Enable EFS Utils
+    {ec2lm_commands.user_data_script['enable_efs_utils'][resource.instance_ami_type_generic]}
 
-%s
+    # Process Mounts
+    :>$EFS_MOUNT_FOLDER_LIST".new"
+    :>$EFS_ID_LIST".new"
+    {process_mount_targets}
+    mv $EFS_MOUNT_FOLDER_LIST".new" $EFS_MOUNT_FOLDER_LIST
+    mv $EFS_ID_LIST".new" $EFS_ID_LIST
 
-%s
+    # Mount EFS folders
+    {mount_efs}
+}}
+
+function disable_launch_bundle() {{
+    # Remove them if they exist
+    if [ -e "$EFS_MOUNT_FOLDER_LIST" ] ; then
+        for MOUNT_FOLDER in $(cat $EFS_MOUNT_FOLDER_LIST)
+        do
+            umount $MOUNT_FOLDER
+        done
+        rm $EFS_MOUNT_FOLDER_LIST
+    fi
+    if [ -e "$EFS_ID_LSIT" ] ; then
+        for EFS_ID in $(cat $EFS_ID_LIST)
+        do
+            grep -v -E "^$EFS_ID:/" /etc/fstab >/tmp/fstab.efs_new
+            mv /tmp/fstab.efs_new /etc/fstab
+            chmod 0664 /etc/fstab
+        done
+        rm $EFS_ID_LIST
+    fi
+}}
 """
+        efs_lb.set_launch_script(launch_script, efs_enabled)
+        self.add_bundle(efs_lb)
 
-        launch_script = launch_script_template % (
-            vocabulary.user_data_script['install_efs_utils'][resource.instance_ami_type],
-            vocabulary.user_data_script['enable_efs_utils'][resource.instance_ami_type],
-            process_mount_targets,
-            vocabulary.user_data_script['mount_efs'][resource.instance_ami_type])
-
-        iam_policy_name = '-'.join([resource.name, 'efs'])
-        policy_config_yaml = """
+        # IAM Managed Policy to allow EFS
+        if efs_enabled:
+            iam_policy_name = '-'.join([resource.name, 'efs'])
+            policy_config_yaml = """
 policy_name: '{}'
 enabled: true
 statement:
   - effect: Allow
     action:
-      - "ec2:DescribeTags"
+      - 'elasticfilesystem:DescribeFileSystems'
     resource:
       - '*'
 """.format(iam_policy_name)
+            iam_ctl = self.paco_ctx.get_controller('IAM')
+            iam_ctl.add_managed_policy(
+                role=resource.instance_iam_role,
+                resource=resource,
+                policy_name='policy',
+                policy_config_yaml=policy_config_yaml,
+                extra_ref_names=['ec2lm','efs'],
+            )
 
-        iam_ctl = self.paco_ctx.get_controller('IAM')
-        iam_ctl.add_managed_policy(
-            role=resource.instance_iam_role,
-            resource=resource,
-            policy_name='policy',
-            policy_config_yaml=policy_config_yaml,
-            extra_ref_names=['ec2lm','efs']
-        )
+    def lb_add_ebs(self, bundle_name, resource):
+        """Launch bundle to configure and mount EBS Volumes"""
+        ebs_lb = LaunchBundle(resource, self, bundle_name)
 
-        efs_lb.set_launch_script(launch_script)
+        # is EBS enabled? if yes, create process_volume_mount commands
+        ebs_enabled = False
+        process_mount_volumes = ""
+        for ebs_volume_mount in resource.ebs_volume_mounts:
+            if ebs_volume_mount.enabled == False:
+                continue
+            ebs_enabled = True
+            ebs_stack = resolve_ref(ebs_volume_mount.volume, self.paco_ctx.project, self.account_ctx)
+            ebs_stack_name = ebs_stack.get_name()
+            process_mount_volumes += "process_volume_mount {} {} {} {}\n".format(
+                ebs_volume_mount.folder,
+                ebs_stack_name,
+                ebs_volume_mount.filesystem,
+                ebs_volume_mount.device
+            )
 
-        # Save Configuration
-        self.add_bundle(efs_lb)
+        launch_script = f"""#!/bin/bash
 
-    def lb_add_ebs(self, bundle_name, instance_iam_role_ref, resource):
-        """Creates a launch bundle to configure EBS Volume mounts:
+. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
 
-         - Installs an entry in /etc/fstab
-         - On launch runs mount
-        """
-        app_name = get_parent_by_interface(resource, schemas.IApplication).name
-        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
-
-        # Create the Launch Bundle and configure it
-        ebs_lb = LaunchBundle(
-            self.paco_ctx,
-            bundle_name,
-            self,
-            app_name,
-            group_name,
-            resource.name,
-            resource,
-        )
-
-        if len(resource.ebs_volume_mounts) == 0:
-            self.remove_bundle(ebs_lb)
-            return
-
-        # TODO: Add ubuntu and other distro support
-        launch_script_template = """#!/bin/bash
-
-. %s/EC2Manager/ec2lm_functions.bash
+EBS_MOUNT_FOLDER_LIST=ebs_mount_folder_list
+EBS_VOLUME_UUID_LIST=ebs_volume_uuid_list
 
 # Attach EBS Volume
-function ec2lm_attach_ebs_volume() {
+function ec2lm_attach_ebs_volume() {{
     EBS_VOLUME_ID=$1
     EBS_DEVICE=$2
 
@@ -915,51 +900,51 @@ function ec2lm_attach_ebs_volume() {
         return 0
     fi
     return 1
-}
+}}
 
 # Checks if a volume has been attached
 # ec2lm_volume_is_attached <device>
 # Return: 0 == True
 #         1 == False
-function ec2lm_volume_is_attached() {
+function ec2lm_volume_is_attached() {{
     DEVICE=$1
     OUTPUT=$(file -s $DEVICE)
     if [[ $OUTPUT == *"No such file or directory"* ]] ; then
         return 1
     fi
     return 0
-}
+}}
 
 # Checks if a volume has been attached
 # ec2lm_volume_is_attached <device>
 # Return: 0 == True
 #         1 == False
-function ec2lm_get_volume_uuid() {
+function ec2lm_get_volume_uuid() {{
     EBS_DEVICE=$1
     VOLUME_UUID=$(/sbin/blkid $EBS_DEVICE |grep UUID |cut -d'"' -f 2)
-    if [ "${VOLUME_UUID}" != "" ] ; then
+    if [ "${{VOLUME_UUID}}" != "" ] ; then
         echo $VOLUME_UUID
         return 0
     fi
     return 1
-}
+}}
 
 # Attach and Mount an EBS Volume
 function process_volume_mount()
-{
+{{
     MOUNT_FOLDER=$1
-    EBS_VOLUME_ID_HASH=$2
+    EBS_STACK_NAME=$2
     FILESYSTEM=$3
     EBS_DEVICE=$4
 
     echo "EC2LM: EBS: Process Volume Mount: Begin"
 
-    # Get EBS Volume Tags and Device
-    EBS_VOLUME_ID=$(ec2lm_instance_tag_value "ebs-volume-id-$EBS_VOLUME_ID_HASH")
+    # Get EBS Volume Id
+    EBS_VOLUME_ID=$(aws ec2 describe-volumes --filters Name=tag:aws:cloudformation:stack-name,Values=$EBS_STACK_NAME --query "Volumes[*].VolumeId | [0]" --region $REGION | tr -d '"')
 
     # Setup the mount folder
     if [ -e $MOUNT_FOLDER ] ; then
-        mv $MOUNT_FOLDER ${MOUNT_FOLDER%%/}.old
+        mv $MOUNT_FOLDER ${{MOUNT_FOLDER%%/}}.old
     fi
     mkdir -p $MOUNT_FOLDER
 
@@ -967,8 +952,8 @@ function process_volume_mount()
     echo "EC2LM: EBS: Attaching $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE: Timeout = $TIMEOUT_SECS"
     OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_attach_ebs_volume $EBS_VOLUME_ID $EBS_DEVICE)
     if [ $? -eq 1 ] ; then
-        echo "EC2LM: EBS: Unable to attach $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE"
-        echo "EC2LM: EBS: Error: $OUTPUT"
+        echo "[ERROR] EC2LM: EBS: Unable to attach $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE"
+        echo "[ERROR] EC2LM: EBS: $OUTPUT"
         cat /tmp/ec2lm_attach.output
         exit 1
     fi
@@ -979,7 +964,7 @@ function process_volume_mount()
     OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_volume_is_attached $EBS_DEVICE)
     if [ $? -eq 1 ] ; then
         echo "EC2LM: EBS: Error: Unable to detect the attached volume $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE."
-        echo "EC2LM: EBS: Error: $OUTPUT"
+        echo "[ERROR] EC2LM: EBS: $OUTPUT"
         exit 1
     fi
 
@@ -996,8 +981,8 @@ function process_volume_mount()
     TIMEOUT_SECS=30
     VOLUME_UUID=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_get_volume_uuid $EBS_DEVICE)
     if [ $? -eq 1 ] ; then
-        echo "EC2LM: EBS: Unable to get volume UUID for $EBS_DEVICE"
-        echo "EC2LM: EBS: Error: $OUTPUT"
+        echo "[ERROR] EC2LM: EBS: Unable to get volume UUID for $EBS_DEVICE"
+        echo "[ERROR] EC2LM: EBS: Error: $OUTPUT"
         /sbin/blkid
         exit 1
     fi
@@ -1014,40 +999,48 @@ function process_volume_mount()
     # Mount Volume
     echo "EC2LM: EBS: Mounting $MOUNT_FOLDER"
     mount $MOUNT_FOLDER
+    echo "$MOUNT_FOLDER" >>$EBS_MOUNT_FOLDER_LIST".new"
+    echo "$VOLUME_UUID" >>$EBS_VOLUME_UUID_LIST".new"
     echo "EC2LM: EBS: Process Volume Mount: Done"
 
     return 0
-}
+}}
 
-%s
+function run_launch_bundle()
+{{
+    # Process Mounts
+    :>$EBS_MOUNT_FOLDER_LIST".new"
+    :>$EBS_VOLUME_UUID_LIST".new"
+    {process_mount_volumes}
+    mv $EBS_MOUNT_FOLDER_LIST".new" $EBS_MOUNT_FOLDER_LIST
+    mv $EBS_VOLUME_UUID_LIST".new" $EBS_VOLUME_UUID_LIST
+}}
 
+# Remove any previous mounts that existed
+function disable_launch_bundle()
+{{
+    if [ "$EFS_MOUNT_FOLDER_LIST" != "" ] ; then
+        for MOUNT_FOLDER in $(cat $EBS_MOUNT_FOLDER_LIST)
+        do
+            umount $MOUNT_FOLDER
+        done
+
+        for VOLUME_UUID in $(cat $EBS_VOLUME_UUID_LIST)
+        do
+            grep -v -E "^UUID=$VOLUME_UUID" /etc/fstab >/tmp/fstab.ebs_new
+            mv /tmp/fstab.ebs_new /etc/fstab
+        done
+    fi
+}}
 """
-        process_mount_volumes = ""
-        is_enabled = False
-        for ebs_volume_mount in resource.ebs_volume_mounts:
-            if ebs_volume_mount.enabled == False:
-                continue
-            ebs_volume_id_hash = utils.md5sum(str_data=ebs_volume_mount.volume)
-            process_mount_volumes += "process_volume_mount {} {} {} {}\n".format(
-                ebs_volume_mount.folder,
-                ebs_volume_id_hash,
-                ebs_volume_mount.filesystem,
-                ebs_volume_mount.device)
-            is_enabled = True
+        ebs_lb.set_launch_script(launch_script, ebs_enabled)
+        self.add_bundle(ebs_lb)
 
-        if is_enabled == False:
-            return
-
-
-        launch_script = launch_script_template % (
-            self.paco_base_path,
-            process_mount_volumes
-        )
-            #vocabulary.user_data_script['mount_efs'][resource.instance_ami_type])
-
-        iam_policy_name = '-'.join([resource.name, 'ebs'])
-        policy_config_yaml = """
-policy_name: '{}'
+        # IAM Managed Policy to allow attaching volumes
+        if ebs_enabled:
+            iam_policy_name = '-'.join([resource.name, 'ebs'])
+            policy_config_yaml = f"""
+policy_name: '{iam_policy_name}'
 enabled: true
 statement:
   - effect: Allow
@@ -1056,114 +1049,125 @@ statement:
     resource:
       - 'arn:aws:ec2:*:*:volume/*'
       - 'arn:aws:ec2:*:*:instance/*'
-""".format(iam_policy_name)
+  - effect: Allow
+    action:
+      - "ec2:DescribeVolumes"
+    resource:
+      - "*"
+"""
+            iam_ctl = self.paco_ctx.get_controller('IAM')
+            iam_ctl.add_managed_policy(
+                role=resource.instance_iam_role,
+                resource=resource,
+                policy_name='policy',
+                policy_config_yaml=policy_config_yaml,
+                extra_ref_names=['ec2lm','ebs'],
+            )
 
-        iam_ctl = self.paco_ctx.get_controller('IAM')
-        iam_ctl.add_managed_policy(
-            role=resource.instance_iam_role,
-            resource=resource,
-            policy_name='policy',
-            policy_config_yaml=policy_config_yaml,
-            extra_ref_names=['ec2lm','ebs'],
-        )
-        ebs_lb.set_launch_script(launch_script)
-
-        # Save Configuration
-        self.add_bundle(ebs_lb)
-
-    def lb_add_eip(self, bundle_name, instance_iam_role_ref, resource):
+    def lb_add_eip(self, bundle_name, resource):
         """Creates a launch bundle to configure Elastic IPs"""
-
-        app_name = get_parent_by_interface(resource, schemas.IApplication).name
-        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
-
         # Create the Launch Bundle and configure it
-        eip_lb = LaunchBundle(
-            self.paco_ctx,
-            bundle_name,
-            self,
-            app_name,
-            group_name,
-            resource.name,
-            resource,
-        )
+        eip_lb = LaunchBundle(resource, self, bundle_name)
 
+        enabled = True
         if resource.eip == None:
-            self.remove_bundle(eip_lb)
-            return
+            enabled = False
 
-        # TODO: Add ubuntu and other distro support
-        launch_script = """#!/bin/bash
-. {}/EC2Manager/ec2lm_functions.bash
-""".format(self.paco_base_path)
-        launch_script += """
+        # get the EIP Stack Name
+        eip_alloc_id = ''
+        eip_stack_name = ''
+        if is_ref(resource.eip) == True:
+            eip_stack = resolve_ref(resource.eip, self.paco_ctx.project, self.account_ctx)
+            eip_stack_name = eip_stack.get_name()
+        elif resource.eip != None:
+            eip_alloc_id = resource.eip
 
-function ec2lm_eip_is_associated() {
+        launch_script = f"""#!/bin/bash
+
+. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
+
+EIP_STATE_FILE=$EC2LM_FOLDER/LaunchBundles/EIP/eip-association-id.txt
+
+function ec2lm_eip_is_associated() {{
     EIP_IP=$1
     PUBLIC_IP=$(curl http://169.254.169.254/latest/meta-data/public-ipv4/)
     if [ "$PUBLIC_IP" == "$EIP_IP" ] ; then
         echo "EC2LM: EIP: Association Successful"
+        # save association id to allow later disassociation
+        EIP_ASSOCIATION_ID=$(aws ec2 describe-addresses --allocation-ids $EIP_ALLOC_ID --query 'Addresses[0].AssociationId' --region $REGION | tr -d '"')
+        echo "$EIP_ASSOCIATION_ID" > $EIP_STATE_FILE
         return 0
     fi
     return 1
-}
+}}
 
-# Allocation ID
-EIP_ALLOCATION_EC2_TAG_KEY_NAME="Paco-EIP-Allocation-Id"
-echo "EC2LM: EIP: Getting Allocation ID from EC2 Tag $EIP_ALLOCATION_EC2_TAG_KEY_NAME"
-EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=$EIP_ALLOCATION_EC2_TAG_KEY_NAME" --query 'Tags[0].Value' |tr -d '"')
+function run_launch_bundle()
+{{
+    # Allocation ID
+    EIP_ALLOCATION_EC2_TAG_KEY_NAME="Paco-EIP-Allocation-Id"
+    echo "EC2LM: EIP: Getting Allocation ID from EIP matching stack: {eip_stack_name}"
+    EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-type,Values=elastic-ip" "Name=tag:aws:cloudformation:stack-name,Values={eip_stack_name}" --query 'Tags[0].ResourceId' |tr -d '"')
+    if [ "$EIP_ALLOC_ID" == "null" ] ; then
+        EIP_ALLOC_ID=$(aws ec2 describe-tags --region $REGION --filter "Name=resource-type,Values=elastic-ip" "Name=tag:Paco-Stack-Name,Values={eip_stack_name}" --query 'Tags[0].ResourceId' |tr -d '"')
+        if [ "$EIP_ALLOC_ID" == "null" ] ; then
+            echo "EC2LM: EIP: ERROR: Unable to get EIP Allocation ID"
+            exit 1
+        fi
+    fi
 
-# IP Address
-echo "EC2LM: EIP: Getting IP Address for $EIP_ALLOC_ID"
-EIP_IP=$(aws ec2 describe-addresses --allocation-ids $EIP_ALLOC_ID --query 'Addresses[0].PublicIp' --region $REGION | tr -d '"')
+    # IP Address
+    echo "EC2LM: EIP: Getting IP Address for $EIP_ALLOC_ID"
+    EIP_IP=$(aws ec2 describe-addresses --allocation-ids $EIP_ALLOC_ID --query 'Addresses[0].PublicIp' --region $REGION | tr -d '"')
 
-# Association
-echo "EC2LM: EIP: Assocating $EIP_ALLOC_ID - $EIP_IP"
-aws ec2 associate-address --instance-id $INSTANCE_ID --allocation-id $EIP_ALLOC_ID --region $REGION
+    # Association
+    echo "EC2LM: EIP: Assocating $EIP_ALLOC_ID - $EIP_IP"
+    aws ec2 associate-address --instance-id $INSTANCE_ID --allocation-id $EIP_ALLOC_ID --region $REGION
 
-# Wait for Association
-TIMEOUT_SECS=300
-OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_eip_is_associated $EIP_IP)
-RES=$?
-if [ $RES -lt 2 ] ; then
-    echo "$OUTPUT"
-else
-    echo "EC2LM: EIP: Error: $OUTPUT"
-fi
+    # Wait for Association
+    TIMEOUT_SECS=300
+    OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_eip_is_associated $EIP_IP)
+    RES=$?
+    if [ $RES -lt 2 ] ; then
+        echo "$OUTPUT"
+    else
+        echo "EC2LM: EIP: Error: $OUTPUT"
+    fi
+}}
+
+function disable_launch_bundle()
+{{
+    EIP_ASSOCIATION_ID=$(<$EIP_STATE_FILE)
+    aws ec2 disassociate-address --association-id $EIP_ASSOCIATION_ID --region $REGION
+}}
 """
-        iam_policy_name = '-'.join([resource.name, 'eip'])
-        policy_config_yaml = """
+        eip_lb.set_launch_script(launch_script, enabled)
+        self.add_bundle(eip_lb)
+
+        # IAM Managed Policy to allow EIP
+        if enabled:
+            iam_policy_name = '-'.join([resource.name, 'eip'])
+            policy_config_yaml = """
 policy_name: '{}'
 enabled: true
 statement:
   - effect: Allow
     action:
       - 'ec2:AssociateAddress'
+      - 'ec2:DisassociateAddress'
       - 'ec2:DescribeAddresses'
     resource:
       - '*'
 """.format(iam_policy_name)
+            iam_ctl = self.paco_ctx.get_controller('IAM')
+            iam_ctl.add_managed_policy(
+                role=resource.instance_iam_role,
+                resource=resource,
+                policy_name='policy',
+                policy_config_yaml=policy_config_yaml,
+                extra_ref_names=['ec2lm','eip'],
+            )
 
-        iam_ctl = self.paco_ctx.get_controller('IAM')
-        iam_ctl.add_managed_policy(
-            role=resource.instance_iam_role,
-            resource=resource,
-            policy_name='policy',
-            policy_config_yaml=policy_config_yaml,
-            extra_ref_names=['ec2lm','eip'],
-        )
-
-        eip_lb.set_launch_script(launch_script)
-
-        # Save Configuration
-        self.add_bundle(eip_lb)
-
-    def lb_add_cloudwatchagent(
-        self,
-        bundle_name,
-        instance_iam_role_ref,
-        resource
-    ):
+    def lb_add_cloudwatchagent(self, bundle_name, resource):
         """Creates a launch bundle to install and configure a CloudWatch Agent:
 
          - Adds a launch script to install the agent
@@ -1173,149 +1177,150 @@ statement:
          - Adds an IAM Policy to the instance IAM role that will allow the agent
            to do what it needs to do (e.g. send metrics and logs to CloudWatch)
         """
+        cw_lb = LaunchBundle(resource, self, bundle_name)
+
+        # is the cloudwatchagent bundle enabled?
         monitoring = resource.monitoring
-        app_name = get_parent_by_interface(resource, schemas.IApplication).name
-        group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
-
-        # Create the Launch Bundle and configure it
-        cw_lb = LaunchBundle(
-            self.paco_ctx,
-            bundle_name,
-            self,
-            app_name,
-            group_name,
-            resource.name,
-            resource,
-        )
-
-        if resource.monitoring == None or resource.monitoring.enabled == False:
-            self.remove_bundle(cw_lb)
-            return
+        cw_enabled = True
+        if monitoring == None or monitoring.enabled == False:
+            cw_enabled = False
 
         # Launch script
-        launch_script_template = """#!/bin/bash
+        agent_path = ec2lm_commands.cloudwatch_agent[resource.instance_ami_type_generic]['path']
+        if resource.instance_ami_type_family == 'redhat':
+            agent_object = 'amazon-cloudwatch-agent.rpm'
+            install_command = f'rpm -U {agent_object}'
+            installed_command = 'rpm -q amazon-cloudwatch-agent'
+            uninstall_command = 'rpm -e amazon-cloudwatch-agent'
+        elif resource.instance_ami_type_family == 'debian':
+            agent_object = 'amazon-cloudwatch-agent.deb'
+            install_command = f'dpkg -i -E {agent_object}'
+            installed_command = 'dpkg --status amazon-cloudwatch-agent'
+            uninstall_command = 'dpkg -P amazon-cloudwatch-agent'
+        launch_script = f"""#!/bin/bash
 echo "EC2LM: CloudWatch: Begin"
-# Load EC2 Launch Manager helper functions
-. {0[paco_base_path]:s}/EC2Manager/ec2lm_functions.bash
+. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
 
-# Download the agent
-LB_DIR=$(pwd)
-mkdir /tmp/paco/
-cd /tmp/paco/
-ec2lm_install_wget # built in function
+function run_launch_bundle() {{
+    LB_DIR=$(pwd)
+    $({installed_command} &> /dev/null)
+    RES=$?
+    if [[ $RES -ne 0 ]]; then
+        # Download the agent
+        mkdir /tmp/paco/
+        cd /tmp/paco/
+        ec2lm_install_wget # built in function
 
-echo "EC2LM: CloudWatch: Downloading agent"
-wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{0[agent_path]:s}/{0[agent_object]:s}
-wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{0[agent_path]:s}/{0[agent_object]:s}.sig
+        echo "EC2LM: CloudWatch: Downloading agent"
+        wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{agent_path}/{agent_object}
+        wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent{agent_path}/{agent_object}.sig
 
-# Verify the agent
-echo "EC2LM: CloudWatch: Downloading and importing agent GPG key"
-TRUSTED_FINGERPRINT=$(echo "9376 16F3 450B 7D80 6CBD 9725 D581 6730 3B78 9C72" | tr -d ' ')
-wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent/assets/amazon-cloudwatch-agent.gpg
-gpg --import amazon-cloudwatch-agent.gpg
+        # Verify the agent
+        echo "EC2LM: CloudWatch: Downloading and importing agent GPG key"
+        TRUSTED_FINGERPRINT=$(echo "9376 16F3 450B 7D80 6CBD 9725 D581 6730 3B78 9C72" | tr -d ' ')
+        wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent/assets/amazon-cloudwatch-agent.gpg
+        gpg --import amazon-cloudwatch-agent.gpg
 
-echo "EC2LM: CloudWatch: Verify agent signature"
-KEY_ID="$(gpg --list-packets amazon-cloudwatch-agent.gpg 2>&1 | awk '/keyid:/{{ print $2 }}' | tr -d ' ')"
-FINGERPRINT="$(gpg --fingerprint ${{KEY_ID}} 2>&1 | tr -d ' ')"
-OBJECT_FINGERPRINT="$(gpg --verify {0[agent_object]:s}.sig {0[agent_object]:s} 2>&1 | tr -d ' ')"
-if [[ ${{FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* || ${{OBJECT_FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* ]]; then
-    # Log error here
-    echo "ERROR: CloudWatch Agent signature invalid: ${{KEY_ID}}: ${{OBJECT_FINGERPRINT}}"
-    exit 1
-fi
+        echo "EC2LM: CloudWatch: Verify agent signature"
+        KEY_ID="$(gpg --list-packets amazon-cloudwatch-agent.gpg 2>&1 | awk '/keyid:/{{ print $2 }}' | tr -d ' ')"
+        FINGERPRINT="$(gpg --fingerprint ${{KEY_ID}} 2>&1 | tr -d ' ')"
+        OBJECT_FINGERPRINT="$(gpg --verify {agent_object}.sig {agent_object} 2>&1 | tr -d ' ')"
+        if [[ ${{FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* || ${{OBJECT_FINGERPRINT}} != *${{TRUSTED_FINGERPRINT}}* ]]; then
+            # Log error here
+            echo "[ERROR] CloudWatch Agent signature invalid: ${{KEY_ID}}: ${{OBJECT_FINGERPRINT}}"
+            exit 1
+        fi
 
-# Install the agent
-echo "EC2LM: CloudWatch: Installing agent: {0[install_command]:s} {0[agent_object]}"
-{0[install_command]:s} {0[agent_object]}
+        # Install the agent
+        echo "EC2LM: CloudWatch: Installing agent: {install_command}"
+        {install_command}
+    fi
 
-cd ${{LB_DIR}}
+    cd ${{LB_DIR}}
+    echo "EC2LM: CloudWatch: Updating configuration"
+    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:amazon-cloudwatch-agent.json -s
+    echo "EC2LM: CloudWatch: Done"
+}}
 
-echo "EC2LM: CloudWatch: Updating configuration"
-/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:amazon-cloudwatch-agent.json -s
-echo "EC2LM: CloudWatch: Done"
+function disable_launch_bundle() {{
+    $({installed_command} &> /dev/null)
+    if [[ $? -eq 0 ]]; then
+        {uninstall_command}
+    fi
+}}
 """
-
-
-        launch_script_table = {
-            'agent_path': vocabulary.cloudwatch_agent[resource.instance_ami_type]['path'],
-            'agent_object': vocabulary.cloudwatch_agent[resource.instance_ami_type]['object'],
-            'install_command': vocabulary.cloudwatch_agent[resource.instance_ami_type]['install'],
-            'paco_base_path': self.paco_base_path,
-        }
-        launch_script = launch_script_template.format(launch_script_table)
-
-        # Agent Configuration file
-        # /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
-        agent_config = {
-            "agent": {
-                "metrics_collection_interval": 60,
-                "region": self.aws_region,
-                "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
-                #"debug": True
-            }
-        }
-
-        # if there is metrics, add to the cwagent config
-        if monitoring.metrics:
-            agent_config["metrics"] = {
-                "metrics_collected": {},
-                "append_dimensions": {
-                    #"ImageId": "${aws:ImageId}",
-                    #"InstanceId": "${aws:InstanceId}",
-                    #"InstanceType": "${aws:InstanceType}",
-                    "AutoScalingGroupName": "${aws:AutoScalingGroupName}"
-                },
-                "aggregation_dimensions" : [["AutoScalingGroupName"]]
-            }
-            collected = agent_config['metrics']['metrics_collected']
-            for metric in monitoring.metrics:
-                if metric.collection_interval:
-                    interval = metric.collection_interval
-                else:
-                    interval = monitoring.collection_interval
-                collected[metric.name] = {
-                    "measurement": metric.measurements,
-                    "collection_interval": interval,
+        if cw_enabled:
+            # Agent Configuration file
+            # /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+            agent_config = {
+                "agent": {
+                    "metrics_collection_interval": 60,
+                    "region": self.aws_region,
+                    "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
                 }
-                if metric.resources and len(metric.resources) > 0:
-                    collected[metric.name]['resources'] = metric.resources
-                if metric.name == 'disk':
-                    collected[metric.name]['drop_device'] = metric.drop_device
+            }
 
+            # if there is metrics, add to the cwagent config
+            if monitoring.metrics:
+                agent_config["metrics"] = {
+                    "metrics_collected": {},
+                    "append_dimensions": {
+                        #"ImageId": "${aws:ImageId}",
+                        #"InstanceId": "${aws:InstanceId}",
+                        #"InstanceType": "${aws:InstanceType}",
+                        "AutoScalingGroupName": "${aws:AutoScalingGroupName}"
+                    },
+                    "aggregation_dimensions" : [["AutoScalingGroupName"]]
+                }
+                collected = agent_config['metrics']['metrics_collected']
+                for metric in monitoring.metrics:
+                    if metric.collection_interval:
+                        interval = metric.collection_interval
+                    else:
+                        interval = monitoring.collection_interval
+                    collected[metric.name] = {
+                        "measurement": metric.measurements,
+                        "collection_interval": interval,
+                    }
+                    if metric.resources and len(metric.resources) > 0:
+                        collected[metric.name]['resources'] = metric.resources
+                    if metric.name == 'disk':
+                        collected[metric.name]['drop_device'] = metric.drop_device
 
-        # if there is logging, add it to the cwagent config
-        if monitoring.log_sets:
-            agent_config["logs"] = {
-                "logs_collected": {
-                    "files": {
-                        "collect_list": []
+            # if there is logging, add it to the cwagent config
+            if monitoring.log_sets:
+                agent_config["logs"] = {
+                    "logs_collected": {
+                        "files": {
+                            "collect_list": []
+                        }
                     }
                 }
-            }
-            collect_list = agent_config['logs']['logs_collected']['files']['collect_list']
-            for log_source in monitoring.log_sets.get_all_log_sources():
-                log_group = get_parent_by_interface(log_source, schemas.ICloudWatchLogGroup)
-                prefixed_log_group_name = prefixed_name(resource, log_group.get_full_log_group_name(), self.paco_ctx.legacy_flag)
-                source_config = {
-                    "file_path": log_source.path,
-                    "log_group_name": prefixed_log_group_name,
-                    "log_stream_name": log_source.log_stream_name,
-                    "encoding": log_source.encoding,
-                    "timezone": log_source.timezone
-                }
-                if log_source.multi_line_start_pattern:
-                    source_config["multi_line_start_pattern"] = log_source.multi_line_start_pattern
-                if log_source.timestamp_format:
-                    source_config["timestamp_format"] = log_source.timestamp_format
-                collect_list.append(source_config)
+                collect_list = agent_config['logs']['logs_collected']['files']['collect_list']
+                for log_source in monitoring.log_sets.get_all_log_sources():
+                    log_group = get_parent_by_interface(log_source, schemas.ICloudWatchLogGroup)
+                    prefixed_log_group_name = prefixed_name(resource, log_group.get_full_log_group_name(), self.paco_ctx.legacy_flag)
+                    source_config = {
+                        "file_path": log_source.path,
+                        "log_group_name": prefixed_log_group_name,
+                        "log_stream_name": log_source.log_stream_name,
+                        "encoding": log_source.encoding,
+                        "timezone": log_source.timezone
+                    }
+                    if log_source.multi_line_start_pattern:
+                        source_config["multi_line_start_pattern"] = log_source.multi_line_start_pattern
+                    if log_source.timestamp_format:
+                        source_config["timestamp_format"] = log_source.timestamp_format
+                    collect_list.append(source_config)
 
-        # Convert CW Agent data structure to JSON string
-        agent_config = json.dumps(agent_config)
+            # Convert CW Agent data structure to JSON string
+            agent_config = json.dumps(agent_config)
+            cw_lb.add_file('amazon-cloudwatch-agent.json', agent_config)
 
-        # Create instance managed policy for the agent
-        iam_policy_name = '-'.join([resource.name, 'cloudwatchagent'])
-        policy_config_yaml = """
-policy_name: '{}'
+            # Create instance managed policy for the agent
+            iam_policy_name = '-'.join([resource.name, 'cloudwatchagent'])
+            policy_config_yaml = f"""
+policy_name: '{iam_policy_name}'
 enabled: true
 statement:
   - effect: Allow
@@ -1324,82 +1329,172 @@ statement:
       - "cloudwatch:PutMetricData"
       - "autoscaling:Describe*"
       - "ec2:DescribeTags"
-""".format(iam_policy_name)
-        if monitoring.log_sets:
-            # append a logs:CreateLogGroup to the AllResources sid
-            policy_config_yaml += """      - "logs:CreateLogGroup"\n"""
-            log_group_resources = ""
-            log_stream_resources = ""
-            for log_group in monitoring.log_sets.get_all_log_groups():
-                log_group_resources += "      - arn:aws:logs:{}:{}:log-group:{}:*\n".format(
-                    self.aws_region, self.account_ctx.id, prefixed_name(resource, log_group.get_full_log_group_name(), self.paco_ctx.legacy_flag)
-                )
-                log_stream_resources += "      - arn:aws:logs:{}:{}:log-group:{}:log-stream:*\n".format(
-                    self.aws_region, self.account_ctx.id, prefixed_name(resource, log_group.get_full_log_group_name(), self.paco_ctx.legacy_flag)
-                )
-            policy_config_yaml += """
+"""
+            if monitoring.log_sets:
+                # allow a logs:CreateLogGroup action
+                policy_config_yaml += """      - "logs:CreateLogGroup"\n"""
+                log_group_resources = ""
+                log_stream_resources = ""
+                for log_group in monitoring.log_sets.get_all_log_groups():
+                    lg_name = prefixed_name(resource, log_group.get_full_log_group_name(), self.paco_ctx.legacy_flag)
+                    log_group_resources += "      - arn:aws:logs:{}:{}:log-group:{}:*\n".format(
+                        self.aws_region,
+                        self.account_ctx.id,
+                        lg_name,
+                    )
+                    log_stream_resources += "      - arn:aws:logs:{}:{}:log-group:{}:log-stream:*\n".format(
+                        self.aws_region,
+                        self.account_ctx.id,
+                        lg_name,
+                    )
+                policy_config_yaml += f"""
   - effect: Allow
     action:
       - "logs:DescribeLogStreams"
       - "logs:DescribeLogGroups"
       - "logs:CreateLogStream"
     resource:
-{}
+{log_group_resources}
   - effect: Allow
     action:
-     - "logs:PutLogEvents"
+      - "logs:PutLogEvents"
     resource:
-{}
-""".format(log_group_resources, log_stream_resources)
-
-        policy_name = 'policy_ec2lm_cloudwatchagent'
-        iam_ctl = self.paco_ctx.get_controller('IAM')
-        iam_ctl.add_managed_policy(
-            role=resource.instance_iam_role,
-            resource=resource,
-            policy_name='policy',
-            policy_config_yaml=policy_config_yaml,
-            extra_ref_names=['ec2lm','cloudwatchagent'],
-        )
-
-        # Set the launch script
-        cw_lb.set_launch_script(launch_script)
-        cw_lb.add_file('amazon-cloudwatch-agent.json', agent_config)
-
-        # Create the CloudWatch Log Groups so that Retention and MetricFilters can be set
-        if monitoring.log_sets:
-            self.stack_group.add_new_stack(
-                self.aws_region,
-                resource,
-                paco.cftemplates.LogGroups,
-                stack_tags=self.stack_tags,
-                support_resource_ref_ext='log_groups',
+{log_stream_resources}
+"""
+            policy_name = 'policy_ec2lm_cloudwatchagent'
+            iam_ctl = self.paco_ctx.get_controller('IAM')
+            iam_ctl.add_managed_policy(
+                role=resource.instance_iam_role,
+                resource=resource,
+                policy_name='policy',
+                policy_config_yaml=policy_config_yaml,
+                extra_ref_names=['ec2lm','cloudwatchagent'],
             )
 
-        # Save Configuration
+        # Set the launch script
+        cw_lb.set_launch_script(launch_script, cw_enabled)
         self.add_bundle(cw_lb)
 
-    def lb_add_ssm_agent(
-        self,
-        instance_iam_role_ref,
-        app_id,
-        group_id,
-        resource_id,
-        res_config
-    ):
-        """Creates a launch bundle to intall and configure an SSM agent
-        ToDo: Only Amazon Linux is supported right now.
-        """
-        # Launch script
-        launch_script = """#!/bin/bash
-# Install the agent
-yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm
-"""
+    def add_update_instance_ssm_document(self):
+        "Add paco_ec2lm_update_instance SSM Document to the model"
+        ssm_documents = self.paco_ctx.project['resource']['ssm'].ssm_documents
+        if 'paco_ec2lm_update_instance' not in ssm_documents:
+            ssm_doc = SSMDocument('paco_ec2lm_update_instance', ssm_documents)
+            ssm_doc.add_location(self.account_ctx.paco_ref, self.aws_region)
+            content = {
+                "schemaVersion": "2.2",
+                "description": "Paco EC2 LaunchManager update instance state",
+                "parameters": {
+                    "CacheId": {
+                        "type": "String",
+                        "description": "EC2LM Cache Id"
+                    }
+                },
+                "mainSteps": [
+                    {
+                        "action": "aws:runShellScript",
+                        "name": "updateEC2LMInstance",
+                        "inputs": {
+                            "runCommand": [
+                                '#!/bin/bash',
+                                f'. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash',
+                                'ec2lm_launch_bundles ' + '{{CacheId}}',
+                            ]
+                        }
+                    }
+                ]
+            }
+            ssm_doc.content = json.dumps(content)
+            ssm_doc.document_type = 'Command'
+            ssm_doc.enabled = True
+            ssm_documents['paco_ec2lm_update_instance'] = ssm_doc
+        else:
+            ssm_documents['paco_ec2lm_update_instance'].add_location(
+                self.account_ctx.paco_ref,
+                self.aws_region,
+            )
 
-        # Create instance managed policy for the agent
-        iam_policy_name = '-'.join([resource_id, 'ssmagent-policy'])
-        policy_config_yaml = """
-policy_name: '{}'
+    def lb_add_ssm(self, bundle_name, resource):
+        """Creates a launch bundle to install and configure the SSM agent"""
+        # Create the Launch Bundle
+        ssm_lb = LaunchBundle(resource, self, bundle_name)
+        ssm_enabled = True
+        if not resource.launch_options.ssm_agent:
+            ssm_enabled = False
+
+        # Install SSM Agent - except where it is pre-baked in the image
+        download_url = ''
+        agent_install = ''
+        agent_object = ''
+        if resource.instance_ami_type_family == 'redhat':
+            installed_command = 'rpm -q amazon-ssm-agent'
+        elif resource.instance_ami_type_family == 'debian':
+            installed_command = 'dpkg --status amazon-ssm-agent'
+        if resource.instance_ami_type_generic != 'amazon' and resource.instance_ami_type not in ('ubuntu_16_snap', 'ubuntu_18', 'ubuntu_20'):
+            agent_config = ec2lm_commands.ssm_agent[resource.instance_ami_type]
+            agent_install = agent_config["install"]
+            agent_object = agent_config["object"]
+            # use regional URL for faster download
+            if self.aws_region in ec2lm_commands.ssm_regions:
+                download_url = f'https://s3.{self.aws_region}.amazonaws.com/amazon-ssm-{self.aws_region}/latest'
+            else:
+                download_url = f'https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest'
+            download_url += f'{agent_config["path"]}/{agent_config["object"]}'
+
+
+        launch_script = f"""#!/bin/bash
+
+echo "EC2LM: SSM Agent: Begin"
+
+$({installed_command} &> /dev/null)
+if [[ $? -eq 0 ]]; then
+    SSM_INSTALLED=true
+else
+    SSM_INSTALLED=false
+fi
+
+echo "EC2LM: SSM Agent: End"
+
+function run_launch_bundle() {{
+    if [ "$SSM_INSTALLED" == "false" ] ; then
+        # Load EC2 Launch Manager helper functions
+        . {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
+
+        # Download the agent
+        LB_DIR=$(pwd)
+        mkdir /tmp/paco/
+        cd /tmp/paco/
+        # ensure wget is installed
+        ec2lm_install_wget
+
+        echo "EC2LM: SSM: Downloading agent"
+        wget -nv {download_url}
+
+        # Install the agent
+        echo "EC2LM: SSM: Installing agent: {agent_install} {agent_object}"
+        {agent_install} {agent_object}
+    fi
+}}
+
+function disable_launch_bundle() {{
+    # No-op: Paco will not remove SSM agent
+    :
+}}
+"""
+        ssm_lb.set_launch_script(launch_script, ssm_enabled)
+        self.add_bundle(ssm_lb)
+
+        if ssm_enabled:
+            # Create instance managed policy for the agent
+            iam_policy_name = '-'.join([resource.name, 'ssmagent-policy'])
+            ssm_prefixed_name = prefixed_name(resource, 'paco_ssm', self.paco_ctx.legacy_flag)
+            # allows instance to create a LogGroup with any name - this is a requirement of the SSM Agent
+            # if you limit the resource to just the LogGroups names you want SSM to use, the agent will not work
+            ssm_log_group_arn = f"arn:aws:logs:{self.aws_region}:{self.account_ctx.id}:log-group:*"
+            ssm_log_stream_arn = f"arn:aws:logs:{self.aws_region}:{self.account_ctx.id}:log-group:{ssm_prefixed_name}:log-stream:*"
+            policy_config_yaml = f"""
+policy_name: '{iam_policy_name}'
+enabled: true
 statement:
   - effect: Allow
     action:
@@ -1415,6 +1510,8 @@ statement:
       - ec2messages:SendReply
       - ssm:UpdateInstanceInformation
       - ssm:ListInstanceAssociations
+      - ssm:DescribeInstanceProperties
+      - ssm:DescribeDocumentParameters
     resource:
       - '*'
   - effect: Allow
@@ -1422,42 +1519,51 @@ statement:
       - s3:GetEncryptionConfiguration
     resource:
       - '*'
-""".format(iam_policy_name)
-
-        iam_ctl = self.paco_ctx.get_controller('IAM')
-        iam_ctl.add_managed_policy(
-            role=resource.instance_iam_role,
-            resource=resource,
-            policy_name=iam_policy_name,
-            policy_config_yaml=policy_config_yaml,
-            extra_ref_names=['ec2lm','ssmagent'],
-        )
-
-        # Create the Launch Bundle and configure it
-        ssm_lb = LaunchBundle(self.paco_ctx, "SSMAgent", self, app_id, group_id, resource_id, res_config)
-        ssm_lb.set_launch_script(launch_script)
-
-        # Save Configuration
-        self.add_bundle(ssm_lb)
+  - effect: Allow
+    action:
+      - logs:CreateLogGroup
+      - logs:CreateLogStream
+      - logs:DescribeLogGroups
+      - logs:DescribeLogStreams
+    resource:
+      - {ssm_log_group_arn}
+  - effect: Allow
+    action:
+      - logs:PutLogEvents
+    resource:
+      - {ssm_log_stream_arn}
+"""
+            iam_ctl = self.paco_ctx.get_controller('IAM')
+            iam_ctl.add_managed_policy(
+                role=resource.instance_iam_role,
+                resource=resource,
+                policy_name='policy',
+                policy_config_yaml=policy_config_yaml,
+                extra_ref_names=['ec2lm','ssmagent'],
+            )
 
     def process_bundles(self, resource, instance_iam_role_ref):
-        instance_iam_role_arn_ref = 'paco.ref ' + instance_iam_role_ref + '.arn'
-        instance_iam_role_arn = self.paco_ctx.get_ref(instance_iam_role_arn_ref)
-        if instance_iam_role_arn == None:
+        "Initialize launch bundle S3 bucket and iterate through all launch bundles and add every applicable bundle"
+        self.add_update_instance_ssm_document()
+        resource._instance_iam_role_arn_ref = 'paco.ref ' + instance_iam_role_ref + '.arn'
+        resource._instance_iam_role_arn = self.paco_ctx.get_ref(resource._instance_iam_role_arn_ref)
+        if resource._instance_iam_role_arn == None:
             raise StackException(
                     PacoErrorCode.Unknown,
                     message="ec2_launch_manager: user_data_script: Unable to locate value for ref: " + instance_iam_role_arn_ref
                 )
-        self.init_ec2lm_s3_bucket(resource, instance_iam_role_arn)
+        bucket = self.init_ec2lm_s3_bucket(resource)
         for bundle_name in self.launch_bundle_names:
             bundle_method = getattr(self, 'lb_add_' + bundle_name.replace('-', '_').lower())
-            bundle_method(bundle_name, instance_iam_role_ref, resource)
+            bundle_method(bundle_name, resource)
 
-    def validate(self):
-        pass
-
-    def provision(self):
-        pass
-
-    def delete(self):
-        pass
+        # Create CloudWatch Log Groups for SSM and CloudWatch Agent
+        if resource.launch_options.ssm_agent or (resource.monitoring != None and resource.monitoring.log_sets):
+            self.stack_group.add_new_stack(
+                self.aws_region,
+                resource,
+                paco.cftemplates.LogGroups,
+                stack_tags=self.stack_tags,
+                support_resource_ref_ext='log_groups',
+            )
+        return bucket

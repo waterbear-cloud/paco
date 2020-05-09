@@ -191,13 +191,13 @@ class StackGroup():
             elif order_item.order == StackOrder.WAIT:
                 # Nested StackGroup
                 if order_item.stack.cached == False:
-                    order_item.stack.wait_for_complete(verbose=False)
+                    order_item.stack.wait_for_complete()
             elif order_item.order == StackOrder.WAITLAST:
                 wait_last_list.append(order_item)
 
         for order_item in wait_last_list:
             if order_item.stack.cached == False:
-                order_item.stack.wait_for_complete(verbose=False)
+                order_item.stack.wait_for_complete()
 
     def delete(self):
         "Loop through stacks and deletes each one"

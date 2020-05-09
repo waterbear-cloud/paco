@@ -25,7 +25,7 @@ class ApplicationStackGroup(StackGroup):
         self.env_ctx = env_ctx
         self.app = app
         self.aws_region = self.env_ctx.region
-        self.env_id = self.env_ctx.env_id
+        self.env_name = self.env_ctx.env.name
         self.stack_tags = stack_tags
 
     def init(self):

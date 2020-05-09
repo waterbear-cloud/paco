@@ -39,7 +39,7 @@ class CloudTrailStackGroup(StackGroup):
                     put_suffixes.append("/AWSLogs/{}/*".format(account.account_id))
             bucket_config_dict = {
                 'region': region,
-                'account': account_ctx.gen_ref(),
+                'account': account_ctx.paco_ref,
                 'bucket_name': 'cloudtrail',
                 'enabled': True,
                 'deletion_policy': 'delete',

@@ -158,10 +158,15 @@ class StackTags():
 
 
 class StackHooks():
+    """Contains hooks which will be called before or after a Stack has a create, update or delete operation.
 
-    def __init__(self, paco_ctx):
-        self.paco_ctx = paco_ctx
-        self.stack = None
+    StackHooks objects can be created before a Stack and passed to the StackGroup.add_new_stack() method.
+    The Stack constructor will set the stack attribute on the StackHooks. New StackHooks can also be made
+    without a Stack and then merged into an existing StackHooks that is associated with a Stack.
+    """
+
+    def __init__(self, stack=None):
+        self.stack = stack
         self.hooks = {
             'create': {
                 'pre': [],
@@ -179,6 +184,7 @@ class StackHooks():
         }
 
     def log_hooks(self):
+        "Log hook initialization"
         if self.stack == None or self.stack.template.enabled == False:
             return
         for stack_action_id in self.hooks.keys():
@@ -188,7 +194,8 @@ class StackHooks():
                 for hook in timing_config:
                     self.stack.log_action("Init", "Hook", message=": {}: {}: {}".format(hook['name'], timing_id, stack_action_id))
 
-    def add(self, name, stack_action, stack_timing, hook_method, cache_method, hook_arg=None):
+    def add(self, name, stack_action, stack_timing, hook_method, cache_method=None, hook_arg=None):
+        "Add a hook"
         hook = {
             'name': name,
             'method': hook_method,
@@ -203,6 +210,7 @@ class StackHooks():
                 self.stack.log_action("Init", "Hook", message=": {}: {}: {}".format(name, stack_action, stack_timing))
 
     def merge(self, new_hooks):
+        "Merge another StackHooks' hooks into this StackHooks' hooks"
         if new_hooks == None:
             return
         for stack_action in self.hooks.keys():
@@ -210,13 +218,14 @@ class StackHooks():
                 for new_hook_item in new_hooks.hooks[stack_action][hook_timing]:
                     self.hooks[stack_action][hook_timing].append(new_hook_item)
 
-
     def run(self, stack_action, stack_timing, stack):
+        "Invoke a hook"
         for hook in self.hooks[stack_action][stack_timing]:
             stack.log_action('Run', "Hook", message="{}.{}: {}".format(stack_timing, stack_action, hook['name']))
             hook['method'](hook, hook['arg'])
 
     def gen_cache_id(self):
+        "Generate a cache id for the hook"
         cache_id = ""
         for action in ['create', 'update']:
             for timing in self.hooks[action].keys():
@@ -224,6 +233,7 @@ class StackHooks():
                     if hook['cache_method'] != None:
                         cache_id += hook['cache_method'](hook, hook['arg'])
         return cache_id
+
 
 class StackOutputsManager():
     def __init__(self):
@@ -322,7 +332,7 @@ class Stack():
         self.dependency_stack = None
         self.dependency_group = False
         if hooks == None:
-            self.hooks = StackHooks(self.paco_ctx)
+            self.hooks = StackHooks(self)
         else:
             self.hooks = hooks
             self.hooks.stack = self
@@ -368,14 +378,6 @@ class Stack():
             PacoErrorCode.Unknown,
             message=message
         )
-
-    def process_stack_output_config(self):
-        "Process stack output config"
-        merged_config = {}
-        for output_config in self.stack_output_config_list:
-            config_dict = output_config.get_config_dict(self)
-            merged_config = dict_of_dicts_merge(merged_config, config_dict)
-        return merged_config
 
     def init_template_store_paths(self):
         new_file_path = pathlib.Path(self.get_yaml_path())
@@ -453,37 +455,6 @@ class Stack():
             if yaml_path.stat().st_size >= warning_size_limite_bytes:
                 print("WARNING: Template is reaching size limit of 51,200 bytes: Current size: {} bytes ".format(yaml_path.stat().st_size))
                 print("template: {}".format(yaml_path))
-
-    def validate(self):
-        "Validate the Stack"
-        applied_file_path, new_file_path = self.init_template_store_paths()
-        short_yaml_path = str(new_file_path).replace(self.paco_ctx.home, '')
-        if short_yaml_path[0] == '/':
-            short_yaml_path = short_yaml_path[1:]
-        if self.enabled == False:
-            if self.paco_ctx.quiet_changes_only == False:
-                self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name() + '.' + self.aws_region, "Disabled", short_yaml_path)
-            return
-        elif self.change_protected:
-            if self.paco_ctx.quiet_changes_only == False:
-                self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name() + '.' + self.aws_region, "Protected", short_yaml_path)
-            return
-        self.generate_template()
-        new_str = ''
-        if applied_file_path.exists() == False:
-            new_str = ':new'
-        self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name() + '.' + self.aws_region, "Template"+new_str, short_yaml_path)
-        try:
-            self.cfn_client.validate_template(TemplateBody=self.template.body)
-        except ClientError as e:
-            if e.response['Error']['Code'] == 'ValidationError':
-                message = "Validation Error: {}\nStack: {}\nTemplate: {}\n".format(
-                    e.response['Error']['Message'],
-                    self.get_name(),
-                    self.get_yaml_path()
-                )
-                raise StackException(PacoErrorCode.TemplateValidationError, message=message)
-        self.validate_template_changes()
 
     def init_applied_parameters_path(self, applied_template_path):
         return applied_template_path.with_suffix('.parameters')
@@ -926,34 +897,28 @@ your cache may be out of sync. Try running again the with the --nocache option.
             sys.exit(1)
         print('', end='\n')
 
-    ### End CFTemplate move
-
     def handle_token_expired(self, location=''):
         """Resets the client handler to force a session reload. location is used for debugging
-to help identify the places where token expiry was failing."""
+        to help identify the places where token expiry was failing."""
         if hasattr(self, '_cfn_client') == True:
             delattr(self, '_cfn_client')
         self._cfn_client_expired = True
         if location != '':
-            location = '_'+location
-        self.log_action("Token", "Retry"+location, "Expired")
+            location = '_' + location
+        self.log_action("Token", "Retry" + location, "Expired")
 
     def set_template(self, template):
         self.template = template
 
     def add_hooks(self, hooks):
+        "Add to Stack's StackHooks by merging supplied StackHooks"
         self.hooks.merge(hooks)
 
     def set_termination_protection(self, protection_enabled):
         self.termination_protection = protection_enabled
 
-    def get_stack_output_config(self):
-        return self.output_config_dict
-
     def create_stack_name(self, name):
-        """
-        Must contain only letters, numbers, dashes and start with an alpha character.
-        """
+        """Must contain only letters, numbers, dashes and start with an alpha character."""
         if name.isalnum():
             return name
 
@@ -976,6 +941,7 @@ to help identify the places where token expiry was failing."""
         return new_name
 
     def get_status(self):
+        "Status of the Stack in AWS"
         while True:
             try:
                 stack_list = self.cfn_client.describe_stacks(StackName=self.get_name())
@@ -1036,7 +1002,7 @@ to help identify the places where token expiry was failing."""
         return False
 
     def get_outputs_value(self, key):
-
+        "Get Stack OutputValue by Stack OutputKey"
         if key in self.outputs_value_cache.keys():
             return self.outputs_value_cache[key]
 
@@ -1075,7 +1041,8 @@ to help identify the places where token expiry was failing."""
         )
 
     def gen_cache_id(self):
-        "Create and return an MD5 cache id of the template"
+        """Create an MD5 cache id that is an aggregate of the stack's template, parameter values,
+        hook cache ids, tags and termination protection setting."""
         yaml_path = self.get_yaml_path()
         if yaml_path.exists() == False:
             return None
@@ -1119,6 +1086,7 @@ your cache may be out of sync. Try running again the with the --nocache option.
         return new_cache_id
 
     def is_stack_cached(self):
+        "Return True if the stack cache id is the same as a previously applied cache id"
         if self.paco_ctx.nocache or self.do_not_cache:
             #return False
             # XXX: Make this work
@@ -1162,16 +1130,23 @@ your cache may be out of sync. Try running again the with the --nocache option.
         return False
 
     def save_stack_outputs(self):
-        self.output_config_dict = self.process_stack_output_config()
+        "Process and save Stack Outputs to disk and to the StackOutputsManager"
+        # process stack output config
+        self.output_config_dict = {}
+        for output_config in self.stack_output_config_list:
+            config_dict = output_config.get_config_dict(self)
+            self.output_config_dict = dict_of_dicts_merge(self.output_config_dict, config_dict)
+        # save to disk cache
         with open(self.output_filename, "w") as output_fd:
             yaml.dump(
                 data=self.output_config_dict,
                 stream=output_fd
             )
+        # add to StackOutputsManager
         stack_outputs_manager.add(self.paco_ctx.outputs_path, self.output_config_dict)
 
-    # Actions to perform when a stack has been successfully created or updated
     def stack_success(self):
+        "Actions to perform when a stack action has been successfully finished"
         if self.action != "delete":
             # Create cache file
             new_cache_id = self.gen_cache_id()
@@ -1226,16 +1201,8 @@ your cache may be out of sync. Try running again the with the --nocache option.
         stack_parameters = self.generate_stack_parameters(action=self.action)
         self.confirm_stack_parameter_changes(stack_parameters)
         self.validate_template_changes()
-        self.log_action("Provision", "Update")
-
-        if True == False and self.paco_ctx.yes == False:
-            print("A Stack is about to be modified: {}".format(self.get_name()))
-            answer = self.paco_ctx.input_confirm_action("Make changes to the stack?")
-            if answer == False:
-                print("Stack update aborted.")
-                return
-
         self.hooks.run("update", "pre", self)
+        self.log_action("Provision", "Update")
         while True:
             try:
                 self.cfn_client.update_stack(
@@ -1312,6 +1279,7 @@ your cache may be out of sync. Try running again the with the --nocache option.
 
 
     def get_stack_error_message(self, prefix_message="", skip_status = False):
+        "Formatted Stack error message"
         if skip_status == False:
             self.get_status()
         message = "\n"+prefix_message
@@ -1352,9 +1320,10 @@ your cache may be out of sync. Try running again the with the --nocache option.
         return message
 
     def provision(self):
+        "Provision Stack in AWS"
         self.generate_template()
 
-        # If last md5 is equal, then we no changes are required
+        # skip the UPDATE action if the last applied cache id is equal to cache id
         if self.is_stack_cached() == True:
             if self.change_protected:
                 self.log_action("Provision", "Protected")
@@ -1398,7 +1367,39 @@ your cache may be out of sync. Try running again the with the --nocache option.
             message = self.get_stack_error_message()
             raise StackException(PacoErrorCode.Unknown, message = message)
 
+    def validate(self):
+        "Validate Stack in AWS"
+        applied_file_path, new_file_path = self.init_template_store_paths()
+        short_yaml_path = str(new_file_path).replace(self.paco_ctx.home, '')
+        if short_yaml_path[0] == '/':
+            short_yaml_path = short_yaml_path[1:]
+        if self.enabled == False:
+            if self.paco_ctx.quiet_changes_only == False:
+                self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name() + '.' + self.aws_region, "Disabled", short_yaml_path)
+            return
+        elif self.change_protected:
+            if self.paco_ctx.quiet_changes_only == False:
+                self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name() + '.' + self.aws_region, "Protected", short_yaml_path)
+            return
+        self.generate_template()
+        new_str = ''
+        if applied_file_path.exists() == False:
+            new_str = ':new'
+        self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name() + '.' + self.aws_region, "Template"+new_str, short_yaml_path)
+        try:
+            self.cfn_client.validate_template(TemplateBody=self.template.body)
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'ValidationError':
+                message = "Validation Error: {}\nStack: {}\nTemplate: {}\n".format(
+                    e.response['Error']['Message'],
+                    self.get_name(),
+                    self.get_yaml_path()
+                )
+                raise StackException(PacoErrorCode.TemplateValidationError, message=message)
+        self.validate_template_changes()
+
     def delete(self):
+        "Delete Stack from AWS"
         if self.change_protected == True:
             self.log_action("Delete", "Protected")
             return
@@ -1445,7 +1446,6 @@ your cache may be out of sync. Try running again the with the --nocache option.
             self.paco_ctx.log_action_col(log_next_header, 'Account', 'Action', 'Stack Name')
             log_next_header = None
 
-
     def log_action(self, action, stack_action, account_name=None, stack_name=None, message=None, return_it=False):
         if self.paco_ctx.quiet_changes_only == True:
             if stack_action in ['Protected', 'Disabled', 'Cache', 'Wait', 'Done']:
@@ -1486,7 +1486,8 @@ your cache may be out of sync. Try running again the with the --nocache option.
         if return_it == True:
             return log_message
 
-    def wait_for_complete(self, verbose=False):
+    def wait_for_complete(self):
+        "Wait for a Stack's action to COMPLETE and finish and take"
         # While loop to handle expired token retries
         while True:
             if self.action == None:
@@ -1494,17 +1495,12 @@ your cache may be out of sync. Try running again the with the --nocache option.
             self.get_status()
             waiter = None
             action_name = "Provision"
+            # get a waiter if Stack is not COMPLETE
             if self.is_updating():
-                if verbose:
-                    self.log_action("Provision", "Update")
                 waiter = self.cfn_client.get_waiter('stack_update_complete')
             elif self.is_creating():
-                if verbose:
-                    self.log_action("Provision", "Create")
                 waiter = self.cfn_client.get_waiter('stack_create_complete')
             elif self.is_deleting():
-                if verbose:
-                    self.log_action("Delete", "Stack")
                 action_name = "Delete"
                 waiter = self.cfn_client.get_waiter('stack_delete_complete')
             elif self.is_complete():
@@ -1518,6 +1514,7 @@ your cache may be out of sync. Try running again the with the --nocache option.
                     message=message
                 )
 
+            # wait ...
             if waiter != None:
                 self.log_action(action_name, "Wait")
                 try:
@@ -1532,9 +1529,11 @@ your cache may be out of sync. Try running again the with the --nocache option.
                     raise StackException(PacoErrorCode.WaiterError, message = message)
                 self.log_action(action_name, "Done")
 
+            # handle success actions
             if self.is_exists():
                 self.stack_success()
 
+            # run post hooks
             if self.action == "create":
                 self.hooks.run("create", "post", self)
             elif self.action == "update":

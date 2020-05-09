@@ -104,7 +104,7 @@ class S3Context():
         else:
             if change_protected == False:
                 if stack_hooks == None:
-                    stack_hooks = StackHooks(self.paco_ctx)
+                    stack_hooks = StackHooks()
                 # S3 Delete on Stack Delete hook
                 stack_hooks.add(
                     'S3StackGroup', 'delete', 'pre',
@@ -217,30 +217,8 @@ class S3Controller(Controller):
         self.contexts = {}
         self.init_s3_resource_done = False
 
-    def init_bucket_environments(self, s3_env_map, stack_tags):
-        for env_id, env_config in s3_env_map.items():
-            # Each bucket gets its own stack
-            for bucket_id, bucket_config in env_config['buckets']:
-                resource_ref = 'resource.s3.buckets.{0}.{1}.{2}'.format(env_config['account_ctx'].get_name(), env_config['region'], bucket_id)
-                env_stack_group = S3StackGroup(
-                    self.paco_ctx,
-                    env_config['account_ctx'],
-                    env_config['region'],
-                    'bucket',
-                    self,
-                    resource_ref,
-                    stack_hooks=None
-                )
-                self.init_context(
-                    env_config['account_ctx'],
-                    env_config['region'],
-                    resource_ref,
-                    env_stack_group,
-                    stack_tags
-                )
-                self.add_bucket(bucket_config)
-
     def init_s3_resource(self, bucket_list, stack_tags):
+        "Init global S3 Buckets from resource/s3.yaml"
         if self.init_s3_resource_done == True:
             return
         self.init_s3_resource_done = True
@@ -261,7 +239,29 @@ class S3Controller(Controller):
                 s3_env_map[s3_env_id] = s3_env_config
             s3_env_map[s3_env_id]['buckets'].append([bucket_id, bucket_config])
 
-        self.init_bucket_environments(s3_env_map, stack_tags)
+        # initialize S3 Bucket stack groups
+        for env_id, env_config in s3_env_map.items():
+            for bucket_id, bucket_config in env_config['buckets']:
+                resource_ref = 'resource.s3.buckets.{0}.{1}.{2}'.format(
+                    env_config['account_ctx'].get_name(), env_config['region'], bucket_id
+                )
+                env_stack_group = S3StackGroup(
+                    self.paco_ctx,
+                    env_config['account_ctx'],
+                    env_config['region'],
+                    'bucket',
+                    self,
+                    resource_ref,
+                    stack_hooks=None
+                )
+                self.init_context(
+                    env_config['account_ctx'],
+                    env_config['region'],
+                    resource_ref,
+                    env_stack_group,
+                    stack_tags
+                )
+                self.add_bucket(bucket_config)
 
     def resolve_ref(self, ref):
         "Find the bucket then call resolve_ref on it"
@@ -269,6 +269,7 @@ class S3Controller(Controller):
         return buckets[ref.parts[3]].resolve_ref(ref)
 
     def init(self, command=None, model_obj=None):
+        "Init S3 Buckets"
         if model_obj != None:
             bucket_list = []
             if type(model_obj) == dict:
@@ -276,6 +277,7 @@ class S3Controller(Controller):
             else:
                 bucket_list.append(model_obj.name)
             self.init_s3_resource(bucket_list, stack_tags=None)
+        # Set resolve_ref_obj for global buckets
         s3resource = self.paco_ctx.project['resource']['s3']
         s3resource.resolve_ref_obj = self
 

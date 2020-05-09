@@ -72,7 +72,7 @@ class RDS(StackTemplate):
         if rds_config.parameter_group == None:
             # No Parameter Group supplied, create one
             engine_major_version = '.'.join(rds_config.engine_version.split('.')[0:2])
-            param_group_family = vocabulary.rds_engine_versions[rds_config.engine][engine_major_version]['param_group_family']
+            param_group_family = vocabulary.rds_engine_versions[rds_config.engine][rds_config.engine_version]['param_group_family']
             dbparametergroup_ref = troposphere.rds.DBParameterGroup(
                 "DBParameterGroup",
                 template = template,
@@ -118,8 +118,8 @@ class RDS(StackTemplate):
                 option_group_dict )
             template.add_resource(option_group_res)
 
-        # RDS Mysql
-        if schemas.IRDSMysql.providedBy(rds_config):
+        # RDS MultiAZ (Mysql, Postgresql)
+        if schemas.IRDSMultiAZ.providedBy(rds_config):
             sg_param_ref_list = []
             for sg_ref in rds_config.security_groups:
                 sg_hash = utils.md5sum(str_data=sg_ref)

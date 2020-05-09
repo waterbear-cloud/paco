@@ -6,17 +6,9 @@ import troposphere.elasticsearch
 
 
 class ElasticsearchDomain(StackTemplate):
-    def __init__(
-        self,
-        stack,
-        paco_ctx,
-        env_ctx,
-    ):
+    def __init__(self, stack, paco_ctx):
         esdomain = stack.resource
-        super().__init__(
-            stack,
-            paco_ctx,
-        )
+        super().__init__(stack, paco_ctx)
         self.set_aws_name('ESDomain', self.resource_group_name, self.resource_name)
         self.esdomain = esdomain
         self.init_template('Elasticsearch Domain')
@@ -34,7 +26,7 @@ class ElasticsearchDomain(StackTemplate):
 
         if esdomain.segment != None:
             subnet_params = []
-            segment_stack = env_ctx.get_segment_stack(esdomain.segment)
+            segment_ref = esdomain.env_region_obj.network.vpc.segments[esdomain.segment].paco_ref
             if esdomain.cluster != None:
                 if esdomain.cluster.zone_awareness_enabled:
                     azs = esdomain.cluster.zone_awareness_availability_zone_count
@@ -48,7 +40,7 @@ class ElasticsearchDomain(StackTemplate):
                         param_type='String',
                         name='ESDomainSubnet{}'.format(az_idx),
                         description='A subnet for the Elasticsearch Domain',
-                        value='paco.ref {}.az{}.subnet_id'.format(segment_stack.template.config_ref, az_idx)
+                        value='{}.az{}.subnet_id'.format(segment_ref, az_idx)
                     )
                 )
 

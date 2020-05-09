@@ -1,13 +1,45 @@
 Changelog for Paco
 ==================
 
-6.2.1 (unreleased)
+7.0.0 (unreleased)
 ------------------
 
-###
+### Migration
 
-- Added a GitHub WebHook to CodePipeline if ``poll_for_source_changes`` is false for a GitHub.Source action.
+- AutoScalingGroups that use EC2 Launch Manager (EC2LM) features no longer store their cache id in the
+  UserData. Instead configuration changes to existing ASGs are updated using SSM Run Command. This
+  change will allow configuration changes to be made without cycling new instances in an ASG - for example,
+  a new metric can be added to a CloudWatch Agent and SSM Run Command will execute the ``ec2lm_launch_bundles``
+  on all of the instances.
 
+### Added
+
+- Paco Buckets: Paco can create it's own S3 Buckets for internal usage - one bucket for each account/region
+  combination. These can be used to hold CloudFormation templates and Lambda code artifacts.
+
+- New Paco command: ``paco lambda deploy <scope-to-lambda>`` that can update the code artifact for a
+  Lambda directly.
+
+- CIDR IPv6 support for SecurityGroups
+
+- SSM Agent is installed on all AutoScalingGroups unless ``launch_options.ssm_agent`` is explicitly set
+  to false
+
+- GitHub WebHook to CodePipeline if ``poll_for_source_changes`` is false for a GitHub.Source action.
+
+- Supoprt for RDS PostgreSQL
+
+- Support for SSM Documents with `resource/ssm.yaml`
+
+- EC2LM: Ubuntu 16 for EFS
+
+### Changed
+
+- Lambda resources can now use ``code.zipefile`` as a path to a local directory. Paco will zip that directory
+  contents and upload an artifact to a Paco Bucket and use that S3 location for the Lambda when it is initially
+  created. Any updates to the Lambda code artifact must then be applied using the ``paco lambda`` command.
+
+- AutoScalingGroup Stack now has a Parameter for ``MinInstancesInService``.
 
 6.2.0 (2020-04-04)
 ------------------

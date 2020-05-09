@@ -128,6 +128,50 @@ set as the template body.
 When Paco uses a StackTemplate it never instantiates it directly. It's a base class that resource specific templates
 inherit from. These subclasses are responsible for creating the template.
 
+StackHooks
+^^^^^^^^^^
+
+StackHooks are programatic actions that happen before or after a create, update or delete stack operation.
+
+Paco uses them to upload files to an S3 Bucket after it's created in the EC2LaunchManager, to delete all files
+in an S3 Bucket before it's deleted, and to create and manage access keys for IAM Users.
+
+The ``paco.stack.stack.StackHooks`` class should be created and have one or more hooks added to it, then passed to
+``StackGroup.add_new_stack`` to have the hooks added to a stack, or ``Stack.add_hooks`` can be called after creation
+to have hooks after stack creation. The ``Stack.add_hooks`` will merge new hooks with existing ones, so several places
+can contribute StackHooks.
+
+To create a hook, call ``StackHooks.add()`` method with:
+
+ - ``name``: This will be displayed on the command-line interface.
+
+ - ``stack_action``: Must be one of ``create``, ``update`` or ``delete``. The ``update`` action is called every time
+   an existing stack is in scope, if the hook's ``cache_method`` returns a different cache id or the cache does not exist.
+   ``update`` hooks should be designed to be idempotent and able to be re-run multiple times.
+
+ - ``stack_timing``: Must be one of ``pre`` or ``post``.
+
+ - ``hook_method``: A method that will perform the work of the hook. It is called with two arguments: the ``hook``
+   iteslf and the ``hook_arg`` value.
+
+ - ``cache_method``: Optional. A method that will return a cache id. If this value does not change between provisions,
+   then the hook will be skipped. This only applies to hooks on the ``update`` stack action.
+
+ - ``hook_arg``: Optional. A value which is supplied as an argument to the ``hook_method`` with it is invoked.
+
+.. code-block:: python
+    :caption: example usage of StackHooks
+
+      stack_hooks = StackHooks()
+      stack_hooks.add(
+         name='UploadZipFile',
+         stack_action='create',
+         stack_timing='post',
+         hook_method=self.upload_bundle_stack_hook,
+         cache_method=self.stack_hook_cache_id,
+         hook_arg=bundle
+      )
+
 
 The .paco-work directory
 ------------------------

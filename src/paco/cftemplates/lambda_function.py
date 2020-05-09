@@ -1,13 +1,15 @@
 from awacs.aws import Action, Allow, PolicyDocument, Principal, Statement, Policy
+from enum import Enum
+from io import StringIO
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.cftemplates.eventsrule import create_event_rule_name
 from paco.models.locations import get_parent_by_interface
 from paco.models.loader import get_all_nodes
 from paco.models.references import resolve_ref, get_model_obj_from_ref, Reference
 from paco.models import schemas
+from paco.aws_api.awslambda.code import init_lambda_code
 from paco.utils import hash_smaller, prefixed_name
-from io import StringIO
-from enum import Enum
+from pathlib import Path
 import awacs.sdb
 import os
 import troposphere
@@ -135,7 +137,7 @@ class Lambda(StackTemplate):
                 'SubnetIds': troposphere.Ref(subnet_list_param),
             }
 
-        # Code object: S3 Bucket or inline ZipFile?
+        # Code object: S3 Bucket, inline ZipFile or deploy artifact?
         if awslambda.code.s3_bucket:
             if awslambda.code.s3_bucket.startswith('paco.ref '):
                 value = awslambda.code.s3_bucket + ".name"
@@ -158,9 +160,37 @@ class Lambda(StackTemplate):
                 'S3Key': troposphere.Ref(s3key_param),
             }
         else:
-            cfn_export_dict['Code'] = {
-                'ZipFile': awslambda.code.zipfile
-            }
+            zip_path = Path(awslambda.code.zipfile)
+            if zip_path.is_file():
+                cfn_export_dict['Code'] = {
+                    'ZipFile': zip_path.read_text()
+                }
+            elif zip_path.is_dir():
+                # get S3Bucket/S3Key or if it does not exist, it will create the bucket and artifact
+                # and then upload the artifact
+                bucket_name, artifact_name = init_lambda_code(
+                    self.paco_ctx.paco_buckets,
+                    self.stack.resource,
+                    awslambda.code.zipfile,
+                    self.stack.account_ctx,
+                    self.stack.aws_region,
+                )
+                s3bucket_param = self.create_cfn_parameter(
+                    name='CodeS3Bucket',
+                    description="The Paco S3 Bucket for configuration",
+                    param_type='String',
+                    value=bucket_name
+                )
+                s3key_param = self.create_cfn_parameter(
+                    name='CodeS3Key',
+                    description="The Lambda code artifact S3 Key.",
+                    param_type='String',
+                    value=artifact_name
+                )
+                cfn_export_dict['Code'] = {
+                    'S3Bucket': troposphere.Ref(s3bucket_param),
+                    'S3Key': troposphere.Ref(s3key_param),
+                }
 
         # Environment variables
         var_export = {}

@@ -23,6 +23,7 @@ class LogGroups(StackTemplate):
         self.init_template('LogGroups')
         template = self.template
 
+        # CloudWatch Agent logging
         cw_logging = get_parent_by_interface(stack.resource, schemas.IProject)['cw_logging']
         default_retention = cw_logging.expire_events_after_days
         for log_group in stack.resource.monitoring.log_sets.get_all_log_groups():
@@ -89,3 +90,28 @@ class LogGroups(StackTemplate):
                 )
                 metric_filter_resource.DependsOn = log_group_resource
                 template.add_resource(metric_filter_resource)
+
+        # SSM Agent logging
+        if schemas.IASG.providedBy(stack.resource):
+            if stack.resource.launch_options.ssm_agent:
+                loggroup_logical_id = 'SSMLogGroup'
+                cfn_export_dict = {}
+                # LogGroup name is prefixed as a CFN Parameter
+                # ToDo: make paco_ssm a reserved word?
+                prefixed_log_group_name = prefixed_name(stack.resource, 'paco_ssm', self.paco_ctx.legacy_flag)
+                param_name = 'Name' + loggroup_logical_id
+                log_group_name_parameter = self.create_cfn_parameter(
+                    param_type='String',
+                    name=param_name,
+                    description='SSM LogGroup name',
+                    value=prefixed_log_group_name,
+                )
+                cfn_export_dict['LogGroupName'] = troposphere.Ref(log_group_name_parameter)
+                retention = stack.resource.launch_options.ssm_expire_events_after_days
+                if retention != 'Never':
+                    cfn_export_dict["RetentionInDays"] = retention
+                log_group_resource = troposphere.logs.LogGroup.from_dict(
+                    loggroup_logical_id,
+                    cfn_export_dict
+                )
+                template.add_resource(log_group_resource)
