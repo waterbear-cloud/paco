@@ -33,6 +33,8 @@ Changelog for Paco
 
 - EC2LM: Ubuntu 16 for EFS
 
+- Monitoring support for ElasticSearchDomain resources
+
 ### Changed
 
 - Lambda resources can now use ``code.zipefile`` as a path to a local directory. Paco will zip that directory
@@ -40,6 +42,8 @@ Changelog for Paco
   created. Any updates to the Lambda code artifact must then be applied using the ``paco lambda`` command.
 
 - AutoScalingGroup Stack now has a Parameter for ``MinInstancesInService``.
+
+- Troposphere dependency updated to 2.6.1 release which includes support for IoT Analytics Pipelines.
 
 6.2.0 (2020-04-04)
 ------------------
