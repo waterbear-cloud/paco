@@ -614,6 +614,13 @@ for that ASG.
     and download and run them. For example, if you specify in-host metrics for an ASG, it will have a LaunchBundle
     created with the necessary CloudWatch agent configuration and a BASH script to install and configure the agent.
 
+    ``launch_options``: Options to add actions to newly launched instances: ``ssm_agent``, ``update_packages`` and
+    ``cfn_init_config_sets``. The ``ssm_agent`` field will install the SSM Agent and is true by default.
+    Paco's **LaunchBundles** feature requires the SSM Agent installed and running. The ``update_packages`` field will
+    perform a operating system package update (``yum update`` or ``apt-get update``). This happens immediately after the
+    ``user_data_pre_script`` commands, but before the LaunchBundle commands and ``user_data_script`` commands.
+    The ``cfn_init_config_sets`` field is a list of CfnInitConfigurationSets that will be run at launch.
+
     ``cfn_init``: Contains CloudFormationInit (cfn-init) configuration. Paco allows reading cfn-init
     files from the filesystem, and also does additional validation checks on the configuration to ensure
     it is correct. The ``launch_options`` has a ``cfn_init_config_sets`` field to specify which
@@ -692,6 +699,8 @@ for that ASG.
       - Default
     scaling_policy_cpu_average: 60
     launch_options:
+        update_packages: true
+        ssm_agent: true
         cfn_init_config_sets:
         - "InstallApp"
     cfn_init:
@@ -939,7 +948,7 @@ See the AWS documentation for more information on how `AutoScalingRollingUpdate 
       - 
       - 
     * - launch_options
-      - Object<EC2LaunchOptions_>
+      - Object<EC2LaunchOptions_> |star|
       - EC2 Launch Options
       - 
       - 
@@ -1387,6 +1396,16 @@ EC2 Launch Options
       - List of cfn-init config sets
       - 
       - []
+    * - ssm_agent
+      - Boolean
+      - Install SSM Agent
+      - 
+      - True
+    * - ssm_expire_events_after_days
+      - String
+      - Retention period of SSM logs
+      - 
+      - 30
     * - update_packages
       - Boolean
       - Update Distribution Packages
@@ -3198,10 +3217,15 @@ If the volume is going to be used by an ASG, it should launch an instance in the
       - 
       - 
     * - size_gib
-      - Int |star|
+      - Int
       - Volume Size in GiB
       - 
       - 10
+    * - snapshot_id
+      - String
+      - Snapshot ID
+      - 
+      - 
     * - volume_type
       - String
       - Volume Type
@@ -3616,7 +3640,7 @@ settings, instance types, instance counts, and storage resources that you specif
       - 
       - 
 
-*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
 
 
 ElasticsearchCluster
@@ -3797,8 +3821,15 @@ Lambda
 Lambda Functions allow you to run code without provisioning servers and only
 pay for the compute time when the code is running.
 
-For the code that the Lambda function will run, use the ``code:`` block and specify
-``s3_bucket`` and ``s3_key`` to deploy the code from an S3 Bucket or use ``zipfile`` to read a local file from disk.
+The code for the Lambda function can be specified in one of three ways in the ``code:`` field:
+
+ * S3 Bucket artifact: Supply an``s3_bucket`` and ``s3_key`` where you have an existing code artifact file.
+
+ * Local file: Supply the ``zipfile`` as a path to a local file on disk. This will be inlined into
+   CloudFormation and has a size limitation of only 4 Kb.
+
+ * Local directory: Supply the ``zipfile`` as a path to a directory on disk. This directory will be packaged
+   into a zip file and Paco will create an S3 Bucket where it will upload and manage Lambda deployment artifacts.
 
 .. code-block:: yaml
     :caption: Lambda code from S3 Bucket or local disk
@@ -3810,6 +3841,8 @@ For the code that the Lambda function will run, use the ``code:`` block and spec
     code:
         zipfile: ./lambda-dir/my-lambda.py
 
+    code:
+        zipfile: ~/code/my-app/lambda_target/
 
 .. sidebar:: Prescribed Automation
 
@@ -3988,8 +4021,8 @@ The deployment package for a Lambda function.
       - 
       - 
     * - zipfile
-      - StringFileReference
-      - The function as an external file.
+      - LocalPath
+      - The function code as a local file or directory.
       - Maximum of 4096 characters.
       - 
 
@@ -4550,7 +4583,7 @@ MQTT message coming in to IoT Core.
       - Must be a valid Sql statement
       - 
 
-*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
 
 
 IoTTopicRuleAction
@@ -4736,7 +4769,7 @@ with an SQL Query to create subsets of a Datastore suitable for analysis with to
       - 
       - 
 
-*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
 
 
 IoTDatasets
@@ -5081,7 +5114,7 @@ There is an implicit Channel activity before all other activities and an an impl
 activity after all other activities.
 
 .. code-block: yaml
-    :caption: All example types for IotAnalyticsPipeline pipeline_activities
+    :caption: All example types for IoTAnalyticsPipeline pipeline_activities
 
     activity_type: lambda
     batch_size: 1
@@ -5463,11 +5496,7 @@ A Name/Value pair to use for RDS Option Group configuration
 RDSMysql
 ^^^^^^^^^
 
-
-The RDSMysql type extends the base RDS schema with a ``multi_az`` field. When you provision a Multi-AZ DB Instance,
-Amazon RDS automatically creates a primary DB Instance and synchronously replicates the data to a standby instance
-in a different Availability Zone (AZ).
-    
+RDS for MySQL
 
 .. _RDSMysql:
 
@@ -5480,13 +5509,38 @@ in a different Availability Zone (AZ).
       - Purpose
       - Constraints
       - Default
-    * - multi_az
-      - Boolean
-      - Multiple Availability Zone deployment
-      - 
-      - False
+    * -
+      -
+      -
+      -
+      -
 
-*Base Schemas* `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
+*Base Schemas* `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `RDSMultiAZ`_, `Named`_, `Title`_, `Type`_
+
+
+RDSPostgresql
+--------------
+
+RDS for Postgresql
+
+.. _RDSPostgresql:
+
+.. list-table:: :guilabel:`RDSPostgresql`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `RDSMultiAZ`_, `Named`_, `Title`_, `Type`_
 
 
 RDSAurora

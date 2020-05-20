@@ -4,6 +4,12 @@ Changelog for Paco
 7.0.1 (unreleased)
 ------------------
 
+### Added
+
+CloudTrail logs in an S3 Bucket can now be CMK encrypted by KMS. Paco will create a single
+key in the same account and region as the central S3 Bucket. The ``kms_users`` field for
+CloudTrail can be used to grant IAM Users access to decrypt the log files.
+
 ### Changed
 
 - Service plug-ins are passed the model_obj of the config scope when they are initialized.

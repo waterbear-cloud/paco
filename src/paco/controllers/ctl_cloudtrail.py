@@ -9,7 +9,16 @@ from paco.models.references import get_model_obj_from_ref
 
 
 class CloudTrailStackGroup(StackGroup):
-    def __init__(self, paco_ctx, account_ctx, cloudtrail, controller, accounts, account_default_region):
+    def __init__(
+        self,
+        paco_ctx,
+        account_ctx,
+        cloudtrail,
+        controller,
+        accounts,
+        account_default_region,
+        kms_key_account=False
+    ):
         aws_name = account_ctx.get_name()
         super().__init__(
             paco_ctx,
@@ -27,6 +36,31 @@ class CloudTrailStackGroup(StackGroup):
                 region = trail.region
             else:
                 region = self.account_default_region
+
+            # If KMS encryption is enabled then create a KMS Key for the trail
+            if kms_key_account:
+                kms_crypto_principle_list = []
+                for account in accounts:
+                    kms_crypto_principle_list.append(
+                        "paco.sub 'arn:aws:iam::${%s}:root'" % (account.paco_ref)
+                    )
+                kms_config_dict = {
+                    'admin_principal': {
+                        'aws': [ "!Sub 'arn:aws:iam::${{AWS::AccountId}}:root'" ]
+                    },
+                    'crypto_principal': {
+                        'aws': kms_crypto_principle_list
+                    }
+                }
+                cloudtrail.kms_stack = self.add_new_stack(
+                    region,
+                    trail,
+                    paco.cftemplates.KMS,
+                    account_ctx=account_ctx,
+                    support_resource_ref_ext='kms',
+                    extra_context={'cloudtrail': trail}
+                )
+                self.stack_list.append(cloudtrail.kms_stack)
 
             # Create an S3 bucket to store the CloudTrail in
             s3_ctl = self.paco_ctx.get_controller('S3')
@@ -93,13 +127,14 @@ class CloudTrailController(Controller):
             return
         self.init_done = False
         self.cloudtrail = self.paco_ctx.project['resource']['cloudtrail']
+        self.cloudtrail.resolve_ref_obj = self
         self.stack_grps = []
 
     def init(self, command=None, model_obj=None):
         if self.init_done:
             return
-        self.init_done = True
         self.init_stack_groups()
+        self.init_done = True
 
     def init_stack_groups(self):
         for trail in self.cloudtrail.trails.values():
@@ -110,9 +145,14 @@ class CloudTrailController(Controller):
             ordered_accounts = []
             for account in accounts:
                 if s3_bucket_account.name == account.name:
+                    # S3 Bucket account is also the KMS Key account if that's enabled
+                    account._kms_key_account = False
+                    if trail.enable_kms_encryption == True:
+                        account._kms_key_account = True
                     ordered_accounts.append(account)
             for account in accounts:
                 if s3_bucket_account.name != account.name:
+                    account._kms_key_account = False
                     ordered_accounts.append(account)
 
             for account in ordered_accounts:
@@ -124,6 +164,7 @@ class CloudTrailController(Controller):
                     self,
                     accounts,
                     account_default_region=account.region,
+                    kms_key_account=account._kms_key_account,
                 )
                 self.stack_grps.append(cloudtrail_stack_grp)
 
@@ -138,3 +179,11 @@ class CloudTrailController(Controller):
     def delete(self):
         for stack_grp in self.stack_grps:
             stack_grp.delete()
+
+    def resolve_ref(self, ref):
+        "Resolve KMS CMK ARNs: resource.cloudtrail.trails.<trailname>.kms.arn"
+        trailname = ref.parts[3]
+        trail = self.cloudtrail.trails[trailname]
+        if trail.enable_kms_encryption == True:
+            return self.cloudtrail.kms_stack
+        return None

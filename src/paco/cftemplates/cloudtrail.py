@@ -26,6 +26,14 @@ class CloudTrail(StackTemplate):
             'S3BucketName': s3_bucket_name,
             'S3KeyPrefix': trail.s3_key_prefix,
         }
+        if trail.enable_kms_encryption:
+            cmk_arn_param = self.create_cfn_parameter(
+                param_type='String',
+                name='CMKArn',
+                description='The KMS CMK Arn of the key used to encrypt the CloudTrail',
+                value=trail.paco_ref + '.kms.arn',
+            )
+            trail_dict['KMSKeyId'] = troposphere.Ref(cmk_arn_param)
         if trail.cloudwatchlogs_log_group:
             log_group = trail.cloudwatchlogs_log_group
             cfn_export_dict = {
