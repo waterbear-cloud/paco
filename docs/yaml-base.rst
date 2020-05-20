@@ -100,8 +100,9 @@ A name that can be changed or duplicated with other similar cloud resources with
 Resource
 ---------
 
-
-AWS Resource to support an Application
+Configuration for a cloud resource.
+Resources may represent a single physical resource in the cloud,
+or several closely related resources.
     
 
 .. _Resource:
