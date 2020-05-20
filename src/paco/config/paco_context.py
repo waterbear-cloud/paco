@@ -323,19 +323,20 @@ This directory contains several sub-directories that Paco uses:
         # Locate a model object and summarize it
         # init commands do not have a config_scope
         # ToDo: the 'accounts' scope does resolve properly
+        model_obj = None
         if self.config_scope not in [None, 'accounts']:
             paco_ref = 'paco.ref {}'.format(self.config_scope)
-            obj = get_model_obj_from_ref(paco_ref, self.project)
+            model_obj = get_model_obj_from_ref(paco_ref, self.project)
             if self.verbose:
                 print('Object selected to {}:'.format(self.command))
                 print('  Name: {}'.format(
-                    getattr(obj, 'name', 'unnamed')
+                    getattr(model_obj, 'name', 'unnamed')
                 ))
-                print('  Type: {}'.format(obj.__class__.__name__))
-                if getattr(obj, 'title', None):
-                    print('  Title: {}'.format(obj.title))
-                if hasattr(obj, 'paco_ref_parts'):
-                    print('  Reference: {}'.format(obj.paco_ref_parts))
+                print('  Type: {}'.format(model_obj.__class__.__name__))
+                if getattr(model_obj, 'title', None):
+                    print('  Title: {}'.format(model_obj.title))
+                if hasattr(model_obj, 'paco_ref_parts'):
+                    print('  Reference: {}'.format(model_obj.paco_ref_parts))
                 print()
 
             # Check Notifications and warn about Alarms without any notifications
@@ -369,7 +370,7 @@ This directory contains several sub-directories that Paco uses:
             service_config = self.project['service'][plugin_name.lower()]
             self.log_section_start("Init", service_config)
             service = plugin_module.instantiate_class(self, service_config)
-            service.init(None)
+            service.init(None, model_obj)
             self.services[plugin_name.lower()] = service
 
     def get_controller(self, controller_type, command=None, model_obj=None, model_paco_ref=None):

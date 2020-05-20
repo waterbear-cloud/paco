@@ -4,7 +4,9 @@ Changelog for Paco
 7.0.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Changed
+
+- Service plug-ins are passed the model_obj of the config scope when they are initialized.
 
 
 7.0.0 (2020-05-09)
