@@ -7,32 +7,114 @@ Global Resources
 Global Resources are defined in the top-level ``resource/`` directory. They define cloud resources
 which do not belong to an environment or other logical grouping.
 
-CloudTrail
-----------
 
-The ``resource/cloudtrail.yaml`` file contains CloudTrails.
+CloudTrail
+-----------
+
+
+The ``resource/cloudtrail.yaml`` file specifies CloudTrail resources.
+
+AWS CloudTrail logs all AWS API activity. Monitor and react to changes in your AWS accounts with CloudTrail.
+A CloudTrail can be used to set-up a multi-account CloudTrail that sends logs from every account into a single S3 Bucket.
 
 .. code-block:: bash
 
     paco provision resource.cloudtrail
 
+.. sidebar:: Prescribed Automation
+
+    ``enable_kms_encryption``: Encrypt the CloudTrai logs with a Customer Managed Key (CMK). Paco will create
+    a CMK for the CloudTrail in the same account as the ``s3_bucket_account``.
+
+    ``kms_users``: A list of either IAM User names or paco references to ``resource/iam.yaml`` users. These
+    users will have access to the CMK to decrypt and read the CloudTrail logs.
 
 .. code-block:: yaml
-    :caption: Example resource/cloudtrail.yaml file
+    :caption: example resource/cloudtrail.yaml configuration
 
     trails:
-      cloudtrail:
-        region: ''
+      mycloudtrail:
         enabled: true
+        region: 'us-west-2'
         cloudwatchlogs_log_group:
           expire_events_after_days: '14'
-          log_group_name: 'CloudTrail'
+          log_group_name: CloudTrail
         enable_log_file_validation: true
         include_global_service_events: true
         is_multi_region_trail: true
         enable_kms_encryption: true
-        s3_bucket_account: 'paco.ref accounts.security'
-        s3_key_prefix: 'cloudtrails'
+        kms_users:
+          - bob@example.com
+          - paco.ref resource.iam.users.sallysmith
+        s3_bucket_account: paco.ref accounts.security
+        s3_key_prefix: cloudtrails
+
+
+
+.. _CloudTrail:
+
+.. list-table:: :guilabel:`CloudTrail`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - accounts
+      - List<PacoReference>
+      - Accounts to enable this CloudTrail in. Leave blank to assume all accounts.
+      - Paco Reference to `Account`_.
+      - 
+    * - cloudwatchlogs_log_group
+      - Object<CloudWatchLogGroup_>
+      - CloudWatch Logs LogGroup to deliver this trail to.
+      - 
+      - 
+    * - enable_kms_encryption
+      - Boolean |star|
+      - Enable KMS Key encryption
+      - 
+      - False
+    * - enable_log_file_validation
+      - Boolean
+      - Enable log file validation
+      - 
+      - True
+    * - include_global_service_events
+      - Boolean
+      - Include global service events
+      - 
+      - True
+    * - is_multi_region_trail
+      - Boolean
+      - Is multi-region trail?
+      - 
+      - True
+    * - kms_users
+      - List<PacoReference> |star|
+      - IAM Users with access to CloudTrail bucket
+      - Paco Reference to `IAMUser`_. String Ok.
+      - 
+    * - region
+      - String
+      - Region to create the CloudTrail
+      - Must be a valid AWS Region name or empty string
+      - 
+    * - s3_bucket_account
+      - PacoReference |star|
+      - Account which will contain the S3 Bucket that the CloudTrails will be stored in
+      - Must be an paco.ref to an account Paco Reference to `S3Bucket`_.
+      - 
+    * - s3_key_prefix
+      - String
+      - S3 Key Prefix specifies the Amazon S3 key prefix that comes after the name of the bucket.
+      - Do not include a leading or trailing / in your prefix. They are provided already.
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
 
 CodeCommit
 ----------

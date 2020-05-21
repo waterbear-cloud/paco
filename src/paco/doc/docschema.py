@@ -105,32 +105,8 @@ Global Resources
 Global Resources are defined in the top-level ``resource/`` directory. They define cloud resources
 which do not belong to an environment or other logical grouping.
 
-CloudTrail
-----------
+{ICloudTrail}
 
-The ``resource/cloudtrail.yaml`` file contains CloudTrails.
-
-.. code-block:: bash
-
-    paco provision resource.cloudtrail
-
-
-.. code-block:: yaml
-    :caption: Example resource/cloudtrail.yaml file
-
-    trails:
-      cloudtrail:
-        region: ''
-        enabled: true
-        cloudwatchlogs_log_group:
-          expire_events_after_days: '14'
-          log_group_name: 'CloudTrail'
-        enable_log_file_validation: true
-        include_global_service_events: true
-        is_multi_region_trail: true
-        enable_kms_encryption: true
-        s3_bucket_account: 'paco.ref accounts.security'
-        s3_key_prefix: 'cloudtrails'
 
 CodeCommit
 ----------

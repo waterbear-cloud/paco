@@ -38,9 +38,9 @@ child accounts.
     account_id: '123456789012'
     region: us-west-2
     organization_account_ids:
-    - prod
-    - tools
-    - dev
+      - prod
+      - tools
+      - dev
     root_email: master@example.com
 
 .. code-block:: yaml
