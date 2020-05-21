@@ -316,6 +316,8 @@ SNS has only two resources: SNS Topics and SNS Subscriptions.
     You will need this if you want to send CloudWatch Alarms from multiple accounts to the same
     SNS Topic(s) in one account.
 
+.. _s3bucket: yaml-app-resources.html#s3bucket
+
 """
 
 yaml_netenv = """
