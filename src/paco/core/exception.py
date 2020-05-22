@@ -95,3 +95,6 @@ class InvalidFilesystemPath(PacoBaseException):
 
 class MissingRequiredOption(PacoBaseException):
     title = "Missing required option for object type"
+
+class UnexpectedAwsResponse(PacoBaseException):
+    title = "AWS Resource(s) in an unexpected configuration"
