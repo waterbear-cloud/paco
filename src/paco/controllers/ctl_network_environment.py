@@ -224,6 +224,13 @@ class NetEnvController(Controller):
         self.sub_envs[env.name][region] = env_ctx
         env_ctx.init()
 
+    def add_vpc_stack_hooks(self, stack_hooks):
+        "Adds StackHooks to every VPC in the NetEnv"
+        for env_name in self.sub_envs.keys():
+            for region in self.sub_envs[env_name].keys():
+                vpc_stack = self.sub_envs[env_name][region].get_vpc_stack()
+                vpc_stack.add_hooks(stack_hooks)
+
     def secrets_manager(self, secret_name, account_ctx, region):
         print("Modifying secret: " + secret_name)
         secret_string = getpass.getpass("Enter new secret value: ")

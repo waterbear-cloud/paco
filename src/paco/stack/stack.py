@@ -202,7 +202,8 @@ class StackHooks():
             'cache_method': cache_method,
             'arg': hook_arg,
             'stack_action': stack_action,
-            'stack_timing': stack_timing
+            'stack_timing': stack_timing,
+            'stack': None,
         }
         self.hooks[stack_action][stack_timing].append(hook)
         if self.stack != None:
@@ -222,6 +223,7 @@ class StackHooks():
         "Invoke a hook"
         for hook in self.hooks[stack_action][stack_timing]:
             stack.log_action('Run', "Hook", message="{}.{}: {}".format(stack_timing, stack_action, hook['name']))
+            hook['stack'] = stack
             hook['method'](hook, hook['arg'])
 
     def gen_cache_id(self):
