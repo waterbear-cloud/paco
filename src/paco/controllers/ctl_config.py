@@ -81,10 +81,13 @@ class ConfigStackGroup(StackGroup):
         apply_attributes_from_config(s3bucket, bucket_config_dict, read_file_path = 'dynamically generated in code paco.controllers.ctl_config')
         global_buckets['paco-awsconfig'] = s3bucket
         s3bucket.resolve_ref_object = self
-        s3_config_ref = s3bucket.paco_ref_parts
         bucket_account_ctx = self.paco_ctx.get_account_context(account_ref=self.config.s3_bucket_logs_account)
-        s3_ctl.init_context(bucket_account_ctx, self.config.global_resources_region, s3_config_ref, self, None)
-        s3_ctl.add_bucket(s3bucket, config_ref=s3_config_ref)
+        try:
+            s3_config_ref = s3bucket.paco_ref_parts
+            s3_ctl.init_context(bucket_account_ctx, self.config.global_resources_region, s3_config_ref, self, None)
+            s3_ctl.add_bucket(s3bucket, config_ref=s3_config_ref)
+        except PacoBucketExists:
+            pass
         return s3bucket.get_bucket_name()
 
     def create_iam_role(self, bucket_name, account_ctx, aws_region):
