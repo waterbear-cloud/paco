@@ -159,6 +159,10 @@ class S3(StackTemplate):
                     ],
                 }
 
+                # Sid
+                if policy_statement.sid != None and len(policy_statement.sid) > 0:
+                    statement_dict['Sid'] = policy_statement.sid
+
                 # Principal
                 if policy_statement.principal != None and len(policy_statement.principal) > 0:
                     # ToDo: awacs only allows one type of Principal ... is there a use-case where

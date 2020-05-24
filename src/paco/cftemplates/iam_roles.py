@@ -223,7 +223,6 @@ Outputs:
             'action_list': None,
             'resource_list': None
         }
-
         quoted_list_fmt = """
                   - '{0}'"""
         unquoted_list_fmt = """
@@ -246,7 +245,8 @@ Outputs:
                         statement_table['resource_list'] += quoted_list_fmt.format(resource)
 
                 policy_table['statement_list'] += statement_fmt.format(statement_table)
-
+                if len(statement.condition.keys()) > 0:
+                    policy_table['statement_list'] += f"                Condition: {statement.condition}\n"
             policies_yaml += policy_fmt.format(policy_table)
 
         return policies_yaml

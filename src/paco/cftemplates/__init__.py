@@ -21,6 +21,7 @@ from paco.cftemplates.eventsrule import EventsRule
 from paco.cftemplates.snstopics import SNSTopics
 from paco.cftemplates.loggroups import LogGroups
 from paco.cftemplates.cloudtrail import CloudTrail
+from paco.cftemplates.config import Config
 from paco.cftemplates.cloudfront import CloudFront
 from paco.cftemplates.rds import RDS, DBParameterGroup
 from paco.cftemplates.elasticache import ElastiCache
