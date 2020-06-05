@@ -14,6 +14,8 @@ CloudTrail can be used to grant IAM Users access to decrypt the log files.
 
 - Service plug-ins are passed the model_obj of the config scope when they are initialized.
 
+- Lambda Paco Log Groups are supplied as a comma-seperated String to it's Environment Variable.
+
 
 7.0.0 (2020-05-09)
 ------------------
