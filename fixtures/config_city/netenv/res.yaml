@@ -1,0 +1,141 @@
+network:
+  availability_zones: 2
+  enabled: true
+  region: us-west-2
+  vpc:
+    enable_dns_hostnames: true
+    enable_dns_support: true
+    enable_internet_gateway: true
+    nat_gateway:
+      app:
+        enabled: true
+        availability_zone: 1  # 1, 2, 3, 4, ... | all
+        segment: paco.ref netenv.anet.network.vpc.segments.public
+        default_route_segments:
+          - paco.ref netenv.anet.network.vpc.segments.webapp
+    vpn_gateway:
+      app:
+        enabled: false
+    private_hosted_zone:
+      enabled: false
+      name: example.internal
+    security_groups:
+      app:
+        efs:
+          enabled: true
+          group_description: "EFS Mount Target Security Group"
+          ingress:
+            - description: NFS Access
+              from_port: 2049
+              to_port: 2049
+              protocol: tcp
+              source_security_group: paco.ref netenv.res.network.vpc.security_groups.app.webapp
+        lb:
+          egress:
+            - cidr_ip: 0.0.0.0/0
+              name: ANY
+              protocol: "-1"
+          ingress:
+            - cidr_ip: 70.68.173.245/32
+              from_port: 443
+              name: HTTPS
+              protocol: tcp
+              to_port: 443
+            - cidr_ip: 70.68.173.245/32
+              from_port: 80
+              name: HTTP
+              protocol: tcp
+              to_port: 80
+        webapp:
+          egress:
+            - cidr_ip: 0.0.0.0/0
+              name: ANY
+              protocol: "-1"
+          ingress:
+            - from_port: 80
+              name: HTTP
+              protocol: tcp
+              source_security_group: paco.ref netenv.pacodemo.network.vpc.security_groups.app.lb
+              to_port: 80
+            - from_port: 22
+              to_port: 22
+              name: SSH
+              protocol: tcp
+              source_security_group: paco.ref netenv.pacodemo.network.vpc.security_groups.app.bastion
+            - from_port: 80
+              to_port: 80
+              name: BASTIONHTTP
+              protocol: tcp
+              source_security_group: paco.ref netenv.pacodemo.network.vpc.security_groups.app.bastion
+        bastion:
+          egress:
+            - cidr_ip: 0.0.0.0/0
+              name: ANY
+              protocol: "-1"
+          ingress:
+            - from_port: 22
+              name: SSH
+              protocol: tcp
+              cidr_ip: 70.68.173.245/32
+              to_port: 22
+        rds:
+          ingress:
+            - name: AuroraMYSQL
+              protocol: "6"
+              from_port: 3306
+              to_port: 3306
+              source_security_group: paco.ref netenv.pacodemo.network.vpc.security_groups.app.webapp
+          egress:
+            - name: ANY
+              cidr_ip: 0.0.0.0/0
+              protocol: "-1"
+    segments:
+      database:
+        enabled: true
+      public:
+        enabled: true
+      webapp:
+        enabled: true
+
+
+applications:
+  app:
+    enabled: true
+    groups:
+      things:
+        type: Application
+        order: 1
+        enabled: true
+        resources:
+          EFS:
+            type: EFS
+            enabled: true
+            order: 10
+            segment: webapp
+            security_groups:
+              - paco.ref netenv.res.network.vpc.security_groups.app.efs
+
+environments:
+  test:
+    default:
+      applications:
+        app:
+          enabled: true
+      network:
+        aws_account: paco.ref accounts.dev
+        name: example
+        vpc:
+          cidr: 10.0.0.0/16
+          segments:
+            database:
+              az1_cidr: 10.0.5.0/24
+              az2_cidr: 10.0.6.0/24
+            public:
+              az1_cidr: 10.0.1.0/24
+              az2_cidr: 10.0.2.0/24
+              internet_access: true
+            webapp:
+              az1_cidr: 10.0.3.0/24
+              az2_cidr: 10.0.4.0/24
+    us-west-2:
+      enabled: true
