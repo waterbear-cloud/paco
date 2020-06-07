@@ -54,7 +54,7 @@ class ProjectController(Controller):
             ""
         )
         self.init_done = False
-        self.credentials_path = pathlib.Path(os.path.join(self.paco_ctx.home, '.credentials.yaml'))
+        self.credentials_path = self.paco_ctx.home / '.credentials.yaml'
         self.credentials = {
             'aws_access_key_id': None,
             'aws_secret_access_key': None,
@@ -99,7 +99,7 @@ class ProjectController(Controller):
         }
         print("\nPaco project initialization")
         print("---------------------------\n")
-        if pathlib.Path(self.paco_ctx.home).exists():
+        if self.paco_ctx.home.exists():
             print("Directory at {} already exists.\n".format(self.paco_ctx.home))
         else:
             print("A Paco project is a directory of YAML files that describes a cloud architecture,")
@@ -133,7 +133,7 @@ class ProjectController(Controller):
                     allowed_values=allowed_values
                 )
 
-            project_context['_computed_paco_home_path'] = self.paco_ctx.home
+            project_context['_computed_paco_home_path'] = str(self.paco_ctx.home)
             project_context['master_admin_iam_username'] = 'paco-project-init'
             # Remove the allowed key so we do not save it to the context file
             for key in allowed_key_list:
@@ -169,7 +169,7 @@ class ProjectController(Controller):
 
             # create the .gitignore seperately that filename can't be nested in git repo
             # tried using {{['.gitignore']|join}} but the | character is a problem on Windows filesystems
-            fh = open(self.paco_ctx.home + os.sep + '.gitignore', 'w')
+            fh = open(self.paco_ctx.home / '.gitignore', 'w')
             fh.write(".credentials.yaml\n")
             fh.write(".credentials.yml\n")
             fh.write(".paco-work/build/\n")
@@ -189,9 +189,7 @@ class ProjectController(Controller):
         print("---------------------------------------\n")
 
         if self.credentials_path.exists() and force == False:
-            print("A .credentials file already exists at:\n{}.credentials\n".format(
-                self.paco_ctx.home + os.sep
-            ))
+            print("A .credentials file already exists at:\n{}.credentials\n".format(self.paco_ctx.home))
             sys.exit()
 
         master = self.paco_ctx.project['accounts']['master']
@@ -226,7 +224,7 @@ class ProjectController(Controller):
 
     def init_accounts(self):
         "Initialize Accounts"
-        accounts_dir = os.path.join(self.paco_ctx.home, 'Accounts')
+        accounts_dir = os.path.join(str(self.paco_ctx.home), 'Accounts')
         master_account_file = loader.gen_yaml_filename(accounts_dir, 'master')
         with open(master_account_file, 'r') as stream:
             master_account_config = yaml.load(stream)

@@ -110,8 +110,9 @@ applications:
             segment: web
             termination_policies:
               - Default
-            update_policy_max_batch_size: 1
-            update_policy_min_instances_in_service: 0
+            rolling_update_policy:
+              max_batch_size: 1
+              min_instances_in_service: 0
             user_data_script: |
               #!/bin/bash
               yum update -y

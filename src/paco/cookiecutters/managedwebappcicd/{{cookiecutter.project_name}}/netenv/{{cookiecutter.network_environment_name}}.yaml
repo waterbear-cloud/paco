@@ -187,8 +187,9 @@ applications:
             segment: public
             termination_policies:
               - Default
-            update_policy_max_batch_size: 1
-            update_policy_min_instances_in_service: 0
+            rolling_update_policy:
+              max_batch_size: 1
+              min_instances_in_service: 0
             security_groups:
               - paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.bastion.instance
             monitoring:
@@ -371,8 +372,9 @@ applications:
             instance_key_pair: paco.ref resource.ec2.keypairs.{{cookiecutter.application_name}}_prod
             instance_monitoring: false
             instance_type: t3.small
-            update_policy_max_batch_size: 1
-            update_policy_min_instances_in_service: 0
+            rolling_update_policy:
+              max_batch_size: 1
+              min_instances_in_service: 0
             max_instances: 1
             min_instances: 0
             desired_capacity: 1

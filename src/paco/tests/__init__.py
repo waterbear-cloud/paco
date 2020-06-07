@@ -4,6 +4,8 @@ Shared helper functions used across all test suites
 
 import os
 import inspect
+import pathlib
+
 
 def fixtures_path():
     # find the project root directory
@@ -15,7 +17,7 @@ def fixtures_path():
             break
         parts.append(part)
     path = os.sep.join(parts)
-    return path
+    return pathlib.Path(path)
 
     # when run from a local test script (might need later if we run tests on commit etc)
     #path = os.path.abspath(inspect.stack()[-1][1]) # the path to the test script

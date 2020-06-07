@@ -225,7 +225,10 @@ class PacoContext(object):
     """
 
     def __init__(self, home=None):
-        self.home = home
+        if home != None:
+            self.home = pathlib.Path(home)
+        else:
+            self.home = home
         # CLI Flags
         self.verbose = False
         self.nocache = False
@@ -288,7 +291,7 @@ This directory contains several sub-directories that Paco uses:
     applied/
 
 """
-        return pathlib.Path(self.home + os.sep + '.paco-work')
+        return self.home / '.paco-work'
 
     @property
     def outputs_path(self):

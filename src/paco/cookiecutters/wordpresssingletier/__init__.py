@@ -3,7 +3,7 @@ from paco.models import vocabulary
 
 def get_project_context(paco_ctx):
     return {
-        'project_name': os.path.basename(os.path.normpath(paco_ctx.home)),
+        'project_name': os.path.basename(str(paco_ctx.home)),
         'project_title': 'My Paco Project',
         'network_environment_name': 'My Network',
         'network_environment_title': 'mynet',

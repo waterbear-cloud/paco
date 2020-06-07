@@ -1,0 +1,7 @@
+name: Production
+title: Production AWS Account
+account_type: AWS
+account_id: '123456789000'
+admin_delegate_role_name: 'Paco-Organization-Account-Delegate-Role'
+region: 'us-west-2'
+root_email: bigguy@example.com

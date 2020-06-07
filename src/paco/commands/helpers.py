@@ -37,7 +37,7 @@ See the Paco CLI config scope docs at https://www.paco-cloud.io/en/latest//cli.h
 def load_paco_config_options(paco_ctx):
     "Loads the .paco-work/config.yaml options"
     # read .pacoconfig
-    config_path = pathlib.Path(paco_ctx.home) / '.pacoconfig'
+    config_path = paco_ctx.home / '.pacoconfig'
     if config_path.exists():
         config = yaml.load(config_path)
     else:
@@ -303,7 +303,7 @@ def init_paco_home_option(ctx, home):
     if not home:
         home = os.environ.get('PACO_HOME')
     if home is not None:
-        ctx.home = home
+        ctx.home = pathlib.Path(home)
 
 def handle_exceptions(func):
     """

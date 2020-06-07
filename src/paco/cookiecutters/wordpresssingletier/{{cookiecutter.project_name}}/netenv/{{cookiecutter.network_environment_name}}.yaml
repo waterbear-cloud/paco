@@ -126,8 +126,9 @@ applications:
             instance_key_pair: paco.ref resource.ec2.keypairs.pacokeypair
             instance_monitoring: false
             instance_type: t3.small
-            update_policy_max_batch_size: 1
-            update_policy_min_instances_in_service: 0
+            rolling_update_policy:
+              max_batch_size: 1
+              min_instances_in_service: 0
             max_instances: 1
             min_instances: 0
             desired_capacity: 1

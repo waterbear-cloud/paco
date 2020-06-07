@@ -3,6 +3,7 @@ import os
 import os.path
 import sys
 import paco.commands.helpers
+import pathlib
 from paco.commands.helpers import pass_paco_context, paco_home_option, init_paco_home_option, handle_exceptions
 from cookiecutter.main import cookiecutter
 from jinja2.ext import Extension
@@ -43,7 +44,7 @@ def init_project(ctx, project_name):
     paco_ctx.command = 'init project'
 
     # As we are initializing the project, laod_project needs to behave differently
-    paco_ctx.home = os.getcwd() + os.sep + project_name
+    paco_ctx.home = pathlib.Path().cwd() / project_name
     paco_ctx.load_project(project_init=True)
     ctl_project = paco_ctx.get_controller('project')
     ctl_project.init_project()

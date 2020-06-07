@@ -1372,7 +1372,7 @@ your cache may be out of sync. Try running again the with the --nocache option.
     def validate(self):
         "Validate Stack in AWS"
         applied_file_path, new_file_path = self.init_template_store_paths()
-        short_yaml_path = str(new_file_path).replace(self.paco_ctx.home, '')
+        short_yaml_path = str(new_file_path).replace(str(self.paco_ctx.home), '')
         if short_yaml_path[0] == '/':
             short_yaml_path = short_yaml_path[1:]
         if self.enabled == False:
@@ -1409,8 +1409,8 @@ your cache may be out of sync. Try running again the with the --nocache option.
         # Applied Template Data
         applied_template_path, _ = self.init_template_store_paths()
         applied_parameters_path = self.init_applied_parameters_path(applied_template_path)
-        short_applied_template_path = str(applied_template_path).replace(self.paco_ctx.home, '')
-        short_applied_parameters_path = str(applied_parameters_path).replace(self.paco_ctx.home, '')
+        short_applied_template_path = str(applied_template_path).replace(str(self.paco_ctx.home), '')
+        short_applied_parameters_path = str(applied_parameters_path).replace(str(self.paco_ctx.home), '')
         if self.paco_ctx.verbose == True:
             self.paco_ctx.log_action_col('Delete', 'Template', 'Applied', short_applied_template_path)
             self.paco_ctx.log_action_col('Delete', 'Parameters', 'Applied', short_applied_parameters_path)
@@ -1421,7 +1421,7 @@ your cache may be out of sync. Try running again the with the --nocache option.
             pass
 
         # The template itself
-        short_yaml_path = str(self.get_yaml_path()).replace(self.paco_ctx.home, '')
+        short_yaml_path = str(self.get_yaml_path()).replace(str(self.paco_ctx.home), '')
         if self.paco_ctx.verbose == True:
             self.paco_ctx.log_action_col('Delete', 'Template', 'Build', short_yaml_path)
         try:

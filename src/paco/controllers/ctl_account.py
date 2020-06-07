@@ -136,7 +136,7 @@ field, if the child account YAML does not already exist."""
                 )
 
                 # Save account config to yaml
-                account_yaml_path = os.path.join(self.paco_ctx.home, 'Accounts', org_account_id + ".yaml")
+                account_yaml_path = self.paco_ctx.home / 'Accounts' / (org_account_id + ".yaml")
                 with open(account_yaml_path, "w") as stream:
                     yaml.dump(data=account_config, stream=stream)
 
@@ -163,7 +163,7 @@ field, if the child account YAML does not already exist."""
             # Config Check
             config_exists = False
             account_config = None
-            account_yaml_path = loader.gen_yaml_filename(os.path.join(self.paco_ctx.home, 'Accounts'),  org_account_id)
+            account_yaml_path = loader.gen_yaml_filename(os.path.join(str(self.paco_ctx.home), 'Accounts'),  org_account_id)
             if org_account_id in self.paco_ctx.project['accounts'].keys():
                 config_exists = True
                 account_config = self.paco_ctx.project['accounts'][org_account_id]

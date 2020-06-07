@@ -265,7 +265,7 @@ applications:
 {%- if cookiecutter.budget == 'True' %}
             eip: paco.ref netenv.{{cookiecutter.network_environment_name}}.applications.pypi.groups.pypi.resources.eip
             associate_public_ip_address: true
-{$- else %}
+{%- else %}
             associate_public_ip_address: false
 {%- endif %}
             cooldown_secs: 300
@@ -284,8 +284,9 @@ applications:
             desired_capacity: 1
             max_instances: 1
             min_instances: 0
-            update_policy_max_batch_size: 1
-            update_policy_min_instances_in_service: 0
+            rolling_update_policy:
+              max_batch_size: 1
+              min_instances_in_service: 0
 {%- if cookiecutter.budget == 'True' %}
             segment: public
 {%- else %}
@@ -417,8 +418,9 @@ applications:
             segment: public
             termination_policies:
               - Default
-            update_policy_max_batch_size: 1
-            update_policy_min_instances_in_service: 0
+            rolling_update_policy:
+              max_batch_size: 1
+              min_instances_in_service: 0
             security_groups:
               - paco.ref netenv.{{cookiecutter.network_environment_name}}.network.vpc.security_groups.bastion.instance
             monitoring:

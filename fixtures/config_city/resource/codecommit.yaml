@@ -1,0 +1,43 @@
+fixturecity:
+  demo:
+    enabled: true
+    account: paco.ref accounts.dev
+    region: 'us-west-2'
+    description: "Demo repository"
+    repository_name: "demo"
+  bobdog:
+    enabled: true
+    account: paco.ref accounts.dev
+    region: 'ca-central-1'
+    description: "Bob Dog"
+    repository_name: "bobdog"
+    users:
+      bobdog:
+        username: bobdog@example.com
+        public_ssh_key: 'ssh-rsa AAAv2='
+  multiuser:
+    enabled: true
+    account: paco.ref accounts.dev
+    region: 'eu-central-1'
+    description: "Europe Team"
+    repository_name: "europe"
+    users:
+      eu1:
+        username: eu1@example.com
+        public_ssh_key: 'ssh-rsa AAAv1='
+      eu2:
+        username: eu2@example.com
+        public_ssh_key: 'ssh-rsa AAAv3='
+  multiusertwo:
+    enabled: true
+    account: paco.ref accounts.dev
+    region: 'eu-central-1'
+    description: "Europe Team Two"
+    repository_name: "europetwo"
+    users:
+      eu1:
+        username: eu1@example.com
+        public_ssh_key: 'ssh-rsa AAAv1='
+      eu2:
+        username: eu2@example.com
+        public_ssh_key: 'ssh-rsa AAAv2='

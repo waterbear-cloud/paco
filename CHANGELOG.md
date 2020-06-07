@@ -1,20 +1,28 @@
 Changelog for Paco
 ==================
 
-7.0.1 (unreleased)
+7.1.0 (unreleased)
 ------------------
 
 ### Added
 
-CloudTrail logs in an S3 Bucket can now be CMK encrypted by KMS. Paco will create a single
-key in the same account and region as the central S3 Bucket. The ``kms_users`` field for
-CloudTrail can be used to grant IAM Users access to decrypt the log files.
+- CloudTrail logs in an S3 Bucket can now be CMK encrypted by KMS. Paco will create a single
+  key in the same account and region as the central S3 Bucket. The ``kms_users`` field for
+  CloudTrail can be used to grant IAM Users access to decrypt the log files.
+
+- Start of test suite for paco.cftemplates in paco.cftemplates.test package.
 
 ### Changed
 
 - Service plug-ins are passed the model_obj of the config scope when they are initialized.
 
 - Lambda Paco Log Groups are supplied as a comma-seperated String to it's Environment Variable.
+
+- The PacoContext home attribute is now a pathlib.Path object.
+
+### Fixed
+
+- Starter Projects updated to use newer ASG rolling update syntax.
 
 
 7.0.0 (2020-05-09)
