@@ -1,0 +1,5 @@
+keypairs:
+  key_test:
+    keypair_name: res-test-us-west-2
+    region: us-west-2
+    account: paco.ref accounts.dev

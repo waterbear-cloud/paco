@@ -12,14 +12,12 @@ class TestEFS(BaseTestProject):
     group_name = 'things'
 
     def test_efs(self):
-        efs_resource = self.get_resource_by_type('EFS')
-        network = self.get_network()
         netenv_ctl = self.paco_ctx.get_controller('netenv', None, self.env_region)
-        body = efs_resource.stack.template.body
+        efs_resource = self.get_resource_by_type('EFS')
         troposphere_tmpl = efs_resource.stack.template.template
 
         # EFS has an EFS Resource
-        assert troposphere_tmpl.resources['EFS'].resource_type, 'AWS::EFS::FileSystem'
+        assert troposphere_tmpl.resources['EFS'].resource_type, troposphere.efs.FileSystem.resource_type
 
         # EFSId Output
         self.assertIsInstance(troposphere_tmpl.outputs['EFSId'], troposphere.Output)

@@ -107,10 +107,82 @@ applications:
         order: 1
         enabled: true
         resources:
+          ASG:
+            type: ASG
+            order: 10
+            enabled: true
+            instance_type: t3.medium
+            desired_capacity: 2
+            max_instances: 4
+            min_instances: 2
+            instance_ami: ami-12345678990
+            instance_ami_type: ubuntu_20
+            instance_monitoring: false
+            instance_key_pair: paco.ref resource.ec2.keypairs.key_test
+            associate_public_ip_address: false
+            cooldown_secs: 300
+            ebs_optimized: false
+            block_device_mappings:
+              - device_name: "/dev/sda1"
+                ebs:
+                  delete_on_termination: true
+                  size_gib: 100
+                  volume_type: 'gp2'
+            health_check_grace_period_secs: 300
+            health_check_type: EC2
+            security_groups:
+              - paco.ref netenv.res.network.vpc.security_groups.app.webapp
+            segment: webapp
+            termination_policies:
+              - Default
+            instance_iam_role:
+              enabled: true
+              policies:
+                - name: SSMMessages
+                  statement:
+                    - effect: Allow
+                      action:
+                        - ssmmessages:CreateControlChannel
+                        - ssmmessages:CreateDataChannel
+                        - ssmmessages:OpenControlChannel
+                        - ssmmessages:OpenDataChannel
+                      resource:
+                        - '*'
+            user_data_pre_script: |
+              # set the timezone
+              timedatectl set-timezone America/Vancouver
+            user_data_script: |
+              # BASH commands here
+            launch_options:
+              cfn_init_config_sets:
+                - "InstallAndRun"
+            cfn_init:
+              config_sets:
+                InstallAndRun:
+                  - "Install"
+              configurations:
+                Install:
+                  packages:
+                    apt:
+                      jq: []
+                      apache2: []
+                  commands:
+                    disable_default_site:
+                      command: a2dissite 000-default.conf
+                  services:
+                    sysvinit:
+                      apache2:
+                        enabled: true
+                        ensure_running: true
+                        commands:
+                          - disable_default_site
+                Configure:
+                  commands:
+
           EFS:
             type: EFS
             enabled: true
-            order: 10
+            order: 20
             segment: webapp
             security_groups:
               - paco.ref netenv.res.network.vpc.security_groups.app.efs
