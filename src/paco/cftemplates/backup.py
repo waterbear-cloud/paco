@@ -29,7 +29,7 @@ class BackupVault(StackTemplate):
 
         # BackupVault Notifications
         if vault.notification_events:
-            notification_paco_ref = self.paco_ctx.project['resource']['snstopics'][stack.aws_region][vault.notification_group].paco_ref + '.arn'
+            notification_paco_ref = self.paco_ctx.project['resource']['sns'].computed[self.account_ctx.name][stack.aws_region][vault.notification_group].paco_ref + '.arn'
             param_name = 'Notification{}'.format(utils.md5sum(str_data=notification_paco_ref))
             notification_param = self.create_cfn_parameter(
                 param_type='String',
@@ -78,7 +78,7 @@ class BackupVault(StackTemplate):
                     if rule.lifecycle_delete_after_days != None:
                         lifecycle_dict['DeleteAfterDays'] =  rule.lifecycle_delete_after_days
                     if rule.lifecycle_move_to_cold_storage_after_days != None:
-                        lifecycle_dict['MoveToColdStorageAfterDays'] = reul.lifecycle_move_to_cold_storage_after_days
+                        lifecycle_dict['MoveToColdStorageAfterDays'] = rule.lifecycle_move_to_cold_storage_after_days
                     rule_dict['Lifecycle'] = lifecycle_dict
                 rules_list.append(rule_dict)
             cfn_export_dict = {

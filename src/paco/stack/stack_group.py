@@ -59,6 +59,7 @@ class StackGroup():
         change_protected=None,
         extra_context={},
         support_resource_ref_ext=None,
+        set_resource_stack=False,
     ):
         "Creates a Stack and adds it to the StackGroup"
         if account_ctx == None:
@@ -88,7 +89,7 @@ class StackGroup():
         # make the stack available in the model
         # this only happens when there is one primary stack representing the resource
         # some resources have several stacks (CloudFront) or they have secondary stacks (Alarms, LogGroups)
-        if resource.__class__.__name__ == stack.template.__class__.__name__:
+        if set_resource_stack or resource.__class__.__name__ == stack.template.__class__.__name__:
             resource.stack = stack
 
         # now that the template has been created, post-template actions are possible

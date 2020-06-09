@@ -6,6 +6,10 @@ Changelog for Paco
 
 ### Added
 
+- New `resource.sns` controller and template. This allows provisioning of new "location"-style
+  SNS Topics and Subscriptions. Subscriptions have been split into their own resources, so that
+  they have access to the full set of Subscription properties.
+
 - CloudTrail logs in an S3 Bucket can now be CMK encrypted by KMS. Paco will create a single
   key in the same account and region as the central S3 Bucket. The ``kms_users`` field for
   CloudTrail can be used to grant IAM Users access to decrypt the log files.

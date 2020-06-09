@@ -19,6 +19,7 @@ from paco.cftemplates.cw_alarms import CWAlarms
 from paco.cftemplates.lambda_function import Lambda
 from paco.cftemplates.eventsrule import EventsRule
 from paco.cftemplates.snstopics import SNSTopics
+from paco.cftemplates.sns import SNS
 from paco.cftemplates.loggroups import LogGroups
 from paco.cftemplates.cloudtrail import CloudTrail
 from paco.cftemplates.config import Config

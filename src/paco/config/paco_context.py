@@ -120,6 +120,10 @@ Add this manually or run `paco provision accounts` for this project.
         return self.temp_aws_session
 
     @property
+    def model_obj(self):
+        return self.config
+
+    @property
     def id(self):
         return self.config.account_id
 
@@ -361,6 +365,7 @@ This directory contains several sub-directories that Paco uses:
         self.get_controller('CodeCommit')
         self.get_controller('S3')
         self.get_controller('SNSTopics')
+        self.get_controller('SNS')
 
         # Load the Service plug-ins
         service_plugins = paco.models.services.list_service_plugins()
