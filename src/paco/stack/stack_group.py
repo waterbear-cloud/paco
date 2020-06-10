@@ -217,7 +217,7 @@ class StackGroup():
             if order_item.order == StackOrder.WAIT:
                 if isinstance(order_item.stack, StackGroup) == True:
                     continue
-                order_item.stack.wait_for_complete(verbose=False)
+                order_item.stack.wait_for_complete()
 
     def get_stack_order(self, stack, order):
         for stack_order in self.stack_orders:
