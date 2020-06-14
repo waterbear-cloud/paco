@@ -6,6 +6,8 @@ Changelog for Paco
 
 ### Added
 
+- Initial ECS Cluster support and ASG EC2LM for ECS.
+
 - New `resource.sns` controller and template. This allows provisioning of new "location"-style
   SNS Topics and Subscriptions. Subscriptions have been split into their own resources, so that
   they have access to the full set of Subscription properties.

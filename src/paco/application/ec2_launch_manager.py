@@ -132,7 +132,9 @@ class EC2LaunchManager():
         self.stack_tags = stack_tags
         self.ec2lm_functions_script = {}
         self.ec2lm_buckets = {}
-        self.launch_bundle_names = ['SSM', 'EIP', 'CloudWatchAgent', 'EFS', 'EBS', 'cfn-init']
+        self.launch_bundle_names = [
+            'SSM', 'EIP', 'CloudWatchAgent', 'EFS', 'EBS', 'cfn-init', 'ECS',
+        ]
         self.build_path = os.path.join(
             self.paco_ctx.build_path,
             'EC2LaunchManager',
@@ -585,7 +587,7 @@ statement:
                 print("'ec2lm_signal_asg_resource <SUCCESS|FAILURE>' was not detected in your user_data_script for this resource.")
 
         # Newer Ubuntu (>20) does not have Python 2
-        if resource.instance_ami_type in ('ubuntu_20',):
+        if resource.instance_ami_type in ('ubuntu_20', 'amazon_ecs'):
             install_aws_cli = ec2lm_commands.user_data_script['install_aws_cli'][resource.instance_ami_type]
         else:
             install_aws_cli = ec2lm_commands.user_data_script['install_aws_cli'][resource.instance_ami_type_generic]
@@ -1413,6 +1415,65 @@ statement:
                 self.account_ctx.paco_ref,
                 self.aws_region,
             )
+
+    def lb_add_ecs(self, bundle_name, resource):
+        "ECS Launch Bundle"
+        ecs_lb = LaunchBundle(resource, self, bundle_name)
+        ecs = resource.ecs
+
+        # is the ECS bundle enabled?
+        ecs_enabled = False
+        cluster_name = ''
+        if ecs != None:
+            ecs_enabled = True
+
+            # ECS Cluster name
+            stack = resolve_ref(resource.ecs.cluster, self.paco_ctx.project, self.account_ctx)
+            cluster_name = stack.get_outputs_value('ClusterName')
+
+            # ECS Policy
+            iam_policy_name = '-'.join([resource.name, 'ecs'])
+            policy_config_yaml = f"""
+policy_name: '{iam_policy_name}'
+enabled: true
+path: /
+statement:
+  - effect: Allow
+    action:
+      - 'ecs:CreateCluster'
+      - 'ecs:DeregisterContainerInstance'
+      - 'ecs:DiscoverPollEndpoint'
+      - 'ecs:Poll'
+      - 'ecs:RegisterContainerInstance'
+      - 'ecs:StartTelemetrySession'
+      - 'ecs:Submit*'
+      - 'logs:CreateLogStream'
+      - 'logs:PutLogEvents'
+    resource:
+      - '*'
+"""
+            iam_ctl = self.paco_ctx.get_controller('IAM')
+            iam_ctl.add_managed_policy(
+                role=resource.instance_iam_role,
+                resource=resource,
+                policy_name='policy',
+                policy_config_yaml=policy_config_yaml,
+                extra_ref_names=['ec2lm','ecs'],
+            )
+
+        launch_script = f"""#!/bin/bash
+
+function run_launch_bundle() {{
+    mkdir -p /etc/ecs/
+    echo ECS_CLUSTER={cluster_name} > /etc/ecs/ecs.config
+}}
+
+function disable_launch_bundle() {{
+    rm /etc/ecs/ecs.config
+}}
+"""
+        ecs_lb.set_launch_script(launch_script, ecs_enabled)
+        self.add_bundle(ecs_lb)
 
     def lb_add_ssm(self, bundle_name, resource):
         """Creates a launch bundle to install and configure the SSM agent"""

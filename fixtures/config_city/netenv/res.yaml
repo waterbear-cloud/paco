@@ -107,6 +107,30 @@ applications:
         order: 1
         enabled: true
         resources:
+          LBApplication:
+            type: LBApplication
+            enabled: true
+            order: 1
+            target_groups:
+              app:
+                health_check_interval: 10
+                health_check_timeout: 10
+                healthy_threshold: 2
+                unhealthy_threshold: 2
+                port: 80
+                protocol: HTTP
+                health_check_http_code: 200
+                health_check_path: /
+                connection_drain_timeout: 300
+            listeners:
+              http:
+                port: 80
+                protocol: HTTP
+                target_group: app
+            scheme: internet-facing
+            security_groups:
+              - paco.ref netenv.res.network.vpc.security_groups.app.lb
+            segment: public
           ASG:
             type: ASG
             order: 10
@@ -186,6 +210,30 @@ applications:
             segment: webapp
             security_groups:
               - paco.ref netenv.res.network.vpc.security_groups.app.efs
+          ECSCluster:
+            type: ECSCluster
+            enabled: true
+            order: 30
+          ECSServiceConfig:
+            type: ECSServiceConfig
+            enabled: true
+            order: 40
+            task_definitions:
+              hello_web:
+                container_definitions:
+                  hello:
+                    cpu: 10
+                    essential: true
+                    image: repository-url/image:tag
+                    memory: 200 # in MiB
+            services:
+              simple_app:
+                desired_count: 2
+                task_definition: hello_web
+                load_balancers:
+                  - container_name: hello
+                    container_port: 80
+                    target_group: paco.ref netenv.res.applications.app.groups.things.resources.alb.target_groups.app
 
 environments:
   test:

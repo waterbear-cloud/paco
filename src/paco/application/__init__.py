@@ -21,3 +21,5 @@ from paco.application.reseng_elasticsearch import ElasticsearchDomainResourceEng
 from paco.application.reseng_iottopicrule import IoTTopicRuleResourceEngine
 from paco.application.reseng_iotanalyticspipeline import IoTAnalyticsPipelineResourceEngine
 from paco.application.reseng_iotpolicy import IoTPolicyResourceEngine
+from paco.application.reseng_ecscluster import ECSClusterResourceEngine
+from paco.application.reseng_ecsserviceconfig import ECSServiceConfigResourceEngine
