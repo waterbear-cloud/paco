@@ -44,3 +44,4 @@ from paco.cftemplates.elasticsearch import ElasticsearchDomain
 from paco.cftemplates.iottopicrule import IoTTopicRule
 from paco.cftemplates.iotanalyticspipeline import IoTAnalyticsPipeline
 from paco.cftemplates.ssmdocument import SSMDocument
+from paco.cftemplates.ecs import ECSCluster, ECSServiceConfig
