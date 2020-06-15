@@ -139,15 +139,16 @@ def big_join(str_list, separator_ch, camel_case=False, none_value_ok=False):
         first = False
     return new_str
 
-def prefixed_name(resource, name, legacy_flag):
+def prefixed_name(resource, name, legacy_flag=None):
     """Returns a name prefixed to be unique:
     e.g. netenv_name-env_name-app_name-group_name-resource_name-name"""
     str_list = []
     # currently only works for resources in an environment
-    if legacy_flag('netenv_loggroup_name_2019_10_13') == False:
-        netenv = get_parent_by_interface(resource, schemas.INetworkEnvironment)
-        if netenv != None:
-            str_list.append(netenv.name)
+    if legacy_flag != None:
+        if legacy_flag('netenv_loggroup_name_2019_10_13') == False:
+            netenv = get_parent_by_interface(resource, schemas.INetworkEnvironment)
+            if netenv != None:
+                str_list.append(netenv.name)
     app_name = get_parent_by_interface(resource, schemas.IApplication).name
     group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
 

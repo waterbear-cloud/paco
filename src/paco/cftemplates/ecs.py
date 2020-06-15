@@ -1,4 +1,5 @@
 from paco.cftemplates.cftemplates import StackTemplate
+from paco.utils import prefixed_name
 import troposphere
 import troposphere.ecs
 
@@ -39,14 +40,28 @@ class ECSServiceConfig(StackTemplate):
         # TaskDefinitions
         for task in ecs_config.task_definitions.values():
             task_dict = task.cfn_export_dict
-            # for container_definition in task.container_definitions.values():
-            #     task_dict['ContainerDefinitions'].append(
-            #         container_definition.cfn_export_dict
-            #     )
+            index = 0
+            task._depends_on = []
+            for container_definition in task.container_definitions.values():
+                if getattr(container_definition, 'logging') != None:
+                    task_dict['ContainerDefinitions'][index]['LogConfiguration'] = {}
+                    log_dict = task_dict['ContainerDefinitions'][index]['LogConfiguration']
+                    log_dict['LogDriver'] = container_definition.logging.driver
+                    # Only awslogs supported for now
+                    if container_definition.logging.driver == 'awslogs':
+                        log_dict['Options'] = {}
+                        log_dict['Options']['awslogs-region'] = troposphere.Ref('AWS::Region')
+                        prefixed_log_group_name = prefixed_name(container_definition, task.name)
+                        log_group_resource = self.add_log_group(prefixed_log_group_name, container_definition.logging.expire_events_after_days)
+                        log_dict['Options']['awslogs-group'] = troposphere.Ref(log_group_resource)
+                        task._depends_on.append(log_group_resource)
+                        log_dict['Options']['awslogs-stream-prefix'] = container_definition.name
+                index += 1
             task_res = troposphere.ecs.TaskDefinition.from_dict(
                 self.create_cfn_logical_id('TaskDefinition' + task.name),
                 task_dict,
             )
+            task_res.DependsOn = task._depends_on
             self.template.add_resource(task_res)
             task._troposphere_res = task_res
 
@@ -98,3 +113,17 @@ class ECSServiceConfig(StackTemplate):
             # if 'TaskDefinition' in service_dict:
             #     service_res.DependsOn = ecs.task_definitions[service_dict['TaskDefinition']]._troposphere_res
 
+    def add_log_group(self, loggroup_name, expire_events_after_days):
+        "Add a LogGroup resource to the template"
+        cfn_export_dict = {
+            'LogGroupName': loggroup_name,
+        }
+        if expire_events_after_days != 'Never' and expire_events_after_days != '':
+            cfn_export_dict['RetentionInDays'] = int(expire_events_after_days)
+        loggroup_logical_id = self.create_cfn_logical_id('LogGroup' + loggroup_name)
+        loggroup_resource = troposphere.logs.LogGroup.from_dict(
+            loggroup_logical_id,
+            cfn_export_dict
+        )
+        self.template.add_resource(loggroup_resource)
+        return loggroup_resource
