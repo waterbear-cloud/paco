@@ -50,6 +50,14 @@ class ECSServiceConfig(StackTemplate):
             self.template.add_resource(task_res)
             task._troposphere_res = task_res
 
+        # Cluster Param
+        cluster_param = self.create_cfn_parameter(
+            name='Cluster',
+            param_type='String',
+            description='Cluster Name',
+            value=ecs_config.cluster + '.name',
+        )
+
         #  Services
         for service in ecs_config.services.values():
             service_dict = service.cfn_export_dict
@@ -64,6 +72,8 @@ class ECSServiceConfig(StackTemplate):
                     value=target_group_ref + '.arn',
                 )
                 lb['TargetGroupArn'] = troposphere.Ref(tg_param)
+                lb_idx += 1
+
             # Replace TaskDefinition name with a TaskDefinition ARN
             if 'TaskDefinition' in service_dict:
                 service_dict['TaskDefinition'] = troposphere.Ref(
@@ -71,21 +81,14 @@ class ECSServiceConfig(StackTemplate):
                 )
 
             # ECS Service Role
-            service_role_arn_param = self.create_cfn_parameter(
-                param_type='String',
-                name='ServiceRoleArn',
-                description='ECS service Role',
-                value=role.get_arn()
-            )
-            service_dict['Role'] = troposphere.Ref(service_role_arn_param)
+            # service_role_arn_param = self.create_cfn_parameter(
+            #     param_type='String',
+            #     name='ServiceRoleArn',
+            #     description='ECS service Role',
+            #     value=role.get_arn()
+            # )
+            # service_dict['Role'] = troposphere.Ref(service_role_arn_param)
 
-            # Cluster Param
-            cluster_param = self.create_cfn_parameter(
-                name='Cluster',
-                param_type='String',
-                description='Cluster Name',
-                value=ecs_config.cluster + '.name',
-            )
             service_dict['Cluster'] = troposphere.Ref(cluster_param)
             service_res = troposphere.ecs.Service.from_dict(
                 self.create_cfn_logical_id('Service' + service.name),

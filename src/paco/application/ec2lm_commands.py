@@ -25,6 +25,7 @@ user_data_script = {
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 unzip awscliv2.zip
 ./aws/install --bin-dir /usr/bin
+ln -s /usr/bin/aws /usr/local/bin/aws
 """,
 		'ubuntu': """apt-get update
 apt-get -y install python-pip
