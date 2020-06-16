@@ -272,6 +272,21 @@ class ASG(StackTemplate):
                 #)
                 #asg_dict['Tags'].append(ebs_device_tag)
 
+        # ECS Cluster Configuration
+        if asg_config.is_enabled() and asg_config.ecs != None:
+            ecs_cluster_name_param = self.create_cfn_parameter(
+                param_type='String',
+                name='ECSClusterName',
+                description='ECS Cluser Name',
+                value=asg_config.ecs.cluster+'.name'
+            )
+            asg_tag = troposphere.autoscaling.Tag(
+                'Paco-ECSCluster-Name',
+                troposphere.Ref(ecs_cluster_name_param),
+                True
+            )
+            asg_dict['Tags'].append(asg_tag)
+
         asg_res = troposphere.autoscaling.AutoScalingGroup.from_dict(
             'ASG',
             asg_dict

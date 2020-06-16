@@ -489,7 +489,7 @@ function ec2lm_signal_asg_resource() {{
     if [[ "$STACK_STATUS" == *"PROGRESS" ]]; then
         # ASG Rolling Update
         ASG_LOGICAL_ID=$(ec2lm_instance_tag_value 'aws:cloudformation:logical-id')
-        # Sleep 90 seconds to allow ALB healthcheck to succeed otherwise older instances will begin to shutdown
+        # Sleep to allow ALB healthcheck to succeed otherwise older instances will begin to shutdown
         echo "EC2LM: Signal ASG Resource: Sleeping for {oldest_health_check_timeout} seconds to allow target healthcheck to succeed."
         sleep {oldest_health_check_timeout}
         echo "EC2LM: Signal ASG Resource: Signaling ASG Resource: $EC2LM_STACK_NAME: $ASG_LOGICAL_ID: $INSTANCE_ID: $STATUS"
@@ -505,10 +505,18 @@ function swap_on() {{
     if [ -e /swapfile ] ; then
         CUR_SWAP_FILE_SIZE=$(stat -c '%s' /swapfile)
         if [ $CUR_SWAP_FILE_SIZE -eq $(($SWAP_SIZE_GB*1073741824)) ] ; then
-            swapon /swapfile
+            set +e
+            OUTPUT=$(swapon /swapfile 2>&1)
             if [ $? -eq 0 ] ; then
                 echo "EC2LM: Swap: Enabling existing ${{SWAP_SIZE_GB}}GB Swapfile: /swapfile"
             fi
+            if [[ $OUTPUT == *"Device or resource busy"* ]] ; then
+                echo  "EC2LM: Swap: $OUTPUT"
+            else
+                echo "EC2LM: Swap: Error: $OUTPUT"
+                exit 255
+            fi
+            set -e
         fi
     fi
     if [ "$(swapon -s|grep -v Filename|wc -c)" == "0" ]; then
@@ -569,6 +577,8 @@ statement:
 
     def user_data_script(self, resource, stack_name):
         """BASH script that will load the launch bundle from user_data"""
+        if resource.change_protected == True:
+            return "#!/bin/bash\n"
         self.init_ec2lm_s3_bucket(resource)
         ec2lm_bucket_name = self.get_ec2lm_bucket_name(resource)
 
@@ -1092,6 +1102,7 @@ EIP_STATE_FILE=$EC2LM_FOLDER/LaunchBundles/EIP/eip-association-id.txt
 
 function ec2lm_eip_is_associated() {{
     EIP_IP=$1
+    EIP_ALLOC_ID=$2
     PUBLIC_IP=$(curl http://169.254.169.254/latest/meta-data/public-ipv4/)
     if [ "$PUBLIC_IP" == "$EIP_IP" ] ; then
         echo "EC2LM: EIP: Association Successful"
@@ -1127,7 +1138,7 @@ function run_launch_bundle()
 
     # Wait for Association
     TIMEOUT_SECS=300
-    OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_eip_is_associated $EIP_IP)
+    OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_eip_is_associated $EIP_IP $EIP_ALLOC_ID)
     RES=$?
     if [ $RES -lt 2 ] ; then
         echo "$OUTPUT"
@@ -1138,8 +1149,10 @@ function run_launch_bundle()
 
 function disable_launch_bundle()
 {{
-    EIP_ASSOCIATION_ID=$(<$EIP_STATE_FILE)
-    aws ec2 disassociate-address --association-id $EIP_ASSOCIATION_ID --region $REGION
+    if [ -e $EIP_STATE_FILE ] ; then
+        EIP_ASSOCIATION_ID=$(<$EIP_STATE_FILE)
+        aws ec2 disassociate-address --association-id $EIP_ASSOCIATION_ID --region $REGION
+    fi
 }}
 """
         eip_lb.set_launch_script(launch_script, enabled)
@@ -1423,14 +1436,8 @@ statement:
 
         # is the ECS bundle enabled?
         ecs_enabled = False
-        cluster_name = ''
         if ecs != None:
             ecs_enabled = True
-
-            # ECS Cluster name
-            stack = resolve_ref(resource.ecs.cluster, self.paco_ctx.project, self.account_ctx)
-            cluster_name = stack.get_outputs_value('ClusterName')
-
             # ECS Policy
             iam_policy_name = '-'.join([resource.name, 'ecs'])
             policy_config_yaml = f"""
@@ -1465,11 +1472,12 @@ statement:
 
 function run_launch_bundle() {{
     mkdir -p /etc/ecs/
-    echo ECS_CLUSTER={cluster_name} > /etc/ecs/ecs.config
+    CLUSTER_NAME=$(ec2lm_instance_tag_value 'Paco-ECSCluster-Name')
+    echo ECS_CLUSTER=$CLUSTER_NAME > /etc/ecs/ecs.config
 }}
 
 function disable_launch_bundle() {{
-    rm /etc/ecs/ecs.config
+    rm -f /etc/ecs/ecs.config
 }}
 """
         ecs_lb.set_launch_script(launch_script, ecs_enabled)
