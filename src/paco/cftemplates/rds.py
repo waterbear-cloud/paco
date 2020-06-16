@@ -1,6 +1,7 @@
 from paco import utils
 from paco.cftemplates.cftemplates import StackTemplate
-from paco.models import vocabulary, schemas
+from paco.models import schemas
+from paco.models import gen_vocabulary
 import troposphere
 import troposphere.rds
 import troposphere.secretsmanager
@@ -72,7 +73,7 @@ class RDS(StackTemplate):
         if rds_config.parameter_group == None:
             # No Parameter Group supplied, create one
             engine_major_version = '.'.join(rds_config.engine_version.split('.')[0:2])
-            param_group_family = vocabulary.rds_engine_versions[rds_config.engine][rds_config.engine_version]['param_group_family']
+            param_group_family = gen_vocabulary.rds_engine_versions[rds_config.engine][rds_config.engine_version]['param_group_family']
             dbparametergroup_ref = troposphere.rds.DBParameterGroup(
                 "DBParameterGroup",
                 template = template,
