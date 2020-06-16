@@ -174,6 +174,10 @@ field, if the child account YAML does not already exist."""
                 print("Missing account configuration for: %s" % org_account_id)
                 sys.exit(1)
 
+            # Defaults
+            if 'admin_delegate_role_name' not in account_config:
+                account_config['admin_delegate_role_name'] = 'Paco-Organization-Account-Delegate-Role'
+
             # Account Check
             org_account_list = org_client.list_accounts()
             account_exists = False
