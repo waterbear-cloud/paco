@@ -28,13 +28,13 @@ class ECSCluster(StackTemplate):
         )
 
 
-class ECSServiceConfig(StackTemplate):
-    def __init__(self, stack, paco_ctx, role):
+class ECSServices(StackTemplate):
+    def __init__(self, stack, paco_ctx):
         ecs_config = stack.resource
         super().__init__(stack, paco_ctx)
-        self.set_aws_name('ECS Tasks and Services', self.resource_group_name, self.resource.name)
+        self.set_aws_name('ECS Services', self.resource_group_name, self.resource.name)
 
-        self.init_template('Elastic Container Service (ECS) Tasks and Services')
+        self.init_template('Elastic Container Service (ECS) Services and TaskDefinitions')
         if not ecs_config.is_enabled(): return
 
         # TaskDefinitions

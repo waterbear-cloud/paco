@@ -5,19 +5,20 @@ from paco.models import schemas
 import paco.models.iam
 
 
-class ECSServiceConfigResourceEngine(ResourceEngine):
+class ECSServicesResourceEngine(ResourceEngine):
     def init_resource(self):
         # Service Role
-        role=None
-        if self.resource.is_enabled():
-            role = self.create_service_role()
+        # This Role is no longer needed AFAIK - kteague
+        # role=None
+        # if self.resource.is_enabled():
+        #     role = self.create_service_role()
 
         self.stack_group.add_new_stack(
             self.aws_region,
             self.resource,
-            cftemplates.ECSServiceConfig,
+            cftemplates.ECSServices,
             stack_tags=self.stack_tags,
-            extra_context={'role': role},
+            # extra_context={'role': role},
         )
 
     def create_service_role(self):

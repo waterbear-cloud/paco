@@ -214,8 +214,8 @@ applications:
             type: ECSCluster
             enabled: true
             order: 30
-          ECSServiceConfig:
-            type: ECSServiceConfig
+          ECSServices:
+            type: ECSServices
             enabled: true
             order: 40
             task_definitions:
