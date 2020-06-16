@@ -1469,6 +1469,8 @@ statement:
             )
 
         launch_script = f"""#!/bin/bash
+echo "EC2LM: ECS: Begin"
+. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
 
 function run_launch_bundle() {{
     mkdir -p /etc/ecs/
