@@ -109,6 +109,15 @@ class ECSServices(StackTemplate):
                 self.create_cfn_logical_id('Service' + service.name),
                 service_dict
             )
+
+            # Outputs
+            self.create_output(
+                title=service_res.title + 'Name',
+                description="Service Name",
+                value=troposphere.GetAtt(service_res, 'Name'),
+                ref=service.paco_ref_parts + ".name"
+            )
+
             self.template.add_resource(service_res)
             # if 'TaskDefinition' in service_dict:
             #     service_res.DependsOn = ecs.task_definitions[service_dict['TaskDefinition']]._troposphere_res

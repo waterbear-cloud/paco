@@ -202,7 +202,8 @@ class CodeBuild(StackTemplate):
             }, {
                 'Name': 'KMSKey',
                 'Value': troposphere.Ref(self.cmk_arn_param)
-            }]
+            }],
+            PrivilegedMode = action_config.privileged_mode
         )
         project_res = troposphere.codebuild.Project(
             title = 'CodeBuildProject',

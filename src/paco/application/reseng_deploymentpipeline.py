@@ -392,6 +392,11 @@ policies:
             },
         )
 
+    def init_stage_action_ecs_deploy(self, action_config):
+        "Initialize an ECS stack for the action"
+        if not action_config.is_enabled():
+            return
+
     def init_stage_action_codebuild_build(self, action_config):
         if not action_config.is_enabled():
             return

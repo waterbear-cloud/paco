@@ -883,6 +883,41 @@ class CodePipeline(StackTemplate):
                     Resource=[ troposphere.Ref(codedeploy_tools_delegate_role_arn_param) ]
                 )
                 deploy_stage_actions.append(codedeploy_deploy_action)
+            if action.type == 'ECS.Deploy':
+                ecs_cluster_name_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name='ECSClusterName',
+                    description='The name of the ECS cluster to deploy to.',
+                    value=action.cluster + '.name'
+                )
+                ecs_service_name_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name='ECSClusterServiceName',
+                    description='The name of the ECS cluster service to deploy to.',
+                    value=action.service + '.name'
+                )
+                ecs_deploy_action = troposphere.codepipeline.Actions(
+                    Name='ECS',
+                    ActionTypeId = troposphere.codepipeline.ActionTypeId(
+                        Category = 'Deploy',
+                        Owner = 'AWS',
+                        Version = '1',
+                        Provider = 'ECS'
+                    ),
+                    Configuration = {
+                        'ClusterName': troposphere.Ref(ecs_cluster_name_param),
+                        'ServiceName': troposphere.Ref(ecs_service_name_param)
+                    },
+                    InputArtifacts = [
+                        troposphere.codepipeline.InputArtifacts(
+                            Name = 'CodeBuildArtifact'
+                        )
+                    ],
+                    #RoleArn = troposphere.Ref(ecs_tools_delegate_role_arn_param),
+                    Region = deploy_region,
+                    RunOrder = troposphere.If('ManualApprovalIsEnabled', 2, 1)
+                )
+                deploy_stage_actions.append(ecs_deploy_action)
         deploy_stage = troposphere.codepipeline.Stages(
             Name="Deploy",
             Actions = deploy_stage_actions
