@@ -29,7 +29,7 @@ class ECSCluster(StackTemplate):
 
 
 class ECSServices(StackTemplate):
-    def __init__(self, stack, paco_ctx):
+    def __init__(self, stack, paco_ctx, task_execution_role):
         ecs_config = stack.resource
         super().__init__(stack, paco_ctx)
         self.set_aws_name('ECS Services', self.resource_group_name, self.resource.name)
@@ -37,9 +37,19 @@ class ECSServices(StackTemplate):
         self.init_template('Elastic Container Service (ECS) Services and TaskDefinitions')
         if not ecs_config.is_enabled(): return
 
+        # Task Execution Role
+        task_execution_role_param = self.create_cfn_parameter(
+            name='TaskExecutionRole',
+            param_type='String',
+            description='Task Execution Role',
+            value=task_execution_role.get_arn(),
+        )
+
         # TaskDefinitions
         for task in ecs_config.task_definitions.values():
             task_dict = task.cfn_export_dict
+            task_dict['ExecutionRoleArn'] = troposphere.Ref(task_execution_role_param)
+
             index = 0
             task._depends_on = []
             for container_definition in task.container_definitions.values():
