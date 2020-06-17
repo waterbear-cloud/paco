@@ -507,14 +507,16 @@ function swap_on() {{
         if [ $CUR_SWAP_FILE_SIZE -eq $(($SWAP_SIZE_GB*1073741824)) ] ; then
             set +e
             OUTPUT=$(swapon /swapfile 2>&1)
-            if [ $? -eq 0 ] ; then
+            RES=$?
+            if [ $RES -eq 0 ] ; then
                 echo "EC2LM: Swap: Enabling existing ${{SWAP_SIZE_GB}}GB Swapfile: /swapfile"
-            fi
-            if [[ $OUTPUT == *"Device or resource busy"* ]] ; then
-                echo  "EC2LM: Swap: $OUTPUT"
             else
-                echo "EC2LM: Swap: Error: $OUTPUT"
-                exit 255
+                if [[ $OUTPUT == *"Device or resource busy"* ]] ; then
+                    echo  "EC2LM: Swap: $OUTPUT"
+                elif [[ $RES -ne 0 ]] ; then
+                    echo "EC2LM: Swap: Error: $OUTPUT"
+                    exit 255
+                fi
             fi
             set -e
         fi
