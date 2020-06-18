@@ -214,9 +214,10 @@ class ALB(StackTemplate):
                     }
                 }
             else:
+                target_group_id = self.create_cfn_logical_id(listener.target_group)
                 action = {
                     'Type': 'forward',
-                    'TargetGroupArn': troposphere.Ref('TargetGroup' + listener.target_group)
+                    'TargetGroupArn': troposphere.Ref('TargetGroup' + target_group_id)
                 }
             cfn_export_dict['DefaultActions'] = [action]
             cfn_export_dict['LoadBalancerArn'] = troposphere.Ref(alb_resource)
@@ -294,6 +295,7 @@ class ALB(StackTemplate):
                     logical_listener_rule_name = self.create_cfn_logical_id_join(
                         str_list=[logical_listener_name, 'Rule', logical_rule_name]
                     )
+
                     listener_rule_resource = troposphere.elasticloadbalancingv2.ListenerRule.from_dict(
                         logical_listener_rule_name,
                         cfn_export_dict

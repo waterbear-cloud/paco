@@ -88,16 +88,17 @@ class ECSServices(StackTemplate):
             service_dict = service.cfn_export_dict
             # convert TargetGroup ref to a Parameter
             lb_idx = 0
-            for lb in service_dict['LoadBalancers']:
-                target_group_ref = lb['TargetGroupArn']
-                tg_param = self.create_cfn_parameter(
-                    name=self.create_cfn_logical_id(f'TargetGroup{service.name}{lb_idx}'),
-                    param_type='String',
-                    description='Target Group ARN',
-                    value=target_group_ref + '.arn',
-                )
-                lb['TargetGroupArn'] = troposphere.Ref(tg_param)
-                lb_idx += 1
+            if 'LoadBalancers' in service_dict:
+                for lb in service_dict['LoadBalancers']:
+                    target_group_ref = lb['TargetGroupArn']
+                    tg_param = self.create_cfn_parameter(
+                        name=self.create_cfn_logical_id(f'TargetGroup{service.name}{lb_idx}'),
+                        param_type='String',
+                        description='Target Group ARN',
+                        value=target_group_ref + '.arn',
+                    )
+                    lb['TargetGroupArn'] = troposphere.Ref(tg_param)
+                    lb_idx += 1
 
             # Replace TaskDefinition name with a TaskDefinition ARN
             if 'TaskDefinition' in service_dict:

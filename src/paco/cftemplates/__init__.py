@@ -45,3 +45,4 @@ from paco.cftemplates.iottopicrule import IoTTopicRule
 from paco.cftemplates.iotanalyticspipeline import IoTAnalyticsPipeline
 from paco.cftemplates.ssmdocument import SSMDocument
 from paco.cftemplates.ecs import ECSCluster, ECSServices
+from paco.cftemplates.ecr import ECRRepository

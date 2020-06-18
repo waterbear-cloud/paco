@@ -23,3 +23,4 @@ from paco.application.reseng_iotanalyticspipeline import IoTAnalyticsPipelineRes
 from paco.application.reseng_iotpolicy import IoTPolicyResourceEngine
 from paco.application.reseng_ecscluster import ECSClusterResourceEngine
 from paco.application.reseng_ecsservices import ECSServicesResourceEngine
+from paco.application.reseng_ecrrepository import ECRRepositoryResourceEngine
