@@ -60,6 +60,7 @@ Resources:
         codecommit_readwrite_fmt = """
   {0[cf_resource_name_prefix]:s}RWPolicy:
     Type: AWS::IAM::ManagedPolicy
+    DependsOn: {0[user]:s}
     Properties:
       # PolicyName: {0[cf_resource_name_prefix]:s}
       PolicyDocument:
@@ -85,10 +86,26 @@ Resources:
       Users:{0[users]:s}
 """
 
-        codecommit_readwrite_table = {
-            'cf_resource_name_prefix': None,
-            'users': None
-        }
+        codecommit_readonly_fmt = """
+  {0[cf_resource_name_prefix]:s}ReadOnlyPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    DependsOn: {0[user]:s}
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - codecommit:BatchGet*'
+              - codecommit:BatchDescribe*'
+              - codecommit:EvaluatePullRequestApprovalRules'
+              - codecommit:Get*'
+              - codecommit:Describe*'
+              - codecommit:List*'
+              - codecommit:GitPull'
+            Resource:{0[repository_arns]:s}
+      Users:{0[users]:s}
+"""
 
         codecommit_repo_outputs_fmt = """
 """
@@ -123,45 +140,63 @@ Resources:
             if repo_config.users:
                 for user_key in repo_config.users.keys():
                     user = repo_config.users[user_key]
-                    if user.username not in unique_users.keys():
-                        unique_users[user.username] = {
+                    if user.username not in unique_users:
+                        unique_users[user.username] = {}
+                    if user.permissions not in unique_users[user.username]:
+                        unique_users[user.username][user.permissions] = {
                             'repo_name_prefix': [],
-                            'repo_config': []
+                            'repo_config': [],
                         }
-
-                    unique_users[user.username]['repo_name_prefix'].append(repo_name_prefix)
-                    unique_users[user.username]['repo_config'].append(repo_config)
+                    unique_users[user.username][user.permissions]['repo_name_prefix'].append(repo_name_prefix)
+                    unique_users[user.username][user.permissions]['repo_config'].append(repo_config)
 
         # Users
         for username in unique_users.keys():
             # IAM User
-            codecommit_user_table['cf_resource_name_prefix'] = self.gen_cf_logical_name(username)
+            user_logical_id = self.gen_cf_logical_name(username)
+            codecommit_user_table['cf_resource_name_prefix'] = user_logical_id
             codecommit_user_table['username'] = username
             resources_yaml += codecommit_user_fmt.format(codecommit_user_table)
 
             # User Policy
-            codecommit_readwrite_table = {}
+            codecommit_permissions_table = {}
             user_list_yaml = ""
-            user_list_yaml += "\n        - !Ref %sUser" % codecommit_user_table['cf_resource_name_prefix']
-            codecommit_readwrite_table['cf_resource_name_prefix'] = codecommit_user_table['cf_resource_name_prefix']
-            codecommit_readwrite_table['users'] = user_list_yaml
+            user_list_yaml += "\n        - !Ref %sUser" % user_logical_id
+            codecommit_permissions_table['cf_resource_name_prefix'] = user_logical_id
+            codecommit_permissions_table['users'] = user_list_yaml
+            codecommit_permissions_table['user'] = user_logical_id + "User"
 
-            repo_arns_yaml = ""
-            for repo_config in unique_users[username]['repo_config']:
-                repo_idx = unique_users[username]['repo_config'].index(repo_config)
-                repo_logical_id_prefix = unique_users[username]['repo_name_prefix'][repo_idx]
-                if repo_config.external_resource == False:
-                    repo_arns_yaml += "\n              - !GetAtt "+repo_logical_id_prefix+"Repository.Arn"
-                else:
-                    repo_arns_yaml += "\n              - arn:aws:codecommit:{}:{}:{}".format(
-                        stack.aws_region,
-                        stack.account_ctx.get_id(),
-                        repo_config.repository_name,
-                    )
-
-            codecommit_readwrite_table['repository_arns'] = repo_arns_yaml
-
-            resources_yaml += codecommit_readwrite_fmt.format(codecommit_readwrite_table)
+            for permission in unique_users[username].keys():
+                if permission == 'ReadWrite':
+                    repo_arns_yaml = ""
+                    for repo_config in unique_users[username][permission]['repo_config']:
+                        repo_idx = unique_users[username][permission]['repo_config'].index(repo_config)
+                        repo_logical_id_prefix = unique_users[username][permission]['repo_name_prefix'][repo_idx]
+                        if repo_config.external_resource == False:
+                            repo_arns_yaml += "\n              - !GetAtt " + repo_logical_id_prefix + "Repository.Arn"
+                        else:
+                            repo_arns_yaml += "\n              - arn:aws:codecommit:{}:{}:{}".format(
+                                stack.aws_region,
+                                stack.account_ctx.get_id(),
+                                repo_config.repository_name,
+                            )
+                    codecommit_permissions_table['repository_arns'] = repo_arns_yaml
+                    resources_yaml += codecommit_readwrite_fmt.format(codecommit_permissions_table)
+                elif permission == 'ReadOnly':
+                    repo_arns_yaml = ""
+                    for repo_config in unique_users[username][permission]['repo_config']:
+                        repo_idx = unique_users[username][permission]['repo_config'].index(repo_config)
+                        repo_logical_id_prefix = unique_users[username][permission]['repo_name_prefix'][repo_idx]
+                        if repo_config.external_resource == False:
+                            repo_arns_yaml += "\n              - !GetAtt " + repo_logical_id_prefix + "Repository.Arn"
+                        else:
+                            repo_arns_yaml += "\n              - arn:aws:codecommit:{}:{}:{}".format(
+                                stack.aws_region,
+                                stack.account_ctx.get_id(),
+                                repo_config.repository_name,
+                            )
+                    codecommit_permissions_table['repository_arns'] = repo_arns_yaml
+                    resources_yaml += codecommit_readonly_fmt.format(codecommit_permissions_table)
 
         template_table['parameters_yaml'] = parameters_yaml
         template_table['resources_yaml'] = resources_yaml

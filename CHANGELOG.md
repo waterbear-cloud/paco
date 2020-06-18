@@ -6,6 +6,8 @@ Changelog for Paco
 
 ### Added
 
+- CodeCommit Users have a permission to grant either ReadWrite or ReadOnly to a repo.
+
 - Initial ECS Cluster support and ASG EC2LM for ECS.
 
 - New `resource.sns` controller and template. This allows provisioning of new "location"-style
