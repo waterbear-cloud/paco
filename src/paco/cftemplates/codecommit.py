@@ -23,8 +23,8 @@ Description: 'CodeCommit Repositories'
 Resources:
 {0[resources_yaml]:s}
 
-#Outputs:
-#{0[outputs_yaml]:s}
+Outputs:
+{0[outputs_yaml]:s}
 """
         template_table = {
             'parameters_yaml': "",
@@ -58,7 +58,7 @@ Resources:
         }
 
         codecommit_readwrite_fmt = """
-  {0[cf_resource_name_prefix]:s}RWPolicy:
+  {0[cf_resource_name_prefix]:s}ManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
     DependsOn: {0[user]:s}
     Properties:
@@ -87,7 +87,7 @@ Resources:
 """
 
         codecommit_readonly_fmt = """
-  {0[cf_resource_name_prefix]:s}ReadOnlyPolicy:
+  {0[cf_resource_name_prefix]:s}ManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
     DependsOn: {0[user]:s}
     Properties:
@@ -96,13 +96,13 @@ Resources:
         Statement:
           - Effect: Allow
             Action:
-              - codecommit:BatchGet*'
-              - codecommit:BatchDescribe*'
-              - codecommit:EvaluatePullRequestApprovalRules'
-              - codecommit:Get*'
-              - codecommit:Describe*'
-              - codecommit:List*'
-              - codecommit:GitPull'
+              - codecommit:BatchGet*
+              - codecommit:BatchDescribe*
+              - codecommit:EvaluatePullRequestApprovalRules
+              - codecommit:Get*
+              - codecommit:Describe*
+              - codecommit:List*
+              - codecommit:GitPull
             Resource:{0[repository_arns]:s}
       Users:{0[users]:s}
 """
@@ -119,6 +119,10 @@ Resources:
         resources_yaml = ""
         outputs_yaml = ""
 
+        policy_outputs_fmt = """
+  {0[cfn_logical_id_prefix]:s}ManagedPolicy:
+    Value: !Ref {0[cfn_logical_id_prefix]:s}ManagedPolicy
+"""
         unique_users = {}
         policy_users = {}
         for repo_item in repo_list:
@@ -146,10 +150,11 @@ Resources:
                         unique_users[user.username][user.permissions] = {
                             'repo_name_prefix': [],
                             'repo_config': [],
+                            'user_refs': [],
                         }
                     unique_users[user.username][user.permissions]['repo_name_prefix'].append(repo_name_prefix)
                     unique_users[user.username][user.permissions]['repo_config'].append(repo_config)
-
+                    unique_users[user.username][user.permissions]['user_refs'].append(user.paco_ref_parts)
         # Users
         for username in unique_users.keys():
             # IAM User
@@ -182,6 +187,8 @@ Resources:
                             )
                     codecommit_permissions_table['repository_arns'] = repo_arns_yaml
                     resources_yaml += codecommit_readwrite_fmt.format(codecommit_permissions_table)
+                    for user_ref in unique_users[username][permission]['user_refs']:
+                        self.register_stack_output_config(user_ref + '.policy.arn', user_logical_id + 'ManagedPolicy')
                 elif permission == 'ReadOnly':
                     repo_arns_yaml = ""
                     for repo_config in unique_users[username][permission]['repo_config']:
@@ -197,6 +204,11 @@ Resources:
                             )
                     codecommit_permissions_table['repository_arns'] = repo_arns_yaml
                     resources_yaml += codecommit_readonly_fmt.format(codecommit_permissions_table)
+                    for user_ref in unique_users[username][permission]['user_refs']:
+                        self.register_stack_output_config(user_ref + '.policy.arn', user_logical_id + 'ManagedPolicy')
+                outputs_yaml += policy_outputs_fmt.format(
+                    {'cfn_logical_id_prefix': user_logical_id }
+                )
 
         template_table['parameters_yaml'] = parameters_yaml
         template_table['resources_yaml'] = resources_yaml

@@ -123,13 +123,18 @@ policies:
         group_id = ref.parts[2]
         repo_id = ref.parts[3]
         repo_config = self.stack_grps[0].config[group_id][repo_id]
+        if len(ref.parts) >= 5:
+            if ref.parts[4] == 'users':
+                # lookup output from CodeCommit Stack
+                return repo_config.__parent__.__parent__.stack
         if ref.last_part == "name":
-            return repo_config.name
+            return repo_config.repository_name
+            #return repo_config.name
         if ref.last_part == "arn":
             account_ref = repo_config.account
             account_ctx = self.paco_ctx.get_account_context(account_ref)
             aws_region = repo_config.region
-            repo_name =  repo_config.name
+            repo_name =  repo_config.repository_name
             return "arn:aws:codecommit:{0}:{1}:{2}".format(aws_region, account_ctx.get_id(), repo_name)
         elif ref.last_part == "account_id":
             account_ref = repo_config.account

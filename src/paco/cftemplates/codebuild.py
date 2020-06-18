@@ -1,6 +1,7 @@
 from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action
 from awacs.sts import AssumeRole
 from paco.cftemplates.cftemplates import StackTemplate
+from paco.models.references import get_model_obj_from_ref
 import troposphere
 import troposphere.codepipeline
 import troposphere.codebuild
@@ -81,10 +82,25 @@ class CodeBuild(StackTemplate):
             name_list=[self.res_name_prefix, 'CodeBuild-Project'],
             filter_id='IAM.Role.RoleName'
         )
+        # codecommit_repo_users ManagedPolicies
+        managed_policy_arns = []
+        for user_ref in action_config.codecommit_repo_users:
+            user = get_model_obj_from_ref(user_ref, self.paco_ctx.project)
+            # codecommit_stack = user.__parent__.__parent__.__parent__.stack
+            user_logical_id = self.gen_cf_logical_name(user.username)
+            codecommit_user_policy_param = self.create_cfn_parameter(
+                param_type='String',
+                name='CodeCommitUserPolicy' + user_logical_id,
+                description='The CodeComit User Policy for ' + user.username,
+                value=user_ref + '.policy.arn',
+            )
+            managed_policy_arns.append(troposphere.Ref(codecommit_user_policy_param))
+
         project_role_res = troposphere.iam.Role(
             title='CodeBuildProjectRole',
             template=template,
             RoleName=self.project_role_name,
+            ManagedPolicyArns=managed_policy_arns,
             AssumeRolePolicyDocument=PolicyDocument(
                 Version="2012-10-17",
                 Statement=[
@@ -101,6 +117,7 @@ class CodeBuild(StackTemplate):
             name_list=[self.res_name_prefix, 'CodeBuild-Project'],
             filter_id='IAM.Policy.PolicyName'
         )
+
         project_policy_res = troposphere.iam.PolicyType(
             title='CodeBuildProjectPolicy',
             PolicyName=project_policy_name,
@@ -205,23 +222,30 @@ class CodeBuild(StackTemplate):
             }],
             PrivilegedMode = action_config.privileged_mode
         )
+        source = troposphere.codebuild.Source(
+            Type='CODEPIPELINE',
+        )
+        if action_config.buildspec != None and action_config.buildspec != '':
+            source = troposphere.codebuild.Source(
+                Type='CODEPIPELINE',
+                BuildSpec=action_config.buildspec,
+            )
+
         project_res = troposphere.codebuild.Project(
-            title = 'CodeBuildProject',
-            template = template,
-            Name = troposphere.Ref(self.resource_name_prefix_param),
-            Description = troposphere.Ref('AWS::StackName'),
-            ServiceRole = troposphere.GetAtt('CodeBuildProjectRole', 'Arn'),
-            EncryptionKey = troposphere.Ref(self.cmk_arn_param),
-            Artifacts = troposphere.codebuild.Artifacts(
-                Type = 'CODEPIPELINE'
+            title='CodeBuildProject',
+            template=template,
+            Name=troposphere.Ref(self.resource_name_prefix_param),
+            Description=troposphere.Ref('AWS::StackName'),
+            ServiceRole=troposphere.GetAtt('CodeBuildProjectRole', 'Arn'),
+            EncryptionKey=troposphere.Ref(self.cmk_arn_param),
+            Artifacts=troposphere.codebuild.Artifacts(
+                Type='CODEPIPELINE'
             ),
-            Environment = environment,
-            Source = troposphere.codebuild.Source(
-                Type = 'CODEPIPELINE'
-            ),
-            TimeoutInMinutes = troposphere.Ref(timeout_mins_param),
-            Tags = troposphere.codebuild.Tags(
-                Name = troposphere.Ref(self.resource_name_prefix_param)
+            Environment=environment,
+            Source=source,
+            TimeoutInMinutes=troposphere.Ref(timeout_mins_param),
+            Tags=troposphere.codebuild.Tags(
+                Name=troposphere.Ref(self.resource_name_prefix_param)
             )
         )
 
