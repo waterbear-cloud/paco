@@ -46,15 +46,6 @@ class ECSServices(StackTemplate):
             value=task_execution_role.get_arn(),
         )
 
-        # Private Hosted Zone for Service Discovery
-        # Use the VPC default private hosted zone
-        discovery_private_hosted_zone_id_param = self.create_cfn_parameter(
-            param_type='String',
-            name='DiscoveryPrivateHostedZoneId',
-            description='The ID of the Private Hosted Zone to use for Service Discovery.',
-            value='.'.join(ecs_config.paco_ref_parts.split('.')[:4])+'.network.vpc.private_hosted_zone.id'
-        )
-
         # TaskDefinitions
         for task in ecs_config.task_definitions.values():
             task_dict = task.cfn_export_dict
@@ -94,19 +85,34 @@ class ECSServices(StackTemplate):
         )
 
         #  Services
+        # ToDo: allow multiple PrivateDnsNamespaces?
+        # e.g. if multiple ECSServices want to particpate in the same PrivateDnsNamespace?
+        if ecs_config.service_discovery_namespace_name != '':
+            private_dns_vpc_param = self.create_cfn_parameter(
+                param_type='String',
+                name='PrivateDnsNamespaceVpc',
+                description='The Vpc for the Service Discovery Private DNS Namespace.',
+                value='paco.ref ' + '.'.join(ecs_config.paco_ref_parts.split('.')[:4]) + '.network.vpc.id'
+            )
+            private_dns_namespace_res = troposphere.servicediscovery.PrivateDnsNamespace(
+                title=self.create_cfn_logical_id(f'DiscoveryService{ecs_config.service_discovery_namespace_name}'),
+                Name=ecs_config.service_discovery_namespace_name,
+                Vpc=troposphere.Ref(private_dns_vpc_param),
+            )
+            self.template.add_resource(private_dns_namespace_res)
         for service in ecs_config.services.values():
             service_dict = service.cfn_export_dict
 
             # Service Discovery
-            if service.hostname != None and 1 == 0:
+            if service.hostname != None:
                 service_discovery_res = troposphere.servicediscovery.Service(
                     title=self.create_cfn_logical_id(f'DiscoveryService{service.name}'),
                     DnsConfig=troposphere.servicediscovery.DnsConfig(
                         DnsRecords=[
-                            troposphere.servicediscovery.DnsRecord(
-                                TTL='60',
-                                Type='A'
-                            ),
+                            # troposphere.servicediscovery.DnsRecord(
+                            #     TTL='60',
+                            #     Type='A'
+                            # ),
                             troposphere.servicediscovery.DnsRecord(
                                 TTL='60',
                                 Type='SRV'
@@ -114,20 +120,20 @@ class ECSServices(StackTemplate):
                         ]
                     ),
                     HealthCheckCustomConfig=troposphere.servicediscovery.HealthCheckCustomConfig(FailureThreshold=float(1)),
-                    #Name=
-                    NamespaceId=troposphere.Ref(discovery_private_hosted_zone_id_param)
+                    NamespaceId=troposphere.Ref(private_dns_namespace_res),
+                    Name=service.name,
                 )
+                service_discovery_res.DependsOn = [private_dns_namespace_res]
                 self.template.add_resource(service_discovery_res)
-                # TODO: XXX: Adding this breaks troposphere when its converted to yaml
-                #if service.load_balancers != []:
-                #    service_dict['ServiceRegistries'] = [
-                #        troposphere.ecs.ServiceRegistry(
-                #            #ContainerName=service.load_balancers[0].container_name,
-                #            RegistryArn=troposphere.GetAtt(service_discovery_res, 'Arn'),
-                #            #ContainerPort=service.load_balancers[0].container_port,
-                #            Port=service.load_balancers[0].container_port,
-                #        )
-                #    ]
+                service_dict['ServiceRegistries'] = []
+                for load_balancer in service.load_balancers:
+                    service_registry_dict = {
+                        'RegistryArn': troposphere.GetAtt(service_discovery_res, 'Arn'),
+                        'ContainerName': load_balancer.container_name,
+                        'ContainerPort': load_balancer.container_port,
+                    }
+                    # ToDo: add Port when needed ... 'Port': ?,
+                    service_dict['ServiceRegistries'].append(service_registry_dict)
 
             # convert TargetGroup ref to a Parameter
             lb_idx = 0
@@ -148,16 +154,6 @@ class ECSServices(StackTemplate):
                 service_dict['TaskDefinition'] = troposphere.Ref(
                     ecs_config.task_definitions[service_dict['TaskDefinition']]._troposphere_res
                 )
-
-            # ECS Service Role
-            # service_role_arn_param = self.create_cfn_parameter(
-            #     param_type='String',
-            #     name='ServiceRoleArn',
-            #     description='ECS service Role',
-            #     value=role.get_arn()
-            # )
-            # service_dict['Role'] = troposphere.Ref(service_role_arn_param)
-
             service_dict['Cluster'] = troposphere.Ref(cluster_param)
             service_res = troposphere.ecs.Service.from_dict(
                 self.create_cfn_logical_id('Service' + service.name),
