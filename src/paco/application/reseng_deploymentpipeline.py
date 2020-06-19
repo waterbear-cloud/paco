@@ -164,7 +164,9 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             'effect': 'Allow',
             'resource_suffix': [ '/*', '' ]
         }
-        s3_ctl.add_bucket_policy(self.artifacts_bucket_meta['ref'], cpbd_s3_bucket_policy)
+        # the S3 Bucket Policy can be added to by multiple DeploymentPipelines
+        # the AppEngine will deploy this last to avoid deploying it one-by-one
+        self.app_engine.codepipeline_final_policies[self.artifacts_bucket_meta['ref']] = cpbd_s3_bucket_policy
 
     def init_stage_action_codecommit_source(self, action_config):
         "Initialize an IAM Role for the CodeCommit action"
@@ -431,9 +433,6 @@ policies:
             'pipeline_account_id': self.pipeline_account_ctx.get_id(),
             'artifact_bucket_arn': self.artifacts_bucket_meta['arn']
         }
-
-        #breakpoint()
-
         role_config_dict = yaml.load(role_yaml.format(role_table))
         role_config = models.iam.Role('ecs-delegate', action_config)
         role_config.apply_config(role_config_dict)
