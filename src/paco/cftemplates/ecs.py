@@ -2,6 +2,7 @@ from paco.cftemplates.cftemplates import StackTemplate
 from paco.utils import prefixed_name
 import troposphere
 import troposphere.ecs
+import troposphere.servicediscovery
 
 
 class ECSCluster(StackTemplate):
@@ -45,6 +46,15 @@ class ECSServices(StackTemplate):
             value=task_execution_role.get_arn(),
         )
 
+        # Private Hosted Zone for Service Discovery
+        # Use the VPC default private hosted zone
+        discovery_private_hosted_zone_id_param = self.create_cfn_parameter(
+            param_type='String',
+            name='DiscoveryPrivateHostedZoneId',
+            description='The ID of the Private Hosted Zone to use for Service Discovery.',
+            value='.'.join(ecs_config.paco_ref_parts.split('.')[:4])+'.network.vpc.private_hosted_zone.id'
+        )
+
         # TaskDefinitions
         for task in ecs_config.task_definitions.values():
             task_dict = task.cfn_export_dict
@@ -86,6 +96,39 @@ class ECSServices(StackTemplate):
         #  Services
         for service in ecs_config.services.values():
             service_dict = service.cfn_export_dict
+
+            # Service Discovery
+            if service.hostname != None and 1 == 0:
+                service_discovery_res = troposphere.servicediscovery.Service(
+                    title=self.create_cfn_logical_id(f'DiscoveryService{service.name}'),
+                    DnsConfig=troposphere.servicediscovery.DnsConfig(
+                        DnsRecords=[
+                            troposphere.servicediscovery.DnsRecord(
+                                TTL='60',
+                                Type='A'
+                            ),
+                            troposphere.servicediscovery.DnsRecord(
+                                TTL='60',
+                                Type='SRV'
+                            )
+                        ]
+                    ),
+                    HealthCheckCustomConfig=troposphere.servicediscovery.HealthCheckCustomConfig(FailureThreshold=float(1)),
+                    #Name=
+                    NamespaceId=troposphere.Ref(discovery_private_hosted_zone_id_param)
+                )
+                self.template.add_resource(service_discovery_res)
+                # TODO: XXX: Adding this breaks troposphere when its converted to yaml
+                #if service.load_balancers != []:
+                #    service_dict['ServiceRegistries'] = [
+                #        troposphere.ecs.ServiceRegistry(
+                #            #ContainerName=service.load_balancers[0].container_name,
+                #            RegistryArn=troposphere.GetAtt(service_discovery_res, 'Arn'),
+                #            #ContainerPort=service.load_balancers[0].container_port,
+                #            Port=service.load_balancers[0].container_port,
+                #        )
+                #    ]
+
             # convert TargetGroup ref to a Parameter
             lb_idx = 0
             if 'LoadBalancers' in service_dict:

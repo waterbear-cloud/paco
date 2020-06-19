@@ -397,6 +397,72 @@ policies:
         if not action_config.is_enabled():
             return
 
+        role_yaml = """
+assume_role_policy:
+  effect: Allow
+  aws:
+    - '{0[pipeline_account_id]}'
+instance_profile: false
+path: /
+role_name: ECS
+policies:
+  - name: DeploymentPipeline
+    statement:
+      - effect: Allow
+        action:
+          - 'ecs:*'
+          - 'ecr:*'
+          - 'iam:PassRole'
+        resource:
+          - '*'
+      - effect: Allow
+        action:
+          - 's3:*'
+        resource:
+          - {0[artifact_bucket_arn]:s}
+          - {0[artifact_bucket_arn]:s}/*
+      - effect: Allow
+        action:
+          - 'kms:*'
+        resource:
+          - "!Ref CMKArn"
+"""
+        role_table = {
+            'pipeline_account_id': self.pipeline_account_ctx.get_id(),
+            'artifact_bucket_arn': self.artifacts_bucket_meta['arn']
+        }
+
+        #breakpoint()
+
+        role_config_dict = yaml.load(role_yaml.format(role_table))
+        role_config = models.iam.Role('ecs-delegate', action_config)
+        role_config.apply_config(role_config_dict)
+        role_config.enabled = action_config.is_enabled()
+        iam_ctl = self.paco_ctx.get_controller('IAM')
+        role_id = self.gen_iam_role_id(self.res_id, 'ecs-delegate')
+         # IAM Roles Parameters
+        iam_role_params = [{
+            'key': 'CMKArn',
+            'value': self.pipeline.paco_ref + '.kms.arn',
+            'type': 'String',
+            'description': 'DeploymentPipeline KMS Key Arn'
+        }]
+        iam_ctl.add_role(
+            account_ctx=self.account_ctx,
+            region=self.aws_region,
+            resource=self.resource,
+            role=role_config,
+            iam_role_id=role_id,
+            stack_group=self.stack_group,
+            stack_tags=self.stack_tags,
+            template_params=iam_role_params
+        )
+
+        self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (role_config.paco_ref + '.arn'))
+        action_config._delegate_role_arn = iam_ctl.role_arn(role_config.paco_ref_parts)
+        #breakpoint()
+
+
     def init_stage_action_codebuild_build(self, action_config):
         if not action_config.is_enabled():
             return
@@ -421,6 +487,10 @@ policies:
         pass
 
     def resolve_ref(self, ref):
+        if schemas.IDeploymentPipelineDeployECS.providedBy(ref.resource):
+            if ref.resource_ref == 'ecs-delegate.arn':
+                iam_ctl = self.paco_ctx.get_controller("IAM")
+                return iam_ctl.role_arn(ref.raw[:-4])
         if schemas.IDeploymentPipelineDeployS3.providedBy(ref.resource):
             if ref.resource_ref == 'delegate_role.arn':
                 iam_ctl = self.paco_ctx.get_controller("IAM")

@@ -478,6 +478,9 @@ class CodePipeline(StackTemplate):
             pipeline_policy_statement_list.append(self.codedeploy_deploy_assume_role_statement)
         if self.s3_deploy_assume_role_statement != None:
             pipeline_policy_statement_list.append(self.s3_deploy_assume_role_statement)
+
+        if self.ecs_deploy_assume_role_statement != None:
+            pipeline_policy_statement_list.append(self.ecs_deploy_assume_role_statement)
         for statement in self.s3_deploy_statements:
             pipeline_policy_statement_list.append(statement)
         troposphere.iam.PolicyType(
@@ -670,7 +673,8 @@ class CodePipeline(StackTemplate):
         # Deploy Action
         [ deploy_stage,
           self.s3_deploy_assume_role_statement,
-          self.codedeploy_deploy_assume_role_statement ] = self.init_deploy_stage(deploy_region)
+          self.codedeploy_deploy_assume_role_statement,
+          self.ecs_deploy_assume_role_statement ] = self.init_deploy_stage(deploy_region)
 
         # Manual Deploy Enabled/Disable
         manual_approval_enabled_param = self.create_cfn_parameter(
@@ -762,6 +766,7 @@ class CodePipeline(StackTemplate):
         deploy_stage_actions = []
         s3_deploy_assume_role_statement = None
         codedeploy_deploy_assume_role_statement = None
+        ecs_deploy_assume_role_statement = None
         for action in self.pipeline.deploy.values():
             if action.type == 'ManualApproval':
                 manual_approval_action = self.init_manual_approval_action(action)
@@ -884,6 +889,12 @@ class CodePipeline(StackTemplate):
                 )
                 deploy_stage_actions.append(codedeploy_deploy_action)
             if action.type == 'ECS.Deploy':
+                ecs_tools_delegate_role_arn_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name='ECSToolsDelegateRoleArn',
+                    description='The Arn of the ECS Cluster Delegate Role',
+                    value=action._delegate_role_arn
+                )
                 ecs_cluster_name_param = self.create_cfn_parameter(
                     param_type='String',
                     name='ECSClusterName',
@@ -913,16 +924,24 @@ class CodePipeline(StackTemplate):
                             Name = 'CodeBuildArtifact'
                         )
                     ],
-                    #RoleArn = troposphere.Ref(ecs_tools_delegate_role_arn_param),
+                    RoleArn = troposphere.Ref(ecs_tools_delegate_role_arn_param),
                     Region = deploy_region,
                     RunOrder = troposphere.If('ManualApprovalIsEnabled', 2, 1)
+                )
+                ecs_deploy_assume_role_statement = Statement(
+                    Sid='ECSAssumeRole',
+                    Effect=Allow,
+                    Action=[
+                        Action('sts', 'AssumeRole'),
+                    ],
+                    Resource=[ troposphere.Ref(ecs_tools_delegate_role_arn_param) ]
                 )
                 deploy_stage_actions.append(ecs_deploy_action)
         deploy_stage = troposphere.codepipeline.Stages(
             Name="Deploy",
             Actions = deploy_stage_actions
         )
-        return [deploy_stage, s3_deploy_assume_role_statement, codedeploy_deploy_assume_role_statement]
+        return [deploy_stage, s3_deploy_assume_role_statement, codedeploy_deploy_assume_role_statement, ecs_deploy_assume_role_statement]
 
     def get_codepipeline_role_arn(self):
         return "arn:aws:iam::{}:role/{}".format(
