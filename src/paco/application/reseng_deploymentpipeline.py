@@ -165,8 +165,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             'resource_suffix': [ '/*', '' ]
         }
         # the S3 Bucket Policy can be added to by multiple DeploymentPipelines
-        # the AppEngine will deploy this last to avoid deploying it one-by-one
-        self.app_engine.codepipeline_final_policies[self.artifacts_bucket_meta['ref']] = cpbd_s3_bucket_policy
+        s3_ctl.add_bucket_policy(self.artifacts_bucket_meta['ref'], cpbd_s3_bucket_policy)
 
     def init_stage_action_codecommit_source(self, action_config):
         "Initialize an IAM Role for the CodeCommit action"

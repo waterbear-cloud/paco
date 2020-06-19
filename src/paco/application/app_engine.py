@@ -66,7 +66,6 @@ class ApplicationEngine():
             self.stack_group,
             self.stack_tags
         )
-        self.codepipeline_final_policies = {}
 
         # Resource Groups
         for grp_id, grp_config in self.config.groups_ordered():
@@ -88,10 +87,6 @@ class ApplicationEngine():
                 resource_engine.init_resource()
                 resource_engine.init_monitoring()
 
-        # S3 Policy
-        s3_ctl = self.paco_ctx.get_controller('S3')
-        for s3_ref, cpbd_s3_bucket_policy in self.codepipeline_final_policies.items():
-            s3_ctl.add_bucket_policy(s3_ref, cpbd_s3_bucket_policy)
         self.init_app_monitoring()
         self.paco_ctx.log_finish('Init', self.config)
 
