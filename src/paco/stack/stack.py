@@ -443,6 +443,7 @@ class Stack():
     def generate_template(self):
         "Write template to the filesystem"
         self.template.paco_sub()
+        self.template.fix_troposphere_manual_ref()
         # Create folder and write template body to file
         self.build_folder.mkdir(parents=True, exist_ok=True)
         stream = open(self.get_yaml_path(), 'w')

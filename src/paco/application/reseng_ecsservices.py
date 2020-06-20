@@ -2,6 +2,7 @@ from paco import cftemplates
 from paco.application.res_engine import ResourceEngine
 from paco.models.locations import get_parent_by_interface
 from paco.models import schemas
+from paco.utils import md5sum
 import paco.models.iam
 
 
@@ -41,7 +42,40 @@ class ECSServicesResourceEngine(ResourceEngine):
                 'logs:PutLogEvent'
             ],
             'resource': ['*'],
-        },]
+        }]
+
+        iam_role_params = []
+        if len(self.resource.secrets_manager_access) > 0:
+            kms_client = self.account_ctx.get_aws_client('kms')
+            response = kms_client.list_aliases()
+            secretsmanager_key_id = ""
+            for alias in response['Aliases']:
+                if alias['AliasName'] == 'alias/aws/secretsmanager':
+                    secretsmanager_key_id = alias['TargetKeyId']
+                    break
+            secrets_statement = {
+                'effect': 'Allow',
+                    'action': [
+                        'secretsmanager:GetSecretValue',
+                        'kms:Decrypt'
+                    ],
+                    'resource': [
+                        f'arn:aws:kms:{self.aws_region}:{self.account_ctx.get_id()}:key/{secretsmanager_key_id}'
+                    ]
+            }
+            for secret_ref in self.resource.secrets_manager_access:
+                name_hash = md5sum(str_data=secret_ref).upper()
+
+                iam_role_params.append( {
+                    'key': f'SecretsManagerArn{name_hash}',
+                    'value': secret_ref+'.arn',
+                    'type': 'String',
+                    'description': 'Secrets Manager Secreest Arn'
+                })
+
+                secrets_statement['resource'].append(f'!Ref SecretsManagerArn{name_hash}')
+            statements.append(secrets_statement)
+
         role.apply_config({
             'enabled': True,
             'path': '/',
@@ -57,6 +91,7 @@ class ECSServicesResourceEngine(ResourceEngine):
             iam_role_id=iam_role_id,
             stack_group=self.stack_group,
             stack_tags=self.stack_tags,
+            template_params=iam_role_params
         )
         return role
 

@@ -131,6 +131,18 @@ class StackTemplate():
             troposphere.cloudformation.WaitConditionHandle(title="EmptyTemplatePlaceholder")
         )
 
+    # There is a case in ECS where we need to manually set ValueFrom in the
+    # ContainerDefinitions Secerts KeyValuePair list with a !Ref SomeParameterName
+    # value in a dict that will be used in .from_dict(). When troposphere outputs
+    # the resource to yaml, it will wrap the !Ref SomeParameterName in single
+    # quotes which causes CloudFormation to complain. To workaround this we are
+    # using !ManualTroposphereRef (to create uniquieness) and performing the
+    # following replace.
+    def fix_troposphere_manual_ref(self):
+        search = "'!ManualTroposphereRef "
+        replace = "!Ref '"
+        self.body = self.body.replace(search, replace)
+
     def paco_sub(self):
         "Perform paco.sub expressions with the substitution string"
         while True:

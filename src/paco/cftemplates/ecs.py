@@ -1,5 +1,5 @@
 from paco.cftemplates.cftemplates import StackTemplate
-from paco.utils import prefixed_name
+from paco.utils import prefixed_name, md5sum
 import troposphere
 import troposphere.ecs
 import troposphere.servicediscovery
@@ -68,6 +68,21 @@ class ECSServices(StackTemplate):
                         task._depends_on.append(log_group_resource)
                         log_dict['Options']['awslogs-stream-prefix'] = container_definition.name
                 index += 1
+
+            # Setup Secrets
+            for task_dict_container_def in task_dict['ContainerDefinitions']:
+                for secrets_pair in task_dict_container_def['Secrets']:
+                    # Secerts Arn Parameters
+                    name_hash = md5sum(str_data=secrets_pair['ValueFrom'])
+                    secret_param_name = 'TaskDefinitionSecretArn'+name_hash
+                    secret_param = self.create_cfn_parameter(
+                        param_type='String',
+                        name=secret_param_name,
+                        description='The arn of the Secrets Manger Secret.',
+                        value=secrets_pair['ValueFrom']+'.arn'
+                    )
+                    secrets_pair['ValueFrom'] = '!ManualTroposphereRef '+secret_param_name
+
             task_res = troposphere.ecs.TaskDefinition.from_dict(
                 self.create_cfn_logical_id('TaskDefinition' + task.name),
                 task_dict,
