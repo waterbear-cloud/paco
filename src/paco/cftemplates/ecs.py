@@ -1,5 +1,7 @@
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.utils import prefixed_name, md5sum
+from paco.core.exception import UnsupportedCloudFormationParameterType
+from paco.models import references
 import troposphere
 import troposphere.ecs
 import troposphere.servicediscovery
@@ -54,6 +56,35 @@ class ECSServices(StackTemplate):
             index = 0
             task._depends_on = []
             for container_definition in task.container_definitions.values():
+                # ContainerDefinition Environment variables
+                for env_pair in container_definition.environment:
+                    key = env_pair.name
+                    value = env_pair.value
+                    # only paco refs are passed as Parameters to avoid tripping the 60 Parameter CloudFormation limit
+                    if references.is_ref(value):
+                        if type(value) == type(str()):
+                            param_type = 'String'
+                        elif type(value) == type(int()) or type(value) == type(float()):
+                            param_type = 'Number'
+                        else:
+                            breakpoint()
+                            raise UnsupportedCloudFormationParameterType(
+                                "Can not cast {} of type {} to a CloudFormation Parameter type.".format(
+                                    value, type(value)
+                                )
+                            )
+                        param_name = self.create_cfn_logical_id(f'{task.name}{container_definition.name}{key}')
+                        environment_param = self.create_cfn_parameter(
+                            param_type=param_type,
+                            name=param_name,
+                            description=f'Environment variable for container definition {container_definition.name} for task definition {task.name}',
+                            value=value,
+                        )
+                        value = troposphere.Ref(environment_param)
+                    if 'Environment' not in task_dict['ContainerDefinitions'][index]:
+                        task_dict['ContainerDefinitions'][index]['Environment'] = []
+                    task_dict['ContainerDefinitions'][index]['Environment'].append({'Name': key, 'Value': value})
+
                 if getattr(container_definition, 'logging') != None:
                     task_dict['ContainerDefinitions'][index]['LogConfiguration'] = {}
                     log_dict = task_dict['ContainerDefinitions'][index]['LogConfiguration']
@@ -71,17 +102,18 @@ class ECSServices(StackTemplate):
 
             # Setup Secrets
             for task_dict_container_def in task_dict['ContainerDefinitions']:
-                for secrets_pair in task_dict_container_def['Secrets']:
-                    # Secerts Arn Parameters
-                    name_hash = md5sum(str_data=secrets_pair['ValueFrom'])
-                    secret_param_name = 'TaskDefinitionSecretArn'+name_hash
-                    secret_param = self.create_cfn_parameter(
-                        param_type='String',
-                        name=secret_param_name,
-                        description='The arn of the Secrets Manger Secret.',
-                        value=secrets_pair['ValueFrom']+'.arn'
-                    )
-                    secrets_pair['ValueFrom'] = '!ManualTroposphereRef '+secret_param_name
+                if 'Secrets' in task_dict_container_def:
+                    for secrets_pair in task_dict_container_def['Secrets']:
+                        # Secerts Arn Parameters
+                        name_hash = md5sum(str_data=secrets_pair['ValueFrom'])
+                        secret_param_name = 'TaskDefinitionSecretArn'+name_hash
+                        secret_param = self.create_cfn_parameter(
+                            param_type='String',
+                            name=secret_param_name,
+                            description='The arn of the Secrets Manger Secret.',
+                            value=secrets_pair['ValueFrom']+'.arn'
+                        )
+                        secrets_pair['ValueFrom'] = '!ManualTroposphereRef '+secret_param_name
 
             task_res = troposphere.ecs.TaskDefinition.from_dict(
                 self.create_cfn_logical_id('TaskDefinition' + task.name),
