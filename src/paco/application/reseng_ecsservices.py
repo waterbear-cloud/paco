@@ -39,7 +39,8 @@ class ECSServicesResourceEngine(ResourceEngine):
                 'ecr:GetDownloadUrlForLayer',
                 'ecr:BatchGetImage',
                 'logs:CreateLogStream',
-                'logs:PutLogEvent'
+                'logs:PutLogEvent',
+                'logs:PutLogEvents'
             ],
             'resource': ['*'],
         }]
