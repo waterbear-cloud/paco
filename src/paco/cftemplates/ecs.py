@@ -85,6 +85,40 @@ class ECSServices(StackTemplate):
                         task_dict['ContainerDefinitions'][index]['Environment'] = []
                     task_dict['ContainerDefinitions'][index]['Environment'].append({'Name': key, 'Value': value})
 
+                # Image can be a paco.ref to an ECR Repository
+                if references.is_ref(container_definition.image):
+                    param_name = self.create_cfn_logical_id(f'{task.name}{container_definition.name}Image')
+                    image_arn_param = self.create_cfn_parameter(
+                        param_type='String',
+                        name=param_name,
+                        description=f'Image used to start the container.',
+                        value=container_definition.image + '.arn',
+                    )
+                    # The ECR URL needs to break apart the ARN and re-assemble it as the URL is no provided as a Stack Output :(
+                    task_dict['ContainerDefinitions'][index]['Image'] = troposphere.Join(
+                        ':', [
+                            troposphere.Join(
+                                '/', [
+                                    # domain portion: aws_account_id.dkr.ecr.region.amazonaws.com
+                                    troposphere.Join(
+                                        '.', [
+                                            troposphere.Select(4, troposphere.Split(':', troposphere.Ref(image_arn_param))), # account id
+                                            'dkr',
+                                            'ecr',
+                                            troposphere.Select(3, troposphere.Split(':', troposphere.Ref(image_arn_param))), # region
+                                            'amazonaws',
+                                            'com',
+                                        ]
+                                    ),
+                                    troposphere.Select(1, troposphere.Split('/', troposphere.Ref(image_arn_param))) # ecr-repo-name
+                                ]
+                            ),
+                            container_definition.image_tag # image tag
+                        ]
+                    )
+                else:
+                    task_dict['ContainerDefinitions'][index]['Image'] = container_definition.image
+
                 if getattr(container_definition, 'logging') != None:
                     task_dict['ContainerDefinitions'][index]['LogConfiguration'] = {}
                     log_dict = task_dict['ContainerDefinitions'][index]['LogConfiguration']
