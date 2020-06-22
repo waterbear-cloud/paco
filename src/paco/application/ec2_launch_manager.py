@@ -1490,6 +1490,8 @@ function run_launch_bundle() {{
     mkdir -p /etc/ecs/
     CLUSTER_NAME=$(ec2lm_instance_tag_value 'Paco-ECSCluster-Name')
     echo ECS_CLUSTER=$CLUSTER_NAME > /etc/ecs/ecs.config
+    echo ECS_LOGLEVEL={ecs.log_level} >> /etc/ecs/ecs.config
+    systemctl restart ecs
 }}
 
 function disable_launch_bundle() {{
