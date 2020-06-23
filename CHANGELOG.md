@@ -4,7 +4,9 @@ Changelog for Paco
 7.1.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Fixed
+
+- EC2 instacnes without ECS config failed trying to make launch script.
 
 
 7.1.0 (2020-06-22)
