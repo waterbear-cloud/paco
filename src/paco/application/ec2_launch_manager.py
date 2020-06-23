@@ -1435,6 +1435,7 @@ statement:
         "ECS Launch Bundle"
         ecs_lb = LaunchBundle(resource, self, bundle_name)
         ecs = resource.ecs
+        launch_script = ""
 
         # is the ECS bundle enabled?
         ecs_enabled = False
@@ -1482,7 +1483,7 @@ statement:
                 extra_ref_names=['ec2lm','ecs'],
             )
 
-        launch_script = f"""#!/bin/bash
+            launch_script = f"""#!/bin/bash
 echo "EC2LM: ECS: Begin"
 . {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
 
