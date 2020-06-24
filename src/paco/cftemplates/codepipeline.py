@@ -110,9 +110,13 @@ class CodePipeline(StackTemplate):
         else:
             self.create_pipeine_from_sourcebuilddeploy(deploy_region)
 
-    def add_github_webhook(self, pipeline_res, stage, action):
+    def add_github_webhook(self, pipeline_res, stage_name, action, sourcebuilddeploy=False):
         "Add a CodePipeline WebHook"
-        logical_id = f'Webhook{stage.name}{action.name}'
+        if sourcebuilddeploy == True:
+            target_action = 'GitHub'
+        else:
+            target_action = f'GitHub{stage_name}{action.name}'
+        logical_id = f'Webhook{stage_name}{action.name}'
         github_access_token = Reference(action.github_access_token).ref
         cfn_export_dict= {
             'Authentication': 'GITHUB_HMAC',
@@ -120,7 +124,7 @@ class CodePipeline(StackTemplate):
                 'SecretToken': "{{resolve:secretsmanager:%s}}" % github_access_token,
             },
             'Filters': [{'JsonPath': "$.ref", 'MatchEquals': 'refs/heads/{Branch}'}],
-            'TargetAction': f'GitHub{stage.name}{action.name}',
+            'TargetAction': target_action,
             'RegisterWithThirdParty': True,
             'TargetPipeline': troposphere.Ref(pipeline_res),
             'TargetPipelineVersion': troposphere.GetAtt(pipeline_res, 'Version'),
@@ -233,7 +237,7 @@ class CodePipeline(StackTemplate):
                 if not action.is_enabled():
                     continue
                 if action.type == 'GitHub.Source' and action.poll_for_source_changes == False:
-                    self.add_github_webhook(pipeline_res, stage, action)
+                    self.add_github_webhook(pipeline_res, stage.name, action)
 
     # methods to return Properties dictionaries specific to their Action.Type
     # begin create_<action_type>_properties
@@ -710,6 +714,13 @@ class CodePipeline(StackTemplate):
                 )
             )
         )
+
+        # Add GitHub WebHook after pipeline_res is created
+        for action in self.pipeline.source.values():
+            if not action.is_enabled():
+                continue
+            if action.type == 'GitHub.Source' and action.poll_for_source_changes == False:
+                self.add_github_webhook(pipeline_res, 'source', action, sourcebuilddeploy=True)
 
         return pipeline_res
 

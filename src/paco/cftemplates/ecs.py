@@ -67,7 +67,6 @@ class ECSServices(StackTemplate):
                         elif type(value) == type(int()) or type(value) == type(float()):
                             param_type = 'Number'
                         else:
-                            breakpoint()
                             raise UnsupportedCloudFormationParameterType(
                                 "Can not cast {} of type {} to a CloudFormation Parameter type.".format(
                                     value, type(value)

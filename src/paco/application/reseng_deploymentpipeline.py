@@ -167,6 +167,11 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         # the S3 Bucket Policy can be added to by multiple DeploymentPipelines
         s3_ctl.add_bucket_policy(self.artifacts_bucket_meta['ref'], cpbd_s3_bucket_policy)
 
+    def init_stage_action_github_source(self, action_config):
+        "Initialize a GitHub.Source action"
+        if not action_config.is_enabled():
+            return
+
     def init_stage_action_codecommit_source(self, action_config):
         "Initialize an IAM Role for the CodeCommit action"
         if not action_config.is_enabled():
@@ -458,7 +463,6 @@ policies:
 
         self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (role_config.paco_ref + '.arn'))
         action_config._delegate_role_arn = iam_ctl.role_arn(role_config.paco_ref_parts)
-        #breakpoint()
 
 
     def init_stage_action_codebuild_build(self, action_config):
