@@ -4,7 +4,9 @@ Changelog for Paco
 7.1.2 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Fixed
+
+- EC2LM configuration loading for ECS was causing the ecs agent to hang on freshly launched instances.
 
 
 7.1.1 (2020-06-23)
@@ -12,7 +14,7 @@ Changelog for Paco
 
 ### Fixed
 
-- EC2 instacnes without ECS config failed trying to make launch script.
+- EC2 instances without ECS config failed trying to make launch script.
 
 
 7.1.0 (2020-06-22)

@@ -1492,7 +1492,12 @@ function run_launch_bundle() {{
     CLUSTER_NAME=$(ec2lm_instance_tag_value 'Paco-ECSCluster-Name')
     echo ECS_CLUSTER=$CLUSTER_NAME > /etc/ecs/ecs.config
     echo ECS_LOGLEVEL={ecs.log_level} >> /etc/ecs/ecs.config
-    systemctl restart ecs
+
+    # restart the ecs service to reload the new config
+    # do not do this on initial launch or ecs just hangs
+    if [ "$EC2LM_IGNORE_CACHE" != "true" ] ; then
+        systemctl restart ecs.service
+    fi
 }}
 
 function disable_launch_bundle() {{
