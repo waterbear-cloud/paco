@@ -15,6 +15,7 @@ class ECSServicesResourceEngine(ResourceEngine):
         #     role = self.create_service_role()
 
         # Task Execution Role
+        task_execution_role = None
         if self.resource.is_enabled():
             task_execution_role = self.create_task_execution_role()
 

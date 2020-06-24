@@ -411,7 +411,7 @@ function ec2lm_launch_bundles() {{
     if [ "$EC2LM_IGNORE_CACHE" == "false" ] ; then
         if [ "$CACHE_ID" == "$OLD_CACHE_ID" ] ; then
             echo "Cache Id unchanged. Skipping ec2lm_launch_bundles."
-            exit
+            return
         fi
     fi
 
@@ -425,7 +425,7 @@ function ec2lm_launch_bundles() {{
     flock -n 100
     if [ $? -ne 0 ]  ; then
         echo “[ERROR] EC2LM LaunchBundles: Unable to obtain EC2LM lock.”
-        exit 1
+        return 1
     fi
 
     # Synchronize latest bundle contents
@@ -515,7 +515,7 @@ function swap_on() {{
                     echo  "EC2LM: Swap: $OUTPUT"
                 elif [[ $RES -ne 0 ]] ; then
                     echo "EC2LM: Swap: Error: $OUTPUT"
-                    exit 255
+                    return 255
                 fi
             fi
             set -e

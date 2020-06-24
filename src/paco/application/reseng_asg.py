@@ -50,7 +50,13 @@ role_name: %s""" % ("ASGInstance")
         if not hasattr(role_config, 'assume_role_policy') or role_config.assume_role_policy == None:
             policy_dict = { 'effect': 'Allow',
                             'service': ['ec2.amazonaws.com'] }
+            if self.resource.instance_ami_type == 'amazon_ecs':
+                policy_dict['service'].append('ecs.amazonaws.com')
             role_config.set_assume_role_policy(policy_dict)
+        elif role_config.assume_role_policy.service != None:
+            if 'ecs.amazonaws.com' not in role_config.assume_role_policy.service:
+                raise AttributeError('ECS Instance Role: AssumeRole: Service must include ecs.amazonaws.com')
+
         # Always turn on instance profiles for ASG instances
         role_config.instance_profile = True
         role_config.enabled = self.resource.is_enabled()
