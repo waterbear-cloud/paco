@@ -1,6 +1,9 @@
 from paco.application.res_engine import ResourceEngine
 from paco.core.yaml import YAML
+from paco.models.references import get_model_obj_from_ref
 from paco.stack import StackHooks
+from paco.utils import md5sum
+from paco.aws_api.ecs.capacityprovider import ECSCapacityProviderClient
 import paco.cftemplates
 import paco.models
 
@@ -99,7 +102,41 @@ role_name: %s""" % ("ASGInstance")
             cache_method=self.app_engine.ec2_launch_manager.ec2lm_update_instances_cache,
             hook_arg=(bucket.paco_ref_parts, self.resource)
         )
+        # For ECS ASGs add an ECS Hook
+        if self.resource.ecs != None:
+            self.stack.hooks.add(
+                name='ProvisionECSCapacityProvider.' + self.resource.name,
+                stack_action='update',
+                stack_timing='post',
+                hook_method=self.provision_ecs_capacity_provider,
+                cache_method=self.provision_ecs_capacity_provider_cache,
+                hook_arg=self.resource
+            )
 
     def get_ec2lm_cache_id(self, hook, hook_arg):
         "EC2LM cache id"
         return self.ec2lm_cache_id
+
+    def provision_ecs_capacity_provider_cache(self, hook, asg):
+        "Cache method for ECS ASG"
+        cp = asg.ecs.capacity_provider
+        return md5sum(str_data=f"{asg.paco_ref}-{cp.is_enabled()}-{cp.target_capacity}-{cp.minimum_scaling_step_size}-{cp.maximum_scaling_step_size}")
+
+    def provision_ecs_capacity_provider(self, hook, asg):
+        "Hook to add an ECS Capacity Provider to the ECS Cluster the ASG belongs to"
+        # create a Capacity Provider
+        capacity_provider_name = f"{asg.netenv_name}-{asg.env_name}-{asg.app_name}-{asg.group_name}-{asg.name}"
+        asg.ecs.capacity_provider.aws_name = capacity_provider_name
+        asg_name = asg.stack.get_outputs_value('ASGName')
+        asg_client = self.account_ctx.get_aws_client('autoscaling', self.aws_region)
+        response = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+        asg_arn = response['AutoScalingGroups'][0]['AutoScalingGroupARN']
+        capacity_provider_client = ECSCapacityProviderClient(
+            self.paco_ctx.project,
+            self.account_ctx,
+            self.aws_region,
+            asg.ecs.capacity_provider,
+            asg_arn,
+            asg,
+        )
+        capacity_provider_client.provision()

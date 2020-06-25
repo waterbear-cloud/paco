@@ -4,6 +4,17 @@ Changelog for Paco
 7.1.2 (unreleased)
 ------------------
 
+### Added
+
+- GitHub.Source action with WebHook for sourcebuilddeploy-style CodePipeline
+
+- Initial ECS Capacity Provider support `asg.ecs.capacity_provider` (experimental)
+
+### Changed
+
+- ECR Repository has an `account` field instead of hard-coding to tools. If left blank
+  it assumes the same account as the environment.
+
 ### Fixed
 
 - EC2LM configuration loading for ECS was causing the ecs agent to hang on freshly launched instances.
