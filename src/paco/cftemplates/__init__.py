@@ -36,6 +36,7 @@ from paco.cftemplates.route53healthcheck import Route53HealthCheck
 from paco.cftemplates.route53_hostedzone import Route53HostedZone
 from paco.cftemplates.route53_recordset import Route53RecordSet
 from paco.cftemplates.secrets_manager import SecretsManager
+from paco.cftemplates.secrets_manager import SecretsManagerResourcePolicy
 from paco.cftemplates.ebs import EBS
 from paco.cftemplates.codedeployapplication import CodeDeployApplication
 from paco.cftemplates.backup import BackupVault

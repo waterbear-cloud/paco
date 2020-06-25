@@ -504,6 +504,7 @@ class CodePipeline(StackTemplate):
             ),
             Roles=[troposphere.Ref(pipeline_service_role_res)]
         )
+        self._pipeline_service_role_res = pipeline_service_role_res
         return pipeline_service_role_res
 
     def create_pipeine_from_sourcebuilddeploy(self, deploy_region):

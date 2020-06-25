@@ -1,7 +1,80 @@
 from paco import utils
 from paco.cftemplates.cftemplates import StackTemplate
+from paco.models.references import Reference
 import troposphere
 import troposphere.secretsmanager
+
+
+class SecretsManagerResourcePolicy(StackTemplate):
+    def __init__(
+        self,
+        stack,
+        paco_ctx,
+        role_arn,
+        secret_ref,
+    ):
+        super().__init__(
+            stack,
+            paco_ctx,
+            iam_capabilities=["CAPABILITY_NAMED_IAM"],
+        )
+        self.set_aws_name('SecretsManagerResourcePolicy')
+        self.init_template('Secrets Manager: Resource Policy')
+
+        # role_arn_param = self.create_cfn_parameter(
+        #     param_type='String',
+        #     name='CodePipelineRoleArn',
+        #     description="CodePipeline Serice Role",
+        #     value=role_arn,
+        # )
+        secret = Reference(secret_ref)
+        secret_hash = utils.md5sum(str_data='.'.join(secret.parts))
+        secret_arn_param = self.create_cfn_parameter(
+            param_type='String',
+            name='SecretArn' + secret_hash,
+            description="Secret Manager Secret Arn",
+            value=secret_ref + '.arn',
+        )
+
+#         policy_json_start = """{
+#   "Version" : "2012-10-17",
+#   "Statement" : [
+#     {
+#       "Effect": "Allow",
+#       "Principal": {"AWS": """ + '"'
+
+#         policy_json_end = '"' + """},
+#       "Action": "secretsmanager:GetSecretValue",
+#       "Resource": "*",
+#       "Condition": {
+#         "ForAnyValue:StringEquals": {
+#           "secretsmanager:VersionStage" : "AWSCURRENT"
+#         }
+#       }
+#     }
+#   ]
+# }"""
+#         policy_json = troposphere.Join('',[policy_json_start, troposphere.Ref(role_arn_param), policy_json_end ])
+        policy_json = {
+            "Version" : "2012-10-17",
+            "Statement" : [{
+                "Effect": "Allow",
+                "Principal": {"AWS": role_arn},
+                "Action": "secretsmanager:GetSecretValue",
+                "Resource": "*",
+                "Condition": {
+                    "ForAnyValue:StringEquals": {
+                    "secretsmanager:VersionStage" : "AWSCURRENT"
+                    }
+                }
+            }]
+        }
+        resource_policy_res = troposphere.secretsmanager.ResourcePolicy(
+            title="ResourcePolicy",
+            ResourcePolicy=policy_json,
+            SecretId=troposphere.Ref(secret_arn_param),
+        )
+        self.template.add_resource(resource_policy_res)
 
 
 class SecretsManager(StackTemplate):

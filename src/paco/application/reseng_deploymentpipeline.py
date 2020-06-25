@@ -26,6 +26,9 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         self.codecommit_role_name = 'codecommit_role'
         self.github_role_name = 'github_role'
         self.source_stage = None
+        self.secrets_accounts = []
+        self.secret_refs = []
+        self.add_resource_policy = False
 
     def init_stage(self, stage_config):
         "Initialize an Action in a Stage: for source/build/deploy-style"
@@ -125,6 +128,22 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             deploy_region = self.aws_region
             base_aws_name = self.stack_group.get_aws_name()
 
+        # Add SecretsManager Resource Policy access
+        if self.add_resource_policy:
+            # ToDO: create CodePipelineServiceRole in it's own template
+            role_arn = 'arn:aws:iam::***:role/NE-anet-dev-ECS-Deploy-Vendor-CodePipeline-Service'
+            # ToDo: just one cross-account ATM
+            secret_ref = self.secret_refs[0]
+            secrets_account_ctx = self.paco_ctx.get_account_context(account_ref=self.secrets_accounts[0])
+            rp_stack = self.stack_group.add_new_stack(
+                self.aws_region,
+                self.resource,
+                cftemplates.SecretsManagerResourcePolicy,
+                account_ctx=secrets_account_ctx,
+                stack_tags=self.stack_tags,
+                extra_context={'role_arn': role_arn, 'secret_ref': secret_ref},
+            )
+
         self.pipeline._stack = self.stack_group.add_new_stack(
             self.aws_region,
             self.resource,
@@ -138,6 +157,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
                 'artifacts_bucket_name': self.artifacts_bucket_meta['name']
             },
         )
+
 
         # Add CodeBuild Role ARN to KMS Key principal now that the role is created
         kms_config_dict['crypto_principal']['aws'] = self.kms_crypto_principle_list
@@ -171,6 +191,14 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         "Initialize a GitHub.Source action"
         if not action_config.is_enabled():
             return
+
+        if action_config.github_access_token.startswith('paco.ref '):
+            # detect if cross-account secret access is needed and create a secrets resource policy to allow access
+            secrets_account = self.resource.env_region_obj.network.aws_account
+            if self.pipeline.configuration.account != secrets_account:
+                self.add_resource_policy = True
+                self.secrets_accounts.append(secrets_account)
+                self.secret_refs.append(action_config.github_access_token)
 
     def init_stage_action_codecommit_source(self, action_config):
         "Initialize an IAM Role for the CodeCommit action"
