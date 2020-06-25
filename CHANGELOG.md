@@ -15,6 +15,8 @@ Changelog for Paco
 - ECR Repository has an `account` field instead of hard-coding to tools. If left blank
   it assumes the same account as the environment.
 
+- Secrets can now be deployed to specific accounts using an `account` field.
+
 ### Fixed
 
 - EC2LM configuration loading for ECS was causing the ecs agent to hang on freshly launched instances.

@@ -21,6 +21,7 @@ class SecretsManager(StackTemplate):
         self.init_template('Secrets Manager')
 
         is_enabled = False
+        account_ref = self.account_ctx.paco_ref
         for secret_app in secrets_config.values():
             for secret_group in secret_app.values():
                 for secret_name in secret_group.keys():
@@ -28,6 +29,11 @@ class SecretsManager(StackTemplate):
                     if secret_config.is_enabled() == False:
                         continue
                     is_enabled = True
+
+                    # Secrets only created in the accounts they are declared/assumed
+                    if secret_config.account != None:
+                        if secret_config.account != account_ref:
+                            continue
                     secret_hash = utils.md5sum(str_data=secret_config.paco_ref_parts)
 
                     # Secret resource
