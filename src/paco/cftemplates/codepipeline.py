@@ -117,11 +117,14 @@ class CodePipeline(StackTemplate):
         else:
             target_action = f'GitHub{stage_name}{action.name}'
         logical_id = f'Webhook{stage_name}{action.name}'
-        github_access_token = Reference(action.github_access_token).ref
+        if action.github_access_token.startswith('paco.ref '):
+            github_access_token = "{{resolve:secretsmanager:%s}}" % Reference(action.github_access_token).ref
+        else:
+            github_access_token = action.github_access_token
         cfn_export_dict= {
             'Authentication': 'GITHUB_HMAC',
             'AuthenticationConfiguration': {
-                'SecretToken': "{{resolve:secretsmanager:%s}}" % github_access_token,
+                'SecretToken': github_access_token,
             },
             'Filters': [{'JsonPath': "$.ref", 'MatchEquals': 'refs/heads/{Branch}'}],
             'TargetAction': target_action,
@@ -317,7 +320,7 @@ class CodePipeline(StackTemplate):
         }
 
     def create_github_source_properties(self, stage, action, info):
-        github_access_token = Reference(action.github_access_token).ref
+
         github_owner_param = self.create_cfn_parameter(
             param_type='String',
             name=self.create_cfn_logical_id('GitHubOwner' + stage.name + action.name),
@@ -337,12 +340,16 @@ class CodePipeline(StackTemplate):
             value=action.deployment_branch_name
         )
         output_artifact_name = '{}Artifact{}{}'.format(info['Name'], stage.name, action.name)
+        if action.github_access_token.startswith('paco.ref '):
+            github_access_token = "{{resolve:secretsmanager:%s}}" % Reference(action.github_access_token).ref
+        else:
+            github_access_token = action.github_access_token
         return {
             'Configuration': {
                 'Owner': troposphere.Ref(github_owner_param),
                 'Repo': troposphere.Ref(github_repo_param),
                 'Branch': troposphere.Ref(github_deploy_branch_name_param),
-                'OAuthToken': "{{resolve:secretsmanager:%s}}" % github_access_token,
+                'OAuthToken': github_access_token,
                 'PollForSourceChanges': action.poll_for_source_changes,
             },
             'OutputArtifacts': [ troposphere.codepipeline.OutputArtifacts(Name=output_artifact_name) ]
@@ -516,7 +523,6 @@ class CodePipeline(StackTemplate):
             elif action.type == 'GitHub.Source':
                 if action.is_enabled():
                     self.github_source_enabled = True
-                github_access_token = Reference(action.github_access_token).ref
                 #github_token_param = self.create_cfn_parameter(
                 #    param_type='AWS::SSM::Parameter::Value<String>',
                 #    name='GitHubTokenSSMParameterName',
@@ -542,6 +548,10 @@ class CodePipeline(StackTemplate):
                     value=action.deployment_branch_name,
                 )
 
+                if action.github_access_token.startswith('paco.ref '):
+                    github_access_token = "{{resolve:secretsmanager:%s}}" % Reference(action.github_access_token).ref
+                else:
+                    github_access_token = action.github_access_token
                 github_source_action = troposphere.codepipeline.Actions(
                     Name='GitHub',
                     ActionTypeId = troposphere.codepipeline.ActionTypeId(
@@ -554,7 +564,7 @@ class CodePipeline(StackTemplate):
                         'Owner': troposphere.Ref(github_owner_param),
                         'Repo': troposphere.Ref(github_repo_param),
                         'Branch': troposphere.Ref(github_deploy_branch_name_param),
-                        'OAuthToken': "{{resolve:secretsmanager:%s}}" % github_access_token, #troposphere.Ref(github_token_param),
+                        'OAuthToken': github_access_token,
                         'PollForSourceChanges': False,
                     },
                     OutputArtifacts = [

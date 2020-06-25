@@ -182,11 +182,6 @@ class ECSServices(StackTemplate):
             self.template.add_resource(private_dns_namespace_res)
         for service in ecs_config.services.values():
             service_dict = service.cfn_export_dict
-            # TODO: Implement DeploymentConfiguration
-            #service_dict['DeploymentConfiguration'] = {
-            #    'MaximumPercent': 200,
-            #    'MinimumHealthyPercent': 100
-            #}
 
             # Service Discovery
             if service.hostname != None:
