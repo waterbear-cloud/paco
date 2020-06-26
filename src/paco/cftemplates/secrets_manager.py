@@ -28,12 +28,10 @@ class SecretsManager(StackTemplate):
                     secret_config = secret_group[secret_name]
                     if secret_config.is_enabled() == False:
                         continue
-                    is_enabled = True
-
                     # Secrets only created in the accounts they are declared/assumed
-                    if secret_config.account != None:
-                        if secret_config.account != account_ref:
-                            continue
+                    if secret_config._account_ref != account_ref:
+                        continue
+                    is_enabled = True
                     secret_hash = utils.md5sum(str_data=secret_config.paco_ref_parts)
 
                     # Secret resource

@@ -244,10 +244,15 @@ class NetEnvController(Controller):
         "Set a cloud resource or property"
         secrets_manager = get_parent_by_interface(resource, schemas.ISecretsManager)
         if secrets_manager != None:
-            account_ctx = self.paco_ctx.get_account_context(account_ref=self.env_region.network.aws_account)
+            if resource.account == None:
+                secret_account = self.env_region.network.aws_account
+            else:
+                secret_account = resource.account
+            account_ctx = self.paco_ctx.get_account_context(account_ref=secret_account)
             secret_name = resource.paco_ref_parts
             self.secrets_manager(secret_name, account_ctx, self.env_region.name)
-        raise UnknownSetCommand(f"Unable to apply set command for resource of type '{resource.__class__.__name__}'\nObject: {resource.paco_ref_parts}")
+        else:
+            raise UnknownSetCommand(f"Unable to apply set command for resource of type '{resource.__class__.__name__}'\nObject: {resource.paco_ref_parts}")
 
     def lambda_deploy_command(self, resource):
         "Deploy Lambda funciton(s) to AWS"

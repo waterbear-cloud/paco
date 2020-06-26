@@ -130,6 +130,13 @@ class Route53Controller(Controller):
     def resolve_ref(self, ref):
         # route53.example.id
         if ref.last_part == "id":
-            return self.get_stack(zone_id=ref.parts[2])
+            hosted_zone = self.get_stack(zone_id=ref.parts[2]).resource
+            if hosted_zone.external_resource != None:
+                return hosted_zone.external_resource.hosted_zone_id
+            else:
+                return self.get_stack(zone_id=ref.parts[2])
+        elif ref.last_part == "private_hosted_zone":
+            return self.get_stack(zone_id=ref.parts[2]).resource.private_hosted_zone
+
 
         return None

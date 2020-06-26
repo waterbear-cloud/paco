@@ -17,11 +17,25 @@ class Route53HostedZone(StackTemplate):
             hosted_zone_id_output_value = zone_config.external_resource.hosted_zone_id
             nameservers_output_value = ','.join(zone_config.external_resource.nameservers)
         else:
-            hosted_zone_res = troposphere.route53.HostedZone(
-                title='HostedZone',
-                template=self.template,
-                Name=zone_config.domain_name
-            )
+            hosted_zone_dict = {
+                'Name': zone_config.domain_name
+            }
+            if zone_config.private_hosted_zone == True:
+                vpc_id_param = self.create_cfn_parameter(
+                        param_type = 'String',
+                        name = 'VPCId',
+                        description = 'The Id of the VPC where the private hosted zone will be provisioned.',
+                        value = zone_config.vpc_associations+'.id'
+                    )
+                vpc_region = zone_config.vpc_associations.split('.')[4]
+                hosted_zone_dict['VPCs'] = [ {
+                    'VPCId': troposphere.Ref(vpc_id_param),
+                    'VPCRegion': vpc_region
+                }]
+            hosted_zone_res = troposphere.route53.HostedZone.from_dict(
+                'HostedZone', hosted_zone_dict
+                )
+            self.template.add_resource(hosted_zone_res)
             hosted_zone_id_output_value = troposphere.Ref(hosted_zone_res)
             nameservers_output_value = troposphere.Join(',', troposphere.GetAtt(hosted_zone_res, 'NameServers'))
 

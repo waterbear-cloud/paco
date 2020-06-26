@@ -17,6 +17,8 @@ class SecretsManagerStackGroup(StackGroup):
         self.config = config
         self.config.resolve_ref_obj = self
         self.stack_tags = stack_tags
+        self.secrets_stack = {}
+        self.secret_account_lookup = {}
 
     def init(self):
         # Initialize resolve_ref_obj and accounts
@@ -26,12 +28,16 @@ class SecretsManagerStackGroup(StackGroup):
                 for secret in grp_config.values():
                     secret.resolve_ref_obj = self
                     if secret.account != None:
-                        accounts[secret.account] = True
+                        secret._account_ref = secret.account
+                        accounts[secret._account_ref] = True
+                        self.secret_account_lookup[secret.paco_ref] = secret._account_ref
                     else:
-                        accounts[self.account_ctx.paco_ref]
+                        secret._account_ref = self.account_ctx.paco_ref
+                        accounts[secret._account_ref] = True
+                        self.secret_account_lookup[secret.paco_ref] = secret._account_ref
 
         for account_ref in accounts.keys():
-            self.secrets_stack = self.add_new_stack(
+            self.secrets_stack[account_ref] = self.add_new_stack(
                 self.region,
                 self.config,
                 paco.cftemplates.SecretsManager,
@@ -41,5 +47,5 @@ class SecretsManagerStackGroup(StackGroup):
 
     def resolve_ref(self, ref):
         if schemas.ISecretsManagerSecret.providedBy(ref.resource):
-            return self.secrets_stack
+            return self.secrets_stack[self.secret_account_lookup['paco.ref '+'.'.join(ref.parts[:-1])]]
         return None

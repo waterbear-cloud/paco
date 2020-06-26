@@ -55,9 +55,6 @@ class CodeCommitStackGroup(StackGroup):
         ssh_keys = iam_client.list_ssh_public_keys(
             UserName=user_config.username
         )
-        # User does not have an SSK key defined - skip
-        if ssh_keys['SSHPublicKeys'] == []:
-            return
 
         KeyExists = False
         for ssh_key_config in ssh_keys['SSHPublicKeys']:

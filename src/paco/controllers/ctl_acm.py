@@ -55,23 +55,29 @@ class ACMController(Controller):
                 col_2_size=9
             )
 
-            cert_arn = acm_client.request_certificate(cert_arn, cert_config.subject_alternative_names)
+            cert_arn = acm_client.request_certificate(
+                cert_arn,
+                cert_config.private_ca,
+                cert_config.subject_alternative_names
+            )
             acm_config['cert_arn_cache'] = cert_arn
-            validation_records = None
-            while validation_records == None:
-                validation_records = acm_client.get_domain_validation_records(cert_arn)
-                if len(validation_records) == 0 or 'ResourceRecord' not in validation_records[0]:
-                    self.paco_ctx.log_action_col(
-                        'Waiting',
-                        'DNS',
-                        acm_config['account_ctx'].get_name()+'.'+acm_config['region'],
-                        'DNS validation record: ' + cert_config.domain_name,
-                        col_2_size=9
-                    )
-                    time.sleep(2)
-                    validation_records = None
+            # Private CA Certs are automatically validated. No need for DNS.
+            if cert_config.private_ca == None:
+                validation_records = None
+                while validation_records == None:
+                    validation_records = acm_client.get_domain_validation_records(cert_arn)
+                    if len(validation_records) == 0 or 'ResourceRecord' not in validation_records[0]:
+                        self.paco_ctx.log_action_col(
+                            'Waiting',
+                            'DNS',
+                            acm_config['account_ctx'].get_name()+'.'+acm_config['region'],
+                            'DNS validation record: ' + cert_config.domain_name,
+                            col_2_size=9
+                        )
+                        time.sleep(2)
+                        validation_records = None
 
-            acm_client.create_domain_validation_records(cert_arn)
+                acm_client.create_domain_validation_records(cert_arn)
 
 
     def get_cert_config(self, group_id, cert_id):

@@ -16,7 +16,12 @@ class Route53RecordSet(StackTemplate):
         if references.is_ref(record_set_name) == True:
             record_set_name = paco_ctx.get_ref(record_set_name)
         super().__init__(stack, paco_ctx)
-        self.set_aws_name('RecordSet', record_set_name)
+
+        hosted_zone_is_private = self.paco_ctx.get_ref(record_set_config['dns'].hosted_zone+'.private_hosted_zone')
+        aws_name = 'RecordSet'
+        if hosted_zone_is_private == True:
+            aws_name = aws_name+'-Private'
+        self.set_aws_name(aws_name, record_set_name)
 
         # Troposphere Template Initialization
         self.init_template('Route53 RecordSet: ' + record_set_name)
