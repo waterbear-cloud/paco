@@ -783,7 +783,7 @@ class CodePipeline(StackTemplate):
 
     def init_deploy_stage(self, deploy_region):
         if self.pipeline.deploy == None:
-            return [None, None, None]
+            return [None, None, None, None]
         deploy_stage_actions = []
         s3_deploy_assume_role_statement = None
         codedeploy_deploy_assume_role_statement = None
