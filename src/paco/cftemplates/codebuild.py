@@ -2,6 +2,7 @@ from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Actio
 from awacs.sts import AssumeRole
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.models.references import get_model_obj_from_ref
+from paco.utils import md5sum
 import troposphere
 import troposphere.codepipeline
 import troposphere.codebuild
@@ -91,7 +92,7 @@ class CodeBuild(StackTemplate):
             codecommit_user_policy_param = self.create_cfn_parameter(
                 param_type='String',
                 name='CodeCommitUserPolicy' + user_logical_id,
-                description='The CodeComit User Policy for ' + user.username,
+                description='The CodeCommit User Policy for ' + user.username,
                 value=user_ref + '.policy.arn',
             )
             managed_policy_arns.append(troposphere.Ref(codecommit_user_policy_param))
@@ -118,47 +119,72 @@ class CodeBuild(StackTemplate):
             filter_id='IAM.Policy.PolicyName'
         )
 
+        # Project Policy
+        policy_statements = [
+            Statement(
+                Sid='S3Access',
+                Effect=Allow,
+                Action=[
+                    Action('s3', 'PutObject'),
+                    Action('s3', 'PutObjectAcl'),
+                    Action('s3', 'GetObject'),
+                    Action('s3', 'GetObjectAcl'),
+                    Action('s3', 'ListBucket'),
+                    Action('s3', 'DeleteObject'),
+                    Action('s3', 'GetBucketPolicy'),
+                ],
+                Resource=[
+                    troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}'),
+                    troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}/*'),
+                ]
+            ),
+            Statement(
+                Sid='CloudWatchLogsAccess',
+                Effect=Allow,
+                Action=[
+                    Action('logs', 'CreateLogGroup'),
+                    Action('logs', 'CreateLogStream'),
+                    Action('logs', 'PutLogEvents'),
+                ],
+                Resource=[ 'arn:aws:logs:*:*:*' ]
+            ),
+            Statement(
+                Sid='KMSCMK',
+                Effect=Allow,
+                Action=[
+                    Action('kms', '*')
+                ],
+                Resource=[ troposphere.Ref(self.cmk_arn_param) ]
+            ),
+        ]
+        if len(action_config.secrets) > 0:
+            secrets_arn_list = []
+            for secret_ref in action_config.secrets:
+                name_hash = md5sum(str_data=secret_ref)
+                secret_arn_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name='SecretsArn' + name_hash,
+                    description='Secrets Manager Secret Arn to expose access to',
+                    value=secret_ref+'.arn'
+                )
+                secrets_arn_list.append(troposphere.Ref(secret_arn_param))
+            policy_statements.append(
+                Statement(
+                    Sid='SecretsManager',
+                    Effect=Allow,
+                    Action=[
+                        Action('secretsmanager', 'GetSecretValue'),
+                    ],
+                    Resource=secrets_arn_list
+                )
+            )
+
+
         project_policy_res = troposphere.iam.PolicyType(
             title='CodeBuildProjectPolicy',
             PolicyName=project_policy_name,
             PolicyDocument=PolicyDocument(
-                Statement=[
-                    Statement(
-                        Sid='S3Access',
-                        Effect=Allow,
-                        Action=[
-                            Action('s3', 'PutObject'),
-                            Action('s3', 'PutObjectAcl'),
-                            Action('s3', 'GetObject'),
-                            Action('s3', 'GetObjectAcl'),
-                            Action('s3', 'ListBucket'),
-                            Action('s3', 'DeleteObject'),
-                            Action('s3', 'GetBucketPolicy'),
-                        ],
-                        Resource=[
-                            troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}'),
-                            troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}/*'),
-                        ]
-                    ),
-                    Statement(
-                        Sid='CloudWatchLogsAccess',
-                        Effect=Allow,
-                        Action=[
-                            Action('logs', 'CreateLogGroup'),
-                            Action('logs', 'CreateLogStream'),
-                            Action('logs', 'PutLogEvents'),
-                        ],
-                        Resource=[ 'arn:aws:logs:*:*:*' ]
-                    ),
-                    Statement(
-                        Sid='KMSCMK',
-                        Effect=Allow,
-                        Action=[
-                            Action('kms', '*')
-                        ],
-                        Resource=[ troposphere.Ref(self.cmk_arn_param) ]
-                    ),
-                ],
+                Statement=policy_statements
             ),
             Roles=[troposphere.Ref(project_role_res)]
         )
