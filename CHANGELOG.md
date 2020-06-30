@@ -6,6 +6,8 @@ Changelog for Paco
 
 ### Added
 
+- ASG has new `ssh_access` field to allow managing users and groups of SSH public key pairs on the instance.
+
 - GitHub.Source action with WebHook for sourcebuilddeploy-style CodePipeline
 
 - Initial ECS Capacity Provider support `asg.ecs.capacity_provider` (experimental)
