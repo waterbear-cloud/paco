@@ -4,6 +4,7 @@ from paco.cftemplates import Route53RecordSet
 from paco.core.exception import StackException, PacoException
 from paco.core.exception import PacoErrorCode
 from paco.controllers.controllers import Controller
+from paco.models import schemas
 import os
 
 
@@ -131,12 +132,18 @@ class Route53Controller(Controller):
         # route53.example.id
         if ref.last_part == "id":
             hosted_zone = self.get_stack(zone_id=ref.parts[2]).resource
+            # legacy support
+            if schemas.IRoute53Resource.providedBy(hosted_zone):
+                hosted_zone = hosted_zone.hosted_zones[ref.parts[2]]
             if hosted_zone.external_resource != None:
                 return hosted_zone.external_resource.hosted_zone_id
             else:
                 return self.get_stack(zone_id=ref.parts[2])
         elif ref.last_part == "private_hosted_zone":
+            resource = self.get_stack(zone_id=ref.parts[2]).resource
+            # legacy support
+            if schemas.IRoute53Resource.providedBy(resource):
+                return resource.hosted_zones[ref.parts[2]].private_hosted_zone
             return self.get_stack(zone_id=ref.parts[2]).resource.private_hosted_zone
-
 
         return None
