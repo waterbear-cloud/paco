@@ -24,7 +24,7 @@ from paco.cftemplates.loggroups import LogGroups
 from paco.cftemplates.cloudtrail import CloudTrail
 from paco.cftemplates.config import Config
 from paco.cftemplates.cloudfront import CloudFront
-from paco.cftemplates.rds import RDS, DBParameterGroup
+from paco.cftemplates.rds import RDS, DBParameterGroup, DBClusterParameterGroup, RDSAurora
 from paco.cftemplates.elasticache import ElastiCache
 from paco.cftemplates.vpc_peering import VPCPeering
 from paco.cftemplates.apigateway import ApiGatewayRestApi
