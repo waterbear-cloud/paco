@@ -78,7 +78,9 @@ class DBClusterParameterGroup(StackTemplate):
 
 
 class RDSAurora(StackTemplate):
-    """RDS Aurora for MySQL and PostgreSQL"""
+    """
+    RDS Aurora for MySQL and PostgreSQL
+    """
 
     def __init__(self, stack, paco_ctx,):
         rds_aurora = stack.resource
@@ -126,6 +128,22 @@ class RDSAurora(StackTemplate):
             )
         db_cluster_dict['DBClusterParameterGroupName'] = troposphere.Ref(cluster_parameter_group_ref)
 
+        # Default DB Parameter Group
+        need_db_pg = False
+        default_instance = rds_aurora.default_instance
+        for db_instance in rds_aurora.db_instances.values():
+            if default_instance.parameter_group == None and db_instance.parameter_group == None:
+                need_db_pg = True
+        if need_db_pg:
+            # create default DB Parameter Group
+            param_group_family = gen_vocabulary.rds_engine_versions[rds_config.engine][rds_config.engine_version]['param_group_family']
+            default_dbparametergroup_resource = troposphere.rds.DBParameterGroup(
+                "DBParameterGroup",
+                template=template,
+                Family=param_group_family,
+                Description=troposphere.Ref('AWS::StackName')
+            )
+
         # DB Snapshot Identifier
         if rds_aurora.db_snapshot_identifier == '' or rds_aurora.db_snapshot_identifier == None:
             db_snapshot_id_enabled = False
@@ -150,7 +168,7 @@ class RDSAurora(StackTemplate):
                     title=sta_logical_id,
                     SecretId=troposphere.Ref(secret_arn_param),
                     TargetId=troposphere.Ref(rds_cluster_logical_id),
-                    TargetType='AWS::RDS::DBInstance'
+                    TargetType='AWS::RDS::DBCluster'
                 )
                 template.add_resource(secret_target_attachment_resource)
                 db_cluster_dict['MasterUserPassword'] = troposphere.Join(
@@ -174,33 +192,64 @@ class RDSAurora(StackTemplate):
         template.add_resource(db_cluster_res)
 
         # DB Instance(s)
-        idx = 0
-        for db_instance in rds_aurora.db_instances:
+        for db_instance in rds_aurora.db_instances.values():
+            logical_name = self.create_cfn_logical_id(db_instance.name)
             db_instance_dict = {
                 'DBClusterIdentifier': troposphere.Ref(db_cluster_res),
-                'DBInstanceClass': db_instance.db_instance_type,
+                'DBInstanceClass': db_instance.get_value_or_default('db_instance_type'),
                 'DBSubnetGroupName': troposphere.Ref(db_subnet_group_resource),
-                'PubliclyAccessible': db_instance.publicly_accessible,
+                'EnablePerformanceInsights': db_instance.get_value_or_default('enable_performance_insights'),
                 'Engine': rds_aurora.engine,
+                'PubliclyAccessible': db_instance.get_value_or_default('publicly_accessible'),
+                'AllowMajorVersionUpgrade': db_instance.get_value_or_default('allow_major_version_upgrade'),
+                'AutoMinorVersionUpgrade': db_instance.get_value_or_default('auto_minor_version_upgrade'),
             }
             if db_instance.availability_zone != None:
                 subnet_id_ref = f'{rds_aurora.segment}.az{db_instance.availability_zone}.availability_zone'
                 db_instance_subnet_param = self.create_cfn_parameter(
                     param_type='String',
-                    name=f'DBInstanceAZ{idx}',
-                    description=f'Subnet where DB Instance {idx} is provisioned',
+                    name=f'DBInstanceAZ{logical_name}',
+                    description=f'Subnet where DB Instance {logical_name} is provisioned',
                     value=subnet_id_ref,
                 )
                 db_instance_dict['AvailabilityZone'] = troposphere.Ref(db_instance_subnet_param)
 
+            # DB Parameter Group
+            if default_instance.parameter_group == None and db_instance.parameter_group == None:
+                dbparametergroup_resource = default_dbparametergroup_resource
+            elif db_instance.parameter_group != None:
+                # Use instance-specific DB Parameter Group
+                dbparametergroup_resource = self.create_cfn_parameter(
+                    name=f'DBParameterGroupName{logical_name}',
+                    param_type='String',
+                    description='DB Parameter Group Name',
+                    value=db_instance.parameter_group + '.name',
+                )
+            else:
+                # Use default DB Parameter Group
+                dbparametergroup_resource = self.create_cfn_parameter(
+                    name=f'DBParameterGroupName{logical_name}',
+                    param_type='String',
+                    description='DB Parameter Group Name',
+                    value=default_instance.parameter_group + '.name',
+                )
+            db_instance_dict['DBParameterGroupName'] = troposphere.Ref(dbparametergroup_resource)
+
             db_instance_resource = troposphere.rds.DBInstance.from_dict(
-                f'DBInstance{idx}',
+                f'DBInstance{logical_name}',
                 db_instance_dict
             )
             template.add_resource(db_instance_resource)
-            idx += 1
 
-        # Outputs
+            # DB Instance Outputs
+            self.create_output(
+                title=f'DBInstanceName{logical_name}',
+                description=f'DB Instance Name for {logical_name}',
+                value=troposphere.Ref(db_instance_resource),
+                ref=db_instance.paco_ref_parts + ".name",
+            )
+
+        # DB Cluster Outputs
         self.create_output(
             title='DBClusterName',
             description='DB Cluster Name',
@@ -227,8 +276,27 @@ class RDSAurora(StackTemplate):
         )
 
         # DNS - Route53 Record Set
+        if rds_aurora.is_dns_enabled() == True:
+            route53_ctl = self.paco_ctx.get_controller('route53')
+            for dns in rds_aurora.dns:
+                route53_ctl.add_record_set(
+                    self.account_ctx,
+                    self.aws_region,
+                    rds_aurora,
+                    enabled=rds_aurora.is_enabled(),
+                    dns=dns,
+                    record_set_type='CNAME',
+                    resource_records=[rds_aurora.paco_ref + '.endpoint.address'],
+                    stack_group=self.stack.stack_group,
+                    config_ref=rds_aurora.paco_ref_parts + '.dns'
+                )
+
 
 class RDS(StackTemplate):
+    """
+    RDS creates a singel AWS::RDS::DBInstance resource
+    """
+
     def __init__(self, stack, paco_ctx,):
         rds_config = stack.resource
         config_ref = rds_config.paco_ref_parts

@@ -170,6 +170,8 @@ class ApplicationEngine():
             return self.stack_group.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.RDS):
             return self.stack_group.get_stack_from_ref(ref)
+        elif isinstance(ref.resource, models.applications.RDSClusterInstance):
+            return self.stack_group.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.EBS):
             return self.stack_group.get_stack_from_ref(ref)
         elif schemas.IDBParameterGroup.providedBy(ref.resource):

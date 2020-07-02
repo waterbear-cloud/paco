@@ -581,11 +581,11 @@ class StackTemplate():
 
         return role_name
 
-    def set_aws_name(self, template_name, first_id=None, second_id=None, third_id=None):
+    def set_aws_name(self, template_name, first_id=None, second_id=None, third_id=None, fourth_id=None):
         if isinstance(first_id, list):
             id_list = first_id
         else:
-            id_list = [first_id, second_id, third_id]
+            id_list = [first_id, second_id, third_id, fourth_id]
 
         # Exceptions: ApiGatewayRestApi | Lambda
         if self.paco_ctx.legacy_flag('cftemplate_aws_name_2019_09_17') == True and \
