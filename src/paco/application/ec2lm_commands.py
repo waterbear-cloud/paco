@@ -102,6 +102,13 @@ systemctl enable cachefilesd
 
 }
 
+# ToDo: add debian and centos/RHEL and test SuSE
+default_user = {
+    "ubuntu": "/home/ubuntu",
+    "suse": "/root",
+    "amazon": "/home/ec2-user",
+}
+
 ssm_regions = {
     'us-east-2':  None,
     'us-east-1': None,

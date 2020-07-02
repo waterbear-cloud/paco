@@ -103,7 +103,7 @@ role_name: %s""" % ("ASGInstance")
             hook_arg=(bucket.paco_ref_parts, self.resource)
         )
         # For ECS ASGs add an ECS Hook
-        if self.resource.ecs != None:
+        if self.resource.ecs != None and self.resource.is_enabled() == True:
             self.stack.hooks.add(
                 name='ProvisionECSCapacityProvider.' + self.resource.name,
                 stack_action='update',

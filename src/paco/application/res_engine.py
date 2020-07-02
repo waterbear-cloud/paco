@@ -1,8 +1,8 @@
 """
 ResourceEngines initialize a Resource for an Application
 """
+from paco.models import schemas
 import paco.cftemplates
-
 
 class ResourceEngine():
     "Base class for ResourceEngines"
@@ -40,7 +40,26 @@ class ResourceEngine():
     def init_monitoring(self):
         "Add an Alarms template with Alarms specific to the Resource"
         # If alarm_sets exist init alarms for them
-        if getattr(self.resource, 'monitoring', None) != None and \
+        if schemas.IRDSAurora.providedBy(self.resource):
+            # RDS Aurora can have alarms for each individual DB Instance
+            for db_instance in self.resource.db_instances.values():
+                monitoring = getattr(db_instance, 'monitoring', None)
+                # if no instance-level monitoring use default_instance monitoring
+                if monitoring == None:
+                    monitoring = getattr(self.resource.default_instance, 'monitoring', None)
+                    db_instance.monitoring = monitoring
+                if monitoring != None and monitoring.enabled and \
+                    getattr(monitoring, 'alarm_sets', None) != None and \
+                    len(monitoring.alarm_sets.values()) > 0:
+                    self.stack_group.add_new_stack(
+                        self.aws_region,
+                        db_instance,
+                        paco.cftemplates.CWAlarms,
+                        change_protected=False,
+                        support_resource_ref_ext=f'db_instances.{db_instance.name}.alarms',
+                        stack_tags=self.stack_tags
+                    )
+        elif getattr(self.resource, 'monitoring', None) != None and \
             self.resource.monitoring.enabled and \
             getattr(self.resource.monitoring, 'alarm_sets', None) != None and \
             len(self.resource.monitoring.alarm_sets.values()) > 0:

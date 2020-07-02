@@ -78,19 +78,16 @@ class CFBaseAlarm(StackTemplate):
 
 class CWAlarms(CFBaseAlarm):
     """CloudFormation template for CloudWatch Alarms"""
-    def __init__(
-        self,
-        stack,
-        paco_ctx,
-    ):
-        super().__init__(
-            stack,
-            paco_ctx,
-        )
+    def __init__(self, stack, paco_ctx):
+        super().__init__(stack, paco_ctx)
         resource = stack.resource
         alarm_sets = resource.monitoring.alarm_sets
         if schemas.IResource.providedBy(resource):
             self.set_aws_name('Alarms', self.resource_group_name, self.resource_name, stack.resource.type)
+        elif schemas.IRDSClusterInstance.providedBy(resource):
+            # in this case resource is an RDSClusterInstance
+            dbcluster = self.resource.dbcluster
+            self.set_aws_name('Alarms', dbcluster.group_name, dbcluster.name, self.resource.name, stack.resource.type)
         else:
             # Application-level Alarms
             self.set_aws_name('Alarms')
@@ -193,7 +190,15 @@ class CWAlarms(CFBaseAlarm):
                 description='The resource id or name for the metric dimension.',
                 value=value
             )
-
+        # DBCluster with DBInstances
+        elif schemas.IRDSClusterInstance.providedBy(resource):
+            value = f"{resource.dbcluster.paco_ref}.db_instances.{resource.name}.name"
+            dimension_param = self.create_cfn_parameter(
+                name='DimensionResource',
+                param_type='String',
+                description='The resource id or name for the metric dimension.',
+                value=value
+            )
         for alarm in alarms:
             if alarm.enabled == True:
                 alarms_are_enabled = True
@@ -255,6 +260,11 @@ HINT: Ensure that the monitoring.log_sets for the resource is enabled and that t
             if not schemas.ICloudWatchLogAlarm.providedBy(alarm):
                 # simple metric Resources with a single Dimension based on the resource type
                 if schemas.IResource.providedBy(resource) and len(alarm.dimensions) < 1:
+                    dimensions.append(
+                        {'Name': vocabulary.cloudwatch[resource.type]['dimension'],
+                         'Value': troposphere.Ref(dimension_param)}
+                    )
+                elif schemas.IRDSClusterInstance.providedBy(resource) and len(alarm.dimensions) < 1:
                     dimensions.append(
                         {'Name': vocabulary.cloudwatch[resource.type]['dimension'],
                          'Value': troposphere.Ref(dimension_param)}
