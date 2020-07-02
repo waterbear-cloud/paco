@@ -1,9 +1,12 @@
+from awacs.aws import Allow, Action, Policy, Principal, Statement, Condition, StringEquals
 from paco import utils
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.models import schemas
 from paco.models import gen_vocabulary
+import awacs.kms
 import troposphere
 import troposphere.rds
+import troposphere.kms
 import troposphere.secretsmanager
 
 
@@ -87,7 +90,6 @@ class RDSAurora(StackTemplate):
         super().__init__(stack, paco_ctx)
         self.set_aws_name('RDSAurora', self.resource_group_name, self.resource.name)
         self.init_template('RDSAurora')
-        template = self.template
         if not rds_aurora.is_enabled(): return
 
         rds_cluster_logical_id = 'DBCluster'
@@ -114,7 +116,7 @@ class RDSAurora(StackTemplate):
             param_group_family = gen_vocabulary.rds_engine_versions[rds_aurora.engine][rds_aurora.engine_version]['param_group_family']
             cluster_parameter_group_ref = troposphere.rds.DBClusterParameterGroup(
                 "DBClusterParameterGroup",
-                template=template,
+                template=self.template,
                 Family=param_group_family,
                 Description=troposphere.Ref('AWS::StackName')
             )
@@ -139,7 +141,7 @@ class RDSAurora(StackTemplate):
             param_group_family = gen_vocabulary.rds_engine_versions[rds_config.engine][rds_config.engine_version]['param_group_family']
             default_dbparametergroup_resource = troposphere.rds.DBParameterGroup(
                 "DBParameterGroup",
-                template=template,
+                template=self.template,
                 Family=param_group_family,
                 Description=troposphere.Ref('AWS::StackName')
             )
@@ -151,6 +153,55 @@ class RDSAurora(StackTemplate):
             db_snapshot_id_enabled = True
         if db_snapshot_id_enabled == True:
             db_cluster_dict['SnapshotIdentifier'] = rds_aurora.db_snapshot_identifier
+
+        # KMS-CMK key encryption
+        if rds_aurora.enable_kms_encryption == True and db_snapshot_id_enabled == False:
+            key_policy = Policy(
+                Version='2012-10-17',
+                Statement=[
+                    Statement(
+                        Effect=Allow,
+                        Action=[Action('kms', '*'),],
+                        Principal=Principal("AWS", [f'arn:aws:iam::{self.stack.account_ctx.id}:root']),
+                        Resource=['*'],
+                    ),
+                    Statement(
+                        Effect=Allow,
+                        Action=[
+                            awacs.kms.Encrypt,
+                            awacs.kms.Decrypt,
+                            Action('kms', 'ReEncrypt*'),
+                            Action('kms', 'GenerateDataKey*'),
+                            awacs.kms.CreateGrant,
+                            awacs.kms.ListGrants,
+                            awacs.kms.DescribeKey,
+                        ],
+                        Principal=Principal('AWS',['*']),
+                        Resource=['*'],
+                        Condition=Condition([
+                            StringEquals({
+                                'kms:CallerAccount': f'{self.stack.account_ctx.id}',
+                                'kms:ViaService': f'rds.{self.stack.aws_region}.amazonaws.com'
+                            })
+                        ]),
+                    ),
+                ],
+            )
+            kms_key_resource = troposphere.kms.Key(
+                title='AuroraKMSCMK',
+                template=self.template,
+                KeyPolicy=key_policy,
+            )
+            db_cluster_dict['StorageEncrypted'] = True
+            db_cluster_dict['KmsKeyId'] = troposphere.Ref(kms_key_resource)
+
+            kms_key_alias_resource = troposphere.kms.Alias(
+                title="AuroraKMSCMKAlias",
+                template=self.template,
+                AliasName=troposphere.Sub('alias/${' + rds_cluster_logical_id + '}'),
+                TargetKeyId=troposphere.Ref(kms_key_resource),
+            )
+            kms_key_alias_resource.DependsOn = rds_cluster_logical_id
 
         # Username and Passsword - only if there is no DB Snapshot Identifier
         if db_snapshot_id_enabled == False:
@@ -166,11 +217,12 @@ class RDSAurora(StackTemplate):
                 )
                 secret_target_attachment_resource = troposphere.secretsmanager.SecretTargetAttachment(
                     title=sta_logical_id,
+                    template=self.template,
                     SecretId=troposphere.Ref(secret_arn_param),
                     TargetId=troposphere.Ref(rds_cluster_logical_id),
                     TargetType='AWS::RDS::DBCluster'
                 )
-                template.add_resource(secret_target_attachment_resource)
+                secret_target_attachment_resource.DependsOn = rds_cluster_logical_id
                 db_cluster_dict['MasterUserPassword'] = troposphere.Join(
                     '',
                     ['{{resolve:secretsmanager:', troposphere.Ref(secret_arn_param), ':SecretString:password}}' ]
@@ -189,7 +241,7 @@ class RDSAurora(StackTemplate):
             rds_cluster_logical_id,
             db_cluster_dict
         )
-        template.add_resource(db_cluster_res)
+        self.template.add_resource(db_cluster_res)
 
         # DB Instance(s)
         for db_instance in rds_aurora.db_instances.values():
@@ -239,7 +291,7 @@ class RDSAurora(StackTemplate):
                 f'DBInstance{logical_name}',
                 db_instance_dict
             )
-            template.add_resource(db_instance_resource)
+            self.template.add_resource(db_instance_resource)
 
             # DB Instance Outputs
             self.create_output(
