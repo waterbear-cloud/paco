@@ -632,7 +632,8 @@ aws s3 sync s3://{ec2lm_bucket_name}/ --region={resource.region_name} $EC2LM_FOL
 . $EC2LM_FOLDER/$EC2LM_FUNCTIONS
 
 # Run every Paco EC2LM launch bundle on launch
-ec2lm_launch_bundles on_launch &> /tmp/paco-ec2lm_launch_bundles
+mkdir -p /var/log/paco
+ec2lm_launch_bundles on_launch
 
 """
 

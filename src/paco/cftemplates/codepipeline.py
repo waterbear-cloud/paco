@@ -77,6 +77,7 @@ class CodePipeline(StackTemplate):
         self.s3_deploy_enabled = False
         self.manual_approval_is_enabled = False
         self.s3_deploy_statements = []
+        self.ecs_deploy_assume_role_statement = None
 
         self.codedeploy_deploy_assume_role_statement = None
         self.s3_deploy_assume_role_statement = None
