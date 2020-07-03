@@ -80,7 +80,7 @@ child accounts.
       - String
       - Administrator delegate IAM Role name for the account
       - 
-      - 
+      - Paco-Organization-Account-Delegate-Role
     * - admin_iam_users
       - Container<AdminIAMUser_>
       - Admin IAM Users
@@ -142,6 +142,8 @@ An AWS Account Administerator IAM User
 .. _Title: yaml-base.html#Title
 
 .. _Deployable: yaml-base.html#Deployable
+
+.. _Enablable: yaml-base.html#Enablable
 
 .. _SecurityGroupRule: yaml-base.html#SecurityGroupRule
 

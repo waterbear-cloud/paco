@@ -36,6 +36,8 @@ A generic placeholder for any schema.
 
 {IDeployable}
 
+{IEnablable}
+
 {IType}
 
 {IDNSEnablable}
@@ -940,16 +942,14 @@ An unconstrainted set of key-value pairs used to set advanced options for Elasti
 RDS
 ---
 
-Relational Database Service (RDS) is a collection of relational databases.
+Relational Database Service (RDS) allows you to set up, operate, and scale a relational database in AWS.
 
-There is no plain vanilla RDS type, but rather choose the type that specifies which kind of relational database
-engine to use. For example, ``RDSMysql`` for MySQL on RDS or ``RDSAurora`` for an Amazon Aurora database.
+You can create a single DB Instance or an Aurora DB Cluster.
 
-If you want to use DB Parameter Groups with your RDS, then use the ``parameter_group`` field to
-reference a DBParameterGroup_ resource. Keeping DB Parameter Group as a separate resource allows you
-to have multiple Paramater Groups provisioned at the same time. For example, you might have both
-resources for ``dbparams_performance`` and ``dbparams_debug``, allowing you to use the AWS
-Console to switch between performance and debug configuration quickl in an emergency.
+DB Instance
+^^^^^^^^^^^
+
+Currently Paco supports ``RDSMysql`` and ``RDSPostgresql`` for single database instances.
 
 .. sidebar:: Prescribed Automation
 
@@ -1017,23 +1017,180 @@ Console to switch between performance and debug configuration quickl in an emerg
   primary_hosted_zone: paco.ref netenv.mynet.network.vpc.private_hosted_zone
   parameter_group: paco.ref netenv.mynet.applications.app.groups.web.resources.dbparams_performance
 
+Aurora DB Cluster
+^^^^^^^^^^^^^^^^^
 
-{IRDSOptionConfiguration}
+AWS Aurora is relational databases built for the cloud. Aurora features a distributed, fault-tolerant,
+self-healing storage system and can easily scale from a single database instance to a cluster of multiple
+database instances.
 
-{INameValuePair}
+When creating an Aurora RDS resource, you must specify your ``db_instances``. If you specify more than
+one database instance, then Aurora will automatically designate one instance as a Writer and all other
+instances will be Readers.
+
+Each ``db_instance`` can specify it's own complete set of configuration or you can use the ``default_instance``
+field to shared default configuration between instances. If a ``db_instance`` doesn't specify a value but it is
+specified by ``default_instance`` it will fall back to using that value.
+
+A simple Aurora with only a single database instance could be:
+
+.. code-block:: yaml
+  :caption: Simple Aurora single instance
+
+  type: RDSMysqlAurora
+  default_instance:
+    db_instance_type: db.t3.medium
+  db_instances:
+    single:
+
+A more complex Aurora with a cluster of three database instances could be:
+
+.. code-block:: yaml
+  :caption: Three instance Aurora cluster
+
+  type: RDSMysqlAurora
+  default_instance:
+    db_instance_type: db.t3.medium
+    enhanced_monitoring_interval_in_seconds: 30
+  db_instances:
+    first:
+      availability_zone: 1
+      db_instance_type: db.t3.large
+      enhanced_monitoring_interval_in_seconds: 5
+    second:
+      availability_zone: 2
+    third:
+      availability_zone: 3
+
+.. sidebar:: Prescribed Automation
+
+  ``secrets_password``: Uses a Secrets Manager secret for the database master password.
+
+  ``enable_kms_encryption``: Encrypts the database storage. Paco will creates a KMS-CMK dedicated to the
+  DB Cluster. This key can only be accessed by the AWS RDS service.
+
+  ``enhanced_monitoring_interval_in_seconds``: Paco will create an IAM Role to allow the RDS monitoring service
+  access to perform enhanced monitoring.
+
+  ``cluster_event_notifications`` and ``event_notifications`` must reference a group specified in ``resource/sns.yaml``.
+  This group (SNS Topic) must already be provisioned in the same account and region as the database.
+
+  ``monitoring`` applies to ``db_instances`` and will apply CloudWatch Alarms that are specific to each database instance
+  in the Aurora cluster.
+
+.. code-block:: yaml
+  :caption: RDSPostgresqlAurora db cluster example
+
+  type: RDSPostgresqlAurora
+  order: 10
+  enabled: true
+  availability_zones: all
+  engine_version: '11.7'
+  port: 5432
+  master_username: master
+  secrets_password: paco.ref netenv.anet.secrets_manager.anet.app.database
+  backup_preferred_window: 04:00-05:00
+  backup_retention_period: 7
+  maintenance_preferred_window: 'Sat:07:00-Sat:08:00'
+  cluster_parameter_group: paco.ref netenv.mynet.applications.app.groups.web.resources.clusterparams
+  cloudwatch_logs_exports:
+    - error
+  security_groups:
+    - paco.ref netenv.mynet.network.vpc.security_groups.app.database
+  segment: paco.ref netenv.anet.network.vpc.segments.private
+  dns:
+    - domain_name: database.test.internal
+      hosted_zone: paco.ref netenv.mynet.network.vpc.private_hosted_zone
+  enable_kms_encryption: true
+  cluster_event_notifications:
+    groups:
+      - wb_low
+    event_categories:
+      - failover
+      - failure
+      - notification
+  default_instance:
+    parameter_group: paco.ref netenv.mynet.applications.app.groups.web.resources.dbparams_performance
+    enable_performance_insights: true
+    publicly_accessible: false
+    db_instance_type: db.t3.medium
+    allow_major_version_upgrade: true
+    auto_minor_version_upgrade: true
+    event_notifications:
+      groups:
+        - admin
+      event_categories:
+        - availability
+        - configuration change
+        - deletion
+        - failover
+        - failure
+        - maintenance
+        - notification
+        - recovery
+    monitoring:
+      enabled: true
+      alarm_sets:
+        basic_dbinstance:
+  db_instances:
+    first:
+      db_instance_type: db.t3.medium
+      enhanced_monitoring_interval_in_seconds: 30
+      availability_zone: 1
+      monitoring:
+        enabled: true
+        alarm_sets:
+          complex_dbinstance:
+    second:
+      enable_performance_insights: false
+      event_notifications:
+        groups:
+          - admin
+        event_categories:
+          - maintenance
+
 
 {IRDSMysql}
 
 {IRDSPostgresql}
 
+{IRDSPostgresqlAurora}
+
+{IRDSMysqlAurora}
+
+{IRDSOptionConfiguration}
+
+{INameValuePair}
+
+{IRDSMultiAZ}
+
+{IRDSInstance}
+
 {IRDSAurora}
 
-{IDBParameterGroup}
+{IRDSDBInstanceEventNotifications}
+
+{IRDSClusterDefaultInstance}
+
+{IRDSClusterInstance}
+
+{IRDSClusterInstances}
+
+{IRDSDBClusterEventNotifications}
 
 DBParameters
 ^^^^^^^^^^^^
 
-A unconstrainted set of key-value pairs.
+If you want to use DB Parameter Groups with your RDS, then use the ``parameter_group`` field to
+reference a DBParameterGroup_ resource. Keeping DB Parameter Groups as separate resources allows
+having multiple Paramater Groups provisioned at the same time. For example, you might have both
+resources for ``dbparams_performance`` and ``dbparams_debug``, allowing you to use the AWS
+Console to switch between performance and debug configuration quickl in an emergency.
+
+{IDBParameterGroup}
+
+{IDBClusterParameterGroup}
+
 
 {IRoute53HealthCheck}
 
@@ -1437,6 +1594,17 @@ MINOR_SCHEMAS = {
     'IDeploymentPipelineConfiguration': None,
     'IDeploymentGroupS3Location': None,
     'IRDSMysql': None,
+    'IRDSMultiAZ': None,
+    'IRDSInstance': None,
+    'IRDSDBInstanceEventNotifications': None,
+    'IRDSClusterDefaultInstance': None,
+    'IRDSClusterInstance': None,
+    'IRDSClusterInstances': None,
+    'IRDSDBClusterEventNotifications': None,
+    'IDBClusterParameterGroup': None,
+    'IRDSMysqlAurora': None,
+    'IRDSPostgresql': None,
+    'IRDSPostgresqlAurora': None,
     'IRDSAurora': None,
     'IElastiCacheRedis': None,
     'IElasticsearchCluster': None,
@@ -1603,6 +1771,8 @@ yaml_base_links = """
 .. _Title: yaml-base.html#Title
 
 .. _Deployable: yaml-base.html#Deployable
+
+.. _Enablable: yaml-base.html#Enablable
 
 .. _SecurityGroupRule: yaml-base.html#SecurityGroupRule
 

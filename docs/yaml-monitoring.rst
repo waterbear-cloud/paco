@@ -1132,6 +1132,8 @@ Container for `Route53HealthCheck`_ objects.
 
 .. _Deployable: yaml-base.html#Deployable
 
+.. _Enablable: yaml-base.html#Enablable
+
 .. _SecurityGroupRule: yaml-base.html#SecurityGroupRule
 
 .. _ApplicationEngine: yaml-base.html#ApplicationEngine

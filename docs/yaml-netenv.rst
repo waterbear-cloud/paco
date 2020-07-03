@@ -1174,6 +1174,11 @@ Secret for the Secrets Manager.
       - Purpose
       - Constraints
       - Default
+    * - account
+      - PacoReference
+      - Account to provision the Secret in
+      - Paco Reference to `Account`_.
+      - 
     * - generate_secret_string
       - Object<GenerateSecretString_>
       - Generate SecretString object
@@ -1541,6 +1546,8 @@ BackupSelectionConditionResourceType
 .. _Title: yaml-base.html#Title
 
 .. _Deployable: yaml-base.html#Deployable
+
+.. _Enablable: yaml-base.html#Enablable
 
 .. _SecurityGroupRule: yaml-base.html#SecurityGroupRule
 

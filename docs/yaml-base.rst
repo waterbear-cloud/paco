@@ -156,6 +156,32 @@ Indicates if this configuration tree should be enabled or not.
 
 
 
+Enablable
+----------
+
+
+Indicate if this configuration should be enabled.
+    
+
+.. _Enablable:
+
+.. list-table:: :guilabel:`Enablable`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - enabled
+      - Boolean
+      - Enabled
+      - 
+      - True
+
+
+
 Type
 -----
 

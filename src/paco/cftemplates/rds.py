@@ -1,12 +1,13 @@
-from awacs.aws import Allow, Action, Policy, Principal, Statement, Condition, StringEquals
+from awacs.aws import Allow, Action, Policy, PolicyDocument, Principal, Statement, Condition, StringEquals
 from paco import utils
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.models import schemas
 from paco.models import gen_vocabulary
 import awacs.kms
 import troposphere
-import troposphere.rds
+import troposphere.iam
 import troposphere.kms
+import troposphere.rds
 import troposphere.secretsmanager
 
 
@@ -87,13 +88,14 @@ class RDSAurora(StackTemplate):
 
     def __init__(self, stack, paco_ctx,):
         rds_aurora = stack.resource
-        super().__init__(stack, paco_ctx)
+        super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_IAM"])
         self.set_aws_name('RDSAurora', self.resource_group_name, self.resource.name)
         self.init_template('RDSAurora')
         if not rds_aurora.is_enabled(): return
 
         rds_cluster_logical_id = 'DBCluster'
         db_cluster_dict = rds_aurora.cfn_export_dict
+        self.notification_groups = {}
 
         # DB Subnet Group
         db_subnet_id_list_param = self.create_cfn_parameter(
@@ -144,6 +146,29 @@ class RDSAurora(StackTemplate):
                 template=self.template,
                 Family=param_group_family,
                 Description=troposphere.Ref('AWS::StackName')
+            )
+
+        # Enhanced Monitoring Role
+        need_monitoring_role = False
+        for db_instance in rds_aurora.db_instances.values():
+            enhanced_monitoring_interval = db_instance.get_value_or_default('enhanced_monitoring_interval_in_seconds')
+            if enhanced_monitoring_interval != 0:
+                need_monitoring_role = True
+        if need_monitoring_role:
+            enhanced_monitoring_role_resource = troposphere.iam.Role(
+                title='MonitoringIAMRole',
+                template=self.template,
+                AssumeRolePolicyDocument=PolicyDocument(
+                    Statement=[
+                        Statement(
+                            Effect=Allow,
+                            Action=[Action("sts", "AssumeRole")],
+                            Principal=Principal("Service", "monitoring.rds.amazonaws.com")
+                        )
+                    ]
+                ),
+                ManagedPolicyArns=["arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"],
+                Path="/",
             )
 
         # DB Snapshot Identifier
@@ -243,6 +268,19 @@ class RDSAurora(StackTemplate):
         )
         self.template.add_resource(db_cluster_res)
 
+        # Cluster Event Notifications
+        if hasattr(rds_aurora, 'cluster_event_notifications'):
+            for group in rds_aurora.cluster_event_notifications.groups:
+                notif_param = self.create_notification_param(group)
+                event_subscription_resource = troposphere.rds.EventSubscription(
+                    title=self.create_cfn_logical_id(f"ClusterEventSubscription{group}"),
+                    template=self.template,
+                    EventCategories=rds_aurora.cluster_event_notifications.event_categories,
+                    SourceIds=[troposphere.Ref(db_cluster_res)],
+                    SnsTopicArn=troposphere.Ref(notif_param),
+                    SourceType='db-cluster',
+                )
+
         # DB Instance(s)
         for db_instance in rds_aurora.db_instances.values():
             logical_name = self.create_cfn_logical_id(db_instance.name)
@@ -256,6 +294,10 @@ class RDSAurora(StackTemplate):
                 'AllowMajorVersionUpgrade': db_instance.get_value_or_default('allow_major_version_upgrade'),
                 'AutoMinorVersionUpgrade': db_instance.get_value_or_default('auto_minor_version_upgrade'),
             }
+            enhanced_monitoring_interval = db_instance.get_value_or_default('enhanced_monitoring_interval_in_seconds')
+            if enhanced_monitoring_interval != 0:
+                db_instance_dict['MonitoringInterval'] = enhanced_monitoring_interval
+                db_instance_dict['MonitoringRoleArn'] = troposphere.GetAtt(enhanced_monitoring_role_resource, "Arn")
             if db_instance.availability_zone != None:
                 subnet_id_ref = f'{rds_aurora.segment}.az{db_instance.availability_zone}.availability_zone'
                 db_instance_subnet_param = self.create_cfn_parameter(
@@ -292,6 +334,20 @@ class RDSAurora(StackTemplate):
                 db_instance_dict
             )
             self.template.add_resource(db_instance_resource)
+
+            # DB Event Notifications
+            event_notifications = db_instance.get_value_or_default('event_notifications')
+            if event_notifications != None:
+                for group in event_notifications.groups:
+                    notif_param = self.create_notification_param(group)
+                    event_subscription_resource = troposphere.rds.EventSubscription(
+                        title=self.create_cfn_logical_id(f"DBEventSubscription{logical_name}{group}"),
+                        template=self.template,
+                        EventCategories=event_notifications.event_categories,
+                        SourceIds=[troposphere.Ref(db_instance_resource)],
+                        SnsTopicArn=troposphere.Ref(notif_param),
+                        SourceType='db-instance',
+                    )
 
             # DB Instance Outputs
             self.create_output(
@@ -343,6 +399,22 @@ class RDSAurora(StackTemplate):
                     config_ref=rds_aurora.paco_ref_parts + '.dns'
                 )
 
+    def create_notification_param(self, group):
+        "Create a CFN Parameter for a Notification Group"
+        notification_ref = self.paco_ctx.project['resource']['sns'].computed[self.account_ctx.name][self.stack.aws_region][group].paco_ref + '.arn'
+
+        # Re-use existing Parameter or create new one
+        param_name = 'Notification{}'.format(utils.md5sum(str_data=notification_ref))
+        if param_name not in self.notification_groups:
+            notification_param = self.create_cfn_parameter(
+                param_type='String',
+                name=param_name,
+                description='SNS Topic to notify',
+                value=notification_ref,
+                min_length=1, # prevent borked empty values from breaking notification
+            )
+            self.notification_groups[param_name] = notification_param
+        return self.notification_groups[param_name]
 
 class RDS(StackTemplate):
     """

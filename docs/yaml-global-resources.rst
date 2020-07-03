@@ -105,7 +105,7 @@ A CloudTrail can be used to set-up a multi-account CloudTrail that sends logs fr
     * - s3_bucket_account
       - PacoReference |star|
       - Account which will contain the S3 Bucket that the CloudTrails will be stored in
-      - Must be an paco.ref to an account Paco Reference to `S3Bucket`_.
+      - Must be an paco.ref to an account Paco Reference to `Account`_.
       - 
     * - s3_key_prefix
       - String
@@ -320,6 +320,11 @@ CodeCommit User
       - Purpose
       - Constraints
       - Default
+    * - permissions
+      - Choice
+      - Permissions
+      - Must be one of ReadWrite or ReadOnly
+      - ReadWrite
     * - public_ssh_key
       - String
       - CodeCommit User Public SSH Key
@@ -331,6 +336,7 @@ CodeCommit User
       - 
       - 
 
+*Base Schemas* `Named`_, `Title`_
 
 EC2 Keypairs
 ------------
@@ -697,7 +703,7 @@ AssumeRolePolicy
       - Default
     * - aws
       - List<String>
-      - List of AWS Principles
+      - List of AWS Principals
       - 
       - 
     * - effect
@@ -763,10 +769,20 @@ Statement
       - Action(s)
       - 
       - 
+    * - condition
+      - Dict
+      - Condition
+      - Each Key is the Condition name and the Value must be a dictionary of request filters. e.g. { "StringEquals" : { "aws:username" : "johndoe" }}
+      - {}
     * - effect
       - String
       - Effect
       - Must be one of: 'Allow', 'Deny'
+      - 
+    * - principal
+      - Object<Principal_>
+      - Principal
+      - 
       - 
     * - resource
       - List<String>
@@ -861,10 +877,20 @@ Route53 Hosted Zone
       - Parent Hozed Zone name
       - 
       - 
+    * - private_hosted_zone
+      - Boolean
+      - Make this hosted zone private.
+      - 
+      - False
     * - record_sets
       - List<Route53RecordSet_> |star|
       - List of Record Sets
       - 
+      - 
+    * - vpc_associations
+      - PacoReference
+      - The VPC the private hosted zone will be provisioned in.
+      - Paco Reference to `VPC`_.
       - 
 
 *Base Schemas* `Deployable`_, `Named`_, `Title`_
@@ -1001,6 +1027,8 @@ SNS has only two resources: SNS Topics and SNS Subscriptions.
 .. _Title: yaml-base.html#Title
 
 .. _Deployable: yaml-base.html#Deployable
+
+.. _Enablable: yaml-base.html#Enablable
 
 .. _SecurityGroupRule: yaml-base.html#SecurityGroupRule
 

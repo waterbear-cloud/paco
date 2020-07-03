@@ -645,6 +645,8 @@ for that ASG.
 
     ``secrets``: Adds a policy to the Instance Role which allows instances to access the specified secrets.
 
+    ``ssh_access``:  Grants users and groups SSH access to the instances.
+
 .. code-block:: yaml
     :caption: example ASG configuration
 
@@ -698,6 +700,11 @@ for that ASG.
     termination_policies:
       - Default
     scaling_policy_cpu_average: 60
+    ssh_access:
+      users:
+        - bdobbs
+      groups:
+        - developers
     launch_options:
         update_packages: true
         ssm_agent: true
@@ -892,6 +899,11 @@ See the AWS documentation for more information on how `AutoScalingRollingUpdate 
       - Elastic Block Store Volume Mounts
       - 
       - 
+    * - ecs
+      - Object<ECSASGConfiguration_>
+      - ECS Configuration
+      - 
+      - 
     * - efs_mounts
       - List<EFSMount_>
       - Elastic Filesystem Configuration
@@ -928,7 +940,7 @@ See the AWS documentation for more information on how `AutoScalingRollingUpdate 
       - Must be one of amazon, centos, suse, debian, ubuntu, microsoft or redhat.
       - amazon
     * - instance_iam_role
-      - Object<Role_> |star|
+      - Object<Role_>
       - 
       - 
       - 
@@ -1000,6 +1012,11 @@ See the AWS documentation for more information on how `AutoScalingRollingUpdate 
     * - segment
       - String
       - Segment
+      - 
+      - 
+    * - ssh_access
+      - Object<SSHAccess_>
+      - SSH Access
       - 
       - 
     * - target_groups
@@ -2086,6 +2103,11 @@ AWSCertificateManager
       - Marks this resource as external to avoid creating and validating it.
       - 
       - False
+    * - private_ca
+      - String
+      - Private Certificate Authority ARN
+      - 
+      - 
     * - subject_alternative_names
       - List<String>
       - Subject alternative names
@@ -3018,6 +3040,11 @@ CodeBuild DeploymentPipeline Build Stage
       - Purpose
       - Constraints
       - Default
+    * - buildspec
+      - String
+      - buildspec.yml filename
+      - 
+      - 
     * - codebuild_compute_type
       - String
       - CodeBuild Compute Type
@@ -3028,14 +3055,29 @@ CodeBuild DeploymentPipeline Build Stage
       - CodeBuild Docker Image
       - 
       - 
+    * - codecommit_repo_users
+      - List<PacoReference>
+      - CodeCommit Users
+      - Paco Reference to `CodeCommitUser`_.
+      - 
     * - deployment_environment
       - String
       - Deployment Environment
       - 
       - 
+    * - privileged_mode
+      - Boolean
+      - Privileged Mode
+      - 
+      - False
     * - role_policies
       - List<Policy_>
       - Project IAM Role Policies
+      - 
+      - 
+    * - secrets
+      - List<PacoReference>
+      - List of PacoReferences to Secrets Manager secrets
       - 
       - 
     * - timeout_mins
@@ -5344,16 +5386,14 @@ IAM Managed Policy
 RDS
 ---
 
-Relational Database Service (RDS) is a collection of relational databases.
+Relational Database Service (RDS) allows you to set up, operate, and scale a relational database in AWS.
 
-There is no plain vanilla RDS type, but rather choose the type that specifies which kind of relational database
-engine to use. For example, ``RDSMysql`` for MySQL on RDS or ``RDSAurora`` for an Amazon Aurora database.
+You can create a single DB Instance or an Aurora DB Cluster.
 
-If you want to use DB Parameter Groups with your RDS, then use the ``parameter_group`` field to
-reference a DBParameterGroup_ resource. Keeping DB Parameter Group as a separate resource allows you
-to have multiple Paramater Groups provisioned at the same time. For example, you might have both
-resources for ``dbparams_performance`` and ``dbparams_debug``, allowing you to use the AWS
-Console to switch between performance and debug configuration quickl in an emergency.
+DB Instance
+^^^^^^^^^^^
+
+Currently Paco supports ``RDSMysql`` and ``RDSPostgresql`` for single database instances.
 
 .. sidebar:: Prescribed Automation
 
@@ -5421,6 +5461,236 @@ Console to switch between performance and debug configuration quickl in an emerg
   primary_hosted_zone: paco.ref netenv.mynet.network.vpc.private_hosted_zone
   parameter_group: paco.ref netenv.mynet.applications.app.groups.web.resources.dbparams_performance
 
+Aurora DB Cluster
+^^^^^^^^^^^^^^^^^
+
+AWS Aurora is relational databases built for the cloud. Aurora features a distributed, fault-tolerant,
+self-healing storage system and can easily scale from a single database instance to a cluster of multiple
+database instances.
+
+When creating an Aurora RDS resource, you must specify your ``db_instances``. If you specify more than
+one database instance, then Aurora will automatically designate one instance as a Writer and all other
+instances will be Readers.
+
+Each ``db_instance`` can specify it's own complete set of configuration or you can use the ``default_instance``
+field to shared default configuration between instances. If a ``db_instance`` doesn't specify a value but it is
+specified by ``default_instance`` it will fall back to using that value.
+
+A simple Aurora with only a single database instance could be:
+
+.. code-block:: yaml
+  :caption: Simple Aurora single instance
+
+  type: RDSMysqlAurora
+  default_instance:
+    db_instance_type: db.t3.medium
+  db_instances:
+    single:
+
+A more complex Aurora with a cluster of three database instances could be:
+
+.. code-block:: yaml
+  :caption: Three instance Aurora cluster
+
+  type: RDSMysqlAurora
+  default_instance:
+    db_instance_type: db.t3.medium
+    enhanced_monitoring_interval_in_seconds: 30
+  db_instances:
+    first:
+      availability_zone: 1
+      db_instance_type: db.t3.large
+      enhanced_monitoring_interval_in_seconds: 5
+    second:
+      availability_zone: 2
+    third:
+      availability_zone: 3
+
+.. sidebar:: Prescribed Automation
+
+  ``secrets_password``: Uses a Secrets Manager secret for the database master password.
+
+  ``enable_kms_encryption``: Encrypts the database storage. Paco will creates a KMS-CMK dedicated to the
+  DB Cluster. This key can only be accessed by the AWS RDS service.
+
+  ``enhanced_monitoring_interval_in_seconds``: Paco will create an IAM Role to allow the RDS monitoring service
+  access to perform enhanced monitoring.
+
+.. code-block:: yaml
+  :caption: RDSPostgresqlAurora db cluster example
+
+  type: RDSPostgresqlAurora
+  order: 10
+  enabled: true
+  availability_zones: all
+  engine_version: '11.7'
+  port: 5432
+  master_username: master
+  secrets_password: paco.ref netenv.anet.secrets_manager.anet.app.database
+  backup_preferred_window: 04:00-05:00
+  backup_retention_period: 7
+  maintenance_preferred_window: 'Sat:07:00-Sat:08:00'
+  cluster_parameter_group: paco.ref netenv.mynet.applications.app.groups.web.resources.clusterparams
+  cloudwatch_logs_exports:
+    - error
+  security_groups:
+    - paco.ref netenv.mynet.network.vpc.security_groups.app.database
+  segment: paco.ref netenv.anet.network.vpc.segments.private
+  dns:
+    - domain_name: database.test.internal
+      hosted_zone: paco.ref netenv.mynet.network.vpc.private_hosted_zone
+  enable_kms_encryption: true
+  cluster_event_notifications:
+    groups:
+      - wb_low
+    event_categories:
+      - failover
+      - failure
+      - notification
+  default_instance:
+    parameter_group: paco.ref netenv.mynet.applications.app.groups.web.resources.dbparams_performance
+    enable_performance_insights: true
+    publicly_accessible: false
+    db_instance_type: db.t3.medium
+    allow_major_version_upgrade: true
+    auto_minor_version_upgrade: true
+    event_notifications:
+      groups:
+        - admin
+      event_categories:
+        - availability
+        - configuration change
+        - deletion
+        - failover
+        - failure
+        - maintenance
+        - notification
+        - recovery
+    monitoring:
+      enabled: true
+      alarm_sets:
+        basic_dbinstance:
+  db_instances:
+    first:
+      db_instance_type: db.t3.medium
+      enhanced_monitoring_interval_in_seconds: 30
+      availability_zone: 1
+      monitoring:
+        enabled: true
+        alarm_sets:
+          complex_dbinstance:
+    second:
+      enable_performance_insights: false
+      event_notifications:
+        groups:
+          - admin
+        event_categories:
+          - maintenance
+
+
+
+RDSMysql
+^^^^^^^^^
+
+RDS for MySQL
+
+.. _RDSMysql:
+
+.. list-table:: :guilabel:`RDSMysql`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `RDSInstance`_, `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `RDSMultiAZ`_, `Named`_, `Title`_, `Type`_
+
+
+RDSPostgresql
+^^^^^^^^^^^^^^
+
+RDS for Postgresql
+
+.. _RDSPostgresql:
+
+.. list-table:: :guilabel:`RDSPostgresql`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `RDSInstance`_, `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `RDSMultiAZ`_, `Named`_, `Title`_, `Type`_
+
+
+RDSPostgresqlAurora
+^^^^^^^^^^^^^^^^^^^^
+
+
+RDS PostgreSQL Aurora Cluster
+    
+
+.. _RDSPostgresqlAurora:
+
+.. list-table:: :guilabel:`RDSPostgresqlAurora`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - database_name
+      - String
+      - Database Name to create in the cluster
+      - Must be a valid database name for the DB Engine. Must contain 1 to 63 letters, numbers or underscores. Must begin with a letter or an underscore. Can't be PostgreSQL reserved word.
+      - 
+
+*Base Schemas* `RDSAurora`_, `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
+
+
+RDSMysqlAurora
+^^^^^^^^^^^^^^^
+
+
+RDS MySQL Aurora Cluster
+    
+
+.. _RDSMysqlAurora:
+
+.. list-table:: :guilabel:`RDSMysqlAurora`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - database_name
+      - String
+      - Database Name to create in the cluster
+      - Must be a valid database name for the DB Engine. Must contain 1 to 64 letters or numbers. Can't be MySQL reserved word.
+      - 
+
+*Base Schemas* `RDSAurora`_, `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
 
 
 RDSOptionConfiguration
@@ -5481,26 +5751,29 @@ A Name/Value pair to use for RDS Option Group configuration
       - Constraints
       - Default
     * - name
-      - String
+      - String |star|
       - Name
       - 
       - 
     * - value
-      - String
+      - PacoReference|String |star|
       - Value
+      - Paco Reference to `Interface`_. String Ok.
       - 
-      - 
 
 
 
-RDSMysql
-^^^^^^^^^
+RDSMultiAZ
+^^^^^^^^^^^
 
-RDS for MySQL
 
-.. _RDSMysql:
+RDS with MultiAZ capabilities. When you provision a Multi-AZ DB Instance, Amazon RDS automatically creates a
+primary DB Instance and synchronously replicates the data to a standby instance in a different Availability Zone (AZ).
+    
 
-.. list-table:: :guilabel:`RDSMysql`
+.. _RDSMultiAZ:
+
+.. list-table:: :guilabel:`RDSMultiAZ`
     :widths: 15 28 30 16 11
     :header-rows: 1
 
@@ -5509,23 +5782,25 @@ RDS for MySQL
       - Purpose
       - Constraints
       - Default
-    * -
-      -
-      -
-      -
-      -
+    * - multi_az
+      - Boolean
+      - Multiple Availability Zone deployment
+      - 
+      - False
 
-*Base Schemas* `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `RDSMultiAZ`_, `Named`_, `Title`_, `Type`_
+*Base Schemas* `RDSInstance`_, `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
 
 
-RDSPostgresql
---------------
+RDSInstance
+^^^^^^^^^^^^
 
-RDS for Postgresql
 
-.. _RDSPostgresql:
+RDS DB Instance
+    
 
-.. list-table:: :guilabel:`RDSPostgresql`
+.. _RDSInstance:
+
+.. list-table:: :guilabel:`RDSInstance`
     :widths: 15 28 30 16 11
     :header-rows: 1
 
@@ -5534,20 +5809,65 @@ RDS for Postgresql
       - Purpose
       - Constraints
       - Default
-    * -
-      -
-      -
-      -
-      -
+    * - allow_major_version_upgrade
+      - Boolean
+      - Allow major version upgrades
+      - 
+      - 
+    * - auto_minor_version_upgrade
+      - Boolean
+      - Automatic minor version upgrades
+      - 
+      - 
+    * - db_instance_type
+      - String
+      - RDS Instance Type
+      - 
+      - 
+    * - license_model
+      - String
+      - License Model
+      - 
+      - 
+    * - option_configurations
+      - List<RDSOptionConfiguration_>
+      - Option Configurations
+      - 
+      - 
+    * - parameter_group
+      - PacoReference
+      - RDS Parameter Group
+      - Paco Reference to `DBParameterGroup`_.
+      - 
+    * - publically_accessible
+      - Boolean
+      - Assign a Public IP address
+      - 
+      - 
+    * - storage_encrypted
+      - Boolean
+      - Enable Storage Encryption
+      - 
+      - 
+    * - storage_size_gb
+      - Int
+      - DB Storage Size in Gigabytes
+      - 
+      - 
+    * - storage_type
+      - String
+      - DB Storage Type
+      - 
+      - 
 
-*Base Schemas* `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `RDSMultiAZ`_, `Named`_, `Title`_, `Type`_
+*Base Schemas* `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
 
 
 RDSAurora
 ^^^^^^^^^^
 
 
-RDS Aurora
+RDS Aurora DB Cluster
     
 
 .. _RDSAurora:
@@ -5561,18 +5881,297 @@ RDS Aurora
       - Purpose
       - Constraints
       - Default
-    * - secondary_domain_name
-      - PacoReference|String
-      - Secondary Domain Name
-      - Paco Reference to `Route53HostedZone`_. String Ok.
+    * - availability_zones
+      - String
+      - Availability Zones to launch instances in.
+      - Must be one of all, 1, 2, 3 ...
+      - all
+    * - backtrack_window_in_seconds
+      - Int
+      - Backtrack Window in seconds. Disabled when set to 0.
+      - Maximum is 72 hours (259,200 seconds).
+      - 0
+    * - cluster_event_notifications
+      - Object<RDSDBClusterEventNotifications_>
+      - Cluster Event Notifications
       - 
-    * - secondary_hosted_zone
+      - 
+    * - cluster_parameter_group
       - PacoReference
-      - Secondary Hosted Zone
-      - Paco Reference to `Route53HostedZone`_.
+      - DB Cluster Parameter Group
+      - Paco Reference to `DBClusterParameterGroup`_.
       - 
+    * - db_instances
+      - Container<RDSClusterInstances_> |star|
+      - DB Instances
+      - 
+      - 
+    * - default_instance
+      - Object<RDSClusterDefaultInstance_>
+      - Default DB Instance configuration
+      - 
+      - 
+    * - enable_http_endpoint
+      - Boolean
+      - Enable an HTTP endpoint to provide a connectionless web service API for running SQL queries
+      - 
+      - False
+    * - enable_kms_encryption
+      - Boolean |star|
+      - Enable KMS Key encryption. Will create one KMS-CMK key dedicated to each DBCluster.
+      - 
+      - False
+    * - engine_mode
+      - Choice
+      - Engine Mode
+      - Must be one of provisioned, serverless, parallelquery, global, or multimaster.
+      - 
+    * - restore_type
+      - Choice
+      - Restore Type
+      - Must be one of full-copy or copy-on-write
+      - full-copy
+    * - use_latest_restorable_time
+      - Boolean
+      - Restore the DB cluster to the latest restorable backup time
+      - 
+      - False
 
 *Base Schemas* `RDS`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
+
+
+RDSDBInstanceEventNotifications
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+DB Instance Event Notifications
+    
+
+.. _RDSDBInstanceEventNotifications:
+
+.. list-table:: :guilabel:`RDSDBInstanceEventNotifications`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - event_categories
+      - Choice |star|
+      - Event Categories
+      - 
+      - 
+    * - groups
+      - List<String> |star|
+      - Groups
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+RDSClusterDefaultInstance
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Default configuration for a DB Instance that belongs to a DB Cluster.
+    
+
+.. _RDSClusterDefaultInstance:
+
+.. list-table:: :guilabel:`RDSClusterDefaultInstance`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - allow_major_version_upgrade
+      - Boolean
+      - Allow major version upgrades
+      - 
+      - 
+    * - auto_minor_version_upgrade
+      - Boolean
+      - Automatic minor version upgrades
+      - 
+      - 
+    * - availability_zone
+      - Int
+      - Availability Zone where the instance will be provisioned.
+      - Must be one of 1, 2, 3 ...
+      - 
+    * - db_instance_type
+      - String
+      - DB Instance Type
+      - 
+      - 
+    * - enable_performance_insights
+      - Boolean
+      - Enable Performance Insights
+      - 
+      - False
+    * - enhanced_monitoring_interval_in_seconds
+      - Int
+      - Enhanced Monitoring interval in seconds. This will enable enhanced monitoring unless set to 0.
+      - Must be one of 0, 1, 5, 10, 15, 30, 60.
+      - 0
+    * - event_notifications
+      - Object<RDSDBInstanceEventNotifications_>
+      - DB Instance Event Notifications
+      - 
+      - 
+    * - parameter_group
+      - PacoReference
+      - DB Parameter Group
+      - Paco Reference to `DBParameterGroup`_.
+      - 
+    * - publicly_accessible
+      - Boolean
+      - Assign a Public IP address
+      - 
+      - False
+
+*Base Schemas* `Monitorable`_, `Named`_, `Title`_
+
+
+RDSClusterInstance
+^^^^^^^^^^^^^^^^^^^
+
+
+DB Instance that belongs to a DB Cluster.
+    
+
+.. _RDSClusterInstance:
+
+.. list-table:: :guilabel:`RDSClusterInstance`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - allow_major_version_upgrade
+      - Boolean
+      - Allow major version upgrades
+      - 
+      - 
+    * - auto_minor_version_upgrade
+      - Boolean
+      - Automatic minor version upgrades
+      - 
+      - 
+    * - availability_zone
+      - Int
+      - Availability Zone where the instance will be provisioned.
+      - Must be one of 1, 2, 3 ...
+      - 
+    * - db_instance_type
+      - String
+      - DB Instance Type
+      - 
+      - 
+    * - enable_performance_insights
+      - Boolean
+      - Enable Performance Insights
+      - 
+      - 
+    * - enhanced_monitoring_interval_in_seconds
+      - Int
+      - Enhanced Monitoring interval in seconds. This will enable enhanced monitoring unless set to 0.
+      - Must be one of 0, 1, 5, 10, 15, 30, 60.
+      - 
+    * - event_notifications
+      - Object<RDSDBInstanceEventNotifications_>
+      - DB Instance Event Notifications
+      - 
+      - 
+    * - parameter_group
+      - PacoReference
+      - DB Parameter Group
+      - Paco Reference to `DBParameterGroup`_.
+      - 
+    * - publicly_accessible
+      - Boolean
+      - Assign a Public IP address
+      - 
+      - 
+
+*Base Schemas* `Monitorable`_, `Named`_, `Title`_
+
+
+RDSClusterInstances
+^^^^^^^^^^^^^^^^^^^^
+
+
+Container for `RDSClusterInstance`_ objects.
+    
+
+.. _RDSClusterInstances:
+
+.. list-table:: :guilabel:`RDSClusterInstances` |bars| Container<`RDSClusterInstances`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+RDSDBClusterEventNotifications
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Event Notifications for a DB Cluster
+    
+
+.. _RDSDBClusterEventNotifications:
+
+.. list-table:: :guilabel:`RDSDBClusterEventNotifications`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - event_categories
+      - Choice |star|
+      - Event Categories
+      - 
+      - 
+    * - groups
+      - List<String> |star|
+      - Groups
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+DBParameters
+^^^^^^^^^^^^
+
+If you want to use DB Parameter Groups with your RDS, then use the ``parameter_group`` field to
+reference a DBParameterGroup_ resource. Keeping DB Parameter Groups as separate resources allows
+having multiple Paramater Groups provisioned at the same time. For example, you might have both
+resources for ``dbparams_performance`` and ``dbparams_debug``, allowing you to use the AWS
+Console to switch between performance and debug configuration quickl in an emergency.
 
 
 DBParameterGroup
@@ -5611,10 +6210,33 @@ DBParameterGroup
 
 *Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
-DBParameters
-^^^^^^^^^^^^
 
-A unconstrainted set of key-value pairs.
+DBClusterParameterGroup
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+DBCluster Parameter Group
+    
+
+.. _DBClusterParameterGroup:
+
+.. list-table:: :guilabel:`DBClusterParameterGroup`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Resource`_, `DBParameterGroup`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
 
 
 Route53HealthCheck
@@ -5849,7 +6471,7 @@ S3 Bucket Policy
       - 
     * - aws
       - List<String>
-      - List of AWS Principles.
+      - List of AWS Principals.
       - Either this field or the principal field must be set.
       - 
     * - condition
@@ -5870,6 +6492,11 @@ S3 Bucket Policy
     * - resource_suffix
       - List<String> |star|
       - List of AWS Resources Suffixes
+      - 
+      - 
+    * - sid
+      - String
+      - Statement Id
       - 
       - 
 
@@ -5957,6 +6584,7 @@ Simple Notification Service (SNS) Topic resource.
         protocol: email
       - endpoint: bob@example.com
         protocol: email-json
+        filter_policy: '{"State": [ { "anything-but": "COMPLETED" } ] }'
       - endpoint: '555-555-5555'
         protocol: sms
       - endpoint: arn:aws:sqs:us-east-2:444455556666:queue1
@@ -5989,13 +6617,18 @@ Simple Notification Service (SNS) Topic resource.
       - Display name for SMS Messages
       - 
       - 
+    * - locations
+      - List<AccountRegions_>
+      - Locations
+      - Only applies to a global SNS Topic
+      - []
     * - subscriptions
       - List<SNSTopicSubscription_>
       - List of SNS Topic Subscriptions
       - 
       - 
 
-*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Enablable`_, `Named`_, `Title`_, `Type`_
 
 
 SNSTopicSubscription
@@ -6018,6 +6651,11 @@ SNSTopicSubscription
       - PacoReference|String
       - SNS Topic ARN or Paco Reference
       - Paco Reference to `SNSTopic`_. String Ok.
+      - 
+    * - filter_policy
+      - String
+      - Filter Policy
+      - Must be valid JSON
       - 
     * - protocol
       - String
@@ -6057,6 +6695,8 @@ SNSTopicSubscription
 .. _Title: yaml-base.html#Title
 
 .. _Deployable: yaml-base.html#Deployable
+
+.. _Enablable: yaml-base.html#Enablable
 
 .. _SecurityGroupRule: yaml-base.html#SecurityGroupRule
 
