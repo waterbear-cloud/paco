@@ -396,7 +396,17 @@ class RDSAurora(StackTemplate):
                     record_set_type='CNAME',
                     resource_records=[rds_aurora.paco_ref + '.endpoint.address'],
                     stack_group=self.stack.stack_group,
-                    config_ref=rds_aurora.paco_ref_parts + '.dns'
+                )
+            for read_dns in rds_aurora.read_dns:
+                route53_ctl.add_record_set(
+                    self.account_ctx,
+                    self.aws_region,
+                    rds_aurora,
+                    enabled=rds_aurora.is_enabled(),
+                    dns=read_dns,
+                    record_set_type='CNAME',
+                    resource_records=[rds_aurora.paco_ref + '.readendpoint.address'],
+                    stack_group=self.stack.stack_group,
                 )
 
     def create_notification_param(self, group):
