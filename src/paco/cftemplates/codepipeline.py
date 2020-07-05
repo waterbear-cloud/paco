@@ -36,9 +36,6 @@ ACTION_MAP = {
     'CodeDeploy.Deploy': {
         # ToDo
     },
-    'CodeBuild.Build': {
-        # ToDo
-    },
     'CodeCommit.Source': {
         # ToDo
     },
@@ -54,7 +51,11 @@ ACTION_MAP = {
     'ManualApproval': {
         # ToDo
     },
+    'ECS.Deploy': {
+        # ToDo
+    },
 }
+
 
 class CodePipeline(StackTemplate):
     def __init__(self, stack, paco_ctx, base_aws_name, deploy_region, app_name, artifacts_bucket_name):
