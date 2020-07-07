@@ -1,7 +1,8 @@
 from paco import cftemplates
 from paco.application.res_engine import ResourceEngine
-from paco.models.references import get_model_obj_from_ref
 from paco.core.yaml import YAML
+from paco.core.exception import InvalidAWSConfiguration
+from paco.models.references import get_model_obj_from_ref
 from paco.models import schemas
 from paco import models
 import os
@@ -58,9 +59,11 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
 
         # S3 Artifacts Bucket:
         s3_ctl = self.paco_ctx.get_controller('S3')
+        s3_bucket = get_model_obj_from_ref(self.pipeline.configuration.artifacts_bucket, self.paco_ctx.project)
+        self.artifacts_bucket_meta['obj'] = s3_bucket
         self.artifacts_bucket_meta['ref'] = self.pipeline.configuration.artifacts_bucket
         self.artifacts_bucket_meta['arn'] = s3_ctl.get_bucket_arn(self.artifacts_bucket_meta['ref'])
-        self.artifacts_bucket_meta['name'] = s3_ctl.get_bucket_name(self.artifacts_bucket_meta['ref'])
+        self.artifacts_bucket_meta['name'] = s3_bucket.get_bucket_name()
 
         # KMS Key
         kms_refs = {}
@@ -457,10 +460,15 @@ policies:
             return
 
         # KMS principle
-        self.kms_crypto_principle_list.append("paco.sub '${%s}'" % (self.pipeline.paco_ref+'.codepipeline_role.arn'))
-        #self.kms_crypto_principle_list.append('arn:aws:iam::766324244139:role/IAM-User-Account-Delegate-Role-kevin_teague')
-        # ToDo: check that versioning is enabled  on the artifact bucket ...
-        #self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (action_config.paco_ref + '.project_role.arn'))
+        self.kms_crypto_principle_list.append("paco.sub '${%s}'" % (self.pipeline.paco_ref + '.codepipeline_role.arn'))
+        s3_bucket = self.artifacts_bucket_meta['obj']
+        if s3_bucket.versioning != True:
+            raise InvalidAWSConfiguration(f"""The DeploymentPipeline artifact bucket needs versioning enabled to support the ECR.Source action.
+Enabled on the S3Bucket resource with `versioning: true`.
+
+DeploymentPipeline: {self.pipeline.paco_ref}
+ArtifactsBucket: {s3_bucket.paco_ref}
+""")
 
     def add_ecr_source_hooks(self, action):
         if not action.is_enabled():

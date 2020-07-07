@@ -87,6 +87,9 @@ class InvalidAlarmConfiguration(PacoBaseException):
 class InvalidSSMDocument(PacoBaseException):
     title = "SSM Document is not in Active state"
 
+class InvalidAWSConfiguration(PacoBaseException):
+    title = "AWS configuration is not valid"
+
 class UnknownSetCommand(PacoBaseException):
     title = "Unknown scope for set command"
 
