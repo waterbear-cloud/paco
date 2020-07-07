@@ -277,8 +277,8 @@ class ASG(StackTemplate):
             ecs_cluster_name_param = self.create_cfn_parameter(
                 param_type='String',
                 name='ECSClusterName',
-                description='ECS Cluser Name',
-                value=asg_config.ecs.cluster+'.name'
+                description='ECS Cluster Name',
+                value=asg_config.ecs.cluster + '.name'
             )
             asg_tag = troposphere.autoscaling.Tag(
                 'Paco-ECSCluster-Name',

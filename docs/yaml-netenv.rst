@@ -1561,6 +1561,8 @@ BackupSelectionConditionResourceType
 
 .. _resource: yaml-base.html#resource
 
+.. _accountregions: yaml-base#accountregions
+
 .. _type: yaml-base.html#type
 
 .. _interface: yaml-base.html#interface

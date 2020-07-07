@@ -2,10 +2,14 @@ from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Actio
 from awacs.sts import AssumeRole
 from paco import utils
 from paco.cftemplates.cftemplates import StackTemplate
-from paco.models.references import get_model_obj_from_ref, Reference
+from paco.cftemplates.eventsrule import create_event_rule_name
+from paco.models.references import get_model_obj_from_ref, Reference, is_ref
+import awacs.codepipeline
 import troposphere
 import troposphere.codepipeline
 import troposphere.codebuild
+import troposphere.events
+import troposphere.iam
 import troposphere.sns
 
 
@@ -24,6 +28,14 @@ ACTION_MAP = {
         'Version': '1',
         'Provider': 'GitHub',
         'properties_method': 'create_github_source_properties',
+    },
+    'ECR.Source': {
+        'Name': 'ECR',
+        'Category': 'Source',
+        'Owner': 'AWS',
+        'Version': '1',
+        'Provider': 'ECR',
+        'properties_method': 'create_ecr_source_properties',
     },
     'S3.Deploy': {
         'Name': 'S3Deploy',
@@ -72,6 +84,7 @@ class CodePipeline(StackTemplate):
 
         # Flags set to False, they will be set to True if there is an Action to indicate they will need Role support
         self.codecommit_source_enabled = False
+        self.ecr_source_enabled = False
         self.github_source_enabled = False
         self.codebuild_access_enabled = False
         self.lambda_invoke_enabled = False
@@ -110,7 +123,16 @@ class CodePipeline(StackTemplate):
         if self.pipeline.stages != None:
             self.create_pipeline_from_stages()
         else:
-            self.create_pipeine_from_sourcebuilddeploy(deploy_region)
+            self.create_pipeline_from_sourcebuilddeploy(deploy_region)
+
+    @property
+    def pipeline_arn(self):
+        return troposphere.Join(
+            ':', [
+                f"arn:aws:codepipeline:{self.stack.aws_region}:{self.stack.account_ctx.get_id()}",
+                troposphere.Ref('BuildCodePipeline')
+            ]
+        )
 
     def add_github_webhook(self, pipeline_res, stage_name, action, sourcebuilddeploy=False):
         "Add a CodePipeline WebHook"
@@ -141,7 +163,7 @@ class CodePipeline(StackTemplate):
         self.template.add_resource(webhook_resource)
 
     def create_pipeline_from_stages(self):
-        "Create CodePipeline Stages/Actions resources based on the .stages field"
+        "Create CodePipeline Actions resources based on the .stages field"
         # create the Stages/Actions resources
         # set flags
         self.s3deploy_buckets = {}
@@ -220,7 +242,7 @@ class CodePipeline(StackTemplate):
 
         pipeline_service_role_res = self.add_pipeline_service_role()
         pipeline_res = troposphere.codepipeline.Pipeline(
-            title='CodePipeline',
+            title='BuildCodePipeline',
             template=self.template,
             DependsOn='CodePipelinePolicy',
             RoleArn=troposphere.GetAtt(pipeline_service_role_res, 'Arn'),
@@ -440,6 +462,20 @@ class CodePipeline(StackTemplate):
                     Resource=[ troposphere.Ref(self.codebuild_project_arn_param) ]
                 )
             )
+        if self.ecr_source_enabled:
+            # Add Statement to allow ECR
+            pipeline_policy_statement_list.append(
+                Statement(
+                    Sid='ECRPullAccess',
+                    Effect=Allow,
+                    Action=[
+                        Action('ecr', 'Describe*'),
+                        Action('ecr', 'List*'),
+                        Action('ecr', 'Get*'),
+                    ],
+                    Resource=['*']
+                )
+            )
         if self.codecommit_source_enabled:
             # Add Statements to allow CodeCommit if a CodeCommit.Source is enabled
             pipeline_policy_statement_list.append(
@@ -508,13 +544,20 @@ class CodePipeline(StackTemplate):
         )
         return pipeline_service_role_res
 
-    def create_pipeine_from_sourcebuilddeploy(self, deploy_region):
+    def create_pipeline_from_sourcebuilddeploy(self, deploy_region):
+        """
+        Use the fixed YAML of source/build/deploy to create the pipeline actions:
+          source:
+          build:
+          deploy:
+        """
         # CodePipeline
         # Source Actions
         source_stage_actions = []
         # Source Actions
         for action in self.pipeline.source.values():
             self.build_input_artifacts = []
+            self.deploy_input_artifacts = []
 
             # Manual Approval Action
             if action.type == 'ManualApproval':
@@ -579,8 +622,136 @@ class CodePipeline(StackTemplate):
                 source_stage_actions.append(github_source_action)
                 self.build_input_artifacts.append(
                     troposphere.codepipeline.InputArtifacts(
-                        Name = 'GitHubArtifact'
+                        Name='GitHubArtifact'
                     )
+                )
+            # ECR.Source Action
+            elif action.type == 'ECR.Source':
+                if action.is_enabled():
+                    self.ecr_source_enabled = True
+                if is_ref(action.repository):
+                    ecr = get_model_obj_from_ref(action.repository, self.paco_ctx.project)
+                    ecr_name = ecr.repository_name
+                else:
+                    ecr_name = action.repository
+                ecr_repo_name_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name='ECRRepositoryARN',
+                    description='The ARN of the ECR repository',
+                    value=ecr_name,
+                )
+                ecr_source_action = troposphere.codepipeline.Actions(
+                    Name='ECR',
+                    ActionTypeId = troposphere.codepipeline.ActionTypeId(
+                        Category = 'Source',
+                        Owner = 'AWS',
+                        Version = '1',
+                        Provider = 'ECR'
+                    ),
+                    Configuration = {
+                        'RepositoryName': troposphere.Ref(ecr_repo_name_param),
+                        'ImageTag': action.image_tag,
+                    },
+                    OutputArtifacts = [
+                        troposphere.codepipeline.OutputArtifacts(
+                            Name='ECRArtifact'
+                        )
+                    ],
+                    RunOrder = action.run_order,
+                )
+                source_stage_actions.append(ecr_source_action)
+
+                # EventRule that is invoked when ECR image is tagged
+                events_rule_role_resource = troposphere.iam.Role(
+                    title='EventsRuleRole',
+                    template=self.template,
+                    AssumeRolePolicyDocument=Policy(
+                        Version='2012-10-17',
+                        Statement=[
+                            Statement(
+                                Effect=Allow,
+                                Action=[AssumeRole],
+                                Principal=Principal('Service',['events.amazonaws.com'])
+                            )
+                        ],
+                    ),
+                    Policies=[
+                        troposphere.iam.Policy(
+                            PolicyName="TargetInvocation",
+                            PolicyDocument=Policy(
+                                Version='2012-10-17',
+                                Statement=[
+                                    Statement(
+                                        Effect=Allow,
+                                        Action=[awacs.codepipeline.StartPipelineExecution],
+                                        Resource=[self.pipeline_arn],
+                                    )
+                                ]
+                            )
+                        )
+                    ],
+                )
+
+                event_rule_name = create_event_rule_name(self.resource)
+                ecr_event_pattern = {
+                    "source": ["aws.ecr"],
+                    "detail": {
+                        "action-type": ["PUSH"],
+                        "image-tag": [action.image_tag],
+                        "repository-name": [ecr_name],
+                        "result": ["SUCCESS"],
+                    },
+                    "detail-type": ["ECR Image Action"]
+                }
+                pipeline_target = troposphere.events.Target(
+                    'PipelineTarget',
+                    Id='ECRPipelineTarget',
+                    Arn=self.pipeline_arn,
+                    RoleArn=troposphere.GetAtt(events_rule_role_resource, 'Arn'),
+                )
+                event_rule_resource = troposphere.events.Rule(
+                    title='ECRSourceEventRule',
+                    template=self.template,
+                    Name=event_rule_name,
+                    Description='Automatically start CodePipeline when a change occurs in an Amazon ECR image tag.',
+                    State='ENABLED',
+                    EventPattern=ecr_event_pattern,
+                    Targets=[pipeline_target],
+                )
+
+                # static S3 imagedefinitions.json workaround
+                # ECR.Source outputs an imageDetails.json file while ECS.Deploy expects and imageDefinitions.json
+                # the later file contains the name of the ECS Service to deploy to. As a workaround, a file
+                # with an imageDefinitions.json is placed in the S3 artifacts bucket and that file needs to be
+                # used as a S3 Source
+                # https://stackoverflow.com/questions/55339872/codepipeline-ecr-source-ecs-deploy-configuration
+                s3_source_action = troposphere.codepipeline.Actions(
+                    Name='S3ECRImageDefinitionsSource',
+                    ActionTypeId = troposphere.codepipeline.ActionTypeId(
+                        Category='Source',
+                        Owner='AWS',
+                        Version='1',
+                        Provider='S3'
+                    ),
+                    Configuration={
+                        'S3Bucket': troposphere.Ref(self.artifacts_bucket_name_param),
+                        'S3ObjectKey': troposphere.Join(
+                            '-',
+                            [troposphere.Ref('AWS::StackName'), 'imagedef.zip']
+                        ),
+                        'PollForSourceChanges': True,
+                    },
+                    OutputArtifacts=[
+                        troposphere.codepipeline.OutputArtifacts(
+                            Name='S3ImageDefArtifact'
+                        )
+                    ],
+                    RunOrder=action.run_order,
+                )
+                source_stage_actions.append(s3_source_action)
+
+                self.deploy_input_artifacts.append(
+                    troposphere.codepipeline.InputArtifacts(Name='S3ImageDefArtifact')
                 )
 
             # CodeCommit Action
@@ -635,7 +806,7 @@ class CodePipeline(StackTemplate):
                 source_stage_actions.append(codecommit_source_action)
                 self.build_input_artifacts.append(
                     troposphere.codepipeline.InputArtifacts(
-                        Name = 'CodeCommitArtifact'
+                        Name='CodeCommitArtifact'
                     )
                 )
 
@@ -645,48 +816,51 @@ class CodePipeline(StackTemplate):
         )
 
         # Build Actions
+        build_stage = None
         build_stage_actions = []
-        for action in self.pipeline.build.values():
+        if self.pipeline.build != None:
+            for action in self.pipeline.build.values():
 
-            # Manual Approval Action
-            if action.type == 'ManualApproval':
-                manual_approval_action = self.init_manual_approval_action(action)
-                build_stage_actions.append(manual_approval_action)
+                # Manual Approval Action
+                if action.type == 'ManualApproval':
+                    manual_approval_action = self.init_manual_approval_action(action)
+                    build_stage_actions.append(manual_approval_action)
 
-            # CodeBuild Build Action
-            elif action.type == 'CodeBuild.Build':
-                self.codebuild_access_enabled = True
-                self.codebuild_project_arn_param = self.create_cfn_parameter(
-                    param_type='String',
-                    name='CodeBuildProjectArn',
-                    description='The arn of the CodeBuild project',
-                    value='{}.project.arn'.format(action.paco_ref),
-                )
-                codebuild_build_action = troposphere.codepipeline.Actions(
-                    Name='CodeBuild',
-                    ActionTypeId = troposphere.codepipeline.ActionTypeId(
-                        Category = 'Build',
-                        Owner = 'AWS',
-                        Version = '1',
-                        Provider = 'CodeBuild'
-                    ),
-                    Configuration = {
-                        'ProjectName': troposphere.Ref(self.resource_name_prefix_param),
-                    },
-                    InputArtifacts = self.build_input_artifacts,
-                    OutputArtifacts = [
-                        troposphere.codepipeline.OutputArtifacts(
-                            Name = 'CodeBuildArtifact'
-                        )
-                    ],
-                    RunOrder = action.run_order
-                )
-                build_stage_actions.append(codebuild_build_action)
-        build_stage = troposphere.codepipeline.Stages(
-            Name="Build",
-            Actions = build_stage_actions
-        )
-        # Deploy Action
+                # CodeBuild Build Action
+                elif action.type == 'CodeBuild.Build':
+                    self.codebuild_access_enabled = True
+                    self.codebuild_project_arn_param = self.create_cfn_parameter(
+                        param_type='String',
+                        name='CodeBuildProjectArn',
+                        description='The arn of the CodeBuild project',
+                        value='{}.project.arn'.format(action.paco_ref),
+                    )
+                    codebuild_build_action = troposphere.codepipeline.Actions(
+                        Name='CodeBuild',
+                        ActionTypeId = troposphere.codepipeline.ActionTypeId(
+                            Category = 'Build',
+                            Owner = 'AWS',
+                            Version = '1',
+                            Provider = 'CodeBuild'
+                        ),
+                        Configuration = {
+                            'ProjectName': troposphere.Ref(self.resource_name_prefix_param),
+                        },
+                        InputArtifacts = self.build_input_artifacts,
+                        OutputArtifacts = [
+                            troposphere.codepipeline.OutputArtifacts(
+                                Name = 'CodeBuildArtifact'
+                            )
+                        ],
+                        RunOrder = action.run_order
+                    )
+                    build_stage_actions.append(codebuild_build_action)
+            build_stage = troposphere.codepipeline.Stages(
+                Name="Build",
+                Actions = build_stage_actions
+            )
+
+        # Deploy Actions
         [ deploy_stage,
           self.s3_deploy_assume_role_statement,
           self.codedeploy_deploy_assume_role_statement,
@@ -784,6 +958,7 @@ class CodePipeline(StackTemplate):
         return manual_deploy_action
 
     def init_deploy_stage(self, deploy_region):
+        "Initialize the Deploy Stage Action(s)"
         if self.pipeline.deploy == None:
             return [None, None, None, None]
         deploy_stage_actions = []
@@ -912,6 +1087,15 @@ class CodePipeline(StackTemplate):
                 )
                 deploy_stage_actions.append(codedeploy_deploy_action)
             if action.type == 'ECS.Deploy':
+                # can take input from an ECR.Source output or a CodeBuild output
+                if self.deploy_input_artifacts != []:
+                    input_artifact_name = self.deploy_input_artifacts
+                else:
+                    input_artifact_name = [
+                        troposphere.codepipeline.InputArtifacts(
+                            Name='CodeBuildArtifact'
+                        )
+                    ]
                 ecs_tools_delegate_role_arn_param = self.create_cfn_parameter(
                     param_type='String',
                     name='ECSToolsDelegateRoleArn',
@@ -942,11 +1126,7 @@ class CodePipeline(StackTemplate):
                         'ClusterName': troposphere.Ref(ecs_cluster_name_param),
                         'ServiceName': troposphere.Ref(ecs_service_name_param)
                     },
-                    InputArtifacts = [
-                        troposphere.codepipeline.InputArtifacts(
-                            Name = 'CodeBuildArtifact'
-                        )
-                    ],
+                    InputArtifacts=input_artifact_name,
                     RoleArn = troposphere.Ref(ecs_tools_delegate_role_arn_param),
                     Region = deploy_region,
                     RunOrder = troposphere.If('ManualApprovalIsEnabled', 2, 1)

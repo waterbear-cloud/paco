@@ -4,6 +4,9 @@ from paco.models.references import get_model_obj_from_ref
 from paco.core.yaml import YAML
 from paco.models import schemas
 from paco import models
+import os
+import pathlib
+import shutil
 
 
 yaml=YAML()
@@ -138,6 +141,12 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
                 'artifacts_bucket_name': self.artifacts_bucket_meta['name']
             },
         )
+
+        # Add Hooks to the CodePipeline Stack
+        if self.pipeline.source != None:
+            for action in self.pipeline.source.values():
+                if action.type == 'ECR.Source':
+                    self.add_ecr_source_hooks(action)
 
         # Add CodeBuild Role ARN to KMS Key principal now that the role is created
         kms_config_dict['crypto_principal']['aws'] = self.kms_crypto_principle_list
@@ -396,6 +405,82 @@ policies:
                 'action_config': action_config,
                 'artifacts_bucket_name': self.artifacts_bucket_meta['name'],
             },
+        )
+
+    def create_image_definitions_artifact_cache(self, hook, pipeline):
+        "Create a cache id for the imageDefinitions service name"
+        for action in pipeline.deploy.values():
+            if action.type == 'ECS.Deploy':
+                service = get_model_obj_from_ref(action.service, self.paco_ctx.project)
+            return service.name
+
+    def create_image_definitions_artifact(self, hook, pipeline):
+        "Create an imageDefinitions file"
+        for action in pipeline.source.values():
+            if action.type == 'ECR.Source':
+                ecr_uri = f"{self.pipeline_account_ctx.get_id()}.dkr.ecr.{self.aws_region}.amazonaws.com/{action.repository}:{action.image_tag}"
+        for action in pipeline.deploy.values():
+            if action.type == 'ECS.Deploy':
+                service = get_model_obj_from_ref(action.service, self.paco_ctx.project)
+        file_contents = f"""[
+  {{
+    "name": "{service.name}",
+    "imageUri": "{ecr_uri}"
+  }}
+]
+"""
+        # Upload to S3
+        s3_ctl = self.paco_ctx.get_controller('S3')
+        bucket_name = self.artifacts_bucket_meta['name']
+        s3_key = self.pipeline._stack.get_name() + '-imagedef.zip'
+
+        # create temp zip file
+        orig_cwd = os.getcwd()
+        work_path = pathlib.Path(self.paco_ctx.build_path)
+        work_path = work_path / 'DeploymentPipeline' / self.app.paco_ref_parts / self.pipeline_account_ctx.get_name()
+        work_path = work_path / self.aws_region / self.app.name / self.resource.group_name / self.resource.name / 'ImageDefinitions'
+        zip_path = work_path / 'zip'
+        pathlib.Path(zip_path).mkdir(parents=True, exist_ok=True)
+        os.chdir(zip_path)
+        image_def_path = zip_path / 'imagedefinitions.json'
+        with open(image_def_path, "w") as output_fd:
+            output_fd.write(file_contents)
+        archive_path = work_path / 'imagedef'
+        shutil.make_archive(archive_path, 'zip', zip_path)
+        os.chdir(orig_cwd)
+        s3_client = self.account_ctx.get_aws_client('s3')
+        s3_client.upload_file(str(archive_path) + '.zip', bucket_name, s3_key)
+
+    def init_stage_action_ecr_source(self, action_config):
+        "Initialize an ECR Source action"
+        if not action_config.is_enabled():
+            return
+
+        # KMS principle
+        self.kms_crypto_principle_list.append("paco.sub '${%s}'" % (self.pipeline.paco_ref+'.codepipeline_role.arn'))
+        #self.kms_crypto_principle_list.append('arn:aws:iam::766324244139:role/IAM-User-Account-Delegate-Role-kevin_teague')
+        # ToDo: check that versioning is enabled  on the artifact bucket ...
+        #self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (action_config.paco_ref + '.project_role.arn'))
+
+    def add_ecr_source_hooks(self, action):
+        if not action.is_enabled():
+            return
+        # Hook to create and upload imageDefinitions.json S3 source artifact
+        self.pipeline._stack.hooks.add(
+            name='CreateImageDefinitionsArtifact.' + self.resource.name,
+            stack_action='update',
+            stack_timing='post',
+            hook_method=self.create_image_definitions_artifact,
+            cache_method=self.create_image_definitions_artifact_cache,
+            hook_arg=self.pipeline,
+        )
+        self.pipeline._stack.hooks.add(
+            name='CreateImageDefinitionsArtifact.' + self.resource.name,
+            stack_action='create',
+            stack_timing='post',
+            hook_method=self.create_image_definitions_artifact,
+            cache_method=self.create_image_definitions_artifact_cache,
+            hook_arg=self.pipeline,
         )
 
     def init_stage_action_ecs_deploy(self, action_config):

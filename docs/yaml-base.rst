@@ -333,6 +333,35 @@ Container for objects which do not belong to a specific Environment.
 *Base Schemas* `Named`_, `Title`_
 
 
+AccountRegions
+---------------
+
+An Account and one or more Regions
+
+.. _AccountRegions:
+
+.. list-table:: :guilabel:`AccountRegions`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - account
+      - PacoReference |star|
+      - AWS Account
+      - Paco Reference to `Account`_.
+      - 
+    * - regions
+      - List<String> |star|
+      - Regions
+      - 
+      - 
+
+
+
 Notifiable
 -----------
 
