@@ -48,6 +48,8 @@ A generic placeholder for any schema.
 
 {IRegionContainer}
 
+{IAccountRegions}
+
 {INotifiable}
 
 {ISecurityGroupRule}
@@ -258,6 +260,8 @@ IAM Users can be managed, see `Managing IAM Users with Paco`_.
 
 {IStatement}
 
+{IPrincipal}
+
 Route 53
 --------
 
@@ -319,6 +323,10 @@ SNS has only two resources: SNS Topics and SNS Subscriptions.
     SNS Topic(s) in one account.
 
 .. _s3bucket: yaml-app-resources.html#s3bucket
+
+.. _cloudwatchloggroup: yaml-app-resources.html#cloudwatchloggroup
+
+.. _vpc: yaml-netenv-resources.html#vpc
 
 """
 
@@ -726,6 +734,12 @@ as part of an Application.
 
 {IASGRollingUpdatePolicy}
 
+{IECSASGConfiguration}
+
+{IECSCapacityProvider}
+
+{ISSHAccess}
+
 {IBlockDeviceMapping}
 
 {IBlockDevice}
@@ -816,6 +830,8 @@ as part of an Application.
 
 {IDeploymentPipelineDeployCodeDeploy}
 
+{IDeploymentPipelineSourceECR}
+
 {ICodeDeployMinimumHealthyHosts}
 
 {IDeploymentPipelineManualApproval}
@@ -837,6 +853,49 @@ as part of an Application.
 
 
 {IEC2}
+
+
+{IECRRepository}
+
+
+{IECSCluster}
+
+
+{IECSService}
+
+{IECSServicesContainer}
+
+{IECSTaskDefinitions}
+
+{IECSTaskDefinition}
+
+{IECSContainerDefinitions}
+
+{IECSContainerDefinition}
+
+{IECSLoadBalancer}
+
+{IECSVolume}
+
+{IECSUlimit}
+
+{IECSHealthCheck}
+
+{IECSHostEntry}
+
+{IDockerLabels}
+
+{IECSContainerDependency}
+
+{IECSTaskDefinitionSecret}
+
+{IECSLogging}
+
+{IECSVolumesFrom}
+
+{IECSMountPoint}
+
+{IPortMapping}
 
 
 {IEIP}
@@ -1203,6 +1262,9 @@ Console to switch between performance and debug configuration quickl in an emerg
 
 {IS3NotificationConfiguration}
 
+{IS3StaticWebsiteHosting}
+
+{IS3StaticWebsiteHostingRedirectRequests}
 
 {ISNSTopic}
 
@@ -1224,6 +1286,8 @@ Console to switch between performance and debug configuration quickl in an emerg
 .. _policy: yaml-global-resources.html#policy
 
 .. _codecommitrepository: yaml-global-resources.html#codecommitrepository
+
+.. _codecommituser: yaml-global-resources.html#codecommituser
 
 .. _segment: yaml-netenv.html#segment
 
@@ -1532,6 +1596,9 @@ MINOR_SCHEMAS = {
     'IASGLifecycleHook': None,
     'IASGScalingPolicy': None,
     'IASGRollingUpdatePolicy': None,
+    'IECSASGConfiguration': None,
+    'IECSCapacityProvider': None,
+    'ISSHAccess': None,
     'IListener': None,
     'ITargetGroup': None,
     'IListeners': None,
@@ -1550,6 +1617,7 @@ MINOR_SCHEMAS = {
     'IAssumeRolePolicy': None,
     'IPolicy': None,
     'IStatement': None,
+    'IPrincipal': None,
     'IIAMUser': None,
     'IIAMUserProgrammaticAccess': None,
     'IIAMUserPermissions': None,
@@ -1567,6 +1635,8 @@ MINOR_SCHEMAS = {
     'IS3StaticWebsiteHostingRedirectRequests': None,
     'IS3LambdaConfiguration': None,
     'IS3NotificationConfiguration': None,
+    'IS3StaticWebsiteHosting': None,
+    'IS3StaticWebsiteHostingRedirectRequests': None,
     'ISNSTopicSubscription': None,
     'ICloudFrontCacheBehavior': None,
     'ICloudFrontFactory': None,
@@ -1585,6 +1655,7 @@ MINOR_SCHEMAS = {
     'IDeploymentPipelineSourceStage': None,
     'IDeploymentPipelineDeployStage': None,
     'IDeploymentPipelineBuildStage': None,
+    'IDeploymentPipelineSourceECR': None,
     'IDeploymentPipelineDeployCodeDeploy': None,
     'ICodeDeployMinimumHealthyHosts': None,
     'IDeploymentPipelineManualApproval': None,
@@ -1608,6 +1679,23 @@ MINOR_SCHEMAS = {
     'IRDSAurora': None,
     'IElastiCacheRedis': None,
     'IElasticsearchCluster': None,
+    'IECSServicesContainer': None,
+    'IECSTaskDefinitions': None,
+    'IECSTaskDefinition': None,
+    'IECSContainerDefinitions': None,
+    'IECSContainerDefinition': None,
+    'IECSLoadBalancer': None,
+    'IECSVolume': None,
+    'IECSUlimit': None,
+    'IECSHealthCheck': None,
+    'IECSHostEntry': None,
+    'IDockerLabels': None,
+    'IECSContainerDependency': None,
+    'IECSTaskDefinitionSecret': None,
+    'IECSLogging': None,
+    'IECSVolumesFrom': None,
+    'IECSMountPoint': None,
+    'IPortMapping': None,
     'IEBSOptions': None,
     'IESAdvancedOptions': None,
     'ICodeDeployDeploymentGroups': None,
@@ -1785,6 +1873,8 @@ yaml_base_links = """
 .. _notifiable: yaml-base.html#notifiable
 
 .. _resource: yaml-base.html#resource
+
+.. _accountregions: yaml-base#accountregions
 
 .. _type: yaml-base.html#type
 

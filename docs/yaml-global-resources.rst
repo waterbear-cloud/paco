@@ -792,6 +792,36 @@ Statement
 
 *Base Schemas* `Named`_, `Title`_
 
+
+Principal
+^^^^^^^^^^
+
+
+
+.. _Principal:
+
+.. list-table:: :guilabel:`Principal`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - aws
+      - List<String>
+      - List of AWS Principals
+      - 
+      - 
+    * - service
+      - List<String>
+      - List of AWS Service Principals
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
 Route 53
 --------
 
@@ -1019,6 +1049,10 @@ SNS has only two resources: SNS Topics and SNS Subscriptions.
 
 .. _s3bucket: yaml-app-resources.html#s3bucket
 
+.. _cloudwatchloggroup: yaml-app-resources.html#cloudwatchloggroup
+
+.. _vpc: yaml-netenv-resources.html#vpc
+
 
 .. _Named: yaml-base.html#Named
 
@@ -1041,6 +1075,8 @@ SNS has only two resources: SNS Topics and SNS Subscriptions.
 .. _notifiable: yaml-base.html#notifiable
 
 .. _resource: yaml-base.html#resource
+
+.. _accountregions: yaml-base#accountregions
 
 .. _type: yaml-base.html#type
 

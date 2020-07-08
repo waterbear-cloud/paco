@@ -1233,6 +1233,106 @@ AutoScalingRollingUpdate Policy
 *Base Schemas* `Named`_, `Title`_
 
 
+ECSASGConfiguration
+^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _ECSASGConfiguration:
+
+.. list-table:: :guilabel:`ECSASGConfiguration`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - capacity_provider
+      - Object<ECSCapacityProvider_>
+      - Capacity Provider
+      - 
+      - 
+    * - cluster
+      - PacoReference |star|
+      - Cluster
+      - Paco Reference to `ECSCluster`_.
+      - 
+    * - log_level
+      - Choice
+      - Log Level
+      - 
+      - error
+
+*Base Schemas* `Named`_, `Title`_
+
+
+ECSCapacityProvider
+^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _ECSCapacityProvider:
+
+.. list-table:: :guilabel:`ECSCapacityProvider`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - maximum_scaling_step_size
+      - Int
+      - Maximum Scaling Step Size
+      - 
+      - 10000
+    * - minimum_scaling_step_size
+      - Int
+      - Minimum Scaling Step Size
+      - 
+      - 1
+    * - target_capacity
+      - Int
+      - Target Capacity
+      - 
+      - 100
+
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
+
+
+SSHAccess
+^^^^^^^^^^
+
+
+
+.. _SSHAccess:
+
+.. list-table:: :guilabel:`SSHAccess`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - groups
+      - List<String>
+      - Groups
+      - Must match a group declared in resource/ec2.yaml
+      - []
+    * - users
+      - List<String>
+      - User
+      - Must match a user declared in resource/ec2.yaml
+      - []
+
+*Base Schemas* `Named`_, `Title`_
+
+
 BlockDeviceMapping
 ^^^^^^^^^^^^^^^^^^^
 
@@ -2690,7 +2790,195 @@ DeploymentPipeline
 -------------------
 
 
-CodePipeline: Source, Build and Deploy or Stages
+DeploymentPipeline creates AWS CodePipeline resources configured to act
+as CI/CDs to deploy code and assets to application resources. DeploymentPipelines allow you
+to express complex CI/CDs with minimal configuration.
+
+A DeploymentPipeline has a number of Actions for three pre-defined Stages: source, build and deploy.
+The currently supported list of actions for each stage is:
+
+.. code-block:: yaml
+    :caption: Current Actions available by Stage
+
+    source:
+      type: CodeCommit.Source
+      type: ECR.Source
+      type: GitHub.Source
+    build:
+      type: CodeBuild.Build
+    deploy:
+      type: CodeDeploy.Deploy
+      type: ECS.Deploy
+      type: ManualApproval
+
+DeploymentPipelines can be configured to work cross-account and will automatically encrypt
+the artifacts S3 Bucket with a KMS-CMK key that can only be accessed by the pipeline.
+The ``configuration`` field lets you set the account that the DeploymentPipeline's CodePipeilne
+resource will be created in and also specify the S3 Bucket to use for artifacts.
+
+.. code-block:: yaml
+    :caption: Configure a DeploymentPipeline to run in the tools account
+
+    configuration:
+      artifacts_bucket: paco.ref netenv.mynet.applications.myapp.groups.cicd.resources.artifacts
+      account: paco.ref accounts.tools
+
+
+DeploymentPipeline caveats - there are a few things to consider when creating pipelines:
+
+  * You need to create an S3 Bucket that will be configured to for artifacts. Even pipelines
+    which don't create artifacts will need this resource to hold ephemeral files created by CodePipeline.
+
+  * A pipeline that deploys artifacts to an AutoScalingGroup will need the ``artifacts_bucket`` to
+    allow the IAM Instance Role to read from the bucket.
+
+  * A pipeline with an ``ECR.Source`` source must be in the same account as the ECR Repository.
+
+  * A pipeline with an ``ECR.Source`` source must have at least one image alreaay created in it before
+    it can be created.
+
+  * A pipeline that is building Docker images needs to set ``privileged_mode: true``.
+
+  * If you are using a manual approval step before deploying, pay attention to the
+    ``run_order`` field. Normally you will want the approval action to happen before the deploy action.
+
+.. code-block:: yaml
+    :caption: Example S3 Bucket for a DeploymentPipeline that deploys to an AutoScalingGroup
+
+    type: S3Bucket
+    enabled: true
+    order: 10
+    bucket_name: "artifacts"
+    deletion_policy: "delete"
+    account: paco.ref accounts.tools
+    versioning: true
+    policy:
+      - aws:
+          - paco.sub '${paco.ref netenv.mynet.applications.myapp.groups.container.resources.asg.instance_iam_role.arn}'
+        effect: 'Allow'
+        action:
+          - 's3:Get*'
+          - 's3:List*'
+        resource_suffix:
+          - '/*'
+          - ''
+
+.. code-block:: yaml
+    :caption: Example DeploymentPipeline to deploy to ECS when an ECR Repository is updated
+
+    type: DeploymentPipeline
+    order: 10
+    enabled: true
+    configuration:
+      artifacts_bucket: paco.ref netenv.mynet.applications.myapp.groups.cicd.resources.artifacts
+      account: paco.ref accounts.tools
+    source:
+      ecr:
+        type: ECR.Source
+        repository: paco.ref netenv.mynet.applications.myapp.groups.container.resources.ecr_example
+        image_tag: latest
+    deploy:
+      ecs:
+        type: ECS.Deploy
+        cluster: paco.ref netenv.mynet.applications.myapp.groups.container.resources.ecs_cluster
+        service: paco.ref netenv.mynet.applications.myapp.groups.container.resources.ecs_config.services.simple_app
+
+.. code-block:: yaml
+    :caption: Example DeploymentPipeline to pull from GitHub, build a Docker image and then deploy from an ECR Repo
+
+    type: DeploymentPipeline
+    order: 20
+    enabled: true
+    configuration:
+      artifacts_bucket: paco.ref netenv.mynet.applications.myapp.groups.cicd.resources.artifacts
+      account: paco.ref accounts.tools
+    source:
+      github:
+        type: GitHub.Source
+        deployment_branch_name: "prod"
+        github_access_token: paco.ref netenv.mynet.secrets_manager.myapp.github.token
+        github_owner: MyExample
+        github_repository: MyExample-FrontEnd
+        poll_for_source_changes: false
+    build:
+      codebuild:
+        type: CodeBuild.Build
+        deployment_environment: "prod"
+        codebuild_image: 'aws/codebuild/standard:4.0'
+        codebuild_compute_type: BUILD_GENERAL1_MEDIUM
+        privileged_mode: true # To allow docker images to be built
+        codecommit_repo_users:
+          - paco.ref resource.codecommit.mygroup.myrepo.users.MyCodeCommitUser
+        secrets:
+          - paco.ref netenv.mynet.secrets_manager.myapp.github.ssh_private_key
+        role_policies:
+          - name: AmazonEC2ContainerRegistryPowerUser
+            statement:
+              - effect: Allow
+                action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:GetRepositoryPolicy
+                  - ecr:DescribeRepositories
+                  - ecr:ListImages
+                  - ecr:DescribeImages
+                  - ecr:BatchGetImage
+                  - ecr:GetLifecyclePolicy
+                  - ecr:GetLifecyclePolicyPreview
+                  - ecr:ListTagsForResource
+                  - ecr:DescribeImageScanFindings
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                  - ecr:PutImage
+                resource:
+                  - '*'
+    deploy:
+      ecs:
+        type: ECS.Deploy
+        cluster: paco.ref netenv.mynet.applications.myapp.groups.container.resources.cluster
+        service: paco.ref netenv.mynet.applications.myapp.groups.container.resources.services.services.frontend
+
+
+.. code-block:: yaml
+    :caption: Example DeploymentPipeline to pull from CodeCommit, build an app artifact and then deploy to an ASG using CodeDeploy
+
+    type: DeploymentPipeline
+    order: 30
+    enabled: true
+    configuration:
+      artifacts_bucket: paco.ref netenv.mynet.applications.myapp.groups.cicd.resources.artifacts
+      account: paco.ref accounts.tools
+    source:
+      codecommit:
+        type: CodeCommit.Source
+        codecommit_repository: paco.ref resource.codecommit.mygroiup.myrepo
+        deployment_branch_name: "prod"
+    build:
+      codebuild:
+        type: CodeBuild.Build
+        deployment_environment: "prod"
+        codebuild_image: 'aws/codebuild/amazonlinux2-x86_64-standard:1.0'
+        codebuild_compute_type: BUILD_GENERAL1_SMALL
+    deploy:
+      approval:
+        type: ManualApproval
+        run_order: 1
+        manual_approval_notification_email:
+          - bob@example.com
+          - sally@example.com
+      codedeploy:
+        type: CodeDeploy.Deploy
+        run_order: 2
+        alb_target_group: paco.ref netenv.mynet.applications.myapp.groups.backend.resources.alb.target_groups.api
+        auto_scaling_group: paco.ref netenv.mynet.applications.myapp.groups.backend.resources.api
+        auto_rollback_enabled: true
+        minimum_healthy_hosts:
+          type: HOST_COUNT
+          value: 0
+        deploy_style_option: WITHOUT_TRAFFIC_CONTROL
+
     
 
 .. _DeploymentPipeline:
@@ -2918,7 +3206,53 @@ CodeDeploy DeploymentPipeline Deploy Stage
       - 
       - 
 
-*Base Schemas* `Deployable`_, `Named`_, `DeploymentPipelineStageAction`_, `Title`_
+*Base Schemas* `Enablable`_, `Named`_, `DeploymentPipelineStageAction`_, `Title`_
+
+
+DeploymentPipelineSourceECR
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Amazon ECR DeploymentPipeline Source Stage
+
+This Action is triggered whenever a new image is pushed to an Amazon ECR repository.
+
+.. code-block:: yaml
+
+  pipeline:
+    type: DeploymentPipeline
+    stages:
+      source:
+        ecr:
+          type: ECR.Source
+          enabled: true
+          repository:  paco.ref netenv.mynet.applications.myapp.groups.ecr.resources.myecr
+          image_tag: "latest"
+
+    
+
+.. _DeploymentPipelineSourceECR:
+
+.. list-table:: :guilabel:`DeploymentPipelineSourceECR`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - image_tag
+      - String
+      - The name of the tag used for the image.
+      - 
+      - latest
+    * - repository
+      - PacoReference|String |star|
+      - An ECRRepository ref or the name of the an ECR repository.
+      - String Ok.
+      - 
+
+*Base Schemas* `Enablable`_, `Named`_, `DeploymentPipelineStageAction`_, `Title`_
 
 
 CodeDeployMinimumHealthyHosts
@@ -2977,7 +3311,7 @@ ManualApproval DeploymentPipeline
       - 
       - 
 
-*Base Schemas* `Deployable`_, `Named`_, `DeploymentPipelineStageAction`_, `Title`_
+*Base Schemas* `Enablable`_, `Named`_, `DeploymentPipelineStageAction`_, `Title`_
 
 
 DeploymentPipelineDeployS3
@@ -3019,7 +3353,7 @@ Amazon S3 Deployment Provider
       - 
       - 
 
-*Base Schemas* `Deployable`_, `Named`_, `DeploymentPipelineStageAction`_, `Title`_
+*Base Schemas* `Enablable`_, `Named`_, `DeploymentPipelineStageAction`_, `Title`_
 
 
 DeploymentPipelineBuildCodeBuild
@@ -3086,7 +3420,7 @@ CodeBuild DeploymentPipeline Build Stage
       - 
       - 60
 
-*Base Schemas* `Deployable`_, `Named`_, `DeploymentPipelineStageAction`_, `Title`_
+*Base Schemas* `Enablable`_, `Named`_, `DeploymentPipelineStageAction`_, `Title`_
 
 
 DeploymentPipelineSourceCodeCommit
@@ -3118,7 +3452,7 @@ CodeCommit DeploymentPipeline Source Stage
       - 
       - 
 
-*Base Schemas* `Deployable`_, `Named`_, `DeploymentPipelineStageAction`_, `Title`_
+*Base Schemas* `Enablable`_, `Named`_, `DeploymentPipelineStageAction`_, `Title`_
 
 
 DeploymentPipelineStageAction
@@ -3150,7 +3484,7 @@ Deployment Pipeline Source Stage
       - 
       - 
 
-*Base Schemas* `Deployable`_, `Named`_, `Title`_
+*Base Schemas* `Enablable`_, `Named`_, `Title`_
 
 
 DeploymentPipelineConfiguration
@@ -3351,6 +3685,814 @@ EC2 Instance
 
 
 
+ECRRepository
+--------------
+
+
+Elastic Container Registry (ECR) Repository is a fully-managed Docker container registry.
+
+
+.. sidebar:: Prescribed Automation
+
+    ``cross_account_access``: Adds a Repository Policy that grants full access to the listed AWS Accounts.
+
+.. code-block:: yaml
+    :caption: Example ECRRepository
+
+    type: ECRRepository
+    enabled: true
+    order: 10
+    repository_name: 'ecr-example'
+    cross_account_access:
+      - paco.ref accounts.dev
+      - paco.ref accounts.tools
+
+
+
+.. _ECRRepository:
+
+.. list-table:: :guilabel:`ECRRepository`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - account
+      - PacoReference
+      - Account the ECR Repository belongs to
+      - Paco Reference to `Account`_.
+      - 
+    * - cross_account_access
+      - List<PacoReference>
+      - Accounts to grant access to this ECR.
+      - Paco Reference to `Account`_.
+      - 
+    * - lifecycle_policy_registry_id
+      - String
+      - Lifecycle Policy Registry Id
+      - 
+      - 
+    * - lifecycle_policy_text
+      - String
+      - Lifecycle Policy
+      - 
+      - 
+    * - repository_name
+      - String |star|
+      - Repository Name
+      - 
+      - 
+    * - repository_policy
+      - Object<Policy_>
+      - Repository Policy
+      - 
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
+
+
+ECSCluster
+-----------
+
+
+ECS Cluster
+    
+
+.. _ECSCluster:
+
+.. list-table:: :guilabel:`ECSCluster`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
+
+
+ECSService
+-----------
+
+ECS Service
+
+.. _ECSService:
+
+.. list-table:: :guilabel:`ECSService`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - deployment_controller
+      - Choice
+      - Deployment Controller
+      - One of ecs, code_deploy or external
+      - ecs
+    * - deployment_maximum_percent
+      - Int
+      - Deployment Maximum Percent
+      - 
+      - 200
+    * - deployment_minimum_healthy_percent
+      - Int
+      - Deployment Minimum Healthy Percent
+      - 
+      - 100
+    * - desired_count
+      - Int
+      - Desried Count
+      - 
+      - 
+    * - health_check_grace_period_seconds
+      - Int
+      - Health Check Grace Period (seconds)
+      - 
+      - 0
+    * - hostname
+      - String
+      - Container hostname
+      - 
+      - 
+    * - load_balancers
+      - List<ECSLoadBalancer_>
+      - Load Balancers
+      - 
+      - []
+    * - task_definition
+      - String
+      - Task Definition
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+ECSServicesContainer
+^^^^^^^^^^^^^^^^^^^^^
+
+Container for `ECSService`_ objects.
+    * -
+      -
+      -
+      -
+      -
+
+
+
+ECSTaskDefinitions
+^^^^^^^^^^^^^^^^^^^
+
+Container for `ECSTaskDefinition`_ objects.
+
+.. _ECSTaskDefinitions:
+
+.. list-table:: :guilabel:`ECSTaskDefinitions` |bars| Container<`ECSTaskDefinition`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+ECSTaskDefinition
+^^^^^^^^^^^^^^^^^^
+
+ECS Task Definition
+
+.. _ECSTaskDefinition:
+
+.. list-table:: :guilabel:`ECSTaskDefinition`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - container_definitions
+      - Container<ECSContainerDefinitions_> |star|
+      - Container Definitions
+      - 
+      - 
+    * - network_mode
+      - Choice
+      - Network Mode
+      - Must be one of awsvpc, bridge, host or none
+      - bridge
+    * - volumes
+      - List<ECSVolume_>
+      - Volume definitions for the task
+      - 
+      - []
+
+*Base Schemas* `Named`_, `Title`_
+
+
+ECSContainerDefinitions
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Container for `ECSContainerDefinition`_ objects.
+
+.. _ECSContainerDefinitions:
+
+.. list-table:: :guilabel:`ECSContainerDefinitions` |bars| Container<`ECSContainerDefinition`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+ECSContainerDefinition
+^^^^^^^^^^^^^^^^^^^^^^^
+
+ECS Container Definition
+
+.. _ECSContainerDefinition:
+
+.. list-table:: :guilabel:`ECSContainerDefinition`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - command
+      - List<String>
+      - Command (Docker CMD)
+      - List of strings
+      - 
+    * - cpu
+      - Int
+      - Cpu units
+      - 
+      - 
+    * - depends_on
+      - List<ECSContainerDependency_>
+      - Depends On
+      - List of ECS Container Dependencies
+      - []
+    * - disable_networking
+      - Boolean
+      - Disable Networking
+      - 
+      - False
+    * - dns_search_domains
+      - List<String>
+      - List of DNS search domains. Maps to 'DnsSearch' in Docker.
+      - 
+      - []
+    * - dns_servers
+      - List<String>
+      - List of DNS servers. Maps to 'Dns' in Docker.
+      - 
+      - []
+    * - docker_labels
+      - Container<DockerLabels_>
+      - A key/value map of labels. Maps to 'Labels' in Docker.
+      - 
+      - 
+    * - docker_security_options
+      - Choice
+      - List of custom labels for SELinux and AppArmor multi-level security systems.
+      - Must be a list of no-new-privileges, apparmor:PROFILE, label:value, or credentialspec:CredentialSpecFilePath
+      - []
+    * - entry_point
+      - List<String>
+      - Entry Pont (Docker ENTRYPOINT)
+      - List of strings
+      - 
+    * - environment
+      - List<NameValuePair_>
+      - List of environment name value pairs.
+      - 
+      - 
+    * - essential
+      - Boolean
+      - Essential
+      - 
+      - False
+    * - extra_hosts
+      - List<ECSHostEntry_>
+      - List of hostnames and IP address mappings to append to the /etc/hosts file on the container.
+      - 
+      - []
+    * - health_check
+      - Object<ECSHealthCheck_>
+      - The container health check command and associated configuration parameters for the container. This parameter maps to 'HealthCheck' in Docker.
+      - 
+      - 
+    * - hostname
+      - String
+      - Hostname to use for your container. This parameter maps to 'Hostname' in Docker.
+      - 
+      - 
+    * - image
+      - PacoReference|String |star|
+      - The image used to start a container. This string is passed directly to the Docker daemon.
+      - If a paco.ref is used to ECR, then the image_tag field will provide that tag used. Paco Reference to `ECRRepository`_. String Ok.
+      - 
+    * - image_tag
+      - String
+      - Tag used for the ECR Repository Image
+      - 
+      - latest
+    * - interactive
+      - Boolean
+      - When this parameter is true, this allows you to deploy containerized applications that require stdin or a tty to be allocated. This parameter maps to 'OpenStdin' in Docker.
+      - 
+      - 
+    * - logging
+      - Object<ECSLogging_>
+      - Logging Configuration
+      - 
+      - 
+    * - memory
+      - Int
+      - The amount (in MiB) of memory to present to the container. If your container attempts to exceed the memory specified here, the container is killed.
+      - 
+      - 
+    * - memory_reservation
+      - Int
+      - The soft limit (in MiB) of memory to reserve for the container. When system memory is under heavy contention, Docker attempts to keep the container memory to this soft limit.
+      - 
+      - 
+    * - mount_points
+      - List<ECSMountPoint_>
+      - The mount points for data volumes in your container.
+      - 
+      - 
+    * - port_mappings
+      - List<PortMapping_>
+      - Port Mappings
+      - 
+      - []
+    * - privileged
+      - Boolean
+      - Give the container elevated privileges on the host container instance (similar to the root user).
+      - 
+      - False
+    * - pseudo_terminal
+      - Boolean
+      - Allocate a TTY. This parameter maps to 'Tty' in Docker.
+      - 
+      - 
+    * - readonly_root_filesystem
+      - Boolean
+      - Read-only access to its root file system. This parameter maps to 'ReadonlyRootfs' in Docker.
+      - 
+      - 
+    * - secrets
+      - List<ECSTaskDefinitionSecret_>
+      - List of name, value_from pairs to secret manager Paco references.
+      - 
+      - 
+    * - start_timeout
+      - Int
+      - Time duration (in seconds) to wait before giving up on resolving dependencies for a container.
+      - 
+      - 300
+    * - stop_timeout
+      - Int
+      - Time duration (in seconds) to wait before the container is forcefully killed if it doesn't exit normally on its own.
+      - 
+      - 30
+    * - ulimits
+      - List<ECSUlimit_>
+      - List of ulimits to set in the container. This parameter maps to 'Ulimits' in Docker
+      - 
+      - []
+    * - user
+      - String
+      - The user name to use inside the container. This parameter maps to 'User' in Docker.
+      - 
+      - 
+    * - volumes_from
+      - List<ECSVolumesFrom_>
+      - Volumes to mount from another container (Docker VolumesFrom).
+      - 
+      - []
+    * - working_directory
+      - String
+      - The working directory in which to run commands inside the container. This parameter maps to 'WorkingDir' in Docker.
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+ECSLoadBalancer
+^^^^^^^^^^^^^^^^
+
+ECS Load Balancer
+
+.. _ECSLoadBalancer:
+
+.. list-table:: :guilabel:`ECSLoadBalancer`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - container_name
+      - String |star|
+      - Container Name
+      - 
+      - 
+    * - container_port
+      - Int |star|
+      - Container Port
+      - 
+      - 
+    * - target_group
+      - PacoReference |star|
+      - Target Group
+      - Paco Reference to `TargetGroup`_.
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+ECSVolume
+^^^^^^^^^^
+
+ECS Volume
+
+.. _ECSVolume:
+
+.. list-table:: :guilabel:`ECSVolume`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - name
+      - String |star|
+      - Name
+      - 
+      - 
+
+
+
+ECSUlimit
+^^^^^^^^^^
+
+ECS Ulimit
+
+.. _ECSUlimit:
+
+.. list-table:: :guilabel:`ECSUlimit`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - hard_limit
+      - Int |star|
+      - The hard limit for the ulimit type.
+      - 
+      - 
+    * - name
+      - Choice |star|
+      - The type of the ulimit
+      - 
+      - 
+    * - soft_limit
+      - Int |star|
+      - The soft limit for the ulimit type.
+      - 
+      - 
+
+
+
+ECSHealthCheck
+^^^^^^^^^^^^^^^
+
+ECS Health Check
+
+.. _ECSHealthCheck:
+
+.. list-table:: :guilabel:`ECSHealthCheck`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - command
+      - List<String> |star|
+      - A string array representing the command that the container runs to determine if it is healthy. The string array must start with CMD to execute the command arguments directly, or CMD-SHELL to run the command with the container's default shell.
+      - 
+      - 
+    * - interval
+      - Int
+      - The time period in seconds between each health check execution.
+      - 
+      - 30
+    * - retries
+      - Int
+      - Retries
+      - 
+      - 3
+    * - start_period
+      - Int
+      - The optional grace period within which to provide containers time to bootstrap before failed health checks count towards the maximum number of retries.
+      - 
+      - 
+    * - timeout
+      - Int
+      - The time period in seconds to wait for a health check to succeed before it is considered a failure.
+      - 
+      - 5
+
+*Base Schemas* `Named`_, `Title`_
+
+
+ECSHostEntry
+^^^^^^^^^^^^^
+
+ECS Host Entry
+
+.. _ECSHostEntry:
+
+.. list-table:: :guilabel:`ECSHostEntry`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - hostname
+      - String |star|
+      - Hostname
+      - 
+      - 
+    * - ip_address
+      - String |star|
+      - IP Address
+      - 
+      - 
+
+
+
+DockerLabels
+^^^^^^^^^^^^^
+
+
+
+.. _DockerLabels:
+
+.. list-table:: :guilabel:`DockerLabels`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+ECSContainerDependency
+^^^^^^^^^^^^^^^^^^^^^^^
+
+ECS Container Dependency
+
+.. _ECSContainerDependency:
+
+.. list-table:: :guilabel:`ECSContainerDependency`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - condition
+      - Choice |star|
+      - Condition
+      - Must be one of COMPLETE, HEALTHY, START or SUCCESS
+      - 
+    * - container_name
+      - String |star|
+      - Container Name
+      - Must be an existing container name.
+      - 
+
+
+
+ECSTaskDefinitionSecret
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+A Name/ValueFrom pair of Paco references to Secrets Manager secrets
+
+.. _ECSTaskDefinitionSecret:
+
+.. list-table:: :guilabel:`ECSTaskDefinitionSecret`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - name
+      - String |star|
+      - Name
+      - 
+      - 
+    * - value_from
+      - PacoReference|String |star|
+      - Paco reference to Secrets manager
+      - String Ok.
+      - 
+
+
+
+ECSLogging
+^^^^^^^^^^^
+
+ECS Logging Configuration
+
+.. _ECSLogging:
+
+.. list-table:: :guilabel:`ECSLogging`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - driver
+      - Choice |star|
+      - Log Driver
+      - One of awsfirelens, awslogs, fluentd, gelf, journald, json-file, splunk, syslog
+      - 
+
+*Base Schemas* `CloudWatchLogRetention`_, `Named`_, `Title`_
+
+
+ECSVolumesFrom
+^^^^^^^^^^^^^^^
+
+VoumesFrom
+
+.. _ECSVolumesFrom:
+
+.. list-table:: :guilabel:`ECSVolumesFrom`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - read_only
+      - Boolean
+      - Read Only
+      - 
+      - False
+    * - source_container
+      - String |star|
+      - The name of another container within the same task definition from which to mount volumes.
+      - 
+      - 
+
+
+
+ECSMountPoint
+^^^^^^^^^^^^^^
+
+ECS TaskDefinition Mount Point
+
+.. _ECSMountPoint:
+
+.. list-table:: :guilabel:`ECSMountPoint`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - container_path
+      - String
+      - The path on the container to mount the host volume at.
+      - 
+      - 
+    * - read_only
+      - Boolean
+      - Read Only
+      - 
+      - False
+    * - source_volume
+      - String
+      - The name of the volume to mount.
+      - Must be a volume name referenced in the name parameter of task definition volume.
+      - 
+
+
+
+PortMapping
+^^^^^^^^^^^^
+
+Port Mapping
+
+.. _PortMapping:
+
+.. list-table:: :guilabel:`PortMapping`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - container_port
+      - Int
+      - Container Port
+      - 
+      - 
+    * - host_port
+      - Int
+      - Host Port
+      - 
+      - 
+    * - protocol
+      - Choice |star|
+      - Protocol
+      - Must be either 'tcp' or 'udp'
+      - tcp
+
+
+
+
 EIP
 ----
 
@@ -3402,7 +4544,7 @@ EFS
 AWS Elastic File System (EFS) resource.
 
 .. code-block:: yaml
-    :caption: Example EFS resource YAML
+    :caption: Example EFS resource
 
     type: EFS
     order: 20
@@ -5155,7 +6297,7 @@ Each activity must have an ``activity_type`` and supply fields specific for that
 There is an implicit Channel activity before all other activities and an an implicit Datastore
 activity after all other activities.
 
-.. code-block: yaml
+.. code-block:: yaml
     :caption: All example types for IoTAnalyticsPipeline pipeline_activities
 
     activity_type: lambda
@@ -5515,6 +6657,12 @@ A more complex Aurora with a cluster of three database instances could be:
 
   ``enhanced_monitoring_interval_in_seconds``: Paco will create an IAM Role to allow the RDS monitoring service
   access to perform enhanced monitoring.
+
+  ``cluster_event_notifications`` and ``event_notifications`` must reference a group specified in ``resource/sns.yaml``.
+  This group (SNS Topic) must already be provisioned in the same account and region as the database.
+
+  ``monitoring`` applies to ``db_instances`` and will apply CloudWatch Alarms that are specific to each database instance
+  in the Aurora cluster.
 
 .. code-block:: yaml
   :caption: RDSPostgresqlAurora db cluster example
@@ -5925,6 +7073,11 @@ RDS Aurora DB Cluster
       - Choice
       - Engine Mode
       - Must be one of provisioned, serverless, parallelquery, global, or multimaster.
+      - 
+    * - read_dns
+      - List<DNS_>
+      - DNS domains to create to resolve to the connection Read Endpoint
+      - 
       - 
     * - restore_type
       - Choice
@@ -6555,6 +7708,59 @@ S3NotificationConfiguration
 
 
 
+S3StaticWebsiteHosting
+^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _S3StaticWebsiteHosting:
+
+.. list-table:: :guilabel:`S3StaticWebsiteHosting`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - redirect_requests
+      - Object<S3StaticWebsiteHostingRedirectRequests_>
+      - Redirect requests configuration.
+      - 
+      - 
+
+*Base Schemas* `Deployable`_
+
+
+S3StaticWebsiteHostingRedirectRequests
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _S3StaticWebsiteHostingRedirectRequests:
+
+.. list-table:: :guilabel:`S3StaticWebsiteHostingRedirectRequests`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - protocol
+      - String |star|
+      - Protocol
+      - 
+      - 
+    * - target
+      - PacoReference|String |star|
+      - Target S3 Bucket or domain.
+      - Paco Reference to `S3Bucket`_. String Ok.
+      - 
+
+
 
 SNSTopic
 ---------
@@ -6681,6 +7887,8 @@ SNSTopicSubscription
 
 .. _codecommitrepository: yaml-global-resources.html#codecommitrepository
 
+.. _codecommituser: yaml-global-resources.html#codecommituser
+
 .. _segment: yaml-netenv.html#segment
 
 .. _cloudwatchlogretention: yaml-monitoring.html#cloudwatchlogretention
@@ -6709,6 +7917,8 @@ SNSTopicSubscription
 .. _notifiable: yaml-base.html#notifiable
 
 .. _resource: yaml-base.html#resource
+
+.. _accountregions: yaml-base#accountregions
 
 .. _type: yaml-base.html#type
 

@@ -6,6 +6,8 @@ Changelog for Paco
 
 ### Added
 
+- DeploymentPipeline now supports ``ECR.Source`` and can be used directly with ``ECS.Deploy``.
+
 - Aurora support: RDSAurora and DBClusterParamaterGroup StackTemplates.
 
 - ASG has new `ssh_access` field to allow managing users and groups of SSH public key pairs on the instance.
