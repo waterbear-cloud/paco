@@ -562,6 +562,9 @@ class RDS(StackTemplate):
                 db_snapshot_id_enabled = True
             if db_snapshot_id_enabled == True:
                 db_instance_dict['DBSnapshotIdentifier'] = rds_config.db_snapshot_identifier
+                # To restore an existing DB from a Snapshot, RDS will need to replace the RDS
+                # resource, in which case the DBInstanceIdentifier name CAN NOT be set
+                # del db_instance_dict['DBInstanceIdentifier']
 
             # Encryption
             if rds_config.kms_key_id == '' or rds_config.kms_key_id == None:
