@@ -6,6 +6,9 @@ Changelog for Paco
 
 ### Added
 
+- DeploymentPipeline that uses ``S3.Source`` will get more permissive access to the artifacts S3 Bucket to allow
+  this action to work.
+
 - DeploymentPipeline now supports ``ECR.Source`` and can be used directly with ``ECS.Deploy``.
 
 - Aurora support: RDSAurora and DBClusterParamaterGroup StackTemplates.

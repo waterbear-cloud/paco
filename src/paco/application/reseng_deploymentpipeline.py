@@ -23,6 +23,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         self.kms_crypto_principle_list = []
         self.artifacts_bucket_policy_resource_arns = []
         self.artifacts_bucket_meta = {
+            'obj': None,
             'ref': None,
             'arn': None,
             'name': None,
@@ -412,10 +413,11 @@ policies:
 
     def create_image_definitions_artifact_cache(self, hook, pipeline):
         "Create a cache id for the imageDefinitions service name"
+        service = ''
         for action in pipeline.deploy.values():
             if action.type == 'ECS.Deploy':
                 service = get_model_obj_from_ref(action.service, self.paco_ctx.project)
-            return service.name
+            return service.name + ':' + self.artifacts_bucket_meta['obj'].account
 
     def create_image_definitions_artifact(self, hook, pipeline):
         "Create an imageDefinitions file"
@@ -432,12 +434,7 @@ policies:
   }}
 ]
 """
-        # Upload to S3
-        s3_ctl = self.paco_ctx.get_controller('S3')
-        bucket_name = self.artifacts_bucket_meta['name']
-        s3_key = self.pipeline._stack.get_name() + '-imagedef.zip'
-
-        # create temp zip file
+        # Create temp zip file of the imageDefinitions.json
         orig_cwd = os.getcwd()
         work_path = pathlib.Path(self.paco_ctx.build_path)
         work_path = work_path / 'DeploymentPipeline' / self.app.paco_ref_parts / self.pipeline_account_ctx.get_name()
@@ -451,8 +448,22 @@ policies:
         archive_path = work_path / 'imagedef'
         shutil.make_archive(archive_path, 'zip', zip_path)
         os.chdir(orig_cwd)
-        s3_client = self.account_ctx.get_aws_client('s3')
-        s3_client.upload_file(str(archive_path) + '.zip', bucket_name, s3_key)
+
+        # Upload to S3
+        bucket_name = self.artifacts_bucket_meta['name']
+        s3_key = self.pipeline._stack.get_name() + '-imagedef.zip'
+        bucket_account_ctx = self.paco_ctx.get_account_context(self.artifacts_bucket_meta['obj'].account)
+        bucket_s3_client = bucket_account_ctx.get_aws_client('s3')
+        pipeline_s3_client = self.pipeline_account_ctx.get_aws_client('s3')
+        canonical_id = pipeline_s3_client.list_buckets()['Owner']['ID']
+        bucket_s3_client.upload_file(
+            str(archive_path) + '.zip',
+            bucket_name,
+            s3_key,
+            ExtraArgs={
+                'GrantFullControl': 'id="' + canonical_id + '"',
+            },
+        )
 
     def init_stage_action_ecr_source(self, action_config):
         "Initialize an ECR Source action"

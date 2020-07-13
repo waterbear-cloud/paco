@@ -85,6 +85,7 @@ class CodePipeline(StackTemplate):
         # Flags set to False, they will be set to True if there is an Action to indicate they will need Role support
         self.codecommit_source_enabled = False
         self.ecr_source_enabled = False
+        self.s3_source_enabled = False
         self.github_source_enabled = False
         self.codebuild_access_enabled = False
         self.lambda_invoke_enabled = False
@@ -417,20 +418,6 @@ class CodePipeline(StackTemplate):
                 Resource=[ '*' ]
             ),
             Statement(
-                Sid='S3Access',
-                Effect=Allow,
-                Action=[
-                    Action('s3', 'PutObject'),
-                    Action('s3', 'GetBucketPolicy'),
-                    Action('s3', 'GetObject'),
-                    Action('s3', 'ListBucket'),
-                ],
-                Resource=[
-                    troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}/*'),
-                    troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}')
-                ]
-            ),
-            Statement(
                 Sid='KMSCMK',
                 Effect=Allow,
                 Action=[
@@ -439,6 +426,41 @@ class CodePipeline(StackTemplate):
                 Resource=[ troposphere.Ref(self.cmk_arn_param) ]
             ),
         ]
+        # S3.Source Action requires more generous permissions on the Artifacts S3 Bucket
+        if self.s3_source_enabled:
+            pipeline_policy_statement_list.append(
+                Statement(
+                    Sid='S3Access',
+                    Effect=Allow,
+                    Action=[
+                        Action('s3', 'ReplicateObject'),
+                        Action('s3', 'Put*'),
+                        Action('s3', 'Get*'),
+                        Action('s3', 'List*'),
+                    ],
+                    Resource=[
+                        troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}/*'),
+                        troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}')
+                    ]
+                ),
+            )
+        else:
+            pipeline_policy_statement_list.append(
+                Statement(
+                    Sid='S3Access',
+                    Effect=Allow,
+                    Action=[
+                        Action('s3', 'PutObject'),
+                        Action('s3', 'GetBucketPolicy'),
+                        Action('s3', 'GetObject'),
+                        Action('s3', 'ListBucket'),
+                    ],
+                    Resource=[
+                        troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}/*'),
+                        troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}')
+                    ]
+                ),
+            )
         if self.lambda_invoke_enabled:
             pipeline_policy_statement_list.append(
                 Statement(
@@ -629,6 +651,7 @@ class CodePipeline(StackTemplate):
             elif action.type == 'ECR.Source':
                 if action.is_enabled():
                     self.ecr_source_enabled = True
+                    self.s3_source_enabled = True
                 if is_ref(action.repository):
                     ecr = get_model_obj_from_ref(action.repository, self.paco_ctx.project)
                     ecr_name = ecr.repository_name
@@ -739,7 +762,7 @@ class CodePipeline(StackTemplate):
                             '-',
                             [troposphere.Ref('AWS::StackName'), 'imagedef.zip']
                         ),
-                        'PollForSourceChanges': True,
+                        'PollForSourceChanges': False,
                     },
                     OutputArtifacts=[
                         troposphere.codepipeline.OutputArtifacts(
@@ -838,10 +861,10 @@ class CodePipeline(StackTemplate):
                     codebuild_build_action = troposphere.codepipeline.Actions(
                         Name='CodeBuild',
                         ActionTypeId = troposphere.codepipeline.ActionTypeId(
-                            Category = 'Build',
-                            Owner = 'AWS',
-                            Version = '1',
-                            Provider = 'CodeBuild'
+                            Category='Build',
+                            Owner='AWS',
+                            Version='1',
+                            Provider='CodeBuild',
                         ),
                         Configuration = {
                             'ProjectName': troposphere.Ref(self.resource_name_prefix_param),
@@ -849,7 +872,7 @@ class CodePipeline(StackTemplate):
                         InputArtifacts = self.build_input_artifacts,
                         OutputArtifacts = [
                             troposphere.codepipeline.OutputArtifacts(
-                                Name = 'CodeBuildArtifact'
+                                Name='CodeBuildArtifact',
                             )
                         ],
                         RunOrder = action.run_order
@@ -857,7 +880,7 @@ class CodePipeline(StackTemplate):
                     build_stage_actions.append(codebuild_build_action)
             build_stage = troposphere.codepipeline.Stages(
                 Name="Build",
-                Actions = build_stage_actions
+                Actions=build_stage_actions,
             )
 
         # Deploy Actions
@@ -885,18 +908,18 @@ class CodePipeline(StackTemplate):
 
         pipeline_service_role_res = self.add_pipeline_service_role()
         pipeline_res = troposphere.codepipeline.Pipeline(
-            title = 'BuildCodePipeline',
-            template = self.template,
+            title='BuildCodePipeline',
+            template=self.template,
             DependsOn='CodePipelinePolicy',
-            RoleArn = troposphere.GetAtt(pipeline_service_role_res, 'Arn'),
-            Name = troposphere.Ref(self.resource_name_prefix_param),
-            Stages = pipeline_stages,
-            ArtifactStore = troposphere.codepipeline.ArtifactStore(
-                Type = 'S3',
-                Location = troposphere.Ref(self.artifacts_bucket_name_param),
-                EncryptionKey = troposphere.codepipeline.EncryptionKey(
-                    Type = 'KMS',
-                    Id = troposphere.Ref(self.cmk_arn_param),
+            RoleArn=troposphere.GetAtt(pipeline_service_role_res, 'Arn'),
+            Name=troposphere.Ref(self.resource_name_prefix_param),
+            Stages=pipeline_stages,
+            ArtifactStore=troposphere.codepipeline.ArtifactStore(
+                Type='S3',
+                Location=troposphere.Ref(self.artifacts_bucket_name_param),
+                EncryptionKey=troposphere.codepipeline.EncryptionKey(
+                    Type='KMS',
+                    Id=troposphere.Ref(self.cmk_arn_param),
                 )
             )
         )
@@ -939,10 +962,10 @@ class CodePipeline(StackTemplate):
         manual_deploy_action = troposphere.codepipeline.Actions(
             Name='Approval',
             ActionTypeId = troposphere.codepipeline.ActionTypeId(
-                Category = 'Approval',
-                Owner = 'AWS',
-                Version = '1',
-                Provider = 'Manual'
+                Category='Approval',
+                Owner='AWS',
+                Version='1',
+                Provider='Manual',
             ),
             Configuration = {
                 'NotificationArn': troposphere.Ref(manual_approval_sns_res),
@@ -952,7 +975,7 @@ class CodePipeline(StackTemplate):
         manual_deploy_action = troposphere.If(
             'ManualApprovalIsEnabled',
             manual_deploy_action,
-            troposphere.Ref('AWS::NoValue')
+            troposphere.Ref('AWS::NoValue'),
         )
 
         return manual_deploy_action
@@ -1059,10 +1082,10 @@ class CodePipeline(StackTemplate):
                 codedeploy_deploy_action = troposphere.codepipeline.Actions(
                     Name='CodeDeploy',
                     ActionTypeId = troposphere.codepipeline.ActionTypeId(
-                        Category = 'Deploy',
-                        Owner = 'AWS',
-                        Version = '1',
-                        Provider = 'CodeDeploy'
+                        Category='Deploy',
+                        Owner='AWS',
+                        Version='1',
+                        Provider='CodeDeploy',
                     ),
                     Configuration = {
                         'ApplicationName': troposphere.Ref(codedeploy_application_name_param),
@@ -1070,7 +1093,7 @@ class CodePipeline(StackTemplate):
                     },
                     InputArtifacts = [
                         troposphere.codepipeline.InputArtifacts(
-                            Name = 'CodeBuildArtifact'
+                            Name='CodeBuildArtifact',
                         )
                     ],
                     RoleArn = troposphere.Ref(codedeploy_tools_delegate_role_arn_param),
