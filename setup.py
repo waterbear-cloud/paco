@@ -33,7 +33,7 @@ setup(
     ],
     keywords=['AWS','Waterbear','Cloud','Infrastructure as Code', 'CloudFormation'],
     install_requires=[
-        'paco.models >= 7.3.0',
+        'paco.models >= 7.4.0',
         'boto3',
         'click',
         'cookiecutter',
