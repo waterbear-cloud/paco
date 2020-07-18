@@ -2953,7 +2953,7 @@ DeploymentPipeline caveats - there are a few things to consider when creating pi
     source:
       codecommit:
         type: CodeCommit.Source
-        codecommit_repository: paco.ref resource.codecommit.mygroiup.myrepo
+        codecommit_repository: paco.ref resource.codecommit.mygroup.myrepo
         deployment_branch_name: "prod"
     build:
       codebuild:
@@ -5456,7 +5456,7 @@ DNS
     * - hosted_zone
       - PacoReference|String
       - Hosted Zone Id
-      - Paco Reference to `Route53HostedZone`_. String Ok.
+      - Paco Reference to `HostedZone`_. String Ok.
       - 
     * - ssl_certificate
       - PacoReference
