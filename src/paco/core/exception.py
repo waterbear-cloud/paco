@@ -48,6 +48,9 @@ class PacoBaseException(Exception):
 class PacoBucketExists(PacoBaseException):
     title = "S3 Bucket already exists"
 
+class PacoStateError(PacoBaseException):
+    title = "Paco Internal State error"
+
 class UnsupportedCloudFormationParameterType(PacoBaseException):
     title = "Unsupported CloudFormation Parameter Type"
 

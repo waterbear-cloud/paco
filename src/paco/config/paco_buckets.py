@@ -5,7 +5,7 @@ from botocore.exceptions import ClientError
 class PacoBuckets():
     """Paco can create and manage an S3 Bucket for every account/region.
     This can contain configuration used by Paco, such as CloudFormation and
-    Lamda code artifacts.
+    Lambda code artifacts.
 
     Paco S3 Buckets are named in the format:
 
@@ -20,7 +20,7 @@ class PacoBuckets():
         short_region = aws_regions[region]['short_name']
         name = f"paco-{self.project.name}-{account_ctx.name}-{short_region}"
         if self.project.s3bucket_hash != None:
-            name += '-self.project.s3bucket_hash'
+            name += f"-{self.project.s3bucket_hash}"
         # ToDo: validate bucket name
         return name
 
@@ -31,6 +31,33 @@ class PacoBuckets():
         bucket_name = self.get_bucket_name(account_ctx, region)
         s3_client = account_ctx.get_aws_client('s3', region)
         s3_client.upload_file(file_location, bucket_name, s3_key)
+        return bucket_name
+
+    def get_object(self, s3_key, account_ctx, region):
+        """Get an S3 Object from a Paco Bucket and return the body.
+        Returns None if the bucket is not created or the object does not exist."""
+        if not self.is_bucket_created(account_ctx, region):
+            return None
+        bucket_name = self.get_bucket_name(account_ctx, region)
+        s3_client = account_ctx.get_aws_client('s3', region)
+        try:
+            response = s3_client.get_object(Bucket=bucket_name, Key=s3_key)
+            return response["Body"].read()
+        except ClientError as error:
+            if error.response['Error']['Code'] != 'NoSuchKey':
+                raise error
+            else:
+                return None
+
+    def put_object(self, s3_key, obj, account_ctx, region):
+        """Put an S3 Object in a Paco Bucket"""
+        if not self.is_bucket_created(account_ctx, region):
+            self.create_bucket(account_ctx, region)
+        bucket_name = self.get_bucket_name(account_ctx, region)
+        s3_client = account_ctx.get_aws_client('s3', region)
+        if type(obj) != bytes:
+            obj = obj.encode('utf-8')
+        s3_client.put_object(Bucket=bucket_name, Key=s3_key, Body=obj)
         return bucket_name
 
     def create_bucket(self, account_ctx, region):
