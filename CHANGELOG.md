@@ -8,6 +8,9 @@ Changelog for Paco
 
 - New IAMUser StackTemplate for the application-level IAMUser type.
 
+### Fixed
+
+- Provision for ``resource.s3`` was using incorrect resource_ref
 
 7.2.0 (2020-07-14)
 ------------------

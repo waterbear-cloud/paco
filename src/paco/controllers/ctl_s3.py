@@ -242,22 +242,19 @@ class S3Controller(Controller):
         # initialize S3 Bucket stack groups
         for env_id, env_config in s3_env_map.items():
             for bucket_id, bucket_config in env_config['buckets']:
-                resource_ref = 'resource.s3.buckets.{0}.{1}.{2}'.format(
-                    env_config['account_ctx'].get_name(), env_config['region'], bucket_id
-                )
                 env_stack_group = S3StackGroup(
                     self.paco_ctx,
                     env_config['account_ctx'],
                     env_config['region'],
                     'bucket',
                     self,
-                    resource_ref,
+                    bucket_config.paco_ref,
                     stack_hooks=None
                 )
                 self.init_context(
                     env_config['account_ctx'],
                     env_config['region'],
-                    resource_ref,
+                    bucket_config.paco_ref,
                     env_stack_group,
                     stack_tags
                 )
@@ -272,8 +269,8 @@ class S3Controller(Controller):
         "Init S3 Buckets"
         if model_obj != None:
             bucket_list = []
-            if type(model_obj) == dict:
-                bucket_list.extend(model_obj.keys())
+            if schemas.IS3Resource.providedBy(model_obj):
+                bucket_list.extend(model_obj.buckets.keys())
             else:
                 bucket_list.append(model_obj.name)
             self.init_s3_resource(bucket_list, stack_tags=None)
