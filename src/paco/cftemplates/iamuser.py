@@ -38,15 +38,16 @@ class IAMUser(StackTemplate):
         for allow_ref in iamuser.allows:
             obj = get_model_obj_from_ref(allow_ref, self.paco_ctx.project)
             if schemas.IECRRepository.providedBy(obj):
+                ref_hash = utils.md5sum(str_data=allow_ref)
                 ecr_arn_param = self.create_cfn_parameter(
-                    name=self.create_cfn_logical_id('Allow' + utils.md5sum(str_data=allow_ref)),
+                    name=self.create_cfn_logical_id('Allow' + ref_hash),
                     param_type='String',
                     description='Resource to allow access.',
                     value=allow_ref + '.arn',
                 )
                 statements.append(
                     Statement(
-                        Sid='ECRAllowPushPull',
+                        Sid='ECRAllowPushPull' + ref_hash,
                         Effect=Allow,
                         Action=[
                             awacs.ecr.GetAuthorizationToken,
