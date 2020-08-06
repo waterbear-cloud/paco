@@ -396,6 +396,7 @@ class RDSAurora(StackTemplate):
                     record_set_type='CNAME',
                     resource_records=[rds_aurora.paco_ref + '.endpoint.address'],
                     stack_group=self.stack.stack_group,
+                    async_stack_provision=True
                 )
             for read_dns in rds_aurora.read_dns:
                 route53_ctl.add_record_set(
@@ -407,6 +408,7 @@ class RDSAurora(StackTemplate):
                     record_set_type='CNAME',
                     resource_records=[rds_aurora.paco_ref + '.readendpoint.address'],
                     stack_group=self.stack.stack_group,
+                    async_stack_provision=True
                 )
 
     def create_notification_param(self, group):
@@ -667,5 +669,6 @@ class RDS(StackTemplate):
                         record_set_type='CNAME',
                         resource_records=['paco.ref ' + config_ref + '.endpoint.address'],
                         stack_group=self.stack.stack_group,
+                        async_stack_provision=True,
                         config_ref=rds_config.paco_ref_parts + '.dns'
                     )

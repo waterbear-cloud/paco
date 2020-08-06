@@ -374,6 +374,7 @@ class ALB(StackTemplate):
                             alias_dns_name=alias_dns_ref,
                             alias_hosted_zone_id=alias_hosted_zone_ref,
                             stack_group=self.stack.stack_group,
+                            async_stack_provision=True,
                             config_ref=alb_config.paco_ref_parts + '.dns'
                         )
 

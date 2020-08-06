@@ -71,5 +71,6 @@ class EIP(StackTemplate):
                         record_set_type='A',
                         resource_records=['paco.ref ' + config_ref + '.address'],
                         stack_group=self.stack.stack_group,
+                        async_stack_provision=True,
                         config_ref=eip_config.paco_ref_parts + '.dns'
                     )

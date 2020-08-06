@@ -107,6 +107,7 @@ default_user = {
     "ubuntu": "/home/ubuntu",
     "suse": "/root",
     "amazon": "/home/ec2-user",
+    "centos": "/home/centos"
 }
 
 ssm_regions = {
