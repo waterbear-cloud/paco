@@ -1,10 +1,12 @@
 Changelog for Paco
 ==================
 
-7.2.1 (unreleased)
+7.3.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Added
+
+- New IAMUser StackTemplate for the application-level IAMUser type.
 
 
 7.2.0 (2020-07-14)

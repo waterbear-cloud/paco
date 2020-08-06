@@ -46,3 +46,4 @@ from paco.cftemplates.iotanalyticspipeline import IoTAnalyticsPipeline
 from paco.cftemplates.ssmdocument import SSMDocument
 from paco.cftemplates.ecs import ECSCluster, ECSServices
 from paco.cftemplates.ecr import ECRRepository
+from paco.cftemplates.iamuser import IAMUser
