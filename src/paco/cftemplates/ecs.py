@@ -29,6 +29,12 @@ class ECSCluster(StackTemplate):
             value=troposphere.Ref(cluster_res),
             ref=ecs_cluster.paco_ref_parts + ".name"
         )
+        self.create_output(
+            title=cluster_res.title + 'Arn',
+            description="Cluster Arn",
+            value=troposphere.GetAtt(cluster_res, "Arn"),
+            ref=ecs_cluster.paco_ref_parts + ".arn"
+        )
 
 
 class ECSServices(StackTemplate):
