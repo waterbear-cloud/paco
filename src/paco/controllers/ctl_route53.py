@@ -1,5 +1,6 @@
+
 from paco.stack_grps.grp_route53 import Route53StackGroup
-from paco.stack import StackGroup
+from paco.stack import StackGroup, StackOrder
 from paco.cftemplates import Route53RecordSet
 from paco.core.exception import StackException, PacoException
 from paco.core.exception import PacoErrorCode
@@ -79,6 +80,7 @@ class Route53Controller(Controller):
         alias_dns_name=None,
         alias_hosted_zone_id=None,
         stack_group=None,
+        async_stack_provision=False,
         config_ref=None
     ):
         record_set_config = {
@@ -103,10 +105,14 @@ class Route53Controller(Controller):
             #    extra_context={'record_set_config': record_set_config, 'record_set_name': dns.domain_name}
             #)
         else:
+            stack_orders = None
+            if async_stack_provision == True:
+                stack_orders = [StackOrder.PROVISION]
             stack_group.add_new_stack(
                 region,
                 resource,
                 Route53RecordSet,
+                stack_orders=stack_orders,
                 extra_context={'record_set_config': record_set_config, 'record_set_name': dns.domain_name}
             )
 

@@ -269,5 +269,6 @@ class CloudFront(StackTemplate):
                         alias_dns_name = 'paco.ref ' + self.stack.stack_ref + '.domain_name',
                         alias_hosted_zone_id = 'Z2FDTNDATAQYW2',
                         stack_group=self.stack.stack_group,
+                        async_stack_provision=True,
                         config_ref=config_ref+'.record_set'
                     )
