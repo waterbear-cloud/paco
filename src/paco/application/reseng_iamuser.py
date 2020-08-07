@@ -16,11 +16,15 @@ class IAMUserResourceEngine(ResourceEngine):
 
     def init_resource(self):
         # IAM User
+        if self.resource.account != None:
+            self.account_ctx = self.paco_ctx.get_account_context(account_ref=self.resource.account)
+
         self.iamuser_stack = self.stack_group.add_new_stack(
             self.aws_region,
             self.resource,
             paco.cftemplates.iamuser.IAMUser,
             stack_tags=self.stack_tags,
+            account_ctx=self.account_ctx
         )
 
         # Stack hooks for managing access keys

@@ -35,33 +35,11 @@ class IAMUser(StackTemplate):
 
         # Parameters
         statements = []
+        ecr_repo_allow = []
         for allow_ref in iamuser.allows:
             obj = get_model_obj_from_ref(allow_ref, self.paco_ctx.project)
             if schemas.IECRRepository.providedBy(obj):
-                ref_hash = utils.md5sum(str_data=allow_ref)
-                ecr_arn_param = self.create_cfn_parameter(
-                    name=self.create_cfn_logical_id('Allow' + ref_hash),
-                    param_type='String',
-                    description='Resource to allow access.',
-                    value=allow_ref + '.arn',
-                )
-                statements.append(
-                    Statement(
-                        Sid='ECRAllowPushPull' + ref_hash,
-                        Effect=Allow,
-                        Action=[
-                            awacs.ecr.GetAuthorizationToken,
-                            awacs.ecr.GetDownloadUrlForLayer,
-                            awacs.ecr.BatchGetImage,
-                            awacs.ecr.BatchCheckLayerAvailability,
-                            awacs.ecr.PutImage,
-                            awacs.ecr.InitiateLayerUpload,
-                            awacs.ecr.UploadLayerPart,
-                            awacs.ecr.CompleteLayerUpload
-                        ],
-                        Resource=[troposphere.Ref(ecr_arn_param)],
-                    ),
-                )
+                ecr_repo_allow.append(allow_ref)
             else:
                 # Unsupported Allow ref
                 if self.paco_ctx.warn:
@@ -69,6 +47,46 @@ class IAMUser(StackTemplate):
                         f"does not support the resource:\n{allow_ref}\n" + \
                         f"{obj.type}\nIgnoring this reference."
                     )
+
+        # Generate one statement for all ECR Repositories
+        if len(ecr_repo_allow) > 0:
+            ecr_arn_resources = []
+            for allow_ref in ecr_repo_allow:
+                ref_hash = utils.md5sum(str_data=allow_ref)
+                ecr_arn_param = self.create_cfn_parameter(
+                    name=self.create_cfn_logical_id('Allow' + ref_hash),
+                    param_type='String',
+                    description='Resource to allow access.',
+                    value=allow_ref + '.arn',
+                )
+                ecr_arn_resources.append(troposphere.Ref(ecr_arn_param))
+
+            statements.append(
+                Statement(
+                    Sid='ECRGetAuthorizationToken',
+                    Effect=Allow,
+                    Action=[
+                        awacs.ecr.GetAuthorizationToken,
+                    ],
+                    Resource=['*'],
+                ),
+            )
+            statements.append(
+                Statement(
+                    Sid='ECRAllowPushPull',
+                    Effect=Allow,
+                    Action=[
+                        awacs.ecr.GetDownloadUrlForLayer,
+                        awacs.ecr.BatchGetImage,
+                        awacs.ecr.BatchCheckLayerAvailability,
+                        awacs.ecr.PutImage,
+                        awacs.ecr.InitiateLayerUpload,
+                        awacs.ecr.UploadLayerPart,
+                        awacs.ecr.CompleteLayerUpload
+                    ],
+                    Resource=ecr_arn_resources,
+                ),
+            )
 
         # Resources
         iam_user_dict = {}
