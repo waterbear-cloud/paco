@@ -1,6 +1,6 @@
 from paco import utils
 from paco.cftemplates.cftemplates import StackTemplate
-from paco.models.references import Reference, is_ref, resolve_ref
+from paco.models.references import is_ref, get_model_obj_from_ref
 import troposphere
 import troposphere.cloudfront
 import troposphere.route53
@@ -259,8 +259,13 @@ class CloudFront(StackTemplate):
             route53_ctl = self.paco_ctx.get_controller('route53')
             if cloudfront_config.is_dns_enabled() == True:
                 for alias in cloudfront_config.domain_aliases:
+                    account_ctx = self.account_ctx
+                    if alias.hosted_zone:
+                        if is_ref(alias.hosted_zone):
+                            hosted_zone = get_model_obj_from_ref(alias.hosted_zone, self.paco_ctx.project)
+                            account_ctx = self.paco_ctx.get_account_context(account_ref=hosted_zone.account)
                     route53_ctl.add_record_set(
-                        self.account_ctx,
+                        account_ctx,
                         self.aws_region,
                         cloudfront_config,
                         enabled=cloudfront_config.is_enabled(),

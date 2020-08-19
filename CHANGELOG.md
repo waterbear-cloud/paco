@@ -12,7 +12,9 @@ Changelog for Paco
 
 - Provision for ``resource.s3`` was using incorrect resource_ref
 
-- ALB Route53 Record Set was not using the account and defaulting to the ALB account.
+- ALB created Route53 RecordSets now use the Route53 account instead of defaulting to the current account.
+
+- CloudFront domain_aliases now use the hosted_zone of the account for paco refs instead of defaulting to the current account.
 
 
 7.2.0 (2020-07-14)
