@@ -112,6 +112,7 @@ class Route53Controller(Controller):
                 region,
                 resource,
                 Route53RecordSet,
+                account_ctx=account_ctx,
                 stack_orders=stack_orders,
                 extra_context={'record_set_config': record_set_config, 'record_set_name': dns.domain_name}
             )

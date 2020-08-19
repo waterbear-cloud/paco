@@ -12,6 +12,9 @@ Changelog for Paco
 
 - Provision for ``resource.s3`` was using incorrect resource_ref
 
+- ALB Route53 Record Set was not using the account and defaulting to the ALB account.
+
+
 7.2.0 (2020-07-14)
 ------------------
 
