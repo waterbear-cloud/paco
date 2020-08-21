@@ -952,6 +952,7 @@ An unconstrainted set of key-value pairs used to set advanced options for Elasti
 
 {ITargetGroup}
 
+{IPinpointApplication}
 
 {IIoTTopicRule}
 
@@ -1372,6 +1373,7 @@ def convert_schema_to_list_table(schema, level='-', header=True):
     Introspects a Schema-based Interface and returns
     a ReStructured Text representation of it.
     """
+    table_row_template = ''
     if schema.__name__ in ('IFunction', 'IDBParameters'):
         return ''
     schema_name = strip_interface_char(schema.__name__)
@@ -1826,6 +1828,8 @@ MINOR_SCHEMAS = {
     'IAttributes': None,
     'IIotAnalyticsStorage': None,
     'IStorageRetention': None,
+    'IPinpointSMSChannel': None,
+    'IPinpointEmailChannel': None,
 }
 
 def create_tables_from_schema():

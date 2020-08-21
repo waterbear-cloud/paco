@@ -2517,7 +2517,7 @@ CloudFrontCustomErrorResponse
       - Int
       - Error Caching Min TTL
       - 
-      - 
+      - 300
     * - error_code
       - Int
       - HTTP Error Code
@@ -4930,7 +4930,23 @@ EventsRule
 -----------
 
 
-Events Rule
+Events Rule resources match incoming or scheduled events and route them to target using Amazon EventBridge.
+
+.. sidebar:: Prescribed Automation
+
+    ``targets``: If the ``target`` is a Lambda, an IAM Role will be created that is granted permission to invoke it by this EventRule.
+
+.. code-block:: yaml
+    :caption: Lambda function resource YAML
+
+    type: EventsRule
+    enabled: true
+    order: 10
+    description: Invoke a Lambda every other minute
+    schedule_expression: "cron(*/2 * * * ? *)"
+    targets:
+        - target: paco.ref netenv.mynet.applications.myapp.groups.mygroup.resources.mylambda
+
     
 
 .. _EventsRule:
@@ -5703,6 +5719,61 @@ Target Group
 
 *Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `PortProtocol`_, `Title`_, `Type`_
 
+
+PinpointApplication
+--------------------
+
+Amazon Pinpoint is a flexible and scalable outbound and inbound marketing communications service.
+You can connect with customers over channels like email, SMS, push, or voice.
+
+A Pinpoint Application is a collection of related settings, customer information, segments, campaigns,
+and other types of Amazon Pinpoint resources.
+
+Currently AWS Pinpoint only supports general configuration suitable for sending transactional messages.
+
+.. sidebar:: Prescribed Automation
+
+    ``email_channel``: Will build an ARN to a Simple Email Service Verified Email in the same account and region.
+
+.. code-block:: yaml
+    :caption: example Pinpoint Application configuration
+
+    type: PinpointApplication
+    enabled: true
+    order: 20
+    title: "My SaaS Transactional Message Service"
+    email_channel:
+        enable_email: true
+        from_address: "bob@example.com"
+    sms_channel:
+        enable_sms: true
+        sender_id: MyUniqueName
+
+
+
+.. _PinpointApplication:
+
+.. list-table:: :guilabel:`PinpointApplication`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - email_channel
+      - Object<PinpointEmailChannel_>
+      - Email Channel
+      - 
+      - 
+    * - sms_channel
+      - Object<PinpointSMSChannel_>
+      - SMS Channel
+      - 
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
 IoTTopicRule
@@ -7633,10 +7704,10 @@ S3 Bucket Policy
       - Each Key is the Condition name and the Value must be a dictionary of request filters. e.g. { "StringEquals" : { "aws:username" : "johndoe" }}
       - {}
     * - effect
-      - String |star|
+      - Choice |star|
       - Effect
-      - Must be one of: 'Allow', 'Deny'
-      - Deny
+      - Must be one of 'Allow' or 'Deny'
+      - 
     * - principal
       - Dict
       - Prinicpals

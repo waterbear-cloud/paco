@@ -8,13 +8,16 @@ Changelog for Paco
 
 - New IAMUser StackTemplate for the application-level IAMUser type.
 
+- New PinpointApplication resource type. Minimal implementation to support using the
+  service for transactional messages only.
+
 ### Fixed
 
 - Provision for ``resource.s3`` was using incorrect resource_ref
 
 - ALB created Route53 RecordSets now use the Route53 account instead of defaulting to the current account.
 
-- CloudFront domain_aliases now use the hosted_zone of the account for paco refs instead of defaulting to the current account.
+- CloudFront domain_aliases now use the hosted_zone of the account for paco refs.
 
 
 7.2.0 (2020-07-14)

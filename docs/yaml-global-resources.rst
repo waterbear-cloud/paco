@@ -590,7 +590,7 @@ IAM User Programmatic Access Configuration
       - 
       - 0
 
-*Base Schemas* `Deployable`_
+*Base Schemas* `Enablable`_
 
 
 IAMUserPermissions
@@ -707,9 +707,9 @@ AssumeRolePolicy
       - 
       - 
     * - effect
-      - String
+      - Choice
       - Effect
-      - 
+      - Must be one of 'Allow' or 'Deny'
       - 
     * - service
       - List<String>
@@ -775,9 +775,9 @@ Statement
       - Each Key is the Condition name and the Value must be a dictionary of request filters. e.g. { "StringEquals" : { "aws:username" : "johndoe" }}
       - {}
     * - effect
-      - String
+      - Choice
       - Effect
-      - Must be one of: 'Allow', 'Deny'
+      - Must be one of 'Allow' or 'Deny'
       - 
     * - principal
       - Object<Principal_>
