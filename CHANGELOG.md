@@ -13,7 +13,8 @@ Changelog for Paco
 
 ### Changed
 
- - Using Troposphere 2.6.2 with changes to alb `SecurityGroups` and `Subnets` no supplied as a List.
+ - Using Troposphere 2.6.2 with a ``monkey-patch troposphere.elasticloadbalancingv2.LoadBalancer``
+   so that ``LBApplication`` can pass `SecurityGroups` and `Subnets` as a single Security Group List Parameter.
 
 ### Fixed
 

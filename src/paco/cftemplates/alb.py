@@ -1,9 +1,14 @@
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.cftemplates.cftemplates import StackOutputParam
-from paco.models.references import Reference, get_model_obj_from_ref
+from paco.models.references import get_model_obj_from_ref
 import troposphere
 import troposphere.elasticloadbalancingv2
 
+# Troposphere elasticloadbalancingv2 monkey patch
+# troposphere 2.6.2 changed these props to ([basestring], False) - this change breaks use of the
+# List<AWS::EC2::SecurityGroup::Id> Parameter for these two fields
+troposphere.elasticloadbalancingv2.LoadBalancer.props['Subnets'] = (list, False)
+troposphere.elasticloadbalancingv2.LoadBalancer.props['SecurityGroups'] = (list, False)
 
 class ALB(StackTemplate):
     def __init__(
@@ -115,8 +120,8 @@ class ALB(StackTemplate):
         cfn_export_dict['Name'] = troposphere.Ref(load_balancer_name_param)
         cfn_export_dict['Type'] = 'application'
         cfn_export_dict['Scheme'] = troposphere.Ref(scheme_param)
-        cfn_export_dict['SecurityGroups'] = [troposphere.Ref(security_group_list_param)]
-        cfn_export_dict['Subnets'] = [troposphere.Ref(subnet_list_param)]
+        cfn_export_dict['SecurityGroups'] = troposphere.Ref(security_group_list_param)
+        cfn_export_dict['Subnets'] = troposphere.Ref(subnet_list_param)
 
         lb_attributes = [
             {'Key': 'idle_timeout.timeout_seconds', 'Value': troposphere.Ref(idle_timeout_param)}
