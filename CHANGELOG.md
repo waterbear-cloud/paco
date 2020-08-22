@@ -11,6 +11,10 @@ Changelog for Paco
 - New PinpointApplication resource type. Minimal implementation to support using the
   service for transactional messages only.
 
+### Changed
+
+ - Using Troposphere 2.6.2 with changes to alb `SecurityGroups` and `Subnets` no supplied as a List.
+
 ### Fixed
 
 - Provision for ``resource.s3`` was using incorrect resource_ref

@@ -115,8 +115,8 @@ class ALB(StackTemplate):
         cfn_export_dict['Name'] = troposphere.Ref(load_balancer_name_param)
         cfn_export_dict['Type'] = 'application'
         cfn_export_dict['Scheme'] = troposphere.Ref(scheme_param)
-        cfn_export_dict['SecurityGroups'] = troposphere.Ref(security_group_list_param)
-        cfn_export_dict['Subnets'] = troposphere.Ref(subnet_list_param)
+        cfn_export_dict['SecurityGroups'] = [troposphere.Ref(security_group_list_param)]
+        cfn_export_dict['Subnets'] = [troposphere.Ref(subnet_list_param)]
 
         lb_attributes = [
             {'Key': 'idle_timeout.timeout_seconds', 'Value': troposphere.Ref(idle_timeout_param)}
