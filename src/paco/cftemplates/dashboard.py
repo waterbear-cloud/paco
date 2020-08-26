@@ -1,4 +1,5 @@
 from paco.cftemplates.cftemplates import StackTemplate
+from paco.core.exception import UnsupportedCloudFormationParameterType
 import troposphere
 import troposphere.cloudwatch
 

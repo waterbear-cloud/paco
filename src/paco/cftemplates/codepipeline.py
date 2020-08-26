@@ -12,7 +12,6 @@ import troposphere.events
 import troposphere.iam
 import troposphere.sns
 
-
 ACTION_MAP = {
     'CodeBuild.Build': {
         'Name': 'CodeBuild',
@@ -188,11 +187,11 @@ class CodePipeline(StackTemplate):
 
         # Parameters for shared Roles
         for account_name in self.s3deploy_buckets.keys():
-            self.s3deploy_buckets[account.name] = self.create_cfn_parameter(
+            self.s3deploy_buckets[account_name] = self.create_cfn_parameter(
                 param_type='String',
                 name='{}S3DeployDelegateRoleArn'.format(account_name),
                 description='The Arn of the IAM Role CodePipeline will assume to gain access to the deployment bucket.',
-                value=self.pipeline.paco_ref + '.s3deploydelegate_{}.arn'.format(account.name),
+                value=self.pipeline.paco_ref + '.s3deploydelegate_{}.arn'.format(account_name),
             )
             s3_deploy_assume_role_statement = Statement(
                 Sid='S3AssumeRole',
@@ -200,7 +199,7 @@ class CodePipeline(StackTemplate):
                 Action=[
                     Action('sts', 'AssumeRole'),
                 ],
-                Resource=[ troposphere.Ref(self.s3deploy_buckets[account.name]) ]
+                Resource=[ troposphere.Ref(self.s3deploy_buckets[account_name]) ]
             )
             self.s3_deploy_statements.append(s3_deploy_assume_role_statement)
 

@@ -15,6 +15,7 @@ class BackupVault(StackTemplate):
             return
 
         # Service Role ARN parameter
+        service_role_arn_param = None
         if role != None:
             service_role_arn_param = self.create_cfn_parameter(
                 param_type='String',

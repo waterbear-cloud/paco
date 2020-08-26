@@ -120,6 +120,7 @@ class IoTAnalyticsPipeline(StackTemplate):
                 next_name = 'DatastoreActivity'
             else:
                 next_name = activity_list[idx + 1].name + "Activity"
+            activity_dict = {}
             if activity.activity_type == 'lambda':
                 lambda_param = self.create_cfn_parameter(
                     param_type='String',

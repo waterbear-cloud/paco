@@ -23,9 +23,8 @@ class ElasticsearchDomain(StackTemplate):
             description='The version of Elasticsearch to use, such as 2.3.',
             value=self.esdomain.elasticsearch_version
         )
-
+        subnet_params = []
         if esdomain.segment != None:
-            subnet_params = []
             segment_ref = esdomain.env_region_obj.network.vpc.segments[esdomain.segment].paco_ref
             if esdomain.cluster != None:
                 if esdomain.cluster.zone_awareness_enabled:
@@ -44,9 +43,9 @@ class ElasticsearchDomain(StackTemplate):
                     )
                 )
 
+        sg_params = []
+        vpc_sg_list = []
         if esdomain.security_groups:
-            sg_params = []
-            vpc_sg_list = []
             for sg_ref in esdomain.security_groups:
                 ref = Reference(sg_ref)
                 sg_param_name = 'SecurityGroupId' + ref.parts[-2] + ref.parts[-1]

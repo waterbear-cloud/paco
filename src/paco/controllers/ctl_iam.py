@@ -120,29 +120,6 @@ class RoleContext():
     def get_aws_name(self):
         return self.aws_name()
 
-    def get_role(self, role_id=None, role_ref=None):
-        role_by_id = None
-        role_by_ref = None
-        if role_id !=  None:
-            for role in self.roles:
-                if role.id == role_id:
-                    role_by_id = role
-                    break
-        if role_ref != None:
-            role_by_ref = role[role_ref]
-
-        if role_by_id != None and role_by_ref != None:
-            if role_by_id.id == role_by_ref.id:
-                return role_by_id
-            else:
-                # You specified both role_id and role_ref
-                # but they each returned different results.
-                raise StackException(PacoErrorCode)
-        elif role_by_id != None:
-            return role_by_id
-
-        return role_by_ref
-
     def add_managed_policy(
         self,
         resource,
@@ -167,7 +144,7 @@ class RoleContext():
         paco.models.loader.apply_attributes_from_config(policy, policy_dict)
 
         if policy.paco_ref_parts in self.policy_context.keys():
-            print("Managed policy already exists: %s" % (policy_ref) )
+            print(f"Managed policy already exists: {policy.paco_ref_parts}")
             raise StackException(PacoErrorCode.Unknown)
 
         # set the resolve_ref_obj to this RoleContext

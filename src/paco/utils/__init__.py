@@ -36,6 +36,7 @@ def enhanced_input(
     case_sensitive=True
 ):
     "Prompt for user input and check for valid values and allow retries."
+    value = None
     try_again = True
     while try_again:
         suffix = ": "

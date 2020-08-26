@@ -15,6 +15,7 @@ class NATGateway(StackTemplate):
         paco_ctx,
         nat_sg_config,
     ):
+        nat_sg_config_ref = None
         if nat_sg_config != None:
             nat_sg_config_ref = nat_sg_config.paco_ref_parts
         nat_config = stack.resource

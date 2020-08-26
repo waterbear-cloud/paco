@@ -176,7 +176,7 @@ class S3Context():
 
     def empty_bucket(self):
         if self.bucket_context == None:
-            print("ctl_s3: empty_bucket: ERROR: Unable to locate stack group for group: " + group_id)
+            print(f"ctl_s3: empty_bucket: ERROR: Unable to locate stack group for group: {self.bucket_context['group_id']}")
             raise StackException(PacoErrorCode.Unknown)
         s3_client = self.account_ctx.get_aws_client('s3')
         bucket_name = self.bucket_context['config'].get_bucket_name()

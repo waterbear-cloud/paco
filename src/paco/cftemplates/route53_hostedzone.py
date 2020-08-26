@@ -13,6 +13,7 @@ class Route53HostedZone(StackTemplate):
 
         self.paco_ctx.log_action_col("Init", "Route53", "Hosted Zone", "{}".format(zone_config.domain_name))
 
+        hosted_zone_res = None
         if zone_config.external_resource != None and zone_config.external_resource.is_enabled():
             hosted_zone_id_output_value = zone_config.external_resource.hosted_zone_id
             nameservers_output_value = ','.join(zone_config.external_resource.nameservers)

@@ -106,6 +106,7 @@ Try running `paco init credentials` to create one.
         return session_creds
 
     def create_role_temp_creds(self, session_creds):
+        role_creds = None
         sts_client = boto3.client('sts',
             region_name=session_creds['AWSDefaultRegion'],
             aws_access_key_id=session_creds['AccessKeyId'],

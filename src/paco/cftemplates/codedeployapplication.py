@@ -1,14 +1,6 @@
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.models.references import get_model_obj_from_ref
-from paco.core.exception import PacoUnsupportedFeature
-from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action
-from awacs.sts import AssumeRole
-import awacs.autoscaling
-import awacs.ec2
-import awacs.tag
-import awacs.sns
-import awacs.cloudwatch
-import awacs.elasticloadbalancing
+from awacs.aws import Statement, PolicyDocument, Action
 import troposphere
 import troposphere.codedeploy
 
@@ -111,7 +103,7 @@ class CodeDeployApplication(StackTemplate):
                     PolicyDocument=PolicyDocument(
                         Statement=statement_list,
                     ),
-                    Roles=[troposphere.Ref(service_role_resource)]
+                    Roles=[troposphere.Ref(service_role_arn_param)]
                 )
                 self.template.add_resource(policy_resource)
                 deploy_group_resource.DependsOn = policy_resource

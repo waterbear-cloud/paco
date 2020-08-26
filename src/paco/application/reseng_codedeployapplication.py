@@ -28,7 +28,6 @@ class CodeDeployApplicationResourceEngine(ResourceEngine):
         role = paco.models.iam.Role(role_name, self.resource)
         role.apply_config(role_dict)
 
-        iam_role_ref = self.resource.paco_ref_parts + '.' + role_name
         iam_role_id = self.gen_iam_role_id(self.res_id, role_name)
         iam_ctl = self.paco_ctx.get_controller('IAM')
         iam_ctl.add_role(

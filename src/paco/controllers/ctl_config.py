@@ -148,9 +148,9 @@ class ConfigController(Controller):
 
     def init_stack_groups(self):
         if self.config.locations == []:
-            accounts = project['accounts'].values()
+            accounts = self.paco_ctx.project['accounts'].values()
             # boto3 call for all enabled regions
-            client = account_ctx.get_aws_client('ec2')
+            client = self.account_ctx.get_aws_client('ec2')
             region_info = client.describe_regions()
             regions = [ region['RegionName'] for region in  region_info['Regions'] ]
             for account in accounts:

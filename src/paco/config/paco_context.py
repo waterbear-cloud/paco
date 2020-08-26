@@ -181,6 +181,7 @@ def print_diff_object(diff_obj, diff_obj_key):
     if diff_obj_key not in diff_obj.keys():
         return
     for root_change in diff_obj[diff_obj_key]:
+        change_t = None
         node_str = '.'.join(getFromSquareBrackets(root_change.path()))
         if diff_obj_key.endswith('_removed'):
             change_t = root_change.t1

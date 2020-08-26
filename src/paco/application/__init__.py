@@ -9,7 +9,6 @@ from paco.application.reseng_elasticacheredis import ElastiCacheRedisResourceEng
 from paco.application.reseng_eventsrule import EventsRuleResourceEngine
 from paco.application.reseng_lambda import LambdaResourceEngine
 from paco.application.reseng_lbapplication import LBApplicationResourceEngine
-from paco.application.reseng_lbclassic import LBClassicResourceEngine
 from paco.application.reseng_rds import RDSMysqlResourceEngine, RDSMysqlAuroraResourceEngine, RDSPostgresqlResourceEngine, \
     RDSPostgresqlAuroraResourceEngine, DBParameterGroupResourceEngine, DBClusterParameterGroupResourceEngine
 from paco.application.reseng_snstopic import SNSTopicResourceEngine

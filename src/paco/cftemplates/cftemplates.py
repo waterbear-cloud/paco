@@ -15,7 +15,8 @@ class StackOutputConfig():
         self.config_ref = config_ref
 
     def get_config_dict(self, stack):
-        conf_dict = current = {}
+        conf_dict = current = last_dict = {}
+        ref_part = None
         ref_part_list = self.config_ref.split('.')
         for ref_part in ref_part_list:
             current[ref_part] = {}
@@ -218,7 +219,7 @@ class StackTemplate():
         !! DEPRECATED !! Use self.cfn_logical_id* methods
         Create a CloudFormation safe Logical name
         """
-
+        cf_name = ""
         sep_list = ['_','-','@','.']
         if sep != None:
             sep_list = [sep]

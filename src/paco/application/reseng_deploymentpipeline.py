@@ -421,6 +421,8 @@ policies:
 
     def create_image_definitions_artifact(self, hook, pipeline):
         "Create an imageDefinitions file"
+        ecr_uri = None
+        service = None
         for action in pipeline.source.values():
             if action.type == 'ECR.Source':
                 ecr_uri = f"{self.pipeline_account_ctx.get_id()}.dkr.ecr.{self.aws_region}.amazonaws.com/{action.repository}:{action.image_tag}"

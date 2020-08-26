@@ -37,6 +37,7 @@ See the Paco CLI config scope docs at https://www.paco-cloud.io/en/latest//cli.h
 def load_paco_config_options(paco_ctx):
     "Loads the .paco-work/config.yaml options"
     # read .pacoconfig
+    config = None
     config_path = paco_ctx.home / '.pacoconfig'
     if config_path.exists():
         config = yaml.load(config_path)
@@ -338,7 +339,7 @@ def handle_exceptions(func):
             if error_name in ('InvalidPacoProjectFile', 'UnusedPacoProjectField', 'InvalidPacoReference'):
                 # Click fixme: in paco init commands args[0] doesn't get set so home is stashed in a global var
                 if len(args) == 0:
-                    home = PACO_HOME
+                    home = os.environ.get('PACO_HOME')
                 else:
                     home = args[0].home
                 click.echo("Invalid Paco project configuration files at {}".format(home))

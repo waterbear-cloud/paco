@@ -1,13 +1,12 @@
 import awacs.s3
-import os
 import troposphere
 import troposphere.cloudfront
 import troposphere.s3
+from paco.core.exception import StackException
+from paco.core.exception import PacoErrorCode
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.models import schemas
 from awacs.aws import Action, Allow, Statement, Policy, Principal, Condition, StringEquals
-from io import StringIO
-from enum import Enum
 
 
 class S3(StackTemplate):
@@ -55,6 +54,7 @@ class S3(StackTemplate):
         template = self.template
 
         # Resources
+        s3_resource = None
         if bucket_policy_only == False:
             s3_logical_id = cfn_logical_id_prefix + 'Bucket'
             cfn_export_dict = bucket.cfn_export_dict

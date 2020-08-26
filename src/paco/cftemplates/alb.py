@@ -273,6 +273,8 @@ class ALB(StackTemplate):
                       continue
                     logical_rule_name = self.create_cfn_logical_id(rule_name)
                     cfn_export_dict = {}
+                    field = None
+                    rule_values = None
                     if rule.rule_type == "forward":
                         logical_target_group_id = self.create_cfn_logical_id('TargetGroup' + rule.target_group)
                         cfn_export_dict['Actions'] = [

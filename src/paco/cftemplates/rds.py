@@ -133,6 +133,7 @@ class RDSAurora(StackTemplate):
         db_cluster_dict['DBClusterParameterGroupName'] = troposphere.Ref(cluster_parameter_group_ref)
 
         # Default DB Parameter Group
+        default_dbparametergroup_resource = None
         need_db_pg = False
         default_instance = rds_aurora.default_instance
         for db_instance in rds_aurora.db_instances.values():
@@ -140,7 +141,7 @@ class RDSAurora(StackTemplate):
                 need_db_pg = True
         if need_db_pg:
             # create default DB Parameter Group
-            param_group_family = gen_vocabulary.rds_engine_versions[rds_config.engine][rds_config.engine_version]['param_group_family']
+            param_group_family = gen_vocabulary.rds_engine_versions[rds_aurora.engine][rds_aurora.engine_version]['param_group_family']
             default_dbparametergroup_resource = troposphere.rds.DBParameterGroup(
                 "DBParameterGroup",
                 template=self.template,
@@ -150,6 +151,7 @@ class RDSAurora(StackTemplate):
 
         # Enhanced Monitoring Role
         need_monitoring_role = False
+        enhanced_monitoring_role_resource = None
         for db_instance in rds_aurora.db_instances.values():
             enhanced_monitoring_interval = db_instance.get_value_or_default('enhanced_monitoring_interval_in_seconds')
             if enhanced_monitoring_interval != 0:
@@ -459,6 +461,7 @@ class RDS(StackTemplate):
         )
 
         # DB Parameter Group
+        engine_major_version = None
         if rds_config.parameter_group == None:
             # No Parameter Group supplied, create one
             engine_major_version = '.'.join(rds_config.engine_version.split('.')[0:2])

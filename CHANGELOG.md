@@ -24,6 +24,13 @@ Changelog for Paco
 
 - CloudFront domain_aliases now use the hosted_zone of the account for paco refs.
 
+- PyLance detected fixes and clean-up: https://github.com/microsoft/pylance-release
+  * Remove unused reseng_lbclassic
+  * Dashboard: Added missing import for error handling
+  * RDS Aurora: fixed default DB Paramter group variable
+  * AWS Config: controller fixes
+  * IAM Controller: removed unused get_role function
+  * S3 Controller: empty bucket error message uses correct variable name
 
 7.2.0 (2020-07-14)
 ------------------
