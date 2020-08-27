@@ -1,31 +1,38 @@
-import click
-import sys
-import paco.models
 from paco.commands.helpers import pass_paco_context, paco_home_option, init_paco_home_option, handle_exceptions
-from paco.utils.cache import load_cached_project
+from paco.commands.display import display_project_as_html
+import click
+import pathlib
+import shutil
 
 
 @click.command('describe', short_help='Describe a Paco project')
 @paco_home_option
 @pass_paco_context
 @handle_exceptions
-def describe_command(ctx, home='.'):
+@click.option(
+    '-o', '--output',
+    default='html',
+    help='Output format.'
+)
+@click.option(
+    '-d', '--display',
+    default='chrome',
+    help='Display output in external app.'
+)
+def describe_command(paco_ctx, home='.', output='html', display='chrome'):
     """Describe a Paco project"""
-    ctx.command = 'describe'
-    init_paco_home_option(ctx, home)
-    if not ctx.home:
-        print('Paco configuration directory needs to be specified with either --home or PACO_HOME environment variable.')
-        sys.exit()
-    project = load_cached_project(ctx.home)
+    paco_ctx.command = 'describe'
+    init_paco_home_option(paco_ctx, home)
+    paco_ctx.load_project()
+    project = paco_ctx.project
+    static_path, project_html, envs_html = display_project_as_html(project)
+    display_path = paco_ctx.display_path
+    pathlib.Path(display_path).mkdir(parents=True, exist_ok=True)
+    shutil.copytree(static_path, display_path, dirs_exist_ok=True)
+    with open(str(display_path/ 'project.html'), 'w') as fh:
+        fh.write(project_html)
+    for name, html in envs_html.items():
+        with open(str(display_path / name), 'w') as fh:
+            fh.write(html)
 
-    print('Project: {} - {}'.format(project.name, project.title))
-    print('Location: {}'.format(ctx.home))
-    print()
-    print('Accounts')
-    for ne in project['accounts'].values():
-        print(' - {} - {}'.format(ne.name, ne.title))
-    print()
-    print('Network Environments')
-    for ne in project['netenv'].values():
-        print(' - {} - {}'.format(ne.name, ne.title))
-    print()
+# paco describe --output=html --open=chrome
