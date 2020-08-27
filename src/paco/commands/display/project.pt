@@ -12,12 +12,11 @@
   <meta property="og:url" content="">
   <meta property="og:image" content="">
 
+  <link href='http://fonts.googleapis.com/css?family=Raleway:400,300,600' rel='stylesheet' type='text/css'>
+
   <link rel="manifest" href="site.webmanifest">
   <link rel="apple-touch-icon" href="icon.png">
-  <!-- Place favicon.ico in the root directory -->
-
   <link rel="stylesheet" href="css/normalize.css">
-  <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/skeleton.css">
   <link rel="stylesheet" href="css/paco.css">
 
@@ -28,7 +27,7 @@
 
   <div class="container">
     <section class="header">
-      <h2 class="title">Paco Project</h2>
+      <h4 class="title">Paco Project:</h4>
       <h2 class="title" tal:content="project.title_or_name"></h2>
     </section>
 
@@ -145,17 +144,21 @@
     </div>
     <div id="global">
       <h6 class="section-header">Global Resources</h6>
+      <p class="description">AWS Resources that are available at the account-level.</p>
       <h6 class="resource-header">IAM Users</h6>
+      <p class="resource-description">IAM Users are AWS login accounts. Paco creates IAM Users that enforce multi-factor authentication (MFA) and creates IAM Roles
+        for every account the User has access to. To gain the Users permissions, it's necessary to first assume the role in the target account.
+        <a href="https://www.paco-cloud.io/en/latest/yaml-global-resources.html#iamuser">Paco docs &raquo;</a></p>
       <p tal:condition="len(project.resource.iam.users.values()) == 0">No IAM Users declared.</p>
       <table class="u-full-width" tal:condition="len(project.resource.iam.users.values()) > 0">
         <thead>
           <tr>
             <th>Username</th>
             <th>User Account</th>
-            <th>Account Whitelist</th>
+            <th>Accounts</th>
             <th>Console access?</th>
-            <th>Programmatic (API) access?</th>
-            <th style="min-width: 300px;">Permissions</th>
+            <th>API access?</th>
+            <th style="min-width: 200px;">Permissions</th>
           </tr>
         </thead>
         <tbody>
@@ -185,6 +188,11 @@
       </table>
 
       <h6 class="resource-header">CloudTrail</h6>
+      <p class="resource-description">CloudTrail logs AWS API calls. Monitor and react to changes in your AWS accounts with CloudTrail.
+        Paco can configure CloudTrails to report to a centralized S3 Bucket for archival, and to a central CloudWatch LogGroup for
+        easier querying of the CloudTrail logs.
+        <a href="https://www.paco-cloud.io/en/latest/yaml-global-resources.html#cloudtrail">Paco docs &raquo;</a></p>
+
       <p tal:condition="len(project.resource.cloudtrail.trails.values()) == 0">No CloudTrail declared.</p>
       <table class="u-full-width" tal:condition="len(project.resource.cloudtrail.trails.values()) > 0">
         <thead>
@@ -205,6 +213,11 @@
       </table>
 
       <h6 class="resource-header">CodeCommit</h6>
+      <p class="resource-description">CodeCommit hosts Git repositories. These repositories are secured within your AWS accounts
+        and can be simpler to configure to deploy to a CI/CD than GitHub. Paco creates IAM Users that only have access to
+        the specified CodeCommit repos and can only be authenticated using an SSH public key.
+        <a href="https://www.paco-cloud.io/en/latest/yaml-global-resources.html#codecommit">Paco docs &raquo;</a></p>
+
       <p tal:condition="len(project.resource.codecommit.values()) == 0">No CodeCommit declared.</p>
       <table class="u-full-width" tal:condition="len(project.resource.codecommit.values()) > 0">
         <thead>
@@ -234,6 +247,9 @@
       </table>
 
       <h6 class="resource-header">SNS Topics</h6>
+      <p class="resource-description">SNS Topics are where notifications can be sent. Paco will configure
+        alarms to notify to these SNS Topics.
+        <a href="https://www.paco-cloud.io/en/latest/yaml-global-resources.html#sns-topics">Paco docs &raquo;</a></p>
       <p tal:condition="len(project.resource.sns.topics.values()) == 0">No SNS Topics declared.</p>
       <table class="u-full-width" tal:condition="len(project.resource.sns.topics.values()) > 0">
         <thead>
