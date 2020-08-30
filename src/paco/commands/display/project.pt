@@ -1,31 +1,6 @@
-<!doctype html>
-<html class="no-js" lang="">
-
-<head>
-  <meta charset="utf-8">
-  <title tal:content="'Paco project: ' + project.title"></title>
-  <meta name="description" content="">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <meta property="og:title" content="">
-  <meta property="og:type" content="">
-  <meta property="og:url" content="">
-  <meta property="og:image" content="">
-
-  <link href='http://fonts.googleapis.com/css?family=Raleway:400,300,600' rel='stylesheet' type='text/css'>
-
-  <link rel="manifest" href="site.webmanifest">
-  <link rel="apple-touch-icon" href="icon.png">
-  <link rel="stylesheet" href="css/normalize.css">
-  <link rel="stylesheet" href="css/skeleton.css">
-  <link rel="stylesheet" href="css/paco.css">
-
-  <meta name="theme-color" content="#fafafa">
-</head>
-
-<body>
-
-  <div class="container">
+<!DOCTYPE html>
+<metal:master use-macro="templates['layout.pt'].macros.layout">
+  <div metal:fill-slot="content">
     <section class="header">
       <h4 class="title">Paco Project:</h4>
       <h2 class="title" tal:content="project.title_or_name"></h2>
@@ -291,5 +266,5 @@
     </div>
   </div>
 
-</body>
-</html>
+</metal:master>
+

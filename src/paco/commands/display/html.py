@@ -22,7 +22,13 @@ def display_project_as_html(project):
     env_tmpl = templates['env.pt']
     for netenv in project['netenv'].values():
         for env in netenv.values():
-            envs_html[f'ne-{netenv.name}-{env.name}.html'] = env_tmpl(project=project, netenv=netenv, env=env, userinfo=userinfo)
+            envs_html[f'ne-{netenv.name}-{env.name}.html'] = env_tmpl(
+                project=project,
+                netenv=netenv,
+                env=env,
+                userinfo=userinfo,
+                templates=templates,
+            )
     project_html = project_tmpl(
         project=project,
         userinfo=userinfo,
