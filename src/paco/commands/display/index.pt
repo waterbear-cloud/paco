@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<metal:master use-macro="templates['layout.pt'].macros.layout">
+  <div metal:fill-slot="content">
+
+    <metal:master use-macro="templates['layout.pt'].macros.globalnav">
+    </metal:master>
+
+    <div id="home">
+      <h6 class="section-header">Paco Project: ${project.title_or_name}</h6>
+      <div class="list-header"><b>Project Settings</b></div>
+      <ul class="sub-list">
+        <li class="sub-item"><b>Paco Project Version:</b> ${project.paco_project_version}</li>
+        <li class="sub-item"><b>Active AWS Regions:</b> ${', '.join(project.active_regions)}</li>
+        <li class="sub-item"><b>Unique S3 Bucket Suffix:</b> ${project.s3bucket_hash}</li>
+        <li class="sub-item"><b>Version Control: Environment Deploy Branches:</b>
+          <span tal:condition="project.version_control">Enabled</span>
+          <span tal:condition="not project.version_control">Disabled</span>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+
+</metal:master>
+

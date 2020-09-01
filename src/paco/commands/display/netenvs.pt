@@ -1,0 +1,85 @@
+
+<!DOCTYPE html>
+<metal:master use-macro="templates['layout.pt'].macros.layout">
+  <div metal:fill-slot="content">
+
+    <metal:master use-macro="templates['layout.pt'].macros.globalnav">
+    </metal:master>
+
+    <div id="netenvs">
+      <h6 class="section-header">Network Environments</h6>
+      <table class="u-full-width">
+        <thead>
+          <tr>
+            <th>Name</th>
+          </tr>
+        </thead>
+        <tbody>
+          <div tal:repeat="netenv project.netenv.values()">
+            <tr>
+              <td tal:content="netenv.title_or_name">name</td>
+            </tr>
+            <tr>
+              <td>
+                <table class="u-full-width">
+                  <thead>
+                    <tr>
+                      <th style="max-width: 20rem;">Environments</th>
+                      <th>Deployable Regions</th>
+                    </tr>
+                    <tr tal:repeat="env netenv.values()">
+                      <td>
+                        <a tal:content="env.title_or_name" tal:attributes="href f'ne-{netenv.name}-{env.name}.html'">env</a>
+                      </td>
+                      <td>
+                        <ul class="res-list">
+                          <li class="res-item" tal:repeat="env_reg env.env_regions.values()">
+                            <div class="list-header"><b>Region:</b> ${env_reg.name}</div>
+
+                            <table class="u-full-width">
+                              <thead>
+                                <tr>
+                                  <th>Environment Resources</th>
+                                  <th>Applications</th>
+                                </tr>
+                              </thead>
+                              <tr>
+                                <td>
+                                  <div class="list-header"><b>Network</b></div>
+                                  <ul class="sub-list">
+                                    <li class="sub-item"><b>Availability Zones:</b> ${env_reg.network.availability_zones}</li>
+                                    <li tal:condition="env_reg.network.vpc" class="sub-item"><b>VPC:</b> ${env_reg.network.vpc.is_enabled()}</li>
+                                    <li tal:condition="env_reg.network.vpc.segments" class="sub-item"><b>Segments:</b> ${', '.join(env_reg.network.vpc.segments.keys())}</li>
+                                  </ul>
+                                  <div tal:condition="env_reg.backup_vaults" class="list-header"><b>Backup Vaults</b></div>
+                                  <ul tal:condition="env_reg.backup_vaults" class="sub-list">
+                                    <li class="sub-item" tal:repeat="vault env_reg.backup_vaults.values()"><b>Vault:</b> ${vault.title_or_name}</li>
+                                  </ul>
+                                  <div tal:condition="env_reg.secrets_manager" class="list-header"><b>Secrets Manager</b></div>
+                                  <ul tal:condition="env_reg.secrets_manager" class="sub-list">
+                                    <li class="sub-item" tal:repeat="sm env_reg.secrets_manager.values()"><b>Secret Manager:</b> ${sm.title_or_name}</li>
+                                  </ul>
+                                </td>
+                                <td>
+                                  <ul class="sub-list">
+                                    <li tal:repeat="app env_reg.applications.values()" class="sub-item"><b>Application:</b> ${app.title_or_name}</li>
+                                  </ul>
+                                </td>
+                              </tr>
+                            </table>
+                          </li>
+                        </ul>
+                      </td>
+                    </tr>
+                  </thead>
+                </table>
+              </td>
+            </tr>
+          </div>
+        </tbody>
+      </table>
+    </div>
+
+
+  </div>
+</metal:master>

@@ -25,12 +25,13 @@ def describe_command(paco_ctx, home='.', output='html', display='chrome'):
     init_paco_home_option(paco_ctx, home)
     paco_ctx.load_project()
     project = paco_ctx.project
-    static_path, project_html, envs_html = display_project_as_html(project)
+    static_path, html_files, envs_html = display_project_as_html(project)
     display_path = paco_ctx.display_path
     pathlib.Path(display_path).mkdir(parents=True, exist_ok=True)
     shutil.copytree(static_path, display_path, dirs_exist_ok=True)
-    with open(str(display_path/ 'project.html'), 'w') as fh:
-        fh.write(project_html)
+    for fname, html in html_files.items():
+        with open(str(display_path / fname), 'w') as fh:
+            fh.write(html)
     for name, html in envs_html.items():
         with open(str(display_path / name), 'w') as fh:
             fh.write(html)

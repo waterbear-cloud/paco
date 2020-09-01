@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <title tal:content="'Paco project: ' + project.title"></title>
+  <title tal:content="'Paco project: ' + project.title_or_name"></title>
   <meta name="description" content="">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -31,4 +31,29 @@
   </div>
 
 </body>
+</html>
+
+<html metal:define-macro="globalnav" lang="en">
+  <section class="navheader">
+    <span class="title" tal:content="project.title_or_name"></span>
+  </section>
+
+  <nav class="navbar">
+    <div class="container">
+      <ul class="navbar-list">
+        <li class="navbar-item">
+          <a class="navbar-link" href="./index.html">Paco Project</a>
+        </li>
+        <li class="navbar-item">
+          <a class="navbar-link" href="./accounts.html">Accounts</a>
+        </li>
+        <li class="navbar-item">
+          <a class="navbar-link" href="./globalresources.html">Global Resources</a>
+        </li>
+        <li class="navbar-item">
+          <a class="navbar-link" href="./netenvs.html">Network Environments</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
 </html>
