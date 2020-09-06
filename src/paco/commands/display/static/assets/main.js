@@ -22,7 +22,6 @@ $(document).ready(function() {
       $popoverLink.on('click', openPopover)
       $document.on('click', closePopover)
       $('a[href^="#"]').on('click', smoothScroll)
-      buildSnippets();
     }
 
     function smoothScroll(e) {
@@ -79,14 +78,6 @@ $(document).ready(function() {
         return entityMap[s];
       });
     }
-
-    function buildSnippets() {
-      $codeSnippets.each(function() {
-        var newContent = escapeHtml($(this).html())
-        $(this).html(newContent)
-      })
-    }
-
 
     init();
 

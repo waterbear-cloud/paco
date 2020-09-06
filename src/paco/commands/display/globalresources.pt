@@ -130,20 +130,20 @@
         <td>
           <ul class="sub-list">
             <li tal:condition="topic.locations != []" class="sub-item" tal:repeat="location topic.locations">
-              <p><b>Account:</b> ${resolve_ref(location.account).title_or_name}</p>
-              <p><b>Region(s):</b> ${', '.join(location.regions)}</p>
+              <div><b>Account:</b> ${resolve_ref(location.account).title_or_name}</div>
+              <div><b>Region(s):</b> ${', '.join(location.regions)}</div>
             </li>
             <li tal:condition="topic.locations == []" class="sub-item" tal:repeat="location project.resource.sns.default_locations">
-              <p><b>Account:</b> ${resolve_ref(location.account).title_or_name}</p>
-              <p><b>Region(s):</b> ${', '.join(location.regions)}</p>
+              <div><b>Account:</b> ${resolve_ref(location.account).title_or_name}</div>
+              <div><b>Region(s):</b> ${', '.join(location.regions)}</div>
             </li>
           </ul>
         </td>
         <td>
           <ul class="sub-list">
             <li class="sub-item" tal:repeat="sub topic.subscriptions">
-              <p><b>Endpoint:</b> ${sub.endpoint}</p>
-              <p><b>Protocol:</b> ${sub.endpoint}</p>
+              <div><b>Endpoint:</b> ${sub.endpoint}</div>
+              <div><b>Protocol:</b> ${sub.protocol}</div>
             </li>
           </ul>
         </td>

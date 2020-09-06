@@ -101,16 +101,22 @@ margin-bottom: 0;
     padding-left: 1rem;
     margin-bottom: 0px;
 }
-.sub-list {
-    list-style: none;
-    margin: 0;
-    margin-bottom: 1rem;
-    padding: 0.25rem;
-    padding-left: 1rem;
-    border: 1px solid #e1e1e1;
+.sub-header {
+  padding: 0.5rem;
+  padding-left: 0;
+  border-bottom: 1px solid #999999;
 }
-.sub-item {
-    margin-bottom: 0.5rem;
+.sub-list {
+  list-style: none;
+  margin: 0;
+  margin-bottom: 1rem;
+  padding: 0;
+  background-color: #f1f1f0;
+}
+ul.sub-list li {
+  margin-bottom: 0.5rem;
+  padding-left: 1rem;
+  border-bottom: 3px solid white;
 }
 .technical {
     font-weight: 900;
