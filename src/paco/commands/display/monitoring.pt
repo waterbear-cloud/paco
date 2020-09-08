@@ -1,0 +1,32 @@
+
+<!DOCTYPE html>
+<metal:master use-macro="templates['layout.pt'].macros.layout">
+  <div metal:fill-slot="content">
+
+    <metal:master use-macro="templates['layout.pt'].macros.globalnav">
+    </metal:master>
+
+    <div id="monitoring">
+      <h6 class="section-header">Alarm Sets</h6>
+      <ul>
+        <li tal:repeat="(set_type, alarm_set) project['alarm_sets'].items()">
+          <div class="sub-header" tal:content="set_type">Alarm Set Type</div>
+          <ul>
+            <li tal:repeat="alarm alarm_set.values()">
+              <div><b>Name:</b> <span tal:content="alarm.name" /></div>
+            </li>
+          </ul>
+        </li>
+      </ul>
+
+      <h6 class="section-header">Log Sets</h6>
+      <ul>
+        <li tal:repeat="log_set project['cw_logging'].log_sets.values()">
+          <p tal:content="log_set" />
+        </li>
+      </ul>
+    </div>
+
+  </div>
+</metal:master>
+

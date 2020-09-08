@@ -53,6 +53,9 @@
         <li class="navbar-item">
           <a class="navbar-link" href="./netenvs.html">Network Environments</a>
         </li>
+        <li class="navbar-item">
+          <a class="navbar-link" href="./monitoring.html">Monitoring</a>
+        </li>
       </ul>
     </div>
   </nav>

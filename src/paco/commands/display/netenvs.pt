@@ -9,7 +9,7 @@
     <div id="netenvs">
       <h6 class="section-header">Network Environments</h6>
       <div tal:repeat="netenv project.netenv.values()">
-        <table class="u-full-width">
+        <table tal:attributes="id netenv.name" id="netenv-name" class="full-width">
           <thead>
             <tr>
               <th colspan="2"><span tal:content="netenv.title_or_name">name</span></th>
@@ -25,7 +25,7 @@
                 <ul class="res-list">
                   <li class="res-item" tal:repeat="env_reg env.env_regions.values()">
                     <div class="sub-header"><b>Region:</b> ${env_reg.name}</div>
-                    <table class="u-full-width">
+                    <table class="full-width">
                       <thead>
                         <tr>
                           <th>Environment Resources</th>

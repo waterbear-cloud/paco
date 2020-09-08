@@ -8,7 +8,7 @@
 
     <div id="accounts">
       <h6 class="section-header">Accounts</h6>
-      <table class="u-full-width">
+      <table class="full-width">
         <thead>
           <tr>
             <th>Account</th>

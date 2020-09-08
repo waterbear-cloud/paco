@@ -1,0 +1,37 @@
+<div metal:define-macro="resource">
+  <table class="applevel full-width">
+    <tr>
+      <td style="width: 50%">
+        <div class="list-header"><b>Resource:</b> ${res.type}</div>
+        <ul class="sub-list">
+          <li>
+            <div><b>Name:</b> ${res.name}</div>
+            <div><b>Enabled:</b> ${res.is_enabled()}</div>
+          </li>
+        </ul>
+      </td>
+      <td style="width: 25%">
+        <div class="list-header">Alarms</div>
+        <ul tal:condition="has_alarms(res)" class="sub-list">
+          <li tal:repeat="alarm_set res.monitoring.alarm_sets.values()">
+            <a tal:content="alarm_set.title_or_name" />
+          </li>
+        </ul>
+        <ul tal:condition="not has_alarms(res)" class="sub-list">
+          <li class="blank">None</li>
+        </ul>
+      </td>
+      <td style="width: 25%" class="last">
+        <div class="list-header">Logs</div>
+        <ul tal:condition="has_logs(res)" class="sub-list">
+          <li tal:repeat="log_set res.monitoring.log_sets.values()">
+            <a tal:content="log_set.title_or_name" />
+          </li>
+        </ul>
+        <ul tal:condition="not has_logs(res)" class="sub-list">
+          <li class="blank">None</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>

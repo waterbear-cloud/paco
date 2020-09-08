@@ -13,7 +13,7 @@
     for every account the User has access to. To gain the Users permissions, it's necessary to first assume the role in the target account.
     <a href="https://www.paco-cloud.io/en/latest/yaml-global-resources.html#iamuser">Paco docs &raquo;</a></p>
   <p tal:condition="len(project.resource.iam.users.values()) == 0">No IAM Users declared.</p>
-  <table class="u-full-width" tal:condition="len(project.resource.iam.users.values()) > 0">
+  <table class="full-width" tal:condition="len(project.resource.iam.users.values()) > 0">
     <thead>
       <tr>
         <th>Username</th>
@@ -57,7 +57,7 @@
     <a href="https://www.paco-cloud.io/en/latest/yaml-global-resources.html#cloudtrail">Paco docs &raquo;</a></p>
 
   <p tal:condition="len(project.resource.cloudtrail.trails.values()) == 0">No CloudTrail declared.</p>
-  <table class="u-full-width" tal:condition="len(project.resource.cloudtrail.trails.values()) > 0">
+  <table class="full-width" tal:condition="len(project.resource.cloudtrail.trails.values()) > 0">
     <thead>
       <tr>
         <th>Name</th>
@@ -82,7 +82,7 @@
     <a href="https://www.paco-cloud.io/en/latest/yaml-global-resources.html#codecommit">Paco docs &raquo;</a></p>
 
   <p tal:condition="len(project.resource.codecommit.values()) == 0">No CodeCommit declared.</p>
-  <table class="u-full-width" tal:condition="len(project.resource.codecommit.values()) > 0">
+  <table class="full-width" tal:condition="len(project.resource.codecommit.values()) > 0">
     <thead>
       <tr>
         <th>Repository Name</th>
@@ -113,8 +113,8 @@
   <p class="resource-description">SNS Topics are where notifications can be sent. Paco will configure
     alarms to notify to these SNS Topics.
     <a href="https://www.paco-cloud.io/en/latest/yaml-global-resources.html#sns-topics">Paco docs &raquo;</a></p>
-  <p tal:condition="len(project.resource.sns.topics.values()) == 0">No SNS Topics declared.</p>
-  <table class="u-full-width" tal:condition="len(project.resource.sns.topics.values()) > 0">
+  <p tal:condition="len(project.resource.sns.topics.values()) == 0 and not project.resource.snstopics">No SNS Topics declared.</p>
+  <table class="full-width" tal:condition="len(project.resource.sns.topics.values()) > 0">
     <thead>
       <tr>
         <th>Name</th>
@@ -150,7 +150,38 @@
       </tr>
     </tbody>
   </table>
-
+  <table class="full-width" tal:condition="project.resource.snstopics">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Locations</th>
+        <th>Subscriptions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr tal:repeat="topic project.resource.snstopics[project.active_regions[0]].values()">
+        <td tal:attributes="id 'snstopic.' + topic.name" id="snstopic.name">
+          <p class="technical" tal:content="topic.title_or_name + ' (%s)' % topic.name">name</p>
+        </td>
+        <td>
+          <ul class="sub-list">
+            <li class="sub-item">
+              <div><b>Account:</b> ${resolve_ref(project.resource.snstopics.account).title_or_name}</div>
+              <div><b>Region(s):</b> ${', '.join(project.active_regions)}</div>
+            </li>
+          </ul>
+        </td>
+        <td>
+          <ul class="sub-list">
+            <li class="sub-item" tal:repeat="sub topic.subscriptions">
+              <div><b>Endpoint:</b> ${sub.endpoint}</div>
+              <div><b>Protocol:</b> ${sub.protocol}</div>
+            </li>
+          </ul>
+        </td>
+      </tr>
+    </tbody>
+  </table>
 </div>
 
 </div>
