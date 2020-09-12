@@ -13,6 +13,13 @@
   margin-top: 6rem;
   margin-bottom: 0.5rem;
 }
+.column-header {
+  font-size: 1.4rem;
+  letter-spacing: .2rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
 .heading-font-size {
   font-size: 1.2rem;
   color: #999;
@@ -200,4 +207,9 @@ table.applevel {
 
 .full-width {
   width: 100%;
+}
+
+.row {
+  display: block;
+  clear: both;
 }

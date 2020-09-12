@@ -7,24 +7,79 @@
     </metal:master>
 
     <div id="monitoring">
-      <h6 class="section-header">Alarm Sets</h6>
-      <ul>
-        <li tal:repeat="(set_type, alarm_set) project['alarm_sets'].items()">
-          <div class="sub-header" tal:content="set_type">Alarm Set Type</div>
-          <ul>
-            <li tal:repeat="alarm alarm_set.values()">
-              <div><b>Name:</b> <span tal:content="alarm.name" /></div>
-            </li>
-          </ul>
-        </li>
-      </ul>
+      <h6 class="section-header">Alarms</h6>
+      <div tal:repeat="(set_type, alarms_container) project.monitor.alarm_sets.items()">
+        <div tal:attributes="id 'alarms_container-' + set_type" class="sub-header"><b>Alarms for Resource type:</b> ${set_type}</div>
+        <div tal:repeat="alarms_set alarms_container.values()" style="clear: both;">
+          <div tal:attributes="id f'alarms_set-{set_type}-{alarms_set.name}'" class="list-header"><b tal:content="'Alarm Set: ' + alarms_set.name">alarm set name</b></div>
+          <div tal:repeat="alarm alarms_set.values()" style="clear: both;">
+            <h6 tal:attributes="id f'alarms_set-{set_type}-{alarms_set.name}-{alarm.name}'" class="resource-header">
+              <span tal:condition="hasattr(alarm, 'log_set_name')">Log Alarm</span>
+              <span tal:condition="not hasattr(alarm, 'log_set_name')">Alarm</span>: ${alarm.name}
+            </h6>
+            <p class="resource-description" tal:condition="alarm.description or alarm.runbook_url">
+              <span tal:replace="alarm.description" />
+              <a tal:condition="alarm.runbook_url" tal:attributes="href alarm.runbook_url">Runbook</a>
+            </p>
+            <div class="row">
+              <div class="six columns">
+                <ul class="sub-list">
+                  <li class="sub-item"><b>Clasification:</b> ${alarm.classification}</li>
+                  <li class="sub-item"><b>Severity:</b> ${alarm.severity}</li>
+                  <li tal:condition="hasattr(alarm, 'log_set_name')"><b>Log Set Name:</b> <span tal:replace="alarm.log_set_name" /></li>
+                  <li tal:condition="hasattr(alarm, 'log_group_name')"><b>Log Group Name:</b> <span tal:replace="alarm.log_group_name" /></li>
+                  <li class="sub-item"><b>Metric:</b> ${alarm.metric_name}</li>
+                  <li tal:condition="len(alarm.dimensions) > 0" class="sub-item">
+                    <b>Dimensions:</b> <span tal:repeat="dimension alarm.dimensions">${dimension.name}: "${dimension.value}" </span>
+                  </li>
+                </ul>
+              </div>
+              <div class="six columns">
+                <ul class="sub-list">
+                  <li class="sub-item"><b>Threshold:</b> ${alarm.threshold}</li>
+                  <li class="sub-item"><b>Comparison Operator:</b> ${alarm.comparison_operator}</li>
+                  <li class="sub-item"><b>Statistic:</b> ${alarm.statistic}</li>
+                  <li class="sub-item"><b>Period:</b> ${alarm.period}</li>
+                  <li class="sub-item"><b>Evaluation Periods:</b> ${alarm.evaluation_periods}</li>
+                  <li class="sub-item"><b>Treat Missing Data:</b> ${alarm.treat_missing_data}</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <h6 class="section-header">Log Sets</h6>
-      <ul>
-        <li tal:repeat="log_set project['cw_logging'].log_sets.values()">
-          <p tal:content="log_set" />
-        </li>
-      </ul>
+        <div tal:repeat="log_set project.monitor.cw_logging.log_sets.values()" style="clear: both;">
+          <h6 tal:attributes="id f'log_set-{log_set.name}'" class="sub-header">
+            <b>Log Set:</b> ${log_set.name}
+          </h6>
+          <p class="resource-description" tal:condition="log_set.title">
+            <span tal:replace="log_set.title" />
+          </p>
+          <div tal:repeat="log_group log_set.log_groups.values()" style="clear: both;">
+            <h6 tal:attributes="id f'log_set-{log_set.name}-{log_group.name}'" class="list-header">Log Group: ${log_group.name}</h6>
+            <div class="row" style="clear: both;">
+              <div class="six columns">
+                <h6 class="column-header">Log Sources</h6>
+                <ul class="sub-list">
+                  <li class="sub-item" tal:repeat="source log_group.sources.values()"><b>Path:</b> ${source.path}</li>
+                  <li class="sub-item" tal:repeat="source log_group.sources.values()"><b>Log Stream Name:</b> ${source.log_stream_name}</li>
+                </ul>
+              </div>
+              <div class="six columns">
+                <h6 class="column-header">Metric Filters</h6>
+                <ul class="sub-list" tal:repeat="mf log_group.metric_filters.values()">
+                  <li class="sub-item"><b>Filter Pattern:</b> ${mf.filter_pattern}</li>
+                  <li class="sub-item">
+                    <b>Metric Transformations:</b>
+                    <span tal:repeat="mt mf.metric_transformations"><b>Name/Value:</b> ${mt.metric_name} - ${mt.metric_value}</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
     </div>
 
   </div>
