@@ -6,7 +6,7 @@ from chameleon import PageTemplateLoader
 import chameleon.loader
 
 # Generic Resource templates
-# if 'res-<resource.type>.pt' does not exist, the template will return the generic 'res-generic.pt'.
+# if 'res-<resource.type>.pt' does not exist, the template will return the generic 'res-empty.pt'.
 # Chameleon needs a big ugly monkey patch on the TemplateLoader.load() method to achieve this ...
 def generic_resource_load(self, spec, cls=None):
     if cls is None:
@@ -28,7 +28,7 @@ def generic_resource_load(self, spec, cls=None):
                 break
         else:
             if spec.startswith('res-'):
-                spec = os.path.join(self.search_path[0], 'res-generic.pt')
+                spec = os.path.join(self.search_path[0], 'res-empty.pt')
             else:
                 raise ValueError("Template not found: %s." % spec)
 

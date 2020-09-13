@@ -34,12 +34,14 @@
                       </thead>
                       <tr>
                         <td>
-                          <div class="list-header"><b>Network</b></div>
-                          <ul class="sub-list">
-                            <li class="sub-item"><b>Availability Zones:</b> ${env_reg.network.availability_zones}</li>
-                            <li tal:condition="env_reg.network.vpc" class="sub-item"><b>VPC:</b> ${env_reg.network.vpc.is_enabled()}</li>
-                            <li tal:condition="env_reg.network.vpc.segments" class="sub-item"><b>Segments:</b> ${', '.join(env_reg.network.vpc.segments.keys())}</li>
-                          </ul>
+                          <div tal:condition="env_reg.network.vpc">
+                            <div class="list-header"><b>Network</b></div>
+                            <ul class="sub-list">
+                              <li class="sub-item"><b>Availability Zones:</b> ${env_reg.network.availability_zones}</li>
+                              <li tal:condition="env_reg.network.vpc" class="sub-item"><b>VPC:</b> ${env_reg.network.vpc.is_enabled()}</li>
+                              <li tal:condition="env_reg.network.vpc.segments" class="sub-item"><b>Segments:</b> ${', '.join(env_reg.network.vpc.segments.keys())}</li>
+                            </ul>
+                          </div>
                           <div tal:condition="env_reg.backup_vaults" class="list-header"><b>Backup Vaults</b></div>
                           <ul tal:condition="env_reg.backup_vaults" class="sub-list">
                             <li class="sub-item" tal:repeat="vault env_reg.backup_vaults.values()"><b>Vault:</b> ${vault.title_or_name}</li>
