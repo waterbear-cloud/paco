@@ -1,0 +1,20 @@
+<html xmlns:metal="http://xml.zope.org/namespaces/metal">
+  <div metal:define-macro="permission">
+    <div class="list-header"><b>Type:</b> ${perm.type}</div>
+    <ul class="sub-list" tal:condition="perm.type == 'Administrator'">
+      <li class="sub-item"><b>Accounts:</b> ${', '.join(perm.accounts)}</li>
+      <li class="sub-item"><b>Read only:</b> ${perm.read_only}</li>
+    </ul>
+    <ul class="sub-list" tal:condition="perm.type == 'CustomPolicy'">
+      <li class="sub-item"><b>Accounts:</b> ${', '.join(perm.accounts)}</li>
+      <li tal:condition="perm.policies" class="sub-item"><b>Policies:</b> ${', '.join(perm.policies)}</li>
+      <li tal:condition="perm.managed_policies" class="sub-item"><b>Managed Policies:</b> ${', '.join(perm.managed_policies)}</li>
+    </ul>
+    <ul class="sub-list" tal:condition="perm.type == 'CodeCommit'">
+      <li class="sub-item"><b>Accounts:</b> ${', '.join(perm.accounts)}</li>
+    </ul>
+    <ul class="sub-list" tal:condition="perm.type == 'CodeBuild'">
+      <li class="sub-item"><b>Accounts:</b> ${', '.join(perm.accounts)}</li>
+    </ul>
+  </div>
+</html>

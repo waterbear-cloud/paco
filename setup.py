@@ -45,6 +45,7 @@ setup(
         'deepdiff >= 4.3.2',
         'gitpython',
         'parliament',
+        'Chameleon',
     ],
     packages=[
         'paco.adapters',

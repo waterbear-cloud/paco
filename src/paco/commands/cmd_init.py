@@ -4,8 +4,7 @@ import os.path
 import sys
 import paco.commands.helpers
 import pathlib
-from paco.commands.helpers import pass_paco_context, paco_home_option, init_paco_home_option, handle_exceptions
-from cookiecutter.main import cookiecutter
+from paco.commands.helpers import paco_home_option, init_paco_home_option, handle_exceptions
 from jinja2.ext import Extension
 
 

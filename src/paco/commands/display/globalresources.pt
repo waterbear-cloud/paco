@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<metal:master use-macro="templates['layout.pt'].macros.layout">
+  <div metal:fill-slot="content">
+
+    <metal:master use-macro="templates['layout.pt'].macros.globalnav">
+    </metal:master>
+
+    <h6 class="section-header">Global Resources</h6>
+    <p class="description">AWS Resources that are available at the account-level.</p>
+    <h6 class="resource-header">IAM Users</h6>
+    <p class="resource-description">IAM Users are AWS login accounts. Paco creates IAM Users that enforce multi-factor authentication (MFA) and creates IAM Roles
+      for every account the User has access to. To gain the Users permissions, it's necessary to first assume the role in the target account.
+      <a href="https://www.paco-cloud.io/en/latest/yaml-global-resources.html#iamuser">Paco docs &raquo;</a></p>
+    <p tal:condition="len(project.resource.iam.users.values()) == 0">No IAM Users declared.</p>
+    <table class="full-width" tal:condition="len(project.resource.iam.users.values()) > 0">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>User Account</th>
+          <th>Accounts</th>
+          <th>Console access?</th>
+          <th>API access?</th>
+          <th style="min-width: 200px;">Permissions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr tal:repeat="user project.resource.iam.users.values()">
+          <td>
+            <p class="technical" tal:content="user.username">username</p>
+            <p tal:content="user.description">description</p>
+          </td>
+          <td tal:content="resolve_ref(user.account).title_or_name">account</td>
+          <td tal:content="', '.join(user.account_whitelist)">account_whitelist</td>
+          <td>
+            <span tal:condition="user.console_access_enabled">Yes</span>
+            <span tal:condition="not user.console_access_enabled">No</span>
+          </td>
+          <td>
+            <span tal:condition="user.programmatic_access">Yes</span>
+            <span tal:condition="not user.programmatic_access">No</span>
+          </td>
+          <td>
+            <ul class="res-list" tal:repeat="perm user.permissions.values()">
+              <li class="res-item" metal:use-macro="templates['iam.pt'].macros.permission">
+              </li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h6 class="resource-header">CloudTrail</h6>
+    <p class="resource-description">CloudTrail logs AWS API calls. Monitor and react to changes in your AWS accounts with CloudTrail.
+      Paco can configure CloudTrails to report to a centralized S3 Bucket for archival, and to a central CloudWatch LogGroup for
+      easier querying of the CloudTrail logs.
+      <a href="https://www.paco-cloud.io/en/latest/yaml-global-resources.html#cloudtrail">Paco docs &raquo;</a></p>
+
+    <p tal:condition="len(project.resource.cloudtrail.trails.values()) == 0">No CloudTrail declared.</p>
+    <table class="full-width" tal:condition="len(project.resource.cloudtrail.trails.values()) > 0">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Account</th>
+          <th>S3 Bucket Prefix</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr tal:repeat="ct project.resource.cloudtrail.trails.values()">
+          <td tal:content="ct.title_or_name">
+          </td>
+          <td tal:content="resolve_ref(ct.s3_bucket_account).title_or_name">account</td>
+          <td tal:content="ct.s3_key_prefix">s3_key_prefix</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h6 class="resource-header">CodeCommit</h6>
+    <p class="resource-description">CodeCommit hosts Git repositories. These repositories are secured within your AWS accounts
+      and can be simpler to configure to deploy to a CI/CD than GitHub. Paco creates IAM Users that only have access to
+      the specified CodeCommit repos and can only be authenticated using an SSH public key.
+      <a href="https://www.paco-cloud.io/en/latest/yaml-global-resources.html#codecommit">Paco docs &raquo;</a></p>
+
+    <p tal:condition="len(project.resource.codecommit.values()) == 0">No CodeCommit declared.</p>
+    <table class="full-width" tal:condition="len(project.resource.codecommit.values()) > 0">
+      <thead>
+        <tr>
+          <th>Repository Name</th>
+          <th>Location</th>
+          <th>Users</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr tal:repeat="repo project.resource.codecommit.repo_list()">
+          <td>
+            <p class="technical" tal:content="repo.repository_name">repository_name</p>
+            <p tal:content="repo.description">description</p>
+          </td>
+          <td>
+            <p tal:content="resolve_ref(repo.account).title_or_name">account</p>
+            <p tal:content="repo.region">region</p>
+          </td>
+          <td>
+            <ul class="sub-list">
+              <li class="sub-item" tal:repeat="user repo.users.values()">${user.username}</li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h6 class="resource-header">SNS Topics</h6>
+    <p class="resource-description">SNS Topics are where notifications can be sent. Paco will configure
+      alarms to notify to these SNS Topics.
+      <a href="https://www.paco-cloud.io/en/latest/yaml-global-resources.html#sns-topics">Paco docs &raquo;</a></p>
+    <p tal:condition="len(project.resource['sns'].topics.values()) == 0 and not project.resource['snstopics']">No SNS Topics declared.</p>
+    <table class="full-width" tal:condition="len(project.resource['sns'].topics.values()) > 0">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Locations</th>
+          <th>Subscriptions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr tal:repeat="topic project.resource['sns'].topics.values()">
+          <td>
+            <p class="technical" tal:content="topic.title_or_name">name</p>
+          </td>
+          <td>
+            <ul class="sub-list">
+              <li tal:condition="topic.locations != []" class="sub-item" tal:repeat="location topic.locations">
+                <div><b>Account:</b> ${resolve_ref(location.account).title_or_name}</div>
+                <div><b>Region(s):</b> ${', '.join(location.regions)}</div>
+              </li>
+              <li tal:condition="topic.locations == []" class="sub-item" tal:repeat="location project.resource.sns.default_locations">
+                <div><b>Account:</b> ${resolve_ref(location.account).title_or_name}</div>
+                <div><b>Region(s):</b> ${', '.join(location.regions)}</div>
+              </li>
+            </ul>
+          </td>
+          <td>
+            <ul class="sub-list">
+              <li class="sub-item" tal:repeat="sub topic.subscriptions">
+                <div><b>Endpoint:</b> ${sub.endpoint}</div>
+                <div><b>Protocol:</b> ${sub.protocol}</div>
+              </li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <table class="full-width" tal:condition="project.resource.snstopics">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Locations</th>
+          <th>Subscriptions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr tal:repeat="topic project.resource.snstopics[project.active_regions[0]].values()">
+          <td tal:attributes="id 'snstopic.' + topic.name" id="snstopic.name">
+            <p class="technical" tal:content="topic.title_or_name + ' (%s)' % topic.name">name</p>
+          </td>
+          <td>
+            <ul class="sub-list">
+              <li class="sub-item">
+                <div><b>Account:</b> ${resolve_ref(project.resource.snstopics.account).title_or_name}</div>
+                <div><b>Region(s):</b> ${', '.join(project.active_regions)}</div>
+              </li>
+            </ul>
+          </td>
+          <td>
+            <ul class="sub-list">
+              <li class="sub-item" tal:repeat="sub topic.subscriptions">
+                <div><b>Endpoint:</b> ${sub.endpoint}</div>
+                <div><b>Protocol:</b> ${sub.protocol}</div>
+              </li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+
+</metal:master>

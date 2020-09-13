@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html metal:define-macro="layout" lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title tal:content="'Paco project: ' + project.title_or_name"></title>
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link href='http://fonts.googleapis.com/css?family=Raleway:400,300,600' rel='stylesheet' type='text/css'>
+
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="stylesheet" href="assets/normalize.css">
+  <link rel="stylesheet" href="assets/skeleton.css">
+  <link rel="stylesheet" href="assets/paco.css">
+
+  <meta name="theme-color" content="#fafafa">
+
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+  <script src="assets/main.js"></script>
+
+</head>
+
+<body>
+
+  <div class="container">
+    <metal:content define-slot="content">
+    Content goes here
+    </metal:content>
+  </div>
+
+</body>
+</html>
+
+<html metal:define-macro="globalnav" lang="en">
+  <section class="navheader">
+    <span class="title" tal:content="project.title_or_name"></span>
+  </section>
+
+  <nav class="navbar">
+    <div class="container">
+      <ul class="navbar-list">
+        <li class="navbar-item">
+          <a class="navbar-link" href="./index.html">Paco Project</a>
+        </li>
+        <li class="navbar-item">
+          <a class="navbar-link" href="./accounts.html">Accounts</a>
+        </li>
+        <li class="navbar-item">
+          <a class="navbar-link" href="./globalresources.html">Global Resources</a>
+        </li>
+        <li class="navbar-item">
+          <a class="navbar-link" href="./netenvs.html">Network Environments</a>
+        </li>
+        <li class="navbar-item">
+          <a class="navbar-link" href="./monitoring.html">Monitoring</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+</html>

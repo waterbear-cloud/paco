@@ -1,0 +1,31 @@
+
+<!DOCTYPE html>
+<metal:master use-macro="templates['layout.pt'].macros.layout">
+  <div metal:fill-slot="content">
+
+    <metal:master use-macro="templates['layout.pt'].macros.globalnav">
+    </metal:master>
+
+    <div id="accounts">
+      <h6 class="section-header">Accounts</h6>
+      <table class="full-width">
+        <thead>
+          <tr>
+            <th>Account</th>
+            <th>Switch-Role Login</th>
+            <th>Default Region</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr tal:repeat="account project.accounts.values()">
+            <td tal:content="account.title">title</td>
+            <td><a tal:attributes="href f'https://signin.aws.amazon.com/switchrole?roleName={userinfo.admin_iam_role_name}&account={account.account_id}&color=008080&displayName={account.title}'">AWS Account Login</a></td>
+            <td tal:content="account.region">region</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</metal:master>
+

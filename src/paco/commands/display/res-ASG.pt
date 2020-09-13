@@ -1,0 +1,6 @@
+<div metal:define-macro="extra">
+  <div><b>Instance Type:</b> ${res.instance_type}</div>
+  <div><b>Desired Capacity:</b> ${res.desired_capacity}</div>
+  <div><b>Max Instances:</b> ${res.max_instances}</div>
+  <div><b>Min Instances:</b> ${res.min_instances}</div>
+</div>
