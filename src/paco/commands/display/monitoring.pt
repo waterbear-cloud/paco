@@ -9,11 +9,14 @@
     <div id="monitoring">
       <h6 class="section-header">Alarms</h6>
       <div tal:repeat="(set_type, alarms_container) project.monitor.alarm_sets.items()">
-        <div tal:attributes="id 'alarms_container-' + set_type" class="sub-header"><b>Alarms for Resource type:</b> ${set_type}</div>
+        <a class="anchor" tal:attributes="id 'alarms_container-' + set_type"></a>
+        <div class="sub-header"><b>Alarms for Resource type:</b> ${set_type}</div>
         <div tal:repeat="alarms_set alarms_container.values()" style="clear: both;">
-          <div tal:attributes="id f'alarms_set-{set_type}-{alarms_set.name}'" class="list-header"><b tal:content="'Alarm Set: ' + alarms_set.name">alarm set name</b></div>
+          <a class="anchor" tal:attributes="id f'alarms_set-{set_type}-{alarms_set.name}'"></a>
+          <div class="list-header"><b tal:content="'Alarm Set: ' + alarms_set.name">alarm set name</b></div>
           <div tal:repeat="alarm alarms_set.values()" style="clear: both;">
-            <h6 tal:attributes="id f'alarms_set-{set_type}-{alarms_set.name}-{alarm.name}'" class="resource-header">
+            <a class="anchor" tal:attributes="id f'alarms_set-{set_type}-{alarms_set.name}-{alarm.name}'"></a>
+            <h6 class="resource-header">
               <span tal:condition="hasattr(alarm, 'log_set_name')">Log Alarm</span>
               <span tal:condition="not hasattr(alarm, 'log_set_name')">Alarm</span>: ${alarm.name}
             </h6>
@@ -51,14 +54,16 @@
 
       <h6 class="section-header">Log Sets</h6>
         <div tal:repeat="log_set project.monitor.cw_logging.log_sets.values()" style="clear: both;">
-          <h6 tal:attributes="id f'log_set-{log_set.name}'" class="sub-header">
+          <a class="anchor" tal:attributes="id f'log_set-{log_set.name}'"></a>
+          <h6 class="sub-header">
             <b>Log Set:</b> ${log_set.name}
           </h6>
           <p class="resource-description" tal:condition="log_set.title">
             <span tal:replace="log_set.title" />
           </p>
           <div tal:repeat="log_group log_set.log_groups.values()" style="clear: both;">
-            <h6 tal:attributes="id f'log_set-{log_set.name}-{log_group.name}'" class="list-header">Log Group: ${log_group.name}</h6>
+            <a class="anchor" tal:attributes="id f'log_set-{log_set.name}-{log_group.name}'"></a>
+            <h6 class="list-header">Log Group: ${log_group.name}</h6>
             <div class="row" style="clear: both;">
               <div class="six columns">
                 <h6 class="column-header">Log Sources</h6>

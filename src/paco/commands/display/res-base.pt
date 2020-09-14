@@ -1,5 +1,6 @@
 <div metal:define-macro="resource">
-  <table class="applevel full-width">
+  <a class="anchor" tal:attributes="id f'REF_{res.paco_ref_parts}'"></a>
+  <table  class="applevel full-width">
     <tr>
       <td style="width: 50%">
         <div class="list-header"><b>Resource:</b> ${res.type}</div>

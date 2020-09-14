@@ -3,4 +3,45 @@
   <div><b>Desired Capacity:</b> ${res.desired_capacity}</div>
   <div><b>Max Instances:</b> ${res.max_instances}</div>
   <div><b>Min Instances:</b> ${res.min_instances}</div>
+  <div tal:condition="len(res.target_groups) > 0"><b>Load Balancer Target Groups:</b>
+    <ul class="fieldlist">
+      <li tal:repeat="tg_ref res.target_groups">
+        <a tal:attributes="href '#REF_' + parent_obj(resolve_ref(tg_ref), 'ILBApplication').paco_ref_parts"
+        tal:content="parent_obj(resolve_ref(tg_ref), 'ILBApplication').title_or_name"></a>
+      </li>
+    </ul>
+  </div>
+  <div tal:condition="len(res.efs_mounts) > 0"><b>EFS Mounts:</b>
+    <ul class="fieldlist">
+      <li tal:repeat="mount res.efs_mounts">
+        <a tal:attributes="href '#REF_' + resolve_ref(mount.target).paco_ref_parts" tal:content="resolve_ref(mount.target).title_or_name"></a>
+        mounts at <b tal:content="mount.folder"></b>
+      </li>
+    </ul>
+  </div>
+  <div tal:condition="res.eip"><b>Elastic IP:</b>
+    <ul class="fieldlist">
+      <li>
+        <a tal:attributes="href '#REF_' + resolve_ref(res.eip).paco_ref_parts" tal:content="resolve_ref(res.eip).title_or_name"></a>
+      </li>
+    </ul>
+  </div>
+  <div tal:condition="len(res.secrets) > 0"><b>Secrets:</b>
+    <ul class="fieldlist">
+      <li tal:repeat="secret res.secrets">
+        <a tal:attributes="href '#REF_' + resolve_ref(secret).paco_ref_parts" tal:content="resolve_ref(secret).title_or_name"></a>
+      </li>
+    </ul>
+  </div>
+  <div tal:condition="len(res.ssh_access.users or res.ssh_access.groups) > 0"><b>SSH Access:</b>
+    <ul class="fieldlist">
+      <li tal:repeat="user res.ssh_access.users">
+        <b>User:</b> <a tal:attributes="href user" tal:content="user"></a>
+      </li>
+      <li tal:repeat="group res.ssh_access.groups">
+        <b>Group:</b> <a tal:attributes="href group" tal:content="group"></a>
+      </li>
+    </ul>
+  </div>
+
 </div>

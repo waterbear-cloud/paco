@@ -125,7 +125,12 @@
 .has-docked-nav .navbar > .container {
   width: 80%;
 }
-
+.anchor {
+  display: block;
+  position: relative;
+  top: -95px;
+  visibility: hidden;
+}
 
 th, td {
     font-size: 1.4rem;
@@ -139,6 +144,13 @@ margin-bottom: 1rem;
 }
 .res-item {
 margin-bottom: 0;
+}
+.fieldlist {
+  margin: 0;
+  padding: 0;
+}
+.fieldlist li {
+  list-style-type: "\000BB";
 }
 .list-header {
     background-color: #e1e1e1;

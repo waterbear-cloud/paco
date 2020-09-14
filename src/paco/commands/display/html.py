@@ -4,6 +4,8 @@ import os
 import pathlib
 from chameleon import PageTemplateLoader
 import chameleon.loader
+from paco.models.locations import get_parent_by_interface
+from paco.models import schemas
 
 # Generic Resource templates
 # if 'res-<resource.type>.pt' does not exist, the template will return the generic 'res-empty.pt'.
@@ -50,6 +52,9 @@ def has_logs(res):
                 return True
     return False
 
+def parent_obj(child_obj, interfacename):
+    return get_parent_by_interface(child_obj, getattr(schemas, interfacename))
+
 def display_project_as_html(project):
     path = os.path.dirname(__file__)
     static_path = pathlib.Path(path) / 'static'
@@ -83,6 +88,8 @@ def display_project_as_html(project):
                 templates=templates,
                 has_alarms=has_alarms,
                 has_logs=has_logs,
+                resolve_ref=resolve_ref,
+                parent_obj=parent_obj,
             )
 
     return static_path, html_files, envs_html
