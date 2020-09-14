@@ -150,6 +150,10 @@ def prefixed_name(resource, name, legacy_flag=None):
             netenv = get_parent_by_interface(resource, schemas.INetworkEnvironment)
             if netenv != None:
                 str_list.append(netenv.name)
+    else:
+        netenv = get_parent_by_interface(resource, schemas.INetworkEnvironment)
+        if netenv != None:
+            str_list.append(netenv.name)
     app_name = get_parent_by_interface(resource, schemas.IApplication).name
     group_name = get_parent_by_interface(resource, schemas.IResourceGroup).name
 

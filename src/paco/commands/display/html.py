@@ -6,6 +6,8 @@ from chameleon import PageTemplateLoader
 import chameleon.loader
 from paco.models.locations import get_parent_by_interface
 from paco.models import schemas
+from paco.utils import prefixed_name
+
 
 # Generic Resource templates
 # if 'res-<resource.type>.pt' does not exist, the template will return the generic 'res-empty.pt'.
@@ -90,6 +92,7 @@ def display_project_as_html(project):
                 has_logs=has_logs,
                 resolve_ref=resolve_ref,
                 parent_obj=parent_obj,
+                prefixed_name=prefixed_name,
             )
 
     return static_path, html_files, envs_html

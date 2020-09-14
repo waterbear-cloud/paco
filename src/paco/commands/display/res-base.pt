@@ -27,7 +27,14 @@
         <div class="list-header">Logs</div>
         <ul tal:condition="has_logs(res)" class="sub-list">
           <li tal:repeat="log_set res.monitoring.log_sets.values()">
-            <a tal:attributes="href f'./monitoring.html#log_set-{log_set.name}'" tal:content="log_set.title_or_name" />
+            <b>Log Set:</b> <a tal:attributes="href f'./monitoring.html#log_set-{log_set.name}'" tal:content="log_set.title_or_name" />
+            <ul class="fieldlist">
+              <li tal:repeat="log_group log_set.log_groups.values()">
+                <a tal:attributes="href f'https://{env_reg.name}.console.aws.amazon.com/cloudwatch/home?region={env_reg.name}#logsV2:log-groups/log-group/{prefixed_name(res, log_group.get_full_log_group_name())}'"
+                tal:content="log_group.name">AWS</a>
+              </li>
+            </ul>
+
           </li>
         </ul>
         <ul tal:condition="not has_logs(res)" class="sub-list">
