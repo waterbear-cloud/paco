@@ -16,11 +16,7 @@ yaml.default_flow_sytle = False
 
 class AccountController(Controller):
     def __init__(self, paco_ctx):
-        super().__init__(
-            paco_ctx,
-            "Account",
-            ""
-        )
+        super().__init__(paco_ctx, "Account", "")
         self.master_stack_group = None
         self.org_stack_group_list = []
         self.init_done = False
@@ -28,11 +24,11 @@ class AccountController(Controller):
         self.master_account_ctx = None
         self.master_account_config = None
         # Load the master account config
-        for account_id in self.paco_ctx.project['accounts'].keys():
-            account_config = self.paco_ctx.project['accounts'][account_id]
+        for account_name in self.paco_ctx.project['accounts'].keys():
+            account_config = self.paco_ctx.project['accounts'][account_name]
             if account_config.is_master == True:
                 self.master_account_config = account_config
-                self.master_account_ctx = self.paco_ctx.get_account_context(account_name=account_id)
+                self.master_account_ctx = self.paco_ctx.get_account_context(account_name=account_name)
                 break
 
     def validate(self):
@@ -203,7 +199,7 @@ field, if the child account YAML does not already exist."""
                 print("Configuration is not correct, aborted.\n")
                 sys.exit()
 
-            # Create the account unter the Organization
+            # Create the account under the Organization
             print("Creating account: %s" % (org_account_id))
             try:
                 account_status = org_client.create_account(
