@@ -187,6 +187,35 @@ If this order is not declared the initialization order of multiple Services will
 starting from 1000. If your Service needs to be initialized before other "normal" Services, it should
 declare a number below 1000 in this attribute.
 
+The module can declare an optional ``extend_base_schemas`` function:
+
+.. code-block:: python
+
+    from paco.models import schemas
+    from paco.models.metrics import AlarmNotification
+    from zope.interface import Interface, classImplements
+    from zope.schema.fieldproperty import FieldProperty
+    from zope import schema
+
+    class ISlackChannelNotification(Interface):
+        slack_channels = schema.List(
+            title="Slack Channels",
+            value_type=schema.TextLine(
+                title="Slack Channel",
+                required=False,
+            ),
+            required=False,
+        )
+
+    def extend_base_schemas():
+        "Add an ISlackChannelNotification schema to AlarmNotification"
+        classImplements(AlarmNotification, ISlackChannelNotification)
+        AlarmNotification.slack_channels = FieldProperty(ISlackChannelNotification["slack_channels"])
+
+
+This function is called during model loading before any loading happens. It gives the Paco Service a chance
+to extend the core Paco schemas and implementations with additional fields.
+
 The module can declare an optional ``override_alarm_actions`` function:
 
 .. code-block:: python
@@ -206,17 +235,20 @@ Paco Service APIs
 The ``paco.extend`` module contains convenience APIs to make it easier to extend Paco consistently.
 These APIs are typically invoked from your custom Paco Service Controllers.
 
-The ``paco.extend.extend_cw_alarm_description_hook`` allows you add extra metadata to the
-CloudWatch AlarmDescription field. This takes a function that is expected to call the
-``add_to_alarm_description`` method and supply a dict of extra metadata.
+The ``paco.extend.add_cw_alarm_hook`` allows you to customize CloudWatch Alarms before they're
+initialized or created. The useful purpose for this is to add extra metadata to the
+CloudWatch AlarmDescription field. This is done in the hook by calling the ``add_to_alarm_description``
+method of the cw_alarm with a dict of extra metadata.
 
 .. code-block:: python
 
-    def my_service_alarm_description_function(cw_alarm):
-        extra_metadata = {'SlackChannel': 'http://my-slack-webhook.url'}
-        cw_alarm.add_to_alarm_description(extra_metadata)
+    import paco.extend
 
-    paco.service.extend_cw_alarm_description_hook(my_service_alarm_description_function)
+    def my_service_alarm_description_function(cw_alarm):
+        slack_metadata = {'SlackChannel': 'http://my-slack-webhook.url'}
+        cw_alarm.add_to_alarm_description(slack_metadata)
+
+    paco.extend.add_cw_alarm_hook(my_service_alarm_description_function)
 
 
 

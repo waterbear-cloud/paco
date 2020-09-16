@@ -61,7 +61,8 @@ setup(
         'paco.doc',
         'paco.application',
         'paco.utils',
-        'paco.cookiecutters'
+        'paco.cookiecutters',
+        'paco.extend',
     ],
     include_package_data=True,
     zip_safe=False,

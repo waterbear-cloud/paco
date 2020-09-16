@@ -14,6 +14,8 @@ import paco.models.services
 import json
 import troposphere
 
+# Hooks that is called for every CloudWatchAlarm
+CW_ALARM_HOOKS = []
 
 class CFBaseAlarm(StackTemplate):
     "Methods shared by different CFTemplates that can create a CloudWatch Alarm"
@@ -200,10 +202,17 @@ class CWAlarms(CFBaseAlarm):
                 value=value
             )
         for alarm in alarms:
+            # Track if any alarms are enabled
             if alarm.enabled == True:
                 alarms_are_enabled = True
             else:
                 continue
+
+            # Alarm hook
+            for hook in CW_ALARM_HOOKS:
+                hook(alarm)
+
+            # Dimension Parameters
             if len(alarm.dimensions) > 0:
                 for dimension in alarm.dimensions:
                     dimension.parameter = self.create_cfn_parameter(
