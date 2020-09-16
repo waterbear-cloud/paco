@@ -141,9 +141,10 @@ PACO is developed by Waterbear Cloud. Contact us about our `support and consulti
    yaml-monitoring
 
 .. toctree::
-   :caption: Other
+   :caption: Going Beyond
    :maxdepth: 3
 
+   extend
    internals
 
 .. toctree::

@@ -2325,7 +2325,7 @@ CloudFrontDefaultCacheBehavior
       - Int |star|
       - Default TTL
       - 
-      - 0
+      - 86400
     * - forwarded_values
       - Object<CloudFrontForwardedValues_>
       - Forwarded Values
@@ -2335,12 +2335,12 @@ CloudFrontDefaultCacheBehavior
       - Int |star|
       - Maximum TTL
       - 
-      - -1
+      - 31536000
     * - min_ttl
       - Int |star|
       - Minimum TTL
       - 
-      - -1
+      - 0
     * - target_origin
       - PacoReference |star|
       - Target Origin
