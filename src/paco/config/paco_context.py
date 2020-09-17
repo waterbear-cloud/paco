@@ -1,11 +1,3 @@
-import paco.config.aws_credentials
-import paco.core.log
-import paco.controllers
-import paco.models.services
-import os, sys, re
-import pathlib
-import pkg_resources
-import ruamel.yaml
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode, MissingAccountId, InvalidAccountName
 from paco.models import vocabulary
@@ -18,6 +10,12 @@ from paco.core.yaml import read_yaml_file
 from paco.config.paco_buckets import PacoBuckets
 from shutil import copyfile
 from deepdiff import DeepDiff
+import paco.config.aws_credentials
+import paco.core.log
+import paco.controllers
+import paco.models.services
+import os, sys, re
+import pathlib
 
 
 class AccountContext(object):
@@ -243,7 +241,7 @@ class PacoContext(object):
         self.paco_path = os.getcwd()
         self.aws_name = "Paco"
         self.controllers = {}
-        self.services = {}
+        self.service_controllers = {}
         self.accounts = {}
         self.logger = paco.core.log.get_paco_logger()
         self.project = None
@@ -263,6 +261,7 @@ class PacoContext(object):
             account_ref = self.get_ref(account_ref)
             return self.get_account_context(account_ref=account_ref)
         elif account_name == None:
+            breakpoint()
             raise StackException(PacoErrorCode.Unknown, message = "get_account_context was only passed None: Not enough context to get account.")
 
         if account_name in self.accounts:
@@ -375,18 +374,13 @@ This directory contains several sub-directories that Paco uses:
         self.get_controller('SNS')
 
         # Load the Service plug-ins
-        service_plugins = paco.models.services.list_service_plugins()
-        for plugin_name, plugin_module in service_plugins.items():
-            try:
-                self.project['service'][plugin_name.lower()]
-            except KeyError:
-                continue
-
-            service_config = self.project['service'][plugin_name.lower()]
+        service_plugins = paco.models.services.list_enabled_services(self.home)
+        for service_info in service_plugins.values():
+            service_config = self.project['service'][service_info['name']]
             self.log_section_start("Init", service_config)
-            service = plugin_module.instantiate_class(self, service_config)
-            service.init(None, model_obj)
-            self.services[plugin_name.lower()] = service
+            service_controller = service_info['module'].get_service_controller(self, service_config)
+            service_controller.init(None, model_obj)
+            self.service_controllers[service_info['name']] = service_controller
 
     def get_controller(self, controller_type, command=None, model_obj=None, model_paco_ref=None):
         """Gets a controller by name and calls .init() on it with any controller args"""
@@ -401,11 +395,11 @@ This directory contains several sub-directories that Paco uses:
                 controller = paco.controllers.klass[controller_type](self)
                 self.controllers[controller_type] = controller
         else:
-            service_name = model_obj.paco_ref_list[1]
-            if service_name.lower() not in self.services:
+            service_name = model_obj.paco_ref_list[1].lower()
+            if service_name not in self.service_controllers:
                 message = "Could not find Service: {}".format(service_name)
                 raise StackException(PacoErrorCode.Unknown, message = message)
-            controller = self.services[service_name.lower()]
+            controller = self.service_controllers[service_name]
 
         controller.init(command, model_obj)
         return controller

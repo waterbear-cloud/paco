@@ -1,8 +1,13 @@
 Changelog for Paco
 ==================
-
-7.3.0 (unreleased)
+8.0.0 (unreleased)
 ------------------
+
+### Migration
+
+ - Paco Service add-on APIs have been changed and renamed. The new ``paco.extends`` package
+   was added that gives a single set of APIs for Services to extend Paco. Documentation for
+   extending Paco has also been created.
 
 ### Added
 
@@ -17,6 +22,8 @@ Changelog for Paco
    so that ``LBApplication`` can pass `SecurityGroups` and `Subnets` as a single Security Group List Parameter.
 
 ### Fixed
+
+- If there is no ``resource/snstopics.yaml`` then the SNSTopic Controller should not load.
 
 - Provision for ``resource.s3`` was using incorrect resource_ref
 

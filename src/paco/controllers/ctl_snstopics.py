@@ -70,6 +70,10 @@ class SNTopicsGroupsController(Controller):
         # inject the controller into the model
         self.groups.resolve_ref_obj = self
         stack_tags = StackTags()
+        # there is no snstopics.yaml for this project
+        if self.groups.account == None:
+            self.init_done = True
+            return
         self.account_ctx = self.paco_ctx.get_account_context(account_ref=self.groups.account)
 
         if self.groups.regions == ['ALL']:

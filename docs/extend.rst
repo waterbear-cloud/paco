@@ -3,40 +3,23 @@
 Extending Paco with Services
 ============================
 
-Paco has an add-on framework called **Services**.
+Paco has an add-on feature called **Services**.
 
-Every installed Paco Service is loaded during initialization and is capable of
-extending or changing Paco in any way, before the rest of normal initialization and actions happen.
+A **Paco Service** is a Python module that is loaded during Paco initialization and is capable of
+extending or changing Paco in any way.
 
-The `paco.services` module provides a set of APIs to help Services do common
-add-on tasks consistently and without conflicts.
+Services commonly provision cloud resources. For example, if you wanted to send CloudWatch Alarm
+notifications to a Slack Channel, you would need to send your Alarm messages to a custom Lambda.
+A Slack Service could provision this custom Lambda and customize your AlarmActions to send to
+messages this Lambda.
 
-Overview of Paco Initialization
--------------------------------
+Services that provision resources have the PACO_SCOPE ``service.<servicename>``:
 
-Every time Paco loads a Paco Project, it will first read all the YAML files in a Paco Project and create
-an object model of that Paco Project. Every Paco Service has a chance to declare it's own specific
-YAML configuration file in a Paco Project at ``services/<my-service-name>.yaml``. This is a purely
-optional step for any Paco Service that wants to define it's own customizable YAML.
+.. code-block:: bash
 
-Next Paco will initialize some Paco Controllers. Controllers are high level APIs for managing Paco
-commands that apply to the paco model. For example, the Route53 Controller will generate StackTemplates
-from the Route53 paco model during initialization, and during a provision command, the controller
-will create/update those stacks to AWS.
-
-Controller initialization happens in a specific order:
-
-  1. Controllers for Global Resources declared in the ``resource/`` directory are initialized first. This allows other
-     Controllers to depend upon global resources being already initialized and available.
-
-  2. Service Controllers declared in the ``service/`` are initialized second. They are initialized in an ``initialization_order``
-     that each Service add-on may declare. Controllers with a low `initialization_order` have a chance to
-     make changes that effect the initialization of later Controllers.
-
-  3. The Controller specific to the current PACO_SCOPE is initialized last. For example, if the command
-     `paco provision netenv.mynet.staging` was run, the scope is a NetworkEnvironment and a
-     NetworkEnvironment Controller will be initialized.
-
+    $ paco validate service.slack
+    $ paco provision service.slack
+    $ paco delete service.slack
 
 Creating a minimal Paco Service
 -------------------------------
@@ -70,13 +53,11 @@ The ``setup.py`` is described in `standard Python packaging`_. The important par
 Paco Service should declare it depends on the ``paco-cloud`` Python project in the ``install_requires`` field.
 
 The ``entry_points`` field will register ``paco.services`` entry points. You can register more than one Paco
-Service here.
-
-Each Paco Service declared is in the format ``<service-name> = <python-dotted-name-of-module>``.
+Service here. Each Paco Service declared is in the format ``<service-name> = <python-dotted-name-of-module>``.
 
 The Paco Service service name must be unique within the Services your Paco has installed.
 
-A Python module declared to contain a Paco Service needs to have two functions in it:
+A Python module that is a Paco Service **must** provide two functions:
 
 .. code-block:: python
 
@@ -89,11 +70,11 @@ A Python module declared to contain a Paco Service needs to have two functions i
         pass
 
 
-The ``instantiate_model`` function is called during model loading. It could return any empty Python
+The ``load_service_model`` function is called during model loading. It could return any empty Python
 object, it could use ``paco.mdoel`` laoding APIs to read and validate custom YAML configuration or
 do any other kind of custom configuration initialization and loading you need.
 
-The ``instantiate_class`` function is called during Controller initialization and it needs to return
+The ``get_service_controller`` function is called during Controller initialization and it needs to return
 a Paco Controller specific to your Paco Service.
 
 In your ``mypacoaddon`` project, create the following directory structure:
@@ -117,12 +98,10 @@ Then put this code into ``helloworld.py``:
 
     # Hook into the Paco Service loading
 
-    initialization_order = 1000
-
-    def instantiate_model(config, project, monitor_config, read_file_path):
+    def load_service_model(config, project, monitor_config, read_file_path):
         return HelloWorldModel()
 
-    def instantiate_class(paco_ctx, config):
+    def get_service_controller(paco_ctx, config):
         "Return a HelloWorld controller for the HelloWorld Service"
         return HelloWorldController(config)
 
@@ -149,7 +128,7 @@ to allow you to install a Paco Service but only use it in Paco Projects that you
 
 In a Paco Project, create a file ``services/helloworld.yaml``. This can be an empty file or valid
 YAML that will be read into a Python data structure and passed as the argument ``config`` to your
-``instantiate_model`` function.
+``load_service_model`` function.
 
 Now run any Paco command and you should see "Hello World!" printed on your terminal.
 
@@ -161,95 +140,129 @@ Now run any Paco command and you should see "Hello World!" printed on your termi
     ...
 
 
-Paco Service APIs
------------------
+Service module specification
+----------------------------
 
-service module implementaion
+Every Paco Service Python module **must** have ``load_service_model`` and ``get_service_controller`` functions.
+These will be called when the Service is initialized. In addition, the module may optionally provide a
+``SERVICE_INITIALIZATION_ORDER`` attribute.
+
+.. code-block:: python
+
+    """
+    Example barebones Paco Service module
+    """
+
+    # Every Paco Service *must*  provide these two functions
+    def load_service_model(config, project, monitor_config, read_file_path):
+        pass
+
+    def get_service_controller(paco_ctx, config):
+        pass
+
+    # Optional attribute
+    SERVICE_INITIALIZATION_ORDER = 1000
+
+
+load_service_model
+^^^^^^^^^^^^^^^^^^
+
+This required function loads the configuration YAML into model objects for your Service.
+However, it isn't required for a Service to have any model and this method can simply return None.
+
+If a Paco Project doesn't have a ``service/<servicename>.yaml`` file,
+then that service is not considered active in that Paco Project and will **NOT** be enabled.
+The configuration file for a Service must be valid YAML or an empty file.
+
+The ``load_service_model`` must accept four arguments:
+
+ - ``config``: A Python dict of the Services ``service/<servicename>.yaml`` file.
+
+ - ``project``: The root Paco Project model object.
+
+ - ``monitor_config``: A Python dict of the YAML loaded from config in the``monitor/`` directory.
+
+ - ``read_file_path``: The location of the file path of the Service's YAML file.
+
+.. code-block:: python
+
+    class Notification:
+        pass
+
+    def load_service_model(config, project, monitor_config, read_file_path):
+        "Loads services/notification.yaml and returns a Notification model object"
+        return Notification()
+
+get_service_controller
+^^^^^^^^^^^^^^^^^^^^^^
+
+This required function must return a Controller object for your Service.
+
+The ``get_service_controller`` must accept two arguments:
+
+ - ``paco_ctx``: The PacoContext object contains the CLI arguments used to call Paco as well as other global information.
+
+ - ``service_model``: The model object returned from this Service's ``load_service_model`` function.
+
+A Controller **must** provide an ``init(self, command=None, model_obj=None)`` method. If the Service can be
+provisioned, it must also implement ``validate(self)``, ``provision(self)`` and ``delete(self)`` methods.
+
+.. code-block:: python
+
+    class NotificationServiceController:
+        def init(self, command=None, model_obj=None):
+            pass
+
+    def get_service_controller(paco_ctx, service_model):
+        "Return a Paco controller"
+        return NotificationServiceController()
+
+
+SERVICE_INITIALIZATION_ORDER
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Every Paco Service Python module **must** implement ``instantiate_model`` and ``instantiate_class`` functions:
+The ``SERVICE_INITIALIZATION_ORDER`` attribute determines the initialization order of Services.
+This is useful for Services that need to do special initialization before other Services are initialized.
 
-.. code-block:: python
+If this order is not declared the initialization order will be randomly assigned an order
+starting from 1000.
 
-    def instantiate_model(config, project, monitor_config, read_file_path):
-        pass
+Overview of Paco Initialization
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    def instantiate_class(paco_ctx, config):
-        pass
+Every time Paco loads a Paco Project, it starts by determing which Services are installed and
+actived. Configuration for Services is in the ``service/`` directory of a Paco Project. If a file exists
+at ``service/<service-name>.yaml`` than that Service will be active in that Paco Project. If a Service
+is installed with Paco but there is no service file, it is ignored.
 
-The module can declare an optional ``initialization_order`` attribute:
+All of the active Services are imported and given the chance to apply configuration that extends Paco.
 
-.. code-block:: python
+Next, Paco reads all of the YAML files in the Paco Project and creates a Python object model from that
+YAML configuration.
 
-    initialization_order = 1000
+Then Paco will initialize the Controllers that it needs. Controllers are high level APIs that implement
+ Paco commands. Controllers can govern the creating, updating and deletion of cloud resources, typically
+ by acting on the contents of the Paco model.
 
-If this order is not declared the initialization order of multiple Services will be randomly assigned
-starting from 1000. If your Service needs to be initialized before other "normal" Services, it should
-declare a number below 1000 in this attribute.
+Controller initialization happens in a specific order:
 
-The module can declare an optional ``extend_base_schemas`` function:
+  1. Controllers for Global Resources declared in the ``resource/`` directory are initialized first. This allows other
+     Controllers to depend upon global resources being already initialized and available.
 
-.. code-block:: python
+  2. Service Controllers declared in the ``service/`` are initialized second. They are initialized in an ``initialization_order``
+     that each Service add-on may declare. Controllers with a low `initialization_order` have a chance to
+     make changes that effect the initialization of later Controllers.
 
-    from paco.models import schemas
-    from paco.models.metrics import AlarmNotification
-    from zope.interface import Interface, classImplements
-    from zope.schema.fieldproperty import FieldProperty
-    from zope import schema
-
-    class ISlackChannelNotification(Interface):
-        slack_channels = schema.List(
-            title="Slack Channels",
-            value_type=schema.TextLine(
-                title="Slack Channel",
-                required=False,
-            ),
-            required=False,
-        )
-
-    def extend_base_schemas():
-        "Add an ISlackChannelNotification schema to AlarmNotification"
-        classImplements(AlarmNotification, ISlackChannelNotification)
-        AlarmNotification.slack_channels = FieldProperty(ISlackChannelNotification["slack_channels"])
+  3. The Controller specific to the current PACO_SCOPE is initialized last. For example, if the command
+     `paco provision netenv.mynet.staging` was run, the scope is a NetworkEnvironment and a
+     NetworkEnvironment Controller will be initialized.
 
 
-This function is called during model loading before any loading happens. It gives the Paco Service a chance
-to extend the core Paco schemas and implementations with additional fields.
+Paco Extend API
+---------------
 
-The module can declare an optional ``override_alarm_actions`` function:
-
-.. code-block:: python
-
-    def override_alarm_actions(snstopics, alarm):
-        "Override normal alarm actions with the SNS Topic ARN for the custom Notification Lambda"
-        return ["paco.ref service.notify...snstopic.arn"]
-
-This function must return a List of paco.refs to SNS Topic ARNs. This will change Paco's CloudWatch
-AlarmActions to your own custom list of SNS Topic ARNs. This can be used to send AlarmActions to
-notify your own custom Lambda function instead of sending Alarm messages directly to the
-SNS Topics that Alarms are subscribed too.
-
-Paco Service APIs
-^^^^^^^^^^^^^^^^^
-
-The ``paco.extend`` module contains convenience APIs to make it easier to extend Paco consistently.
-These APIs are typically invoked from your custom Paco Service Controllers.
-
-The ``paco.extend.add_cw_alarm_hook`` allows you to customize CloudWatch Alarms before they're
-initialized or created. The useful purpose for this is to add extra metadata to the
-CloudWatch AlarmDescription field. This is done in the hook by calling the ``add_to_alarm_description``
-method of the cw_alarm with a dict of extra metadata.
-
-.. code-block:: python
-
-    import paco.extend
-
-    def my_service_alarm_description_function(cw_alarm):
-        slack_metadata = {'SlackChannel': 'http://my-slack-webhook.url'}
-        cw_alarm.add_to_alarm_description(slack_metadata)
-
-    paco.extend.add_cw_alarm_hook(my_service_alarm_description_function)
-
+.. automodule:: paco.extend
+    :members:
 
 
 .. _standard Python packaging: https://packaging.python.org/tutorials/packaging-projects/

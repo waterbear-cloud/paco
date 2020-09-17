@@ -7,15 +7,11 @@ from paco.models import schemas
 from paco.models import vocabulary
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.models.locations import get_parent_by_interface
+from paco.models.registry import CW_ALARM_HOOKS
 from paco.utils import prefixed_name
 from paco.core.exception import InvalidLogSetConfiguration, InvalidAlarmConfiguration
-import paco.models
-import paco.models.services
-import json
 import troposphere
 
-# Hooks that is called for every CloudWatchAlarm
-CW_ALARM_HOOKS = []
 
 class CFBaseAlarm(StackTemplate):
     "Methods shared by different CFTemplates that can create a CloudWatch Alarm"
