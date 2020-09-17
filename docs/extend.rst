@@ -241,8 +241,8 @@ Next, Paco reads all of the YAML files in the Paco Project and creates a Python 
 YAML configuration.
 
 Then Paco will initialize the Controllers that it needs. Controllers are high level APIs that implement
- Paco commands. Controllers can govern the creating, updating and deletion of cloud resources, typically
- by acting on the contents of the Paco model.
+Paco commands. Controllers can govern the creating, updating and deletion of cloud resources, typically
+by acting on the contents of the Paco model.
 
 Controller initialization happens in a specific order:
 
