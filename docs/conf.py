@@ -1,6 +1,7 @@
 import sphinx_fontawesome
 import sys, os, datetime
 
+sys.path.insert(0, os.path.abspath('../src/'))
 
 html_theme = "sphinx_rtd_theme"
 html_theme_options = {
