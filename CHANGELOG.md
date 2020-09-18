@@ -7,6 +7,8 @@ Changelog for Paco
 
 - Added a `upload_fileobj` method to PacoBuckets.
 
+- StackHooks that have been added to Resource model objects are added to a Stack after it's
+  created.
 
 8.0.0 (2020-09-17)
 ------------------

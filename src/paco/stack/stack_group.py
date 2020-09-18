@@ -111,6 +111,11 @@ class StackGroup():
         # Log hooks
         stack.hooks.log_hooks()
 
+        # add StackHooks set on the model
+        if hasattr(resource, '_stack_hooks') and resource._stack_hooks != None:
+            for stack_hook in resource._stack_hooks:
+                stack.add_hooks(stack_hook)
+
         return stack
 
     def add_stack_group(self, stack_group):
