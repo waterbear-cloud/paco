@@ -1,5 +1,6 @@
 from paco.models.vocabulary import aws_regions
 from botocore.exceptions import ClientError
+import io
 
 
 class PacoBuckets():
@@ -31,6 +32,16 @@ class PacoBuckets():
         bucket_name = self.get_bucket_name(account_ctx, region)
         s3_client = account_ctx.get_aws_client('s3', region)
         s3_client.upload_file(file_location, bucket_name, s3_key)
+        return bucket_name
+
+    def upload_fileobj(self, file_contents, s3_key, account_ctx, region):
+        "Upload a file to a Paco Bucket"
+        fileobj = io.BytesIO(file_contents.encode())
+        if not self.is_bucket_created(account_ctx, region):
+            self.create_bucket(account_ctx, region)
+        bucket_name = self.get_bucket_name(account_ctx, region)
+        s3_client = account_ctx.get_aws_client('s3', region)
+        s3_client.upload_fileobj(fileobj, bucket_name, s3_key)
         return bucket_name
 
     def get_object(self, s3_key, account_ctx, region):

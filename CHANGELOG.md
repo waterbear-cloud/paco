@@ -3,7 +3,9 @@ Changelog for Paco
 8.0.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Added
+
+- Added a `upload_fileobj` method to PacoBuckets.
 
 
 8.0.0 (2020-09-17)
