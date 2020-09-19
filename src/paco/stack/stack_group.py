@@ -89,7 +89,6 @@ class StackGroup():
         # make the stack available in the model
         # this only happens when there is one primary stack representing the resource
         # some resources have several stacks (CloudFront) or they have secondary stacks (Alarms, LogGroups)
-        resource.stack = None
         if set_resource_stack or resource.__class__.__name__ == stack.template.__class__.__name__:
             resource.stack = stack
 
@@ -113,7 +112,8 @@ class StackGroup():
         stack.hooks.log_hooks()
 
         # add StackHooks set on the model
-        if hasattr(resource, '_stack_hooks') and resource._stack_hooks != None and resource.stack != None:
+        if hasattr(resource, '_stack_hooks') and resource._stack_hooks != None and \
+            hasattr(resource, 'stack') and resource.stack != None:
             for stack_hook in resource._stack_hooks:
                 stack.add_hooks(stack_hook)
 
