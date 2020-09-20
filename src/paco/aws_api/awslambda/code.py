@@ -1,9 +1,11 @@
 from paco.core.exception import InvalidFilesystemPath
 from paco.utils.zip import patched_make_zipfile
 from pathlib import Path
+from os.path import basename
 import os
 import shutil
 import tempfile
+import zipfile
 
 
 def create_zip_artifact(artifact_name, src_dir):
@@ -12,7 +14,10 @@ def create_zip_artifact(artifact_name, src_dir):
     # ToDo: excludes __pycache__ - make the excluded files depend upon Lambda runtime
     shutil._ARCHIVE_FORMATS['zip'] = (patched_make_zipfile, [], "ZIP file")
     zip_output = tempfile.gettempdir() + os.sep + artifact_name
-    shutil.make_archive(zip_output, 'zip', str(src_dir))
+    if src_dir.is_file():
+        zipfile.ZipFile(zip_output, mode='w').write(src_dir, basename(src_dir))
+    else:
+        shutil.make_archive(zip_output, 'zip', str(src_dir))
     return zip_output
 
 def init_lambda_code(paco_buckets, resource, src, account_ctx, aws_region):
