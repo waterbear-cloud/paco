@@ -5,6 +5,9 @@ Changelog for Paco
 
 ### Added
 
+- The `CodeBuild.Build` action for DeploymentPipeline now supports a list of `ecr_repositories`
+  that can declare `Push`, `Pull` or `PushAndPull` permissions.
+
 - Added a `upload_fileobj` method to PacoBuckets.
 
 - StackHooks that have been added to Resource model objects are added to a Stack after it's

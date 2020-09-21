@@ -223,6 +223,94 @@ class CodeBuild(StackTemplate):
                 Roles=[troposphere.Ref(project_role_res)]
             )
 
+        # ECR Permission Policies
+        index = 0
+        pull_actions = [
+            Action('ecr', 'GetDownloadUrlForLayer'),
+            Action('ecr', 'BatchGetImage'),
+        ]
+        push_actions = [
+            Action('ecr', 'GetDownloadUrlForLayer'),
+            Action('ecr', 'BatchCheckLayerAvailability'),
+            Action('ecr', 'PutImage'),
+            Action('ecr', 'InitiateLayerUpload'),
+            Action('ecr', 'UploadLayerPart'),
+            Action('ecr', 'CompleteLayerUpload'),
+        ]
+        push_pull_actions = pull_actions + push_actions
+        ecr_params = {}
+        for ecr_permission in action_config.ecr_repositories:
+            ecr_repo = get_model_obj_from_ref(ecr_permission.repository, self.paco_ctx.project)
+            if ecr_repo.paco_ref not in ecr_params:
+                param_name = ecr_repo.create_cfn_logical_id()
+                ecr_repo_name_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name=f'{param_name}ARN',
+                    description='The ARN of the ECR repository',
+                    value=ecr_repo.paco_ref + '.arn',
+                )
+                ecr_params[ecr_repo.paco_ref] = ecr_repo_name_param
+        for ecr_permission in action_config.ecr_repositories:
+            perm_name = f'PacoEcr{index}'
+            policy_name = self.create_resource_name_join(
+                name_list=[self.res_name_prefix, 'CodeBuild-Project', perm_name],
+                separator='-',
+                filter_id='IAM.Policy.PolicyName',
+                hash_long_names=True,
+                camel_case=True
+            )
+            statement_list = [
+                Statement(
+                    Effect='Allow',
+                    Action=[
+                        Action('ecr', 'GetAuthorizationToken'),
+                    ],
+                    Resource=['*'],
+                ),
+            ]
+            ecr_repo = get_model_obj_from_ref(ecr_permission.repository, self.paco_ctx.project)
+            if ecr_permission.permission == 'Pull':
+                statement_list.append(
+                    Statement(
+                        Effect='Allow',
+                        Action=pull_actions,
+                        Resource=[
+                            troposphere.Ref(ecr_params[ecr_repo.paco_ref])
+                        ],
+                    )
+                )
+            elif ecr_permission.permission == 'Push':
+                statement_list.append(
+                    Statement(
+                        Effect='Allow',
+                        Action=push_actions,
+                        Resource=[
+                            troposphere.Ref(ecr_params[ecr_repo.paco_ref])
+                        ],
+                    )
+                )
+            elif ecr_permission.permission == 'PushAndPull':
+                statement_list.append(
+                    Statement(
+                        Effect='Allow',
+                        Action=push_pull_actions,
+                        Resource=[
+                            troposphere.Ref(ecr_params[ecr_repo.paco_ref])
+                        ],
+                    )
+                )
+
+            troposphere.iam.PolicyType(
+                title=self.create_cfn_logical_id('CodeBuildProjectPolicy' + perm_name, camel_case=True),
+                template=template,
+                PolicyName=policy_name,
+                PolicyDocument=PolicyDocument(
+                    Statement=statement_list,
+                ),
+                Roles=[troposphere.Ref(project_role_res)]
+            )
+            index += 1
+
         # CodeBuild Project Resource
         timeout_mins_param = self.create_cfn_parameter(
             param_type='String',
