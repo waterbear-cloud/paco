@@ -235,6 +235,10 @@ class ECSServices(StackTemplate):
                     lb['TargetGroupArn'] = troposphere.Ref(tg_param)
                     lb_idx += 1
 
+            # Health check grace period is only valid for services configured to use load balancers
+            if lb_idx == 0:
+                del service_dict['HealthCheckGracePeriodSeconds']
+
             # Replace TaskDefinition name with a TaskDefinition ARN
             if 'TaskDefinition' in service_dict:
                 service_dict['TaskDefinition'] = troposphere.Ref(
