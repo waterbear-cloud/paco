@@ -891,7 +891,7 @@ your cache may be out of sync. Try running again the with the --nocache option.
 
         print("\n--------------------------------------------------------")
         print(f"Stack: {self.account_ctx.get_name()}: {self.aws_region}: {self.get_name()}")
-        print(f"Tempalte: {self.tempalte.get_yaml_path()}")
+        print(f"Template: {self.get_yaml_path()}")
         print("")
         if self.paco_ctx.warn:
             self.warn_template_changes(deep_diff)

@@ -2,7 +2,7 @@ from paco.config.paco_context import PacoContext, AccountContext
 from paco.core.exception import PacoException, StackException, InvalidPacoScope, PacoBaseException, InvalidPacoHome, InvalidVersionControl, \
     InvalidPacoConfigFile
 from paco.core.yaml import YAML
-from paco.models.exceptions import InvalidPacoProjectFile, UnusedPacoProjectField, InvalidPacoReference
+from paco.models.exceptions import InvalidPacoProjectFile, UnusedPacoProjectField, InvalidPacoReference, InvalidAlarmConfiguration
 from paco.models.references import get_model_obj_from_ref
 from boto3.exceptions import Boto3Error
 from botocore.exceptions import BotoCoreError, ClientError
@@ -321,6 +321,7 @@ def handle_exceptions(func):
             InvalidPacoReference,
             UnusedPacoProjectField,
             InvalidPacoProjectFile,
+            InvalidAlarmConfiguration,
             PacoException,
             PacoBaseException,
             StackException,

@@ -261,7 +261,6 @@ class PacoContext(object):
             account_ref = self.get_ref(account_ref)
             return self.get_account_context(account_ref=account_ref)
         elif account_name == None:
-            breakpoint()
             raise StackException(PacoErrorCode.Unknown, message = "get_account_context was only passed None: Not enough context to get account.")
 
         if account_name in self.accounts:

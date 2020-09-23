@@ -94,15 +94,31 @@ class CWAlarms(CFBaseAlarm):
 
         # build a list of Alarm objects
         alarms = []
-        for alarm_set_id in alarm_sets.keys():
-            alarm_set = alarm_sets[alarm_set_id]
-            for alarm_id in alarm_set.keys():
-                cfn_resource_name = 'Alarm{}{}'.format(
-                    self.create_cfn_logical_id(alarm_set_id),
-                    self.create_cfn_logical_id(alarm_id)
-                )
-                alarm_set[alarm_id].cfn_resource_name = cfn_resource_name
-                alarms.append(alarm_set[alarm_id])
+        # ECSServices can have Alarms for every Service
+        if schemas.IECSServices.providedBy(resource):
+            for service in resource.services.values():
+                if getattr(service, 'monitoring', None) != None and getattr(service.monitoring, 'alarm_sets', None) != None:
+                    alarm_sets = service.monitoring.alarm_sets
+                    for alarm_set_name in alarm_sets.keys():
+                        alarm_set = alarm_sets[alarm_set_name]
+                        for alarm_name, alarm in alarm_set.items():
+                            cfn_resource_name = 'Alarm{}{}'.format(
+                                self.create_cfn_logical_id(alarm_set_name),
+                                self.create_cfn_logical_id(alarm_name)
+                            )
+                            alarm_set[alarm_name].cfn_resource_name = cfn_resource_name
+                            alarm._service = service
+                            alarms.append(alarm_set[alarm_name])
+        else:
+            for alarm_set_name in alarm_sets.keys():
+                alarm_set = alarm_sets[alarm_set_name]
+                for alarm_name in alarm_set.keys():
+                    cfn_resource_name = 'Alarm{}{}'.format(
+                        self.create_cfn_logical_id(alarm_set_name),
+                        self.create_cfn_logical_id(alarm_name)
+                    )
+                    alarm_set[alarm_name].cfn_resource_name = cfn_resource_name
+                    alarms.append(alarm_set[alarm_name])
 
         # Define the Template
         self.init_template('CloudWatch Alarms')
@@ -110,31 +126,29 @@ class CWAlarms(CFBaseAlarm):
         self.notification_param_map = {}
         alarms_are_enabled = False
         if resource.is_enabled() and resource.monitoring.enabled:
-            alarms_are_enabled = self.add_alarms(
-                self.template,
-                alarms,
-                resource,
-                self.paco_ctx.project,
-                alarm_id,
-                alarm_set_id,
-            )
+            alarms_are_enabled = self.add_alarms(alarms)
         self.template.enabled = alarms_are_enabled
 
-    def add_alarms(
-            self,
-            template,
-            alarms,
-            resource,
-            project,
-            alarm_id,
-            alarm_set_id,
-        ):
+    def add_alarms(self, alarms):
+        "Add a list of Alarms to the template"
         alarms_are_enabled = False
-        # Dimension Parameters
-        # First calculate multiple parameters for complex resources with multiple sub-resources like IoTAnalyticsPipeline
+        dimension_parameters = {}
+        resource = self.resource
+
+        # Dimension Parameters:
+        # Each Dimension Parameter may be shared by multiple Alarms in one template
+        #
+        # Resources with a single Dimension look like:
+        #
+        #   - Resource Type: ASG
+		#     Dimensions: ['AutoScalingGroupName', 'my-asg-name']
+        #
+        # There will be a single CloudFormation Parameter named 'DimensionResource' for these single Dimension resources.
+        # Other Resources may need multiple Dimensions or can have sub-resources each with a different Dimension.
+
+        # IoTAnalyticsPipeline: Dimensions for Channel, Pipeline and DataSet
         if schemas.IIoTAnalyticsPipeline.providedBy(resource):
             params_needed = {}
-            dataset_params = {}
             for alarm in alarms:
                 if alarm.metric_name not in params_needed:
                     params_needed[alarm.metric_name] = [alarm]
@@ -143,7 +157,7 @@ class CWAlarms(CFBaseAlarm):
             for metric_name, alarms in params_needed.items():
                 if metric_name == 'IncomingMessages':
                     value = resource.paco_ref + '.channel.name'
-                    pipeline_name_param = self.create_cfn_parameter(
+                    dimension_parameters['ChannelName'] = self.create_cfn_parameter(
                         name='ChannelName',
                         param_type='String',
                         description='The ChannelName for the dimension.',
@@ -151,7 +165,7 @@ class CWAlarms(CFBaseAlarm):
                     )
                 elif metric_name == 'ActivityExecutionError':
                     value = resource.paco_ref + '.pipeline.name'
-                    pipeline_name_param = self.create_cfn_parameter(
+                    dimension_parameters['PipelineName'] = self.create_cfn_parameter(
                         name='PipelineName',
                         param_type='String',
                         description='The PipelineName for the dimension.',
@@ -162,18 +176,45 @@ class CWAlarms(CFBaseAlarm):
                     for alarm in alarms:
                         for dimension in alarm.dimensions:
                             if dimension.name.lower() == 'datasetname':
-                                dataset_names[dimension.value] = None
-                    for dataset_name in dataset_names:
+                                dataset_name = dimension.value
+                                cfn_name = self.create_cfn_logical_id(f'{dataset_name}DatasetName')
+                                dataset_names[dataset_name] = cfn_name
+                                alarm._param_name = cfn_name
+                    for dataset_name, cfn_name in dataset_names.items():
                         value = f'{resource.paco_ref}.dataset.{dataset_name}.name'
-                        dataset_params[dataset_name] = self.create_cfn_parameter(
-                            name=f'{dataset_name}DatasetName',
+                        dimension_parameters[cfn_name] = self.create_cfn_parameter(
+                            name=cfn_name,
                             param_type='String',
                             description=f'The DatasetName for {dataset_name}.',
                             value=value
                         )
-                        # stash the dataset name on the alarm so it can be used to create the Dimension
-                        alarm._dataset_param = dataset_params[dataset_name]
 
+        # ECSServices need the ClusterName Dimension and the ServiceName for each Service
+        elif schemas.IECSServices.providedBy(resource):
+            dimension_parameters['ClusterName'] = self.create_cfn_parameter(
+                name='ClusterName',
+                param_type='String',
+                description='The ClusterName dimension.',
+                value=resource.cluster + '.name'
+            )
+            for service in resource.services.values():
+                name = self.create_cfn_logical_id(f'ServiceName{service.name}')
+                service._dimension_name = name
+                dimension_parameters[name] = self.create_cfn_parameter(
+                    name=name,
+                    param_type='String',
+                    description='ServiceName for the Dimension.',
+                    value=service.paco_ref + '.name'
+                )
+        # DBCluster with DBInstances
+        elif schemas.IRDSClusterInstance.providedBy(resource):
+            value = f"{resource.dbcluster.paco_ref}.db_instances.{resource.name}.name"
+            dimension_parameters['ResourceName'] = self.create_cfn_parameter(
+                name='DimensionResource',
+                param_type='String',
+                description='The resource id or name for the metric dimension.',
+                value=value
+            )
         # simple Resources with a single name and dimension
         elif schemas.IResource.providedBy(resource):
             value = resource.paco_ref + '.name'
@@ -181,22 +222,13 @@ class CWAlarms(CFBaseAlarm):
                 # Primary node uses the aws name with '-001' appended to it
                 # ToDo: how to have Alarms for the read replica nodes?
                 value = resource.get_aws_name() + '-001'
+            dimension_parameters['ResourceName'] = self.create_cfn_parameter(
+                name='DimensionResource',
+                param_type='String',
+                description='The resource id or name for the metric dimension.',
+                value=value
+            )
 
-            dimension_param = self.create_cfn_parameter(
-                name='DimensionResource',
-                param_type='String',
-                description='The resource id or name for the metric dimension.',
-                value=value
-            )
-        # DBCluster with DBInstances
-        elif schemas.IRDSClusterInstance.providedBy(resource):
-            value = f"{resource.dbcluster.paco_ref}.db_instances.{resource.name}.name"
-            dimension_param = self.create_cfn_parameter(
-                name='DimensionResource',
-                param_type='String',
-                description='The resource id or name for the metric dimension.',
-                value=value
-            )
         for alarm in alarms:
             # Track if any alarms are enabled
             if alarm.enabled == True:
@@ -204,7 +236,7 @@ class CWAlarms(CFBaseAlarm):
             else:
                 continue
 
-            # Alarm hook
+            # Alarm hook: registered by Services using paco.extend.add_cw_alarm_hook
             for hook in CW_ALARM_HOOKS:
                 hook(alarm)
 
@@ -257,60 +289,71 @@ HINT: Ensure that the monitoring.log_sets for the resource is enabled and that t
                 alarm_export_dict['Namespace'] = alarm.namespace
 
             # Dimensions
-            # if there are no dimensions, then fallback to the default of
-            # a primary dimension and the resource's resource_name
-            # This only happens for Resource-level Alarms
-            # MetricFilter LogGroup Alarms must have no dimensions
+            # If there are no dimensions, then fallback to the default of a primary Dimension and the resource's resource_name
+            # This only happens for Resource-level Alarms. MetricFilter LogGroup Alarms have no Dimensions
             dimensions = []
             if not schemas.ICloudWatchLogAlarm.providedBy(alarm):
-                # simple metric Resources with a single Dimension based on the resource type
-                if schemas.IResource.providedBy(resource) and len(alarm.dimensions) < 1:
+                if schemas.IRDSClusterInstance.providedBy(resource) and len(alarm.dimensions) < 1:
                     dimensions.append(
                         {'Name': vocabulary.cloudwatch[resource.type]['dimension'],
-                         'Value': troposphere.Ref(dimension_param)}
+                         'Value': troposphere.Ref(dimension_parameters['ResourceName'])}
                     )
-                elif schemas.IRDSClusterInstance.providedBy(resource) and len(alarm.dimensions) < 1:
+                elif schemas.IECSServices.providedBy(resource):
                     dimensions.append(
-                        {'Name': vocabulary.cloudwatch[resource.type]['dimension'],
-                         'Value': troposphere.Ref(dimension_param)}
+                        {'Name': 'ClusterName', 'Value': troposphere.Ref(dimension_parameters['ClusterName'])}
+                    )
+                    dimensions.append(
+                        {'Name': 'ServiceName', 'Value': troposphere.Ref(
+                            dimension_parameters[alarm._service._dimension_name]
+                        )}
                     )
                 # complex metric Resources that have more than one Dimension to select
                 elif schemas.IASG.providedBy(resource) or schemas.IIoTTopicRule.providedBy(resource):
                     dimensions.append(
                         {'Name': vocabulary.cloudwatch[resource.type]['dimension'],
-                        'Value': troposphere.Ref(dimension_param)}
+                        'Value': troposphere.Ref(dimension_parameters['ResourceName'])}
                     )
                 elif schemas.IIoTAnalyticsPipeline.providedBy(resource):
                     # IoTAnalyticsPipeline can alarm on Channel, Pipeline, Datastore and Dataset dimensions
                     if alarm.metric_name == 'ActivityExecutionError':
                         dimensions.append(
                             {'Name': 'PipelineName',
-                            'Value': troposphere.Ref(pipeline_name_param)}
+                            'Value': troposphere.Ref(dimension_parameters['PipelineName'])}
                         )
                     elif alarm.metric_name == 'IncomingMessages':
                         dimensions.append(
                             {'Name': 'ChannelName',
-                            'Value': troposphere.Ref(channel_name_param)}
+                            'Value': troposphere.Ref(dimension_parameters['ChannelName'])}
                         )
                     elif alarm.metric_name == 'ActionExecution':
                         dimensions.append(
                             {'Name': 'DatasetName',
-                            'Value': troposphere.Ref(alarm._dataset_param)}
+                            'Value': troposphere.Ref(dimension_parameters[alarm._param_name])}
                         )
                     else:
                         raise InvalidAlarmConfiguration(f"Unsuported metric_name '{alarm.metric_name}' specified for IoTAnalyticsPipeline alarm:\n{alarm.paco_ref_parts}")
+
+                elif schemas.IResource.providedBy(resource) and len(alarm.dimensions) < 1:
+                    # Resources with a single Dimension based on the resource type
+                    dimensions.append(
+                        {'Name': vocabulary.cloudwatch[resource.type]['dimension'],
+                         'Value': troposphere.Ref(dimension_parameters['ResourceName'])}
+                    )
+
                 # Add ClientId (account id) dimension for ElasticsearchDomain
                 if schemas.IElasticsearchDomain.providedBy(resource):
                     dimensions.append(
                         {'Name': 'ClientId',
                         'Value': self.stack.account_ctx.id }
                     )
+
                 for dimension in alarm.dimensions:
                     if schemas.IIoTAnalyticsPipeline.providedBy(resource) and dimension.name == 'DatasetName':
                         continue
                     dimensions.append(
                         {'Name': dimension.name, 'Value': troposphere.Ref(dimension.parameter)}
                     )
+
             alarm_export_dict['Dimensions'] = dimensions
 
             # Add Alarm resource
@@ -318,10 +361,12 @@ HINT: Ensure that the monitoring.log_sets for the resource is enabled and that t
                 alarm.cfn_resource_name,
                 alarm_export_dict
             )
-            template.add_resource(alarm_resource)
+            self.template.add_resource(alarm_resource)
 
             # Alarm Output
-            output_ref = '.'.join([resource.paco_ref_parts, 'monitoring', 'alarm_sets', alarm_set_id, alarm_id])
+            output_ref = '.'.join(
+                [resource.paco_ref_parts, 'monitoring', 'alarm_sets', alarm.__parent__.name, alarm.name]
+            )
             self.create_output(
                 title=alarm.cfn_resource_name,
                 value=troposphere.Ref(alarm_resource),

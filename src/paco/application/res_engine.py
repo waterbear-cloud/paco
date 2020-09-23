@@ -59,6 +59,19 @@ class ResourceEngine():
                         support_resource_ref_ext=f'db_instances.{db_instance.name}.alarms',
                         stack_tags=self.stack_tags
                     )
+        elif schemas.IECSServices.providedBy(self.resource):
+            # ToDo: validate that there is at least one AlarmSets in the services
+            # (or use a fall-back default)
+            if getattr(self.resource, 'monitoring', None) != None and \
+            self.resource.monitoring.enabled == True:
+                self.stack_group.add_new_stack(
+                    self.aws_region,
+                    self.resource,
+                    paco.cftemplates.CWAlarms,
+                    change_protected=False,
+                    support_resource_ref_ext='alarms',
+                    stack_tags=self.stack_tags
+                )
         elif getattr(self.resource, 'monitoring', None) != None and \
             self.resource.monitoring.enabled and \
             getattr(self.resource.monitoring, 'alarm_sets', None) != None and \
