@@ -622,6 +622,9 @@ policies:
                 return self.s3deploy_delegate_role_arns['paco.ref accounts.' + account_name]
             elif ref.resource_ref == 'codepipeline_role.arn':
                 return ref.resource._stack.template.get_codepipeline_role_arn()
+            elif ref.resource_ref == 'arn':
+                return ref.resource._stack.template.pipeline_arn
+
         elif schemas.IDeploymentPipelineSourceCodeCommit.providedBy(ref.resource):
             # CodeCommit
             if ref.resource_ref == self.codecommit_role_name+'.arn':

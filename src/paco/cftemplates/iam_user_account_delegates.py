@@ -122,6 +122,147 @@ class IAMUserAccountDelegates(StackTemplate):
             )
             self.template.add_resource(managed_policy_res)
 
+    def init_deploymentpipelines_permission(self, permission_config, assume_role_res):
+        if 'ManagedPolicyArns' not in assume_role_res.properties.keys():
+            assume_role_res.properties['ManagedPolicyArns'] = []
+
+        pipeline_list = []
+        for resource in permission_config.resources:
+            pipeline_ref = Reference(resource.pipeline)
+            pipeline = pipeline_ref.get_model_obj(self.paco_ctx.project)
+            account_ref = pipeline.configuration.account
+            account_name = self.paco_ctx.get_ref(account_ref + '.name')
+            if account_name == self.account_ctx.name:
+                pipeline_arn = self.paco_ctx.get_ref(pipeline.paco_ref+'.arn')
+                pipeline_list.append(
+                    {
+                        'permission': resource.permission,
+                        'pipeline': pipeline,
+                        'pipeline_arn': pipeline_arn
+                    }
+                )
+
+
+            # Some actions in the pipeline might be in different account so we must
+            # iterate the pipeline stages and actions and add them too.
+            # for action in pipeline_config.source:
+            #     account_name = None
+            #     if action.type == 'CodeDeploy.Deploy':
+            #         asg_ref = Reference(action.auto_scaling_group)
+            #         asg_config = asg_ref.resolve()
+            #         account_name = self.paco_ctx.get_ref(asg_config.get_account().paco_ref + '.name')
+            #         self.init_codedeploy_permission(pipeline_ref, assume_role_res)
+
+            #for action in pipeline_config.build:
+            #    account_name = None
+            #    if action.type == 'CodeBuild.Build':
+            #        self.init_codebuild_permission(pipeline_ref, assume_role_res)
+
+
+        self.deployment_pipeline_codepipeline_permissions(pipeline_list, assume_role_res)
+        self.deployment_pipeline_codebuild_permissions(pipeline_list, assume_role_res)
+
+    def deployment_pipeline_codepipeline_permissions(self, pipeline_list, assume_role_res):
+        statement_list = []
+
+        list_pipelines_actions = [
+            Action('codepipeline', 'ListPipelines')
+        ]
+        readonly_actions = [
+            Action('codepipeline', 'GetPipeline'),
+            Action('codepipeline', 'GetPipelineState'),
+            Action('codepipeline', 'GetPipelineExecution'),
+            Action('codepipeline', 'ListPipelineExecutions'),
+            Action('codepipeline', 'ListActionExecutions'),
+            Action('codepipeline', 'ListActionTypes'),
+            Action('codepipeline', 'ListTagsForResource'),
+            Action('codepipeline', 'StartPipelineExecution'),
+            Action('codepipeline', 'StopPipelineExecution')
+        ]
+        retrystages_actions = [
+            Action('codepipeline', 'RetryStageExecution')
+        ]
+
+        readonly_arn_list = []
+        retrystages_arn_list = []
+        for pipeline_ctx in pipeline_list:
+            if pipeline_ctx['permission'].find('ReadOnly') != -1:
+                readonly_arn_list.append(pipeline_ctx['pipeline_arn'])
+            if pipeline_ctx['permission'].find('RetryStages') != -1:
+                if pipeline_ctx['pipeline'].source:
+                    retrystages_arn_list.append(pipeline_ctx['pipeline_arn']+'/Source')
+                if pipeline_ctx['pipeline'].build:
+                    retrystages_arn_list.append(pipeline_ctx['pipeline_arn']+'/Build')
+                if pipeline_ctx['pipeline'].deploy:
+                    retrystages_arn_list.append(pipeline_ctx['pipeline_arn']+'/Deploy')
+
+        if len(readonly_arn_list) > 0:
+            statement_list.append(
+                Statement(
+                    Sid='CodePipelineListAccess',
+                    Effect=Allow,
+                    Action=list_pipelines_actions,
+                    Resource=['*']
+                )
+            )
+            statement_list.append(
+                Statement(
+                    Sid='CodePipelineReadAccess',
+                    Effect=Allow,
+                    Action=readonly_actions,
+                    Resource=readonly_arn_list
+                )
+            )
+
+        if pipeline_ctx['permission'].find('RetryStages') != -1:
+            statement_list.append(
+                Statement(
+                    Sid='CodePipelineRetryStagesAccess',
+                    Effect=Allow,
+                    Action=retrystages_actions,
+                    Resource=retrystages_arn_list
+                )
+            )
+
+        managed_policy_res = troposphere.iam.ManagedPolicy(
+            title=self.create_cfn_logical_id("CodePipelinePolicy"),
+            PolicyDocument=PolicyDocument(
+                Version="2012-10-17",
+                Statement=statement_list
+            ),
+            Roles=[ troposphere.Ref(assume_role_res) ]
+        )
+        self.template.add_resource(managed_policy_res)
+
+    def deployment_pipeline_codebuild_permissions(self, pipeline_list, assume_role_res):
+        statement_list = []
+
+        list_pipelines_actions = [
+            Action('codepipeline', 'ListPipelines')
+        ]
+        readonly_actions = [
+            Action('codebuild', 'BatchGet*'),
+            Action('codebuild', 'Get*'),
+            Action('codebuild', 'List*'),
+            Action('cloudwatch', 'GetMetricStatistics*'),
+            Action('events', 'DescribeRule'),
+            Action('events', 'ListTargetsByRule'),
+            Action('events', 'ListRuleNamesByTarget'),
+            Action('logs', 'GetLogEvents')
+        ]
+
+        readonly_arn_list = []
+        retrystages_arn_list = []
+        for pipeline_ctx in pipeline_list:
+            if pipeline_ctx['permission'].find('ReadOnly') != -1:
+                for action_name in pipeline_ctx['pipeline'].build:
+                    action = pipeline_ctx['pipeline'].build[action_name]
+                    if action.type == 'CodeBuild.Build':
+                        codebuild_arn = self.paco_ctx.get_ref(action.paco_ref+'.project.arn')
+                        readonly_arn_list.append(codebuild_arn)
+
+        self.set_codebuild_permissions(readonly_arn_list, assume_role_res)
+
     def init_codebuild_permission(self, permission_config, assume_role_res):
         """CodeBuild Web Console Permissions"""
         if 'ManagedPolicyArns' not in assume_role_res.properties.keys():
@@ -144,6 +285,10 @@ class IAMUserAccountDelegates(StackTemplate):
                 if codebuild_arn not in readonly_codebuild_arns:
                     readonly_codebuild_arns.append(codebuild_arn)
 
+        self.set_codebuild_permissions(readonly_codebuild_arns, assume_role_res)
+
+    def set_codebuild_permissions(self, readonly_codebuild_arns, assume_role_res):
+        statement_list = []
         readonly_codebuild_actions = [
             Action('codebuild', 'BatchGet*'),
             Action('codebuild', 'Get*'),
@@ -160,7 +305,7 @@ class IAMUserAccountDelegates(StackTemplate):
                     Sid='CodeBuildReadOnly',
                     Effect=Allow,
                     Action=readonly_codebuild_actions,
-                    Resource=['*']#readonly_codebuild_arns
+                    Resource=readonly_codebuild_arns
                 )
             )
 
@@ -172,7 +317,7 @@ class IAMUserAccountDelegates(StackTemplate):
             ),
             Roles=[ troposphere.Ref(assume_role_res) ]
         )
-        self.template.add_resource(managed_policy_res)#
+        self.template.add_resource(managed_policy_res)
 
     def init_codecommit_permission(self, permission_config, assume_role_res):
 

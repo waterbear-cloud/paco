@@ -857,7 +857,7 @@ your cache may be out of sync. Try running again the with the --nocache option.
         if len(deep_diff.keys()) == 0:
             return
         print("--------------------------------------------------------")
-        print("Confirm template changes to CloudFormation Stack: " + self.get_name())
+        print(f"Confirm template changes to CloudFormation Stack: {self.account_ctx.get_name()}: {self.aws_region}: {self.get_name()}")
         print()
         print("{}".format(self.get_name()))
         if self.paco_ctx.verbose:
@@ -890,7 +890,8 @@ your cache may be out of sync. Try running again the with the --nocache option.
             print("+++")
 
         print("\n--------------------------------------------------------")
-        print("Stack: " + self.get_name())
+        print(f"Stack: {self.account_ctx.get_name()}: {self.aws_region}: {self.get_name()}")
+        print(f"Tempalte: {self.tempalte.get_yaml_path()}")
         print("")
         if self.paco_ctx.warn:
             self.warn_template_changes(deep_diff)

@@ -126,13 +126,16 @@ class CodePipeline(StackTemplate):
             self.create_pipeline_from_sourcebuilddeploy(deploy_region)
 
     @property
-    def pipeline_arn(self):
+    def troposphere_pipeline_arn(self):
         return troposphere.Join(
             ':', [
                 f"arn:aws:codepipeline:{self.stack.aws_region}:{self.stack.account_ctx.get_id()}",
-                troposphere.Ref('BuildCodePipeline')
+                self.res_name_prefix
             ]
         )
+    @property
+    def pipeline_arn(self):
+        return ':'.join([f"arn:aws:codepipeline:{self.stack.aws_region}:{self.stack.account_ctx.get_id()}",self.res_name_prefix])
 
     def add_github_webhook(self, pipeline_res, stage_name, action, sourcebuilddeploy=False):
         "Add a CodePipeline WebHook"
@@ -706,7 +709,7 @@ class CodePipeline(StackTemplate):
                                     Statement(
                                         Effect=Allow,
                                         Action=[awacs.codepipeline.StartPipelineExecution],
-                                        Resource=[self.pipeline_arn],
+                                        Resource=[self.troposphere_pipeline_arn],
                                     )
                                 ]
                             )
@@ -728,7 +731,7 @@ class CodePipeline(StackTemplate):
                 pipeline_target = troposphere.events.Target(
                     'PipelineTarget',
                     Id='ECRPipelineTarget',
-                    Arn=self.pipeline_arn,
+                    Arn=self.troposphere_pipeline_arn,
                     RoleArn=troposphere.GetAtt(events_rule_role_resource, 'Arn'),
                 )
                 event_rule_resource = troposphere.events.Rule(

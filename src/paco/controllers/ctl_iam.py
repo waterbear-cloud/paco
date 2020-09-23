@@ -262,6 +262,40 @@ class IAMController(Controller):
             if permission_config not in permissions_by_account[account_name]:
                 permissions_by_account[account_name].append(permission_config)
 
+     # DeploymentPipelines
+    def init_deploymentpipelines_permission(self, permission_config, permissions_by_account):
+        """
+        Iterates over each pipeline reference and adds its permission config
+        to the map of permissions by account.
+        """
+        for resource in permission_config.resources:
+            pipeline_ref = Reference(resource.pipeline)
+            account_ref = 'paco.ref ' + '.'.join(pipeline_ref.parts) + '.configuration.account'
+            account_ref = self.paco_ctx.get_ref(account_ref)
+            account_name = self.paco_ctx.get_ref(account_ref + '.name')
+            if permission_config not in permissions_by_account[account_name]:
+                permissions_by_account[account_name].append(permission_config)
+
+
+            # Initialize The network environments that we need access into
+            pipeline_config = pipeline_ref.get_model_obj(self.paco_ctx.project)
+            self.paco_ctx.get_controller(pipeline_ref.parts[0], model_obj=pipeline_config)
+
+            # Some actions in the pipeline might be in different account so we must
+            # iterate the pipeline stages and actions and add them too.
+            for action_name in pipeline_config.source.keys():
+                action = pipeline_config.source[action_name]
+                account_name = None
+                if action.type == 'CodeDeploy.Deploy':
+                    asg_ref = Reference(action.auto_scaling_group)
+                    asg_config = asg_ref.get_model_obj(self.paco_ctx.project)
+                    account_name = self.paco_ctx.get_ref(asg_config.get_account().paco_ref + '.name')
+                if account_name != None:
+                    if permission_config not in permissions_by_account[account_name]:
+                        permissions_by_account[account_name].append(permission_config)
+
+
+
     def get_sdb_attribute_value(self, sdb_client, sdb_domain, item_name, attribute_name):
         attributes = sdb_client.get_attributes(
             DomainName=sdb_domain,
