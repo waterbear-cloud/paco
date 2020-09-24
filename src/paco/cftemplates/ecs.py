@@ -1,8 +1,11 @@
+from paco.models.references import get_model_obj_from_ref
+from paco.models.schemas import ILBApplication, get_parent_by_interface
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.utils import prefixed_name, md5sum
 from paco.core.exception import UnsupportedCloudFormationParameterType
 from paco.models import references
 import troposphere
+import troposphere.applicationautoscaling
 import troposphere.ecs
 import troposphere.servicediscovery
 
@@ -163,16 +166,18 @@ class ECSServices(StackTemplate):
             task._troposphere_res = task_res
 
         # Cluster Param
-        cluster_param = self.create_cfn_parameter(
+        cluster_name_param = self.create_cfn_parameter(
             name='Cluster',
             param_type='String',
             description='Cluster Name',
             value=ecs_config.cluster + '.name',
         )
+        target_group_params = {}
+        alb_params = {}
 
-        #  Services
         # ToDo: allow multiple PrivateDnsNamespaces?
         # e.g. if multiple ECSServices want to particpate in the same PrivateDnsNamespace?
+        private_dns_namespace_res = None
         if ecs_config.service_discovery_namespace_name != '':
             private_dns_vpc_param = self.create_cfn_parameter(
                 param_type='String',
@@ -186,8 +191,45 @@ class ECSServices(StackTemplate):
                 Vpc=troposphere.Ref(private_dns_vpc_param),
             )
             self.template.add_resource(private_dns_namespace_res)
+
+        #  Services
         for service in ecs_config.services.values():
             service_dict = service.cfn_export_dict
+            service_dict['Cluster'] = troposphere.Ref(cluster_name_param)
+            cfn_service_name = self.create_cfn_logical_id('Service' + service.name)
+
+            # does this service use any enabled scaling?
+            uses_scaling = False
+            uses_target_tracking_scaling = False
+            for target_tracking_scaling_policy in service.target_tracking_scaling_policies.values():
+                if target_tracking_scaling_policy.enabled == True:
+                    uses_scaling = True
+                    uses_target_tracking_scaling = True
+                    continue
+
+            desired_tasks_param = self.create_cfn_parameter(
+                param_type='String',
+                name=f'{cfn_service_name}DesiredTasks',
+                description='The desired number of tasks for the Service.',
+                value=service.desired_count,
+                ignore_changes=uses_scaling,
+            )
+            service_dict['DesiredCount'] = troposphere.Ref(desired_tasks_param)
+            minimum_tasks_param = None
+            maximum_tasks_param = None
+            if uses_scaling:
+                minimum_tasks_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name=f'{cfn_service_name}MinimumTasks',
+                    description='The minimum number of tasks for the Service.',
+                    value=service.minimum_tasks,
+                )
+                maximum_tasks_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name=f'{cfn_service_name}MaximumTasks',
+                    description='The maximum number of tasks for the Service.',
+                    value=service.maximum_tasks,
+                )
 
             # Service Discovery
             if service.hostname != None:
@@ -244,23 +286,101 @@ class ECSServices(StackTemplate):
                 service_dict['TaskDefinition'] = troposphere.Ref(
                     ecs_config.task_definitions[service_dict['TaskDefinition']]._troposphere_res
                 )
-            service_dict['Cluster'] = troposphere.Ref(cluster_param)
+
+            # ECS Service Resource
             service_res = troposphere.ecs.Service.from_dict(
-                self.create_cfn_logical_id('Service' + service.name),
+                cfn_service_name,
                 service_dict
             )
+            self.template.add_resource(service_res)
+
+            # ECS Scaling: TargetTracking Scaling
+            scalable_target_res = None
+            if uses_target_tracking_scaling:
+                # ScalableTarget
+                scalable_target_dict = {}
+                scalable_target_dict['ServiceNamespace'] = 'ecs'
+                scalable_target_dict['MinCapacity'] = troposphere.Ref(minimum_tasks_param)
+                scalable_target_dict['MaxCapacity'] = troposphere.Ref(maximum_tasks_param)
+                scalable_target_dict['ResourceId'] = troposphere.Join('/', [
+                    'service', troposphere.Ref(cluster_name_param), troposphere.GetAtt(service_res, 'Name')
+                ])
+                # CloudFormation will automatically generate this service-linked Role if it doesn't already exist
+                scalable_target_dict['RoleARN'] = f'arn:aws:iam::{self.account_ctx.id}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService'
+                scalable_target_dict['ScalableDimension'] = 'ecs:service:DesiredCount'
+                scalable_target_dict['SuspendedState'] = {
+                    "DynamicScalingInSuspended" : service.suspend_scaling,
+                    "DynamicScalingOutSuspended" : service.suspend_scaling,
+                    "ScheduledScalingSuspended" : service.suspend_scaling,
+                }
+                scalable_target_res = troposphere.applicationautoscaling.ScalableTarget.from_dict(
+                    cfn_service_name + 'ScalableTarget',
+                    scalable_target_dict
+                )
+                self.template.add_resource(scalable_target_res)
+
+            for target_tracking_policy in service.target_tracking_scaling_policies.values():
+                if target_tracking_policy.enabled == False:
+                    continue
+
+                # ScalingPolicies
+                scaling_policy_dict = {}
+                scaling_policy_dict['PolicyName'] = self.create_cfn_logical_id(f"{service.name}{target_tracking_policy.name}Policy")
+                scaling_policy_dict['PolicyType'] = 'TargetTrackingScaling'
+                scaling_policy_dict['ScalingTargetId'] = troposphere.Ref(scalable_target_res)
+                scaling_policy_dict['TargetTrackingScalingPolicyConfiguration'] = {
+                    "DisableScaleIn": target_tracking_policy.disable_scale_in,
+                    "PredefinedMetricSpecification": {
+                        "PredefinedMetricType": target_tracking_policy.predefined_metric,
+                    },
+                    "ScaleInCooldown": target_tracking_policy.scale_in_cooldown,
+                    "ScaleOutCooldown": target_tracking_policy.scale_out_cooldown,
+                    "TargetValue": target_tracking_policy.target,
+                }
+                if target_tracking_policy.predefined_metric == 'ALBRequestCountPerTarget':
+                    target_group = get_model_obj_from_ref(target_tracking_policy.target_group, self.project)
+                    load_balancer = get_parent_by_interface(target_group, ILBApplication)
+                    lb_name = self.create_cfn_logical_id('ALBFullName' + md5sum(str_data=load_balancer.paco_ref_parts))
+                    tg_name = self.create_cfn_logical_id('TargetGroupFullName' + md5sum(str_data=target_group.paco_ref_parts))
+                    if lb_name not in alb_params:
+                        alb_params[lb_name] = self.create_cfn_parameter(
+                            name=lb_name,
+                            param_type='String',
+                            description='ALBFullName',
+                            value=load_balancer.paco_ref + '.fullname',
+                        )
+                    if tg_name not in target_group_params:
+                        target_group_params[tg_name] = self.create_cfn_parameter(
+                            name=tg_name,
+                            param_type='String',
+                            description='TargetGroupFullName',
+                            value=target_group.paco_ref + '.fullname',
+                        )
+                    resource_label = troposphere.Join('/', [
+                        troposphere.Ref(alb_params[lb_name]),
+                        troposphere.Ref(target_group_params[tg_name]),
+                    ])
+                    scaling_policy_dict['TargetTrackingScalingPolicyConfiguration']['PredefinedMetricSpecification']['ResourceLabel'] = resource_label
+
+                scaling_policy_res = troposphere.applicationautoscaling.ScalingPolicy.from_dict(
+                    self.create_cfn_logical_id(f"{cfn_service_name}{target_tracking_policy.name}ScalingPolicy"),
+                    scaling_policy_dict
+                )
+                self.template.add_resource(scaling_policy_res)
 
             # Outputs
+            self.create_output(
+                title=service_res.title + 'ARN',
+                description="Service ARN",
+                value=troposphere.Ref(service_res),
+                ref=service.paco_ref_parts + ".arn"
+            )
             self.create_output(
                 title=service_res.title + 'Name',
                 description="Service Name",
                 value=troposphere.GetAtt(service_res, 'Name'),
                 ref=service.paco_ref_parts + ".name"
             )
-
-            self.template.add_resource(service_res)
-            # if 'TaskDefinition' in service_dict:
-            #     service_res.DependsOn = ecs.task_definitions[service_dict['TaskDefinition']]._troposphere_res
 
     def add_log_group(self, loggroup_name, expire_events_after_days):
         "Add a LogGroup resource to the template"

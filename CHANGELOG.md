@@ -3,7 +3,15 @@ Changelog for Paco
 8.0.1 (unreleased)
 ------------------
 
+
+### Migration
+
+- Resources of `ECSServices` will need to be updated to add a DesiredTasks Stack Parameter. This
+  must be done before attempting to add an scaling configuration to that `ECSServices`.
+
 ### Added
+
+- Support for ECS TargetTracking Service Scaling.
 
 - The `CodeBuild.Build` action for DeploymentPipeline now supports a list of `ecr_repositories`
   that can declare `Push`, `Pull` or `PushAndPull` permissions.
