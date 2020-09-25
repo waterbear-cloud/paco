@@ -1,5 +1,7 @@
 from paco.models.references import get_model_obj_from_ref
 from paco.models.schemas import ILBApplication, get_parent_by_interface
+from troposphere.ecs import AwsvpcConfiguration
+from troposphere.events import AwsVpcConfiguration
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.utils import prefixed_name, md5sum
 from paco.core.exception import UnsupportedCloudFormationParameterType
@@ -230,6 +232,35 @@ class ECSServices(StackTemplate):
                     description='The maximum number of tasks for the Service.',
                     value=service.maximum_tasks,
                 )
+
+            # awsvpc NetworkConfiguration
+            if service.vpc_config != None:
+                sg_name = self.create_cfn_logical_id(f'SecurityGroups{service.name}')
+                security_groups_param = self.create_cfn_ref_list_param(
+                    name=sg_name,
+                    param_type='List<AWS::EC2::SecurityGroup::Id>',
+                    description=f'Security Group List for Service {service.name}',
+                    value=service.vpc_config.security_groups,
+                    ref_attribute='id',
+                )
+                segment_ref = service.vpc_config.segments[0] + '.subnet_id_list'
+                segment_name = self.create_cfn_logical_id(f'Segments{service.name}')
+                segment_param = self.create_cfn_parameter(
+                    name=segment_name,
+                    param_type='List<AWS::EC2::Subnet::Id>',
+                    description=f'VPC Subnet Id List for Service {service.name}',
+                    value=segment_ref
+                )
+                cfn_assign_public_ip = 'DISABLED'
+                if service.vpc_config.assign_public_ip:
+                    cfn_assign_public_ip = 'ENABLED'
+                service_dict['NetworkConfiguration'] = {
+                    'AwsvpcConfiguration': {
+                        'AssignPublicIp': cfn_assign_public_ip,
+                        'SecurityGroups': troposphere.Ref(security_groups_param),
+                        'Subnets': troposphere.Ref(segment_param),
+                    }
+                }
 
             # Service Discovery
             if service.hostname != None:

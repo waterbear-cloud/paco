@@ -175,6 +175,8 @@ class ALB(StackTemplate):
             ]
             cfn_export_dict['Matcher'] = {'HttpCode': target_group.health_check_http_code }
             cfn_export_dict['VpcId'] = troposphere.Ref(vpc_param)
+            if target_group.target_type != 'instance':
+                cfn_export_dict['TargetType'] = target_group.target_type
             target_group_resource = troposphere.elasticloadbalancingv2.TargetGroup.from_dict(
                 target_group_logical_id,
                 cfn_export_dict

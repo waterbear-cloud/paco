@@ -11,6 +11,10 @@ Changelog for Paco
 
 ### Added
 
+- Support for ECS Fargate.
+
+- ALB TargetGroup can now use the `target_type` field.
+
 - Support for ECS TargetTracking Service Scaling.
 
 - The `CodeBuild.Build` action for DeploymentPipeline now supports a list of `ecr_repositories`
