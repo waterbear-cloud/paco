@@ -48,3 +48,4 @@ from paco.cftemplates.ecs import ECSCluster, ECSServices
 from paco.cftemplates.ecr import ECRRepository
 from paco.cftemplates.iamuser import IAMUser
 from paco.cftemplates.pinpointapplication import PinpointApplication
+from paco.cftemplates.cognito import CognitoUserPool, CognitoIdentityPool

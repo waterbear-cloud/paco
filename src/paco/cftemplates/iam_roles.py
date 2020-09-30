@@ -1,9 +1,49 @@
+from troposphere.cognito import Policies
+from awacs.aws import Allow, Deny, Action, Principal, Statement, PolicyDocument
 from paco.cftemplates.cftemplates import StackTemplate
-from paco.stack import Parameter
 from paco.utils import md5sum
-import os
-import sys
+import troposphere.iam
 
+# convenience function - currently not used by IAMRoles as it's still fmt strings
+# but should migrate to use this eventually
+def role_to_troposphere(role, logical_id, assume_role_policy=None):
+    "Convert a Paco IAM Role model object to a Troposphere IAM Role Resource"
+    # Warning: not a full implementation - currently only used by Cognito
+    if role == None or role.enabled == False:
+        return None
+
+    policies = []
+    for policy in role.policies:
+        statements = []
+        for statement in policy.statement:
+            args_dict = {}
+            effect = Allow
+            if statement.effect == 'Deny':
+                effect = Deny
+            args_dict['Effect'] = effect
+            actions = []
+            for action in statement.action:
+                prefix, action = action.split(':')
+                actions.append(Action(prefix, action))
+            args_dict['Action'] = actions
+            args_dict['Resource'] = statement.resource
+            statements.append(
+                Statement(**args_dict)
+            )
+        policy_doc = PolicyDocument(
+            Statement=statements,
+        )
+        policies.append(
+            troposphere.iam.Policy(
+                PolicyName=policy.name,
+                PolicyDocument=policy_doc,
+            )
+        )
+    return troposphere.iam.Role(
+        logical_id,
+        AssumeRolePolicyDocument=assume_role_policy,
+        Policies=policies,
+    )
 
 class IAMRoles(StackTemplate):
     def __init__(

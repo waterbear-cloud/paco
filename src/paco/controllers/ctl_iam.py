@@ -1,20 +1,15 @@
 from paco.cftemplates import IAMRoles, IAMManagedPolicies,IAMUsers, IAMUserAccountDelegates, IAMSLRoles
 from paco.controllers.controllers import Controller
 from paco.core.exception import StackException, InvalidAccountPermission, PacoErrorCode
-from paco.core.yaml import YAML, Ref, Sub
+from paco.core.yaml import YAML
 from paco.models.references import Reference
 from paco.models.locations import get_parent_by_interface
 from paco.models import schemas
 from paco.models.base import Named
-from paco.stack import StackOrder, Stack, StackGroup, StackTags, StackHooks
+from paco.stack import StackOrder, StackGroup, StackTags, StackHooks
 from paco.utils import md5sum, get_support_resource_ref_ext
 from parliament import analyze_policy_string
-import click
-import json
-import os
 import paco
-import time
-
 
 yaml=YAML(typ='safe')
 

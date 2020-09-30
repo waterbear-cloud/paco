@@ -11,6 +11,8 @@ Changelog for Paco
 
 ### Added
 
+- Support for Cognito.
+
 - Support for ECS Fargate.
 
 - ALB TargetGroup can now use the `target_type` field.
