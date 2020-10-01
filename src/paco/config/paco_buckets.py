@@ -75,14 +75,21 @@ class PacoBuckets():
         "Create a Paco S3 Bucket for an account and region"
         bucket_name = self.get_bucket_name(account_ctx, region)
         s3_client = account_ctx.get_aws_client('s3', region)
-        # ToDo: check if bucket exists and handle
-        s3_client.create_bucket(
-            ACL='private',
-            Bucket=bucket_name,
-            CreateBucketConfiguration={
-                'LocationConstraint': region,
-            },
-        )
+        # ToDo: check if bucket exists and handle that
+        # us-east-1 is a "special default" region - the AWS API behaves differently
+        if region == 'us-east-1':
+            s3_client.create_bucket(
+                ACL='private',
+                Bucket=bucket_name,
+            )
+        else:
+            s3_client.create_bucket(
+                ACL='private',
+                Bucket=bucket_name,
+                CreateBucketConfiguration={
+                    'LocationConstraint': region,
+                },
+            )
         s3_client.put_bucket_versioning(
             Bucket=bucket_name,
             VersioningConfiguration={'Status':'Enabled'},
