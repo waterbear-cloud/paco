@@ -11,6 +11,12 @@ Changelog for Paco
 
 ### Added
 
+- CloudFront Outputs for `id` and `domain_name`.
+
+- Support for LambdaFunctionAssociations for CloudFront.
+
+- Support for Lambda@Edge
+
 - Support for Cognito.
 
 - Support for ECS Fargate.
@@ -26,6 +32,15 @@ Changelog for Paco
 
 - StackHooks that have been added to Resource model objects are added to a Stack after it's
   created.
+
+### Changed
+
+- `set_parameter` for `paso.stack.Stack` will now replace a Parameter with the same name. This allows
+  Parameters to be changed by hooks.
+
+### Fixes
+
+- CloudFront handles CustomOriginConfig with no fields specified for `ssl_protocols` and `https_port`.
 
 8.0.0 (2020-09-17)
 ------------------

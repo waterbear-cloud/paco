@@ -10,6 +10,11 @@ yaml.default_flow_sytle = False
 class LambdaResourceEngine(ResourceEngine):
 
     def init_resource(self):
+        # is this for Lambda@Edge?
+        edge_enabled = False
+        if self.resource.edge != None and self.resource.edge.is_enabled():
+            edge_enabled = True
+
         # Create function execution role
         role_name = 'iam_role'
         if self.resource.iam_role.enabled == False:
@@ -46,15 +51,20 @@ statement:
             role_config.add_policy(yaml.load(vpc_config_policy))
 
         # The ID to give this role is: group.resource.iam_role
-        iam_role_ref = self.resource.paco_ref_parts + '.' + role_name
         iam_role_id = self.gen_iam_role_id(self.res_id, role_name)
         # If no assume policy has been added, force one here since we know its
         # a Lambda function using it.
         # Set defaults if assume role policy was not explicitly configured
         if not hasattr(role_config, 'assume_role_policy') or role_config.assume_role_policy == None:
-            policy_dict = { 'effect': 'Allow',
-                            'aws': ["paco.sub 'arn:aws:iam::${paco.ref accounts.%s}:root'" % (self.account_ctx.get_name())],
-                            'service': ['lambda.amazonaws.com'] }
+            service = ['lambda.amazonaws.com']
+            # allow Edge if it's enabled
+            if edge_enabled:
+                service.append('edgelambda.amazonaws.com')
+            policy_dict = {
+                'effect': 'Allow',
+                'aws': [f"arn:aws:iam::{self.account_ctx.get_id()}:root"],
+                'service': service
+            }
             role_config.set_assume_role_policy(policy_dict)
         # Always turn off instance profiles for Lambda functions
         role_config.instance_profile = False
@@ -68,10 +78,9 @@ statement:
             stack_group=self.stack_group,
             stack_tags=self.stack_tags
         )
-        stack = self.stack_group.add_new_stack(
+        self.stack = self.stack_group.add_new_stack(
             self.aws_region,
             self.resource,
             paco.cftemplates.Lambda,
             stack_tags=self.stack_tags
         )
-

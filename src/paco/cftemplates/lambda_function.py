@@ -1,20 +1,17 @@
-from awacs.aws import Action, Allow, PolicyDocument, Principal, Statement, Policy
-from enum import Enum
-from io import StringIO
+from awacs.aws import Action, Allow, Statement, Policy
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.cftemplates.eventsrule import create_event_rule_name
 from paco.models.locations import get_parent_by_interface
 from paco.models.loader import get_all_nodes
-from paco.models.references import resolve_ref, get_model_obj_from_ref, Reference
+from paco.models.references import get_model_obj_from_ref, Reference
 from paco.models import schemas
 from paco.aws_api.awslambda.code import init_lambda_code
-from paco.utils import hash_smaller, prefixed_name
+from paco.utils import prefixed_name
 from pathlib import Path
-import awacs.sdb
-import os
 import troposphere
 import troposphere.awslambda
 import troposphere.iam
+import zipfile
 
 
 class Lambda(StackTemplate):
@@ -162,35 +159,18 @@ class Lambda(StackTemplate):
         else:
             zip_path = Path(awslambda.code.zipfile)
             if zip_path.is_file():
-                cfn_export_dict['Code'] = {
-                    'ZipFile': zip_path.read_text()
-                }
+                if zipfile.is_zipfile(zip_path):
+                    cfn_s3_code, md5_hash = self.prepare_s3bucket_artifact(is_zip=True)
+                    cfn_export_dict['Code'] = cfn_s3_code
+                else:
+                    # Code is inline in CloudFormation template
+                    # ToDo: make this legacy or optional behaviour and create a Zip and upload to S3 Bucket
+                    cfn_export_dict['Code'] = {
+                        'ZipFile': zip_path.read_text()
+                    }
             elif zip_path.is_dir():
-                # get S3Bucket/S3Key or if it does not exist, it will create the bucket and artifact
-                # and then upload the artifact
-                bucket_name, artifact_name = init_lambda_code(
-                    self.paco_ctx.paco_buckets,
-                    self.stack.resource,
-                    awslambda.code.zipfile,
-                    self.stack.account_ctx,
-                    self.stack.aws_region,
-                )
-                s3bucket_param = self.create_cfn_parameter(
-                    name='CodeS3Bucket',
-                    description="The Paco S3 Bucket for configuration",
-                    param_type='String',
-                    value=bucket_name
-                )
-                s3key_param = self.create_cfn_parameter(
-                    name='CodeS3Key',
-                    description="The Lambda code artifact S3 Key.",
-                    param_type='String',
-                    value=artifact_name
-                )
-                cfn_export_dict['Code'] = {
-                    'S3Bucket': troposphere.Ref(s3bucket_param),
-                    'S3Key': troposphere.Ref(s3key_param),
-                }
+                cfn_s3_code, md5_hash = self.prepare_s3bucket_artifact()
+                cfn_export_dict['Code'] = cfn_s3_code
 
         # Environment variables
         var_export = {}
@@ -227,6 +207,27 @@ class Lambda(StackTemplate):
             cfn_export_dict
         )
         self.template.add_resource(self.awslambda_resource)
+
+        # Published Version
+        if self.awslambda.edge != None and self.awslambda.edge.auto_publish_version != None:
+            version_name = self.create_cfn_logical_id(f"AutoPublishedVersion{self.awslambda.edge.auto_publish_version}")
+            version_resource = troposphere.awslambda.Version(
+                title=version_name,
+                FunctionName=troposphere.Ref(self.awslambda_resource),
+                Description="AutoPublished by Paco",
+            )
+            self.template.add_resource(version_resource)
+
+            self.create_output(
+                title='AutoPublishedFunctionVersionArn',
+                value=troposphere.Ref(version_resource),
+                ref=awslambda.paco_ref_parts + '.autoversion.arn',
+            )
+            self.create_output(
+                title='AutoPublishedFunctionVersion',
+                value=troposphere.GetAtt(version_resource, "Version"),
+                ref=awslambda.paco_ref_parts + '.autoversion.version',
+            )
 
         # SDB Cache with SDB Domain and SDB Domain Policy resources
         if awslambda.sdb_cache == True:
@@ -464,6 +465,33 @@ class Lambda(StackTemplate):
             ref=awslambda.paco_ref_parts + '.arn',
         )
 
+    def prepare_s3bucket_artifact(self, is_zip=False):
+        "Prepare Code artifact (create Zip file if directory) and upload to S3 Bucket (unless already exists)"
+        bucket_name, artifact_name, md5_hash = init_lambda_code(
+            self.paco_ctx.paco_buckets,
+            self.stack.resource,
+            self.awslambda.code.zipfile,
+            self.stack.account_ctx,
+            self.stack.aws_region,
+            is_zip=is_zip,
+        )
+        self.s3bucket_param = self.create_cfn_parameter(
+            name='CodeS3Bucket',
+            description="S3 Bucket for the Lambda Code artifact",
+            param_type='String',
+            value=bucket_name
+        )
+        self.s3key_param = self.create_cfn_parameter(
+            name='CodeS3Key',
+            description="S3 Key for the Lambda Code artifact",
+            param_type='String',
+            value=artifact_name
+        )
+        cfn_s3_code = {
+            'S3Bucket': troposphere.Ref(self.s3bucket_param),
+            'S3Key': troposphere.Ref(self.s3key_param),
+        }
+        return (cfn_s3_code, md5_hash)
 
     def add_log_group(self, loggroup_name, logical_name=None):
         "Add a LogGroup resource to the template"
