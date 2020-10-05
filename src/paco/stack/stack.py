@@ -1478,7 +1478,7 @@ your cache may be out of sync. Try running again the with the --nocache option.
                 return param.value
         return None
 
-    def get_output_value_by_ref_extenstion(self, ref_extension):
+    def get_output_value_by_ref_extension(self, ref_extension):
         """
         Return the value of a Stack Output as named by it's reference suffix.
 
