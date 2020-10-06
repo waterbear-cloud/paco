@@ -38,7 +38,9 @@ Changelog for Paco
 - `set_parameter` for `paso.stack.Stack` will now replace a Parameter with the same name. This allows
   Parameters to be changed by hooks.
 
-### Fixes
+### Fixed
+
+- CodeCommit users Arn output looks it up from the proper Stack.
 
 - CloudFront handles CustomOriginConfig with no fields specified for `ssl_protocols` and `https_port`.
 
