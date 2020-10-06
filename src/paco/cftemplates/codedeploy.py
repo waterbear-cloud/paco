@@ -6,18 +6,17 @@ class CodeDeploy(StackTemplate):
         self,
         stack,
         paco_ctx,
-        env_ctx,
+        base_aws_name,
         app_name,
         action_config,
         artifacts_bucket_name
     ):
         pipeline_config = stack.resource
         cpbd_config_ref = action_config.paco_ref_parts
-        self.env_ctx = env_ctx
         super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_NAMED_IAM"])
         self.set_aws_name('CodeDeploy', self.resource_group_name, self.resource.name)
         self.res_name_prefix = self.create_resource_name_join(
-            name_list=[self.env_ctx.get_aws_name(), app_name, self.resource_group_name, self.resource.name],
+            name_list=[base_aws_name, app_name, self.resource_group_name, self.resource.name],
             separator='-',
             camel_case=True
         )

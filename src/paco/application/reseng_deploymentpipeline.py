@@ -66,6 +66,16 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         self.artifacts_bucket_meta['arn'] = s3_ctl.get_bucket_arn(self.artifacts_bucket_meta['ref'])
         self.artifacts_bucket_meta['name'] = s3_bucket.get_bucket_name()
 
+        # Resource can be in a Service or an Environment
+        if hasattr(self, 'env_ctx'):
+            self.base_aws_name = self.env_ctx.get_aws_name()
+            self.deploy_region = self.env_ctx.region
+        else:
+            # deploy region is the same as the Service region
+            # ToDo: use-cases to have this be another region?
+            self.deploy_region = self.aws_region
+            self.base_aws_name = self.stack_group.get_aws_name()
+
         # KMS Key
         kms_refs = {}
         # Application Account
@@ -120,18 +130,6 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             self.init_stage(self.pipeline.deploy)
 
         # CodePipeline
-        codepipeline_config_ref = self.pipeline.paco_ref_parts + '.codepipeline'
-
-        # Resource can be in a Service or an Environment
-        if hasattr(self, 'env_ctx'):
-            base_aws_name = self.env_ctx.get_aws_name()
-            deploy_region = self.env_ctx.region
-        else:
-            # deploy region is the same as the Service region
-            # ToDo: use-cases to have this be another region?
-            deploy_region = self.aws_region
-            base_aws_name = self.stack_group.get_aws_name()
-
         self.pipeline._stack = self.stack_group.add_new_stack(
             self.aws_region,
             self.resource,
@@ -139,8 +137,8 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             account_ctx=self.pipeline_account_ctx,
             stack_tags=self.stack_tags,
             extra_context={
-                'base_aws_name': base_aws_name,
-                'deploy_region': deploy_region,
+                'base_aws_name': self.base_aws_name,
+                'deploy_region': self.deploy_region,
                 'app_name': self.app.name,
                 'artifacts_bucket_name': self.artifacts_bucket_meta['name']
             },
@@ -404,7 +402,7 @@ policies:
             cftemplates.CodeDeploy,
             stack_tags=self.stack_tags,
             extra_context={
-                'env_ctx': self.env_ctx,
+                'base_aws_name': self.base_aws_name,
                 'app_name': self.app.name,
                 'action_config': action_config,
                 'artifacts_bucket_name': self.artifacts_bucket_meta['name'],
@@ -584,7 +582,7 @@ policies:
             account_ctx=self.pipeline_account_ctx,
             stack_tags=self.stack_tags,
             extra_context={
-                'env_ctx': self.env_ctx,
+                'base_aws_name': self.base_aws_name,
                 'app_name': self.app.name,
                 'action_config': action_config,
                 'artifacts_bucket_name': self.artifacts_bucket_meta['name'],
