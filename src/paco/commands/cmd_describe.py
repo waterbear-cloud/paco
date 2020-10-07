@@ -26,14 +26,14 @@ def describe_command(paco_ctx, home='.', output='html', display='chrome'):
     paco_ctx.load_project()
     project = paco_ctx.project
     static_path, html_files, envs_html = display_project_as_html(project)
-    display_path = paco_ctx.display_path
-    pathlib.Path(display_path).mkdir(parents=True, exist_ok=True)
-    shutil.copytree(static_path, display_path, dirs_exist_ok=True)
+    describe_path = paco_ctx.describe_path
+    pathlib.Path(describe_path).mkdir(parents=True, exist_ok=True)
+    shutil.copytree(static_path, describe_path, dirs_exist_ok=True)
     for fname, html in html_files.items():
-        with open(str(display_path / fname), 'w') as fh:
+        with open(str(describe_path / fname), 'w') as fh:
             fh.write(html)
     for name, html in envs_html.items():
-        with open(str(display_path / name), 'w') as fh:
+        with open(str(describe_path / name), 'w') as fh:
             fh.write(html)
 
 # paco describe --output=html --open=chrome

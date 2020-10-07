@@ -292,7 +292,7 @@ This directory contains several sub-directories that Paco uses:
     build/
     outputs/
     applied/
-    display/
+    describe/
 
 """
         return self.home / '.paco-work'
@@ -313,9 +313,9 @@ This directory contains several sub-directories that Paco uses:
         return self.paco_work_path / 'build'
 
     @property
-    def display_path(self):
-        "Return the path to the Paco display directory"
-        return self.paco_work_path / 'display'
+    def describe_path(self):
+        "Return the path to the Paco describe directory"
+        return self.paco_work_path / 'describe'
 
     def load_project(self, project_init=False, project_only=False, master_only=False, config_scope=None, command_name=None):
         "Load a Paco Project from YAML, initialize settings and controllers, and load Service plug-ins."
