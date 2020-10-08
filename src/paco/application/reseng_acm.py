@@ -83,24 +83,25 @@ class ACMBotoStack(BotoStack):
 class ACMResourceEngine(ResourceEngine):
 
     def init_resource(self):
-
         # create a BotoStack, initialize and return it
         acmstack = ACMBotoStack(
             self.paco_ctx,
             self.account_ctx,
-            None, # do not need StackGroup?
+            None, # ToDo: replace with a BotoStackGroup
             self.resource,
             aws_region=self.aws_region,
         )
         acmstack.init()
         self.resource.stack = acmstack
 
-        # acm_ctl = self.paco_ctx.get_controller('ACM')
-        # cert_group_id = self.resource.paco_ref_parts
-        # acm_ctl.add_certificate_config(
-        #     self.account_ctx,
-        #     self.aws_region,
-        #     cert_group_id,
-        #     self.res_id,
-        #     self.resource
-        # )
+        # ToDo: replace with a BotoStackGroup
+        # register to be provisioned
+        acm_ctl = self.paco_ctx.get_controller('ACM')
+        cert_group_id = self.resource.paco_ref_parts
+        acm_ctl.add_certificate_config(
+            self.account_ctx,
+            self.aws_region,
+            cert_group_id,
+            self.res_id,
+            self.resource
+        )

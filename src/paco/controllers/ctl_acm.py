@@ -4,11 +4,9 @@ from paco.controllers.controllers import Controller
 
 class ACMController(Controller):
     def __init__(self, paco_ctx):
-        super().__init__(
-            paco_ctx,
-            "Resource",
-            "ACM"
-        )
+        super().__init__(paco_ctx, "Resource", "ACM")
+        self.cert_config_map = {}
+        self.cert_config_list = []
 
     def init(self, command=None, model_obj=None):
         pass
@@ -17,7 +15,8 @@ class ACMController(Controller):
         pass
 
     def provision(self):
-        pass
+        for acm_config in self.cert_config_list:
+            acm_config.stack.provision()
 
     def get_cert_config(self, group_id, cert_id):
         for config in self.cert_config_map[group_id]:
@@ -25,25 +24,16 @@ class ACMController(Controller):
                 return config
         return None
 
-    # def resolve_ref(self, ref):
-    #     if ref.last_part == 'arn':
-    #         breakpoint()
-    #         # group_id = '.'.join(ref.parts[:-1])
-    #         # cert_id = ref.parts[-2]
-    #         # res_config = self.get_cert_config(group_id, cert_id)
-    #         # if 'cert_arn_cache' in res_config.keys():
-    #         #     return res_config['cert_arn_cache']
-
-    #         # # create a BotoStack, initialize and return it
-    #         # acmstack = ACMBotoStack(
-    #         #     self.paco_ctx,
-    #         #     res_config['account_ctx'],
-    #         #     None, # do not need StackGroup?
-    #         #     res_config['config'],
-    #         #     aws_region=ref.region,
-    #         # )
-    #         # acmstack.init()
-    #         # return acmstack
-
-    #     raise InvalidPacoReference(f"Could not resolve reference to ACM Certificate.\n{ref.raw}")
-
+    def add_certificate_config(self, account_ctx, region, group_id, cert_id, cert_config):
+        if group_id not in self.cert_config_map.keys():
+            self.cert_config_map[group_id] = []
+        map_config = {
+            'group_id': group_id,
+            'id': cert_id,
+            'config': cert_config,
+            'account_ctx': account_ctx,
+            'region': region
+        }
+        self.cert_config_map[group_id].append(map_config)
+        self.cert_config_list.append(map_config)
+        cert_config.resolve_ref_obj = self

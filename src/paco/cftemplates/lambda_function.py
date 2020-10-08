@@ -468,12 +468,12 @@ class Lambda(StackTemplate):
         )
 
     def prepare_s3bucket_artifact_hook(self, hook, is_zip):
-        self.awslambda_resource.stack.set_parameter(
+        self.awslambda.stack.set_parameter(
             'CodeS3Bucket',
             self.code_bucket_name,
             ignore_changes=False
         )
-        self.awslambda_resource.stack.set_parameter(
+        self.awslambda.stack.set_parameter(
             'CodeS3Key',
             self.code_artifact_name,
             ignore_changes=False
