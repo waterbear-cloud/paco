@@ -337,6 +337,7 @@ This directory contains several sub-directories that Paco uses:
         master_only=False,
         config_scope=None,
         command_name=None,
+        validate_local_paths=True,
     ):
         "Load a Paco Project from YAML, initialize settings and controllers, and load Service plug-ins."
         self.project_folder = self.home
@@ -345,7 +346,12 @@ This directory contains several sub-directories that Paco uses:
 
         # Load the model from YAML
         print("Loading Paco project: %s" % (self.home))
-        self.project = load_project_from_yaml(self.project_folder, None, warn=self.warn)
+        self.project = load_project_from_yaml(
+            self.project_folder,
+            None,
+            warn=self.warn,
+            validate_local_paths=validate_local_paths,
+        )
         self.paco_buckets = PacoBuckets(self.project)
         if self.verbose:
             print("Finished loading.")

@@ -24,7 +24,7 @@ def describe_command(paco_ctx, home='.', output='html', display='chrome'):
     paco_ctx.command = 'describe'
     paco_ctx.skip_account_ctx = True
     init_paco_home_option(paco_ctx, home)
-    paco_ctx.load_project()
+    paco_ctx.load_project(validate_local_paths=False)
     project = paco_ctx.project
     static_path, html_files, envs_html = display_project_as_html(project)
     describe_path = paco_ctx.describe_path
