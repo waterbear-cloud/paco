@@ -118,7 +118,7 @@ Resources:
 
             #    hosted_zone_table['record_set_group'] += record_set_fmt.format(record_sets_table)
             zone_config_ref = '.'.join([config_ref, zone_id])
-            self.register_stack_output_config(zone_config_ref + '.id', res_name_prefix + 'HostedZoneId')
+            self.stack.register_stack_output_config(zone_config_ref + '.id', res_name_prefix + 'HostedZoneId')
             resources_yaml += hosted_zone_fmt.format(hosted_zone_table)
             outputs_yaml += outputs_fmt.format(hosted_zone_table)
 

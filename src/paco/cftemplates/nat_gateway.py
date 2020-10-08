@@ -118,7 +118,7 @@ class NATGateway(StackTemplate):
                     InstanceId=troposphere.Ref(ec2_resource[az_idx])
                 )
 
-                self.register_stack_output_config(nat_config.paco_ref_parts + ".ec2.az" + str(az_idx), ec2_instance_id_output.title)
+                self.stack.register_stack_output_config(nat_config.paco_ref_parts + ".ec2.az" + str(az_idx), ec2_instance_id_output.title)
 
         # Add DefaultRoute to the route tables in each AZ
         for segment_ref in nat_config.default_route_segments:

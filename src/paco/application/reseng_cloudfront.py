@@ -14,17 +14,17 @@ class CloudFrontResourceEngine(ResourceEngine):
 
             # Create Certificate in us-east-1 because that is where CloudFront lives.
             if self.resource.is_enabled() == True:
-                acm_ctl = self.paco_ctx.get_controller('ACM')
-                cert_group_id = cloudfront_config_ref + '.viewer_certificate'
-                cert_group_id = cert_group_id.replace(self.aws_region, 'us-east-1')
-                cert_config = self.paco_ctx.get_ref(self.resource.viewer_certificate.certificate)
-                acm_ctl.add_certificate_config(
-                    self.account_ctx,
-                    'us-east-1',
-                    cert_group_id,
-                    'viewer_certificate',
-                    cert_config
-                )
+                # acm_ctl = self.paco_ctx.get_controller('ACM')
+                # cert_group_id = cloudfront_config_ref + '.viewer_certificate'
+                # cert_group_id = cert_group_id.replace(self.aws_region, 'us-east-1')
+                # cert_config = self.paco_ctx.get_ref(self.resource.viewer_certificate.certificate)
+                # acm_ctl.add_certificate_config(
+                #     self.account_ctx,
+                #     'us-east-1',
+                #     cert_group_id,
+                #     'viewer_certificate',
+                #     cert_config
+                # )
                 self.resource.viewer_certificate.resolve_ref_obj = self.app_engine
                 factory_config.viewer_certificate.resolve_ref_obj = self.app_engine
             factory_config.resolve_ref_obj = self.app_engine

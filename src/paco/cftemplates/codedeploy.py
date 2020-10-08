@@ -337,7 +337,7 @@ Outputs:
 
 """
 
-        self.register_stack_output_config(cpbd_config_ref+'.deployment_group.name', 'DeploymentGroupName')
+        self.stack.register_stack_output_config(cpbd_config_ref+'.deployment_group.name', 'DeploymentGroupName')
         self.set_template(template_fmt % (
             self.codedeploy_tools_delegate_role_name,
             self.codedeploy_service_role_name

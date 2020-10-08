@@ -1,22 +1,17 @@
-import json
+from paco.core.exception import AuthenticationError
+from botocore.exceptions import ClientError
 import boto3
-import paco
+import json
 import os
 import sys
-from paco.core.exception import StackException
-from paco.core.exception import PacoException, PacoErrorCode
-from botocore.exceptions import ClientError, WaiterError
 
 
-class PacoSTS(object):
+class PacoSTS():
     """
-    Provides temporary long term credentials that generate short term
-    credentials by assuming a role. When the short term credentials
-    expire, they are regenerated using the long term credentials. When
-    The long term credentials expire, the user will be prompted for
-    a new MFA token.
+    Provides temporary long term credentials that generate short term credentials by assuming
+    a role. When the short term credentials expire, they are regenerated using the long term
+    credentials. When the long term credentials expire, the user will be prompted for a new token.
     """
-
     def __init__(
         self,
         account_ctx=None,
@@ -105,9 +100,11 @@ Try running `paco init credentials` to create one.
         self.save_temp_creds(session_creds, self.session_creds_path)
         return session_creds
 
-    def create_role_temp_creds(self, session_creds):
+    def get_assume_role_temporary_credentials(self, session_creds):
+        "Get AssumeRole temporary credentials"
         role_creds = None
-        sts_client = boto3.client('sts',
+        sts_client = boto3.client(
+            'sts',
             region_name=session_creds['AWSDefaultRegion'],
             aws_access_key_id=session_creds['AccessKeyId'],
             aws_secret_access_key=session_creds['SecretAccessKey'],
@@ -119,15 +116,13 @@ Try running `paco init credentials` to create one.
                     DurationSeconds=self.assume_role_session_expiry_secs,
                     RoleArn=admin_iam_role_arn,
                     RoleSessionName='paco-multiaccount-session',
-                    #TokenCode=token_code,
-                    #SerialNumber=self.mfa_arn
                 )['Credentials']
             except ClientError as e:
                 if admin_iam_role_arn == self.org_admin_iam_role_arn:
                     message = '{}\n'.format(e)
                     message += 'Unable to assume roles: {}\n'.format(self.admin_iam_role_arn)
                     message += '                        {}\n'.format(self.org_admin_iam_role_arn)
-                    raise StackException(PacoErrorCode.Unknown, message = message)
+                    raise AuthenticationError(message)
             else:
                 self.save_temp_creds(role_creds, self.role_creds_path)
                 break
@@ -150,7 +145,7 @@ Try running `paco init credentials` to create one.
             session_creds = self.load_temp_creds(self.session_creds_path)
             if session_creds == None:
                 session_creds = self.create_session_temp_creds()
-            role_creds = self.create_role_temp_creds(session_creds)
+            role_creds = self.get_assume_role_temporary_credentials(session_creds)
 
         return boto3.Session(
             aws_access_key_id=role_creds['AccessKeyId'],

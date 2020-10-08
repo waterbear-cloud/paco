@@ -22,6 +22,7 @@ import shutil
 def describe_command(paco_ctx, home='.', output='html', display='chrome'):
     """Describe a Paco project"""
     paco_ctx.command = 'describe'
+    paco_ctx.skip_account_ctx = True
     init_paco_home_option(paco_ctx, home)
     paco_ctx.load_project()
     project = paco_ctx.project

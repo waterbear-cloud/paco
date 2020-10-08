@@ -1,31 +1,12 @@
 from paco import utils
-from paco.core.yaml import YAML
 from paco.core.exception import StackException, PacoErrorCode, PacoException
-from paco.models import schemas, references
+from paco.models import schemas
 from paco.models.references import Reference
 from paco.models.locations import get_parent_by_interface
 from paco.stack import StackOutputParam, Stack
-from paco.utils import dict_of_dicts_merge, md5sum, big_join
+from paco.utils import md5sum, big_join
 import troposphere
 
-
-class StackOutputConfig():
-    def __init__(self, config_ref, key):
-        self.key = key
-        self.config_ref = config_ref
-
-    def get_config_dict(self, stack):
-        conf_dict = current = last_dict = {}
-        ref_part = None
-        ref_part_list = self.config_ref.split('.')
-        for ref_part in ref_part_list:
-            current[ref_part] = {}
-            last_dict = current
-            current = current[ref_part]
-
-        last_dict[ref_part]['__name__'] = stack.get_outputs_value(self.key)
-
-        return conf_dict
 
 class StackTemplate():
     """A CloudFormation template with access to a Stack object and a Project object."""
@@ -172,7 +153,6 @@ class StackTemplate():
                         message += "paco.sub '{}'\n".format(self.body[str_idx:end_str_idx])
                         raise StackException(PacoErrorCode.Unknown, message = message)
                     else:
-                        #print("break 2")
                         break
                 rep_1_idx = dollar_idx
                 rep_2_idx = self.body.find("}", rep_1_idx, end_str_idx)+1
@@ -516,20 +496,6 @@ class StackTemplate():
             noecho,
         )
 
-    def register_stack_output_config(
-        self,
-        config_ref,
-        stack_output_key
-    ):
-        "Register stack output config"
-        if config_ref.startswith('paco.ref'):
-            raise PacoException(
-                PacoErrorCode.Unknown,
-                message='Registered stack output config reference must not start with paco.ref: ' + config_ref
-            )
-        stack_output_config = StackOutputConfig(config_ref, stack_output_key)
-        self.stack.stack_output_config_list.append(stack_output_config)
-
     def create_output(
         self,
         title=None,
@@ -553,9 +519,9 @@ class StackTemplate():
             )
         if type(ref) == list:
             for ref_item in ref:
-                self.register_stack_output_config(ref_item, title)
+                self.stack.register_stack_output_config(ref_item, title)
         elif type(ref) == str:
-            self.register_stack_output_config(ref, title)
+            self.stack.register_stack_output_config(ref, title)
 
     def gen_output(self, name, value):
         "Return name and value as a CFN YAML formatted string"

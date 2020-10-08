@@ -1,11 +1,13 @@
 from awacs.aws import Action, Allow, Statement, Policy
+from troposphere import awslambda
+from paco.aws_api.awslambda.code import init_lambda_code
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.cftemplates.eventsrule import create_event_rule_name
 from paco.models.locations import get_parent_by_interface
 from paco.models.loader import get_all_nodes
 from paco.models.references import get_model_obj_from_ref, Reference
 from paco.models import schemas
-from paco.aws_api.awslambda.code import init_lambda_code
+from paco.stack import StackHooks
 from paco.utils import prefixed_name
 from pathlib import Path
 import troposphere
@@ -160,7 +162,7 @@ class Lambda(StackTemplate):
             zip_path = Path(awslambda.code.zipfile)
             if zip_path.is_file():
                 if zipfile.is_zipfile(zip_path):
-                    cfn_s3_code, md5_hash = self.prepare_s3bucket_artifact(is_zip=True)
+                    cfn_s3_code = self.prepare_s3bucket_artifact(is_zip=True)
                     cfn_export_dict['Code'] = cfn_s3_code
                 else:
                     # Code is inline in CloudFormation template
@@ -169,7 +171,7 @@ class Lambda(StackTemplate):
                         'ZipFile': zip_path.read_text()
                     }
             elif zip_path.is_dir():
-                cfn_s3_code, md5_hash = self.prepare_s3bucket_artifact()
+                cfn_s3_code = self.prepare_s3bucket_artifact()
                 cfn_export_dict['Code'] = cfn_s3_code
 
         # Environment variables
@@ -465,9 +467,20 @@ class Lambda(StackTemplate):
             ref=awslambda.paco_ref_parts + '.arn',
         )
 
-    def prepare_s3bucket_artifact(self, is_zip=False):
-        "Prepare Code artifact (create Zip file if directory) and upload to S3 Bucket (unless already exists)"
-        bucket_name, artifact_name, md5_hash = init_lambda_code(
+    def prepare_s3bucket_artifact_hook(self, hook, is_zip):
+        self.awslambda_resource.stack.set_parameter(
+            'CodeS3Bucket',
+            self.code_bucket_name,
+            ignore_changes=False
+        )
+        self.awslambda_resource.stack.set_parameter(
+            'CodeS3Key',
+            self.code_artifact_name,
+            ignore_changes=False
+        )
+
+    def prepare_s3bucket_artifact_cache(self, hook, is_zip):
+        self.code_bucket_name, self.code_artifact_name, md5_hash = init_lambda_code(
             self.paco_ctx.paco_buckets,
             self.stack.resource,
             self.awslambda.code.zipfile,
@@ -475,23 +488,44 @@ class Lambda(StackTemplate):
             self.stack.aws_region,
             is_zip=is_zip,
         )
+        return md5_hash
+
+    def prepare_s3bucket_artifact(self, is_zip=False):
+        """
+        Add a Hook which will prepare the Lambda Code artifact and upload to an S3 Bucket if it
+        doesn't already exist.
+
+        Add Parameters for CodeS3Bucket and CodeS3Key. The Parameter values are placeholder values that
+        will be updated by the hook.
+        """
+        stack_hooks = StackHooks()
+        stack_hooks.add(
+            name='PrepLambdaCodeArtifactToS3Bucket',
+            stack_action=['create','update'],
+            stack_timing='pre',
+            hook_method=self.prepare_s3bucket_artifact_hook,
+            cache_method=self.prepare_s3bucket_artifact_cache,
+            hook_arg=is_zip,
+        )
+        self.stack.add_hooks(stack_hooks)
+
         self.s3bucket_param = self.create_cfn_parameter(
             name='CodeS3Bucket',
             description="S3 Bucket for the Lambda Code artifact",
             param_type='String',
-            value=bucket_name
+            value='REPLACED_BY_HOOK',
         )
         self.s3key_param = self.create_cfn_parameter(
             name='CodeS3Key',
             description="S3 Key for the Lambda Code artifact",
             param_type='String',
-            value=artifact_name
+            value='REPLACED_BY_HOOK',
         )
         cfn_s3_code = {
             'S3Bucket': troposphere.Ref(self.s3bucket_param),
             'S3Key': troposphere.Ref(self.s3key_param),
         }
-        return (cfn_s3_code, md5_hash)
+        return cfn_s3_code
 
     def add_log_group(self, loggroup_name, logical_name=None):
         "Add a LogGroup resource to the template"
@@ -514,7 +548,7 @@ class Lambda(StackTemplate):
         self.template.add_resource(loggroup_resource)
 
         # LogGroup Output
-        self.register_stack_output_config(
+        self.stack.register_stack_output_config(
             '{}.log_groups.{}.arn'.format(self.awslambda.paco_ref_parts, logical_name), loggroup_logical_id + 'Arn'
         )
         loggroup_output = troposphere.Output(

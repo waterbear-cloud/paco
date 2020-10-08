@@ -188,7 +188,7 @@ Outputs:
                     codecommit_permissions_table['repository_arns'] = repo_arns_yaml
                     resources_yaml += codecommit_readwrite_fmt.format(codecommit_permissions_table)
                     for user_ref in unique_users[username][permission]['user_refs']:
-                        self.register_stack_output_config(user_ref + '.policy.arn', user_logical_id + 'ManagedPolicy')
+                        self.stack.register_stack_output_config(user_ref + '.policy.arn', user_logical_id + 'ManagedPolicy')
                 elif permission == 'ReadOnly':
                     repo_arns_yaml = ""
                     for repo_config in unique_users[username][permission]['repo_config']:
@@ -205,7 +205,7 @@ Outputs:
                     codecommit_permissions_table['repository_arns'] = repo_arns_yaml
                     resources_yaml += codecommit_readonly_fmt.format(codecommit_permissions_table)
                     for user_ref in unique_users[username][permission]['user_refs']:
-                        self.register_stack_output_config(user_ref + '.policy.arn', user_logical_id + 'ManagedPolicy')
+                        self.stack.register_stack_output_config(user_ref + '.policy.arn', user_logical_id + 'ManagedPolicy')
                 outputs_yaml += policy_outputs_fmt.format(
                     {'cfn_logical_id_prefix': user_logical_id }
                 )

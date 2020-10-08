@@ -155,6 +155,7 @@ class ApplicationEngine():
             lambda_stack = self.stack_group.get_stack_from_ref(ref)
             return lambda_stack
         elif isinstance(ref.resource, models.applications.CloudFrontViewerCertificate):
+            # XXX Fix me to return the Stack of the certificate
             acm_ctl = self.paco_ctx.get_controller('ACM')
             # Force the region to us-east-1 because CloudFront lives there
             ref.sub_part(ref.region, 'us-east-1')
