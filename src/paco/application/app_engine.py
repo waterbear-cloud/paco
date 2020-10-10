@@ -3,6 +3,7 @@ Initializes and configures the resources for applications by creating
 CloudFormation templates, organizing the stacks into groups and configuring supporting resources.
 """
 
+from paco.models.references import get_model_obj_from_ref
 import paco.cftemplates
 import os
 from paco import models
@@ -155,11 +156,8 @@ class ApplicationEngine():
             lambda_stack = self.stack_group.get_stack_from_ref(ref)
             return lambda_stack
         elif isinstance(ref.resource, models.applications.CloudFrontViewerCertificate):
-            acm_ctl = self.paco_ctx.get_controller('ACM')
-            # Force the region to us-east-1 because CloudFront lives there
-            ref.sub_part(ref.region, 'us-east-1')
-            ref.region = 'us-east-1'
-            return acm_ctl.resolve_ref(ref)
+            acm_certificate = get_model_obj_from_ref(ref.resource.certificate, self.paco_ctx.project)
+            return acm_certificate.stack
         elif isinstance(ref.resource, models.applications.CloudFrontFactory):
             return self.stack_group.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.LBApplication):

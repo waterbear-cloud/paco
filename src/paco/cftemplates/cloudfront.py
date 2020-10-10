@@ -37,8 +37,14 @@ class CloudFront(StackTemplate):
             'PriceClass': 'PriceClass_'+cloudfront_config.price_class
         }
         if cloudfront_config.is_enabled() == True:
+            viewer_certificate_param = self.create_cfn_parameter(
+                name='ViewerCertificateArn',
+                description="ACM Viewer Certificate ARN",
+                param_type='String',
+                value=cloudfront_config.viewer_certificate.certificate + '.arn',
+            )
             distribution_config_dict['ViewerCertificate'] = {
-                'AcmCertificateArn': self.paco_ctx.get_ref('paco.ref ' + self.stack.stack_ref + '.viewer_certificate.arn'),
+                'AcmCertificateArn': troposphere.Ref(viewer_certificate_param),
                 'SslSupportMethod': cloudfront_config.viewer_certificate.ssl_supported_method,
                 'MinimumProtocolVersion': cloudfront_config.viewer_certificate.minimum_protocol_version
             }

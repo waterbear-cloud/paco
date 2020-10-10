@@ -26,6 +26,28 @@ log_next_header = None
 
 StackStatus = Enum('StackStatus', 'NONE DOES_NOT_EXIST CREATE_IN_PROGRESS CREATE_FAILED CREATE_COMPLETE ROLLBACK_IN_PROGRESS ROLLBACK_FAILED ROLLBACK_COMPLETE DELETE_IN_PROGRESS DELETE_FAILED DELETE_COMPLETE UPDATE_IN_PROGRESS UPDATE_COMPLETE_CLEANUP_IN_PROGRESS UPDATE_COMPLETE UPDATE_ROLLBACK_IN_PROGRESS UPDATE_ROLLBACK_FAILED UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS UPDATE_ROLLBACK_COMPLETE REVIEW_IN_PROGRESS')
 
+class StackOutputConfig():
+    def __init__(self, config_ref, key):
+        self.key = key
+        self.config_ref = config_ref
+
+    def get_config_dict(self, stack):
+        conf_dict = current = last_dict = {}
+        ref_part = None
+        ref_part_list = self.config_ref.split('.')
+        for ref_part in ref_part_list:
+            current[ref_part] = {}
+            last_dict = current
+            current = current[ref_part]
+
+        last_dict[ref_part]['__name__'] = stack.get_outputs_value(self.key)
+
+        return conf_dict
+
+    def __repr__(self):
+        return f'config_ref: {self.config_ref}, key: {self.key}'
+
+
 class StackOutputParam():
     """
     Holds a list of dicts describing a stack and the outputs that are required
@@ -48,7 +70,7 @@ class StackOutputParam():
         self.resolved_value = ""
         self.stack = stack
         self.param_template = param_template
-        self.ignore_changes = False
+        self.ignore_changes = ignore_changes
         if stack !=None and stack_output_key !=None:
             self.add_stack_output( stack, stack_output_key)
 
@@ -660,6 +682,7 @@ your cache may be out of sync. Try running again the with the --nocache option.
             ref.set_region(self.aws_region)
             ref_value = ref.resolve(self.paco_ctx.project, account_ctx=self.account_ctx)
             if ref_value == None:
+                ref.resolve(self.paco_ctx.project, account_ctx=self.account_ctx)
                 message = "Error: Unable to locate value for ref: {}\n".format(param_value)
                 if self.template != None:
                     message += "Template: {}\n".format(self.template.aws_name)
@@ -1510,6 +1533,16 @@ your cache may be out of sync. Try running again the with the --nocache option.
             PacoErrorCode.Unknown,
             message=message
         )
+
+    def register_stack_output_config(self, config_ref, stack_output_key):
+        "Register Stack Output"
+        if config_ref.startswith('paco.ref'):
+            raise PacoException(
+                PacoErrorCode.Unknown,
+                message='Registered stack output config reference must not start with paco.ref: ' + config_ref
+            )
+        stack_output_config = StackOutputConfig(config_ref, stack_output_key)
+        self.stack_output_config_list.append(stack_output_config)
 
     def get_stack_outputs_key_from_ref(self, ref, stack=None):
         "Gets the output key of a project reference"

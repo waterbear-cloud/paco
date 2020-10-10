@@ -25,7 +25,7 @@ class AccountContext(object):
         self,
         paco_ctx,
         name,
-        mfa_account=None
+        mfa_account=None,
     ):
         self.name = name
         self.client_cache = {}
@@ -85,6 +85,8 @@ Add this manually or run `paco provision accounts` for this project.
         return self.aws_session.get_temporary_credentials()
 
     def get_mfa_session(self, admin_creds):
+        if self.paco_ctx.skip_account_ctx:
+            return None
         if self.aws_session == None:
             self.aws_session = paco.config.aws_credentials.PacoSTS(
                 self,
@@ -100,6 +102,8 @@ Add this manually or run `paco provision accounts` for this project.
         return self.aws_session.get_temporary_session()
 
     def get_session(self, force=False):
+        if self.paco_ctx.skip_account_ctx:
+            return None
         if self.aws_session == None:
             self.aws_session = paco.config.aws_credentials.PacoSTS(
                     self,
@@ -114,7 +118,6 @@ Add this manually or run `paco provision accounts` for this project.
             )
         if self.temp_aws_session == None or force == True:
             self.temp_aws_session = self.aws_session.get_temporary_session()
-
         return self.temp_aws_session
 
     @property
@@ -250,8 +253,18 @@ class PacoContext(object):
         self.config_scope = None
         self.disable_validation = False
         self.paco_buckets = None
+        self.skip_account_ctx = False
 
     def get_account_context(self, account_ref=None, account_name=None, netenv_ref=None):
+        """
+        Get an AccountContext for an AWS Account. Will return an existing object if an AccountContext
+        has already been created.
+
+        AccountContext can be specified in three ways:
+          account_ref: 'paco.ref accounts.dev'
+          account_name: 'dev'
+          netenv_ref: 'paco.ref netenv.mynet.dev.us-west-2.applications.myapp' # The 'dev' env is in the dev account
+        """
         if account_ref != None:
             ref = Reference(account_ref)
             account_name = ref.parts[1]
@@ -261,7 +274,7 @@ class PacoContext(object):
             account_ref = self.get_ref(account_ref)
             return self.get_account_context(account_ref=account_ref)
         elif account_name == None:
-            raise StackException(PacoErrorCode.Unknown, message = "get_account_context was only passed None: Not enough context to get account.")
+            raise InvalidAccountName("Get AccountContext failed. Must specify a valid account name")
 
         if account_name in self.accounts:
             return self.accounts[account_name]
@@ -269,7 +282,7 @@ class PacoContext(object):
         account_ctx = AccountContext(
             paco_ctx=self,
             name=account_name,
-            mfa_account=self.master_account
+            mfa_account=self.master_account,
         )
         self.accounts[account_name] = account_ctx
 
@@ -317,7 +330,15 @@ This directory contains several sub-directories that Paco uses:
         "Return the path to the Paco describe directory"
         return self.paco_work_path / 'describe'
 
-    def load_project(self, project_init=False, project_only=False, master_only=False, config_scope=None, command_name=None):
+    def load_project(
+        self,
+        project_init=False,
+        project_only=False,
+        master_only=False,
+        config_scope=None,
+        command_name=None,
+        validate_local_paths=True,
+    ):
         "Load a Paco Project from YAML, initialize settings and controllers, and load Service plug-ins."
         self.project_folder = self.home
         if project_init == True:
@@ -325,7 +346,12 @@ This directory contains several sub-directories that Paco uses:
 
         # Load the model from YAML
         print("Loading Paco project: %s" % (self.home))
-        self.project = load_project_from_yaml(self.project_folder, None, warn=self.warn)
+        self.project = load_project_from_yaml(
+            self.project_folder,
+            None,
+            warn=self.warn,
+            validate_local_paths=validate_local_paths,
+        )
         self.paco_buckets = PacoBuckets(self.project)
         if self.verbose:
             print("Finished loading.")
@@ -355,12 +381,14 @@ This directory contains several sub-directories that Paco uses:
             if self.warn:
                 self.check_notification_config()
 
-        # Settings
+        # AWS Credentials with the master account
         self.master_account = AccountContext(
             paco_ctx=self,
             name='master',
             mfa_account=None
         )
+
+        # Settings
         os.environ['AWS_DEFAULT_REGION'] = self.project['credentials'].aws_default_region
         if master_only or self.config_scope == 'accounts':
             return

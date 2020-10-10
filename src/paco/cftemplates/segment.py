@@ -424,15 +424,15 @@ Outputs:
         template_table['subnet_list'] = subnet_list
         self.set_template(template_yaml_fmt.format(template_table))
 
-        self.register_stack_output_config(segment_config_ref+'.subnet_id_list', 'SubnetIdList')
-        self.register_stack_output_config(segment_config_ref+'.az1.subnet_id', 'SubnetIdAZ1')
-        self.register_stack_output_config(segment_config_ref+'.az1.availability_zone', 'AvailabilityZone1')
-        self.register_stack_output_config(segment_config_ref+'.az1.route_table.id', 'RouteTableIdAZ1')
+        self.stack.register_stack_output_config(segment_config_ref+'.subnet_id_list', 'SubnetIdList')
+        self.stack.register_stack_output_config(segment_config_ref+'.az1.subnet_id', 'SubnetIdAZ1')
+        self.stack.register_stack_output_config(segment_config_ref+'.az1.availability_zone', 'AvailabilityZone1')
+        self.stack.register_stack_output_config(segment_config_ref+'.az1.route_table.id', 'RouteTableIdAZ1')
         if availability_zones > 1:
-            self.register_stack_output_config(segment_config_ref+'.az2.subnet_id', 'SubnetIdAZ2')
-            self.register_stack_output_config(segment_config_ref+'.az2.availability_zone', 'AvailabilityZone2')
-            self.register_stack_output_config(segment_config_ref+'.az2.route_table.id', 'RouteTableIdAZ2')
+            self.stack.register_stack_output_config(segment_config_ref+'.az2.subnet_id', 'SubnetIdAZ2')
+            self.stack.register_stack_output_config(segment_config_ref+'.az2.availability_zone', 'AvailabilityZone2')
+            self.stack.register_stack_output_config(segment_config_ref+'.az2.route_table.id', 'RouteTableIdAZ2')
         if availability_zones > 2:
-            self.register_stack_output_config(segment_config_ref+'.az3.subnet_id', 'SubnetIdAZ3')
-            self.register_stack_output_config(segment_config_ref+'.az3.availability_zone', 'AvailabilityZone3')
-            self.register_stack_output_config(segment_config_ref+'.az3.route_table.id', 'RouteTableIdAZ3')
+            self.stack.register_stack_output_config(segment_config_ref+'.az3.subnet_id', 'SubnetIdAZ3')
+            self.stack.register_stack_output_config(segment_config_ref+'.az3.availability_zone', 'AvailabilityZone3')
+            self.stack.register_stack_output_config(segment_config_ref+'.az3.route_table.id', 'RouteTableIdAZ3')
