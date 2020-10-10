@@ -889,6 +889,11 @@ See the AWS documentation for more information on how `AutoScalingRollingUpdate 
       - Ignore changes to the desired_capacity after the ASG is created.
       - 
       - False
+    * - dns
+      - List<DNS_>
+      - DNS domains to create to resolve to one of the ASGs EC2 Instances
+      - 
+      - 
     * - ebs_optimized
       - Boolean
       - EBS Optimized
@@ -2331,6 +2336,11 @@ CloudFrontDefaultCacheBehavior
       - Forwarded Values
       - 
       - 
+    * - lambda_function_associations
+      - List<CloudFrontLambdaFunctionAssocation_>
+      - Lambda Function Associations
+      - 
+      - 
     * - max_ttl
       - Int |star|
       - Maximum TTL
@@ -2636,6 +2646,41 @@ CloudFrontCookies
 *Base Schemas* `Named`_, `Title`_
 
 
+CloudFrontLambdaFunctionAssocation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CloudFrontLambdaFunctionAssocation:
+
+.. list-table:: :guilabel:`CloudFrontLambdaFunctionAssocation`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - event_type
+      - Choice |star|
+      - Event Type
+      - Must be one of 'origin-request', 'origin-response', 'viewer-request' or 'viewer-response'
+      - 
+    * - include_body
+      - Boolean
+      - Include Body
+      - 
+      - False
+    * - lambda_function
+      - PacoReference |star|
+      - Lambda Function
+      - Paco Reference to `Lambda`_.
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
 
 CodeDeployApplication
 ----------------------
@@ -2783,6 +2828,567 @@ CodeDeployDeploymentGroup
       - 
 
 *Base Schemas* `Deployable`_, `Named`_, `Title`_
+
+
+
+CognitoUserPool
+----------------
+
+
+Amazon Cognito lets you add user sign-up, sign-in, and access control to your web and mobile apps.
+
+The ``CognitoUserPool`` resource type is a user directory in Amazon Cognito. With a user pool,
+users can sign in to your web or mobile app through Amazon Cognito.
+
+.. sidebar:: Prescribed Automation
+
+    ``mfa``: If this is ``on`` or ``optional`` then an IAM Role will be created to allow sending SMS reset codes.
+    If you are supporting SMS with Cognito, then you will also need to manually create an AWS Support ticket to
+    raise the accounts limit of SMS spending beyond the default of $1/month.
+
+.. code-block:: yaml
+    :caption: Example CognituUserPool YAML
+
+    type: CognitoUserPool
+    order: 10
+    enabled: true
+    auto_verified_attributes: email
+    mfa: 'optional'
+    mfa_methods:
+     - software_token
+     - sms
+    account_recovery: verified_email
+    password:
+      minimum_length: 12
+      require_lowercase: true
+      require_uppercase: true
+      require_numbers: false
+      require_symbols: false
+    email:
+      reply_to_address: reply-to@example.com
+    user_creation:
+      admin_only: true
+      unused_account_validity_in_days: 7
+      invite_message_templates:
+        email_subject: 'Invite to the App!'
+        email_message: >
+          <p>You've had an account created for you on the app.</p>
+          <p><b>Username:</b> {username}</p>
+          <p><b>Temporary password:</b> {####}</p>
+          <p>Please login and set a secure password. This request will expire in 7 days.</p>
+    schema:
+      - attribute_name: email
+        attribute_data_type: string
+        mutable: false
+        required: true
+      - attribute_name: name
+        attribute_data_type: string
+        mutable: true
+        required: true
+      - attribute_name: phone_number
+        attribute_data_type: string
+        mutable: true
+        required: false
+    ui_customizations:
+      logo_file: './images/logo.png'
+      css_file: './images/cognito.css'
+    app_clients:
+      web:
+        generate_secret: false
+        callback_urls:
+          - https://example.com
+          - https://example.com/parseauth
+          - https://example.com/refreshauth
+        logout_urls:
+          - https://example.com/signout
+        allowed_oauth_flows:
+            - code
+        allowed_oauth_scopes:
+            - email
+            - openid
+        domain_name: exampledomain
+        identity_providers:
+          - cognito
+
+    
+
+.. _CognitoUserPool:
+
+.. list-table:: :guilabel:`CognitoUserPool`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - account_recovery
+      - String
+      - Account Recovery Options (in order of priority)
+      - Can be either 'admin_only', 'verified_email', 'verified_phone_number', 'verified_phone_number,verified_email' or 'verified_email,verified_phone_number'
+      - 
+    * - app_clients
+      - Container<CognitoUserPoolClients_>
+      - App Clients
+      - 
+      - 
+    * - auto_verified_attributes
+      - String
+      - Auto Verified Attributes
+      - Can be either 'email', 'phone_number' or 'email,phone_number'
+      - 
+    * - email
+      - Object<CognitoEmailConfiguration_>
+      - Email Configuration
+      - 
+      - 
+    * - mfa
+      - Choice
+      - MFA Configuration
+      - Must be one of 'off', 'on' or 'optional'
+      - off
+    * - mfa_methods
+      - Choice
+      - Enabled MFA methods
+      - List of 'sms' or 'software_token'
+      - []
+    * - password
+      - Object<CognitoUserPoolPasswordPolicy_>
+      - Password Configuration
+      - 
+      - 
+    * - schema
+      - List<CognitoUserPoolSchemaAttribute_> |star|
+      - Schema Attributes
+      - 
+      - []
+    * - ui_customizations
+      - Object<CognitoUICustomizations_>
+      - UI Customizations
+      - 
+      - 
+    * - user_creation
+      - Object<CognitoUserCreation_>
+      - User Creation
+      - 
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
+
+CognitoInviteMessageTemplates
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CognitoInviteMessageTemplates:
+
+.. list-table:: :guilabel:`CognitoInviteMessageTemplates`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - email_message
+      - String
+      - Email Message
+      - 
+      - 
+    * - email_subject
+      - String
+      - Email Subject
+      - 
+      - 
+    * - sms_message
+      - String
+      - SMS Message
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CognitoUserPoolClients
+^^^^^^^^^^^^^^^^^^^^^^^
+
+A container of `CognitoUserPoolClient`_ objects.
+
+.. _CognitoUserPoolClients:
+
+.. list-table:: :guilabel:`CognitoUserPoolClients` |bars| Container<`CognitoUserPoolClient`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CognitoUserPoolClient
+^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CognitoUserPoolClient:
+
+.. list-table:: :guilabel:`CognitoUserPoolClient`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - allowed_oauth_flows
+      - Choice
+      - Allowed OAuth Flows
+      - 
+      - []
+    * - allowed_oauth_scopes
+      - List<String>
+      - Allow OAuth Scopes
+      - 
+      - []
+    * - callback_urls
+      - List<String>
+      - Callback URLs
+      - 
+      - []
+    * - domain_name
+      - String
+      - Domain Name or domain prefix
+      - 
+      - 
+    * - generate_secret
+      - Boolean
+      - Generate Secret
+      - 
+      - False
+    * - identity_providers
+      - Choice
+      - Identity Providers
+      - 
+      - []
+    * - logout_urls
+      - List<String>
+      - Logout URLs
+      - 
+      - []
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CognitoEmailConfiguration
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CognitoEmailConfiguration:
+
+.. list-table:: :guilabel:`CognitoEmailConfiguration`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - from_address
+      - String
+      - From Email Address
+      - 
+      - 
+    * - reply_to_address
+      - String
+      - Reply To Email Address
+      - 
+      - 
+    * - verification_message
+      - String
+      - Verification Message
+      - 
+      - 
+    * - verification_subject
+      - String
+      - Verification Subject
+      - 
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CognitoUserPoolPasswordPolicy
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CognitoUserPoolPasswordPolicy:
+
+.. list-table:: :guilabel:`CognitoUserPoolPasswordPolicy`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - minimum_length
+      - Int |star|
+      - Minimum Length
+      - 
+      - 
+    * - require_lowercase
+      - Boolean
+      - Require Lowercase
+      - 
+      - True
+    * - require_numbers
+      - Boolean
+      - Require Numbers
+      - 
+      - True
+    * - require_symbols
+      - Boolean
+      - Require Symbols
+      - 
+      - True
+    * - require_uppercase
+      - Boolean
+      - Require Uppercase
+      - 
+      - True
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CognitoUserPoolSchemaAttribute
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CognitoUserPoolSchemaAttribute:
+
+.. list-table:: :guilabel:`CognitoUserPoolSchemaAttribute`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - attribute_data_type
+      - Choice
+      - Attribute Data Type
+      - 
+      - 
+    * - attribute_name
+      - String
+      - Name
+      - From 1 to 20 characters
+      - 
+    * - mutable
+      - Boolean
+      - Mutable
+      - 
+      - 
+    * - required
+      - Boolean
+      - Required
+      - 
+      - 
+
+
+
+CognitoUICustomizations
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CognitoUICustomizations:
+
+.. list-table:: :guilabel:`CognitoUICustomizations`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - css_file
+      - StringFileReference
+      - File path to a CSS file.
+      - Contents must be valid CSS that applies to the Cognito Hosted UI.
+      - 
+    * - logo_file
+      - BinaryFileReference
+      - File path to an image.
+      - Must be a PNG or JPEG and max 100 Kb.
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+CognitoUserCreation
+^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CognitoUserCreation:
+
+.. list-table:: :guilabel:`CognitoUserCreation`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - admin_only
+      - Boolean
+      - Allow only Admin to create users
+      - 
+      - False
+    * - invite_message_templates
+      - Object<CognitoInviteMessageTemplates_>
+      - Invite Message Templates
+      - 
+      - 
+    * - unused_account_validity_in_days
+      - Int
+      - Unused Account Validity in Days
+      - 
+      - 7
+
+*Base Schemas* `Named`_, `Title`_
+
+
+
+CognitoIdentityPool
+--------------------
+
+
+The ``CognitoIdentityPool`` resource type grants authorization of Cognito User Pool users to resources.
+
+.. code-block:: yaml
+    :caption: Example CognituIdentityPool YAML
+
+    type: CognitoIdentityPool
+    order: 20
+    enabled: true
+    allow_unauthenticated_identities: true
+    identity_providers:
+     - userpool_client: paco.ref netenv.mynet.applications.myapp.groups.cognito.resources.cup.app_clients.web
+       serverside_token_check: false
+    unauthenticated_role:
+      enabled: true
+      policies:
+        - name: CognitoSyncAll
+          statement:
+            - effect: Allow
+              action:
+                - "cognito-sync:*"
+              resource:
+                - '*'
+    authenticated_role:
+      enabled: true
+      policies:
+        - name: ViewDescribe
+          statement:
+            - effect: Allow
+              action:
+                - "cognito-sync:*"
+                - "cognito-identity:*"
+              resource:
+                - '*'
+            - effect: Allow
+              action:
+                - "lambda:InvokeFunction"
+              resource:
+                - '*'
+    
+
+.. _CognitoIdentityPool:
+
+.. list-table:: :guilabel:`CognitoIdentityPool`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - allow_unauthenticated_identities
+      - Boolean
+      - Allow Unauthenticated Identities
+      - 
+      - False
+    * - authenticated_role
+      - Object<RoleDefaultEnabled_>
+      - 
+      - 
+      - 
+    * - identity_providers
+      - List<CognitoIdentityProvider_>
+      - Identity Providers
+      - 
+      - []
+    * - unauthenticated_role
+      - Object<RoleDefaultEnabled_>
+      - 
+      - 
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
+
+CognitoIdentityProvider
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+    
+
+.. _CognitoIdentityProvider:
+
+.. list-table:: :guilabel:`CognitoIdentityProvider`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - serverside_token_check
+      - Boolean
+      - ServerSide Token Check
+      - 
+      - False
+    * - userpool_client
+      - PacoReference |star|
+      - Identity Provider
+      - Paco Reference to `CognitoUserPoolClient`_.
+      - 
+
 
 
 
@@ -3249,7 +3855,7 @@ This Action is triggered whenever a new image is pushed to an Amazon ECR reposit
     * - repository
       - PacoReference|String |star|
       - An ECRRepository ref or the name of the an ECR repository.
-      - String Ok.
+      - Paco Reference to `ECRRepository`_. String Ok.
       - 
 
 *Base Schemas* `Enablable`_, `Named`_, `DeploymentPipelineStageAction`_, `Title`_
@@ -3399,6 +4005,11 @@ CodeBuild DeploymentPipeline Build Stage
       - Deployment Environment
       - 
       - 
+    * - ecr_repositories
+      - List<ECRRepositoryPermission_>
+      - ECR Respository Permissions
+      - 
+      - []
     * - privileged_mode
       - Boolean
       - Privileged Mode
@@ -3412,7 +4023,7 @@ CodeBuild DeploymentPipeline Build Stage
     * - secrets
       - List<PacoReference>
       - List of PacoReferences to Secrets Manager secrets
-      - 
+      - Paco Reference to `SecretsManagerSecret`_.
       - 
     * - timeout_mins
       - Int
@@ -3754,6 +4365,34 @@ Elastic Container Registry (ECR) Repository is a fully-managed Docker container 
 *Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
 
 
+ECRRepositoryPermission
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _ECRRepositoryPermission:
+
+.. list-table:: :guilabel:`ECRRepositoryPermission`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - permission
+      - Choice |star|
+      - Permission
+      - Must be one of 'Push', 'Pull' or 'PushAndPull'
+      - 
+    * - repository
+      - PacoReference |star|
+      - ECR Repository
+      - Paco Reference to `ECRRepository`_.
+      - 
+
+
 
 ECSCluster
 -----------
@@ -3779,7 +4418,7 @@ ECS Cluster
       -
       -
 
-*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
 
 
 
@@ -3816,7 +4455,7 @@ ECS Service
       - 100
     * - desired_count
       - Int
-      - Desried Count
+      - Desired Count
       - 
       - 
     * - health_check_grace_period_seconds
@@ -3829,18 +4468,48 @@ ECS Service
       - Container hostname
       - 
       - 
+    * - launch_type
+      - Choice
+      - Launch Type
+      - Must be one of EC2 or Fargate
+      - EC2
     * - load_balancers
       - List<ECSLoadBalancer_>
       - Load Balancers
       - 
       - []
+    * - maximum_tasks
+      - Int
+      - Maximum Tasks in service
+      - 
+      - 0
+    * - minimum_tasks
+      - Int
+      - Minimum Tasks in service
+      - 
+      - 0
+    * - suspend_scaling
+      - Boolean
+      - Suspend any Service Scaling activities
+      - 
+      - False
+    * - target_tracking_scaling_policies
+      - Container<ECSTargetTrackingScalingPolicies_>
+      - Target Tracking Scaling Policies
+      - 
+      - 
     * - task_definition
       - String
       - Task Definition
       - 
       - 
+    * - vpc_config
+      - Object<ServiceVPCConfiguration_>
+      - VPC Configuration
+      - 
+      - 
 
-*Base Schemas* `Named`_, `Title`_
+*Base Schemas* `Monitorable`_, `Named`_, `Title`_
 
 
 ECSServicesContainer
@@ -3901,6 +4570,21 @@ ECS Task Definition
       - Container Definitions
       - 
       - 
+    * - cpu_units
+      - Int
+      - CPU in Units
+      - Must be one of 256, 512, 1024, 2048 or 4096
+      - 256
+    * - fargate_compatibile
+      - Boolean
+      - Require Fargate Compability
+      - 
+      - False
+    * - memory_in_mb
+      - Int
+      - Memory in Mb
+      - Must be one of 512, 1024, 2048, 2048 or 4096 thru 30720
+      - 512
     * - network_mode
       - Choice
       - Network Mode
@@ -4365,7 +5049,7 @@ A Name/ValueFrom pair of Paco references to Secrets Manager secrets
     * - value_from
       - PacoReference|String |star|
       - Paco reference to Secrets manager
-      - String Ok.
+      - Paco Reference to `SecretsManagerSecret`_. String Ok.
       - 
 
 
@@ -4422,6 +5106,106 @@ VoumesFrom
       - 
       - 
 
+
+
+ECSTargetTrackingScalingPolicies
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Container for `ECSTargetTrackingScalingPolicy`_ objects.
+
+.. _ECSTargetTrackingScalingPolicies:
+
+.. list-table:: :guilabel:`ECSTargetTrackingScalingPolicies` |bars| Container<`ECSTargetTrackingScalingPolicy`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+ECSTargetTrackingScalingPolicy
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _ECSTargetTrackingScalingPolicy:
+
+.. list-table:: :guilabel:`ECSTargetTrackingScalingPolicy`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - disable_scale_in
+      - Boolean
+      - Disable ScaleIn
+      - 
+      - False
+    * - predefined_metric
+      - Choice |star|
+      - Predfined Metric to scale on
+      - Must be one of ALBRequestCountPerTarget, ECSServiceAverageMemoryUtilization or ECSServiceAverageCPUUtilization
+      - 
+    * - scale_in_cooldown
+      - Int
+      - ScaleIn Cooldown
+      - 
+      - 300
+    * - scale_out_cooldown
+      - Int
+      - ScaleIn Cooldown
+      - 
+      - 300
+    * - target
+      - Int |star|
+      - Target
+      - 
+      - 
+    * - target_group
+      - PacoReference
+      - ALB TargetGroup
+      - Paco Reference to `TargetGroup`_.
+      - 
+
+*Base Schemas* `Enablable`_, `Named`_, `Title`_
+
+
+ServiceVPCConfiguration
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _ServiceVPCConfiguration:
+
+.. list-table:: :guilabel:`ServiceVPCConfiguration`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - assign_public_ip
+      - Boolean
+      - Assign Public IP
+      - 
+      - False
+
+*Base Schemas* `Named`_, `VPCConfiguration`_, `Title`_
 
 
 ECSMountPoint
@@ -5130,6 +5914,11 @@ The code for the Lambda function can be specified in one of three ways in the ``
       - A description of the function.
       - 
       - 
+    * - edge
+      - Object<LambdaAtEdgeConfiguration_>
+      - Lambda@Edge configuration
+      - 
+      - 
     * - environment
       - Object<LambdaEnvironment_>
       - Lambda Function Environment
@@ -5182,9 +5971,9 @@ The code for the Lambda function can be specified in one of three ways in the ``
       - 
     * - timeout
       - Int
-      - Max function execution time in seconds.
-      - Must be between 0 and 900 seconds.
+      - The amount of time that Lambda allows a function to run before stopping it.
       - 
+      - 3
     * - vpc_config
       - Object<LambdaVpcConfig_>
       - Vpc Configuration
@@ -5272,18 +6061,13 @@ Lambda Environment
       - Purpose
       - Constraints
       - Default
-    * - security_groups
-      - List<PacoReference>
-      - List of VPC Security Group Ids
-      - Paco Reference to `SecurityGroup`_.
-      - 
-    * - segments
-      - List<PacoReference>
-      - VPC Segments to attach the function
-      - Paco Reference to `Segment`_.
-      - 
+    * -
+      -
+      -
+      -
+      -
 
-*Base Schemas* `Named`_, `Title`_
+*Base Schemas* `Named`_, `VPCConfiguration`_, `Title`_
 
 
 LambdaVariable
@@ -5315,6 +6099,31 @@ LambdaVariable
       - Paco Reference to `Interface`_. String Ok.
       - 
 
+
+
+LambdaAtEdgeConfiguration
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _LambdaAtEdgeConfiguration:
+
+.. list-table:: :guilabel:`LambdaAtEdgeConfiguration`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - auto_publish_version
+      - String
+      - Automatically publish a Version. Update this name to publish a new Version.
+      - 
+      - 
+
+*Base Schemas* `Enablable`_, `Named`_, `Title`_
 
 
 
@@ -5711,6 +6520,11 @@ Target Group
       - Healthy threshold
       - 
       - 
+    * - target_type
+      - Choice |star|
+      - Target Type
+      - Must be one of 'instance', 'ip' or 'lambda'.
+      - instance
     * - unhealthy_threshold
       - Int
       - Unhealthy threshold
@@ -5718,6 +6532,7 @@ Target Group
       - 
 
 *Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `PortProtocol`_, `Title`_, `Type`_
+
 
 
 PinpointApplication
@@ -5774,6 +6589,70 @@ Currently AWS Pinpoint only supports general configuration suitable for sending 
       - 
 
 *Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+
+
+PinpointSMSChannel
+^^^^^^^^^^^^^^^^^^^
+
+Pinpoint SMS Channel
+
+.. _PinpointSMSChannel:
+
+.. list-table:: :guilabel:`PinpointSMSChannel`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - enable_sms
+      - Boolean
+      - Enable SMS
+      - 
+      - True
+    * - sender_id
+      - String
+      - The identity that you want to display on recipients' devices when they receive messages from the SMS channel.
+      - 
+      - 
+    * - short_code
+      - String
+      - The registered short code that you want to use when you send messages through the SMS channel.
+      - 
+      - 
+
+
+
+PinpointEmailChannel
+^^^^^^^^^^^^^^^^^^^^^
+
+Pinpoint Email Channel
+
+.. _PinpointEmailChannel:
+
+.. list-table:: :guilabel:`PinpointEmailChannel`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - enable_email
+      - Boolean
+      - Enable Email
+      - 
+      - True
+    * - from_address
+      - String
+      - The verified email address that you want to send email from when you send email through the channel.
+      - 
+      - 
+
+
 
 
 IoTTopicRule
@@ -7944,6 +8823,8 @@ SNSTopicSubscription
 
 .. _role: yaml-global-resources.html#role
 
+.. _roledefaultenabled: yaml-global-resources.html#roledefaultenabled
+
 .. _ec2keypair: yaml-global-resources.html#ec2keypair
 
 .. _secretsmanagersecret: yaml-netenv#secretsmanagersecret
@@ -7965,6 +8846,11 @@ SNSTopicSubscription
 .. _cloudwatchlogretention: yaml-monitoring.html#cloudwatchlogretention
 
 .. _statement: yaml-global-resources.html#statement
+
+.. _vpcconfiguration: yaml-base.html#vpcconfiguration
+
+.. _hostedzone: yaml-base.html#hostedzone
+
 
 
 .. _Named: yaml-base.html#Named
