@@ -16,7 +16,7 @@ class ACMController(Controller):
 
     def provision(self):
         for acm_config in self.cert_config_list:
-            acm_config.stack.provision()
+            acm_config['config'].stack.provision()
 
     def get_cert_config(self, group_id, cert_id):
         for config in self.cert_config_map[group_id]:

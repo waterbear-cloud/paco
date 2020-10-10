@@ -4,12 +4,11 @@ The ``paco.extend`` module contains convenience APIs to make it easier to extend
 These APIs will be typically called from your custom Paco Service Controllers.
 """
 
-from paco.models.loader import SUB_TYPES_CLASS_MAP, apply_attributes_from_config
+from paco.models.loader import SUB_TYPES_CLASS_MAP, apply_attributes_from_config, read_yaml_file
 from paco.models.exceptions import LoaderRegistrationError
 from paco.models.references import is_ref, get_model_obj_from_ref
 from paco.models.base import RegionContainer, AccountContainer
 from paco.models.applications import Application
-from paco.core.yaml import YAML
 import paco.models.registry
 
 
@@ -118,14 +117,12 @@ def register_model_loader(obj, fields_dict, force=False):
         )
 
     """
-    if obj in SUB_TYPES_CLASS_MAP:
-        raise LoaderRegistrationError(f"Object {obj} has already been registered with the model loader.")
+    if force == False:
+        if obj in SUB_TYPES_CLASS_MAP:
+            raise LoaderRegistrationError(f"Object {obj} has already been registered with the model loader.")
 
     # ToDo: validate fields_dict
     SUB_TYPES_CLASS_MAP[obj] = fields_dict
-
-yaml=YAML()
-yaml.default_flow_style = False
 
 def load_package_yaml(package, filename, replacements={}):
     """
@@ -140,7 +137,7 @@ def load_package_yaml(package, filename, replacements={}):
     yaml_contents = pkg_resources.read_text(package, filename)
     for placeholder, value in replacements.items():
         yaml_contents = yaml_contents.replace(placeholder, value)
-    return yaml.load(yaml_contents)
+    return read_yaml_file(yaml_contents)
 
 def load_app_in_account_region(
     parent,

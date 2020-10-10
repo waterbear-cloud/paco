@@ -682,7 +682,6 @@ your cache may be out of sync. Try running again the with the --nocache option.
             ref.set_region(self.aws_region)
             ref_value = ref.resolve(self.paco_ctx.project, account_ctx=self.account_ctx)
             if ref_value == None:
-                breakpoint()
                 ref.resolve(self.paco_ctx.project, account_ctx=self.account_ctx)
                 message = "Error: Unable to locate value for ref: {}\n".format(param_value)
                 if self.template != None:
@@ -1528,7 +1527,6 @@ your cache may be out of sync. Try running again the with the --nocache option.
             if stack_output_config.config_ref == ref.ref:
                 return stack_output_config.key
         # raise an error if no key was found
-        breakpoint()
         message = self.get_stack_error_message()
         message += "Error: Unable to find outputs key for ref: {}\n".format(ref.raw)
         raise StackException(
