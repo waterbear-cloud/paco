@@ -4,7 +4,7 @@ The ``paco.extend`` module contains convenience APIs to make it easier to extend
 These APIs will be typically called from your custom Paco Service Controllers.
 """
 
-from paco.models.loader import SUB_TYPES_CLASS_MAP, apply_attributes_from_config, read_yaml_file
+from paco.models.loader import SUB_TYPES_CLASS_MAP, apply_attributes_from_config, load_yaml
 from paco.models.exceptions import LoaderRegistrationError
 from paco.models.references import is_ref, get_model_obj_from_ref
 from paco.models.base import RegionContainer, AccountContainer
@@ -137,7 +137,7 @@ def load_package_yaml(package, filename, replacements={}):
     yaml_contents = pkg_resources.read_text(package, filename)
     for placeholder, value in replacements.items():
         yaml_contents = yaml_contents.replace(placeholder, value)
-    return read_yaml_file(yaml_contents)
+    return load_yaml(yaml_contents)
 
 def load_app_in_account_region(
     parent,
