@@ -1,4 +1,3 @@
-from troposphere.cognito import Policies
 from awacs.aws import Allow, Deny, Action, Principal, Statement, PolicyDocument
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.utils import md5sum
@@ -9,6 +8,24 @@ import troposphere.iam
 def role_to_troposphere(role, logical_id, assume_role_policy=None):
     "Convert a Paco IAM Role model object to a Troposphere IAM Role Resource"
     # Warning: not a full implementation - currently only used by Cognito
+    if assume_role_policy == None:
+        if len(role.assume_role_policy.service) > 0:
+            assume_role_policy = PolicyDocument(
+                Statement=[Statement(
+                    Effect=Allow,
+                    Principal=Principal('Service', role.assume_role_policy.service),
+                    Action=[Action('sts', 'AssumeRole')],
+                )],
+            )
+        elif len(role.assume_role_policy.aws) > 0:
+            assume_role_policy = PolicyDocument(
+                Statement=[Statement(
+                    Effect=Allow,
+                    Principal=Principal('AWS', role.assume_role_policy.aws),
+                    Action=[Action('sts', 'AssumeRole')],
+                )],
+            )
+
     if role == None or role.enabled == False:
         return None
 
@@ -39,11 +56,17 @@ def role_to_troposphere(role, logical_id, assume_role_policy=None):
                 PolicyDocument=policy_doc,
             )
         )
-    return troposphere.iam.Role(
-        logical_id,
-        AssumeRolePolicyDocument=assume_role_policy,
-        Policies=policies,
-    )
+
+    role_dict = {
+        'title': logical_id,
+        'AssumeRolePolicyDocument': assume_role_policy,
+    }
+    if len(policies) > 0:
+        role_dict['Policies'] = policies
+    if len(role.managed_policy_arns) > 0:
+        role_dict['ManagedPolicyArns'] = role.managed_policy_arns
+    return troposphere.iam.Role(**role_dict)
+
 
 class IAMRoles(StackTemplate):
     def __init__(
