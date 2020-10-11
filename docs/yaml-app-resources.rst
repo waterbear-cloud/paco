@@ -4398,8 +4398,17 @@ ECSCluster
 -----------
 
 
-ECS Cluster
-    
+The ``ECSCluster`` resource type creates an Amazon Elastic Container Service (Amazon ECS) cluster.
+
+.. code-block:: yaml
+    :caption: example ECSCluster configuration YAML
+
+    type: ECSCluster
+    title: My ECS Cluster
+    enabled: true
+    order: 10
+
+
 
 .. _ECSCluster:
 
@@ -4422,8 +4431,150 @@ ECS Cluster
 
 
 
+ECSServices
+------------
+
+
+The ``ECSServices`` resource type creates one or more ECS Services and their TaskDefinitions
+that can run in an `ECSCluster`_.
+
+.. code-block:: yaml
+    :caption: example ECSServices configuration YAML
+
+    type: ECSServices
+    title: "My ECS Services"
+    enabled: true
+    order: 40
+    cluster: paco.ref netenv.mynet.applications.myapp.groups.ecs.resources.cluster
+    service_discovery_namespace_name: 'private-name'
+    secrets_manager_access:
+      - paco.ref netenv.mynet.secrets_manager.store.database.mydb
+    task_definitions:
+      frontend:
+        container_definitions:
+          frontend:
+            cpu: 256
+            essential: true
+            image: paco.ref netenv.mynet.applications.myapp.groups.ecr.resources.frontend
+            image_tag: latest
+            memory: 150 # in MiB
+            logging:
+              driver: awslogs
+              expire_events_after_days: 90
+            port_mappings:
+              - container_port: 80
+                host_port: 0
+                protocol: tcp
+            secrets:
+              - name: DATABASE_PASSWORD
+                value_from: paco.ref netenv.mynet.secrets_manager.store.database.mydb
+            environment:
+              - name: POSTGRES_HOSTNAME
+                value: paco.ref netenv.mynet.applications.myapp.groups.database.resources.postgresql.endpoint.address
+      demoservice:
+        container_definitions:
+          demoservice:
+            cpu: 256
+            essential: true
+            image: paco.ref netenv.mynet.applications.myapp.groups.ecr.resources.demoservice
+            image_tag: latest
+            memory: 100 # in MiB
+            logging:
+              driver: awslogs
+              expire_events_after_days: 90
+            port_mappings:
+              - container_port: 80
+                host_port: 0
+                protocol: tcp
+
+    services:
+      frontend:
+        desired_count: 0
+        task_definition: frontend
+        deployment_controller: ecs
+        hostname: frontend.myapp
+        load_balancers:
+          - container_name: frontend
+            container_port: 80
+            target_group: paco.ref netenv.mynet.applications.myapp.groups.lb.resources.external.target_groups.frontend
+      demoservice:
+        desired_count: 0
+        task_definition: demoservice
+        deployment_controller: ecs
+        load_balancers:
+          - container_name: demoservice
+            container_port: 80
+            target_group: paco.ref netenv.mynet.applications.myapp.groups.lb.resources.internal.target_groups.demoservice
+
+    
+
+.. _ECSServices:
+
+.. list-table:: :guilabel:`ECSServices`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - cluster
+      - PacoReference |star|
+      - Cluster
+      - Paco Reference to `ECSCluster`_.
+      - 
+    * - secrets_manager_access
+      - List<PacoReference>
+      - List Secrets Manager secret Paco references
+      - Paco Reference to `SecretsManagerSecret`_.
+      - 
+    * - service_discovery_namespace_name
+      - String
+      - Service Discovery Namespace
+      - 
+      - 
+    * - services
+      - Container<ECSServicesContainer_> |star|
+      - Service
+      - 
+      - 
+    * - task_definitions
+      - Container<ECSTaskDefinitions_> |star|
+      - Task Definitions
+      - 
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
+
+
+ECSServicesContainer
+^^^^^^^^^^^^^^^^^^^^^
+
+Container for `ECSService`_ objects.
+
+.. _ECSServicesContainer:
+
+.. list-table:: :guilabel:`ECSServicesContainer` |bars| Container<`ECSService`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
 ECSService
------------
+^^^^^^^^^^^
 
 ECS Service
 
@@ -4510,18 +4661,6 @@ ECS Service
       - 
 
 *Base Schemas* `Monitorable`_, `Named`_, `Title`_
-
-
-ECSServicesContainer
-^^^^^^^^^^^^^^^^^^^^^
-
-Container for `ECSService`_ objects.
-    * -
-      -
-      -
-      -
-      -
-
 
 
 ECSTaskDefinitions

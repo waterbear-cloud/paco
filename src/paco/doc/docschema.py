@@ -900,9 +900,11 @@ as part of an Application.
 {IECSCluster}
 
 
-{IECSService}
+{IECSServices}
 
 {IECSServicesContainer}
+
+{IECSService}
 
 {IECSTaskDefinitions}
 
@@ -1746,6 +1748,7 @@ MINOR_SCHEMAS = {
     'IElastiCacheRedis': None,
     'IElasticsearchCluster': None,
     'IECSServicesContainer': None,
+    'IECSService': None,
     'IECSTaskDefinitions': None,
     'IECSTaskDefinition': None,
     'IECSContainerDefinitions': None,
