@@ -10,9 +10,9 @@ network:
       app:
         enabled: true
         availability_zone: 1  # 1, 2, 3, 4, ... | all
-        segment: paco.ref netenv.anet.network.vpc.segments.public
+        segment: paco.ref netenv.res.network.vpc.segments.public
         default_route_segments:
-          - paco.ref netenv.anet.network.vpc.segments.webapp
+          - paco.ref netenv.res.network.vpc.segments.webapp
     vpn_gateway:
       app:
         enabled: false
@@ -55,18 +55,18 @@ network:
             - from_port: 80
               name: HTTP
               protocol: tcp
-              source_security_group: paco.ref netenv.pacodemo.network.vpc.security_groups.app.lb
+              source_security_group: paco.ref netenv.res.network.vpc.security_groups.app.lb
               to_port: 80
             - from_port: 22
               to_port: 22
               name: SSH
               protocol: tcp
-              source_security_group: paco.ref netenv.pacodemo.network.vpc.security_groups.app.bastion
+              source_security_group: paco.ref netenv.res.network.vpc.security_groups.app.bastion
             - from_port: 80
               to_port: 80
               name: BASTIONHTTP
               protocol: tcp
-              source_security_group: paco.ref netenv.pacodemo.network.vpc.security_groups.app.bastion
+              source_security_group: paco.ref netenv.res.network.vpc.security_groups.app.bastion
         bastion:
           egress:
             - cidr_ip: 0.0.0.0/0
@@ -84,7 +84,7 @@ network:
               protocol: "6"
               from_port: 3306
               to_port: 3306
-              source_security_group: paco.ref netenv.pacodemo.network.vpc.security_groups.app.webapp
+              source_security_group: paco.ref netenv.res.network.vpc.security_groups.app.webapp
           egress:
             - name: ANY
               cidr_ip: 0.0.0.0/0
@@ -217,6 +217,7 @@ applications:
           ECSServices:
             type: ECSServices
             enabled: true
+            cluster: paco.ref netenv.res.applications.app.groups.things.resources.ECSCluster
             order: 40
             task_definitions:
               hello_web:
@@ -230,10 +231,7 @@ applications:
               simple_app:
                 desired_count: 2
                 task_definition: hello_web
-                load_balancers:
-                  - container_name: hello
-                    container_port: 80
-                    target_group: paco.ref netenv.res.applications.app.groups.things.resources.alb.target_groups.app
+
 
 environments:
   test:
