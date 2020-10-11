@@ -36,6 +36,8 @@ class Lambda(StackTemplate):
         # if not enabled finish with only empty placeholder
         if not awslambda.is_enabled(): return
 
+        self.code_bucket_name = None
+
         # Parameters
         sdb_cache_param = self.create_cfn_parameter(
             name='EnableSDBCache',
@@ -468,6 +470,8 @@ class Lambda(StackTemplate):
         )
 
     def prepare_s3bucket_artifact_hook(self, hook, is_zip):
+        if self.code_bucket_name == None:
+            self.prepare_s3bucket_artifact_cache(hook, is_zip)
         self.awslambda.stack.set_parameter(
             'CodeS3Bucket',
             self.code_bucket_name,
