@@ -1,4 +1,5 @@
 from paco.stack import Stack
+from paco.stack.interfaces import ICloudFormationStack, IBotoStack
 from enum import Enum
 from paco.core.yaml import YAML
 import os
@@ -16,10 +17,7 @@ class StackOrderItem():
 
 
 class StackGroup():
-    """A group of Stacks.
-    A StackGroup is responsible for managing the order in which it's Stack
-    are modified in AWS.
-    """
+    """Group of AWS CloudFormation Stacks"""
     def __init__(
         self,
         paco_ctx,
@@ -35,7 +33,6 @@ class StackGroup():
         self.aws_name = aws_name
         self.stacks = []
         self.stack_orders = []
-        self.controller.cur_stack_grp = self
         self.stack_output_config = {}
         self.state = None
         self.prev_state = None
@@ -47,6 +44,142 @@ class StackGroup():
         # Stack group filter can change, get it from the source
         return self.controller.stack_group_filter
 
+    def get_aws_name(self):
+        "Logical Name of the StackGroup"
+        name = '-'.join([self.controller.get_aws_name(), self.aws_name])
+        return name
+
+    def new_state(self):
+        "Empty state"
+        return {
+            'stack_names': [],
+            'account_names': [],
+            'regions': []
+        }
+
+    def load_state(self):
+        "Read state from filesystem or return an empty state"
+        if os.path.isfile(self.state_filepath) == False:
+            return self.new_state()
+        with open(self.state_filepath, "r") as stream:
+            state = yaml.load(stream)
+        if state == None:
+            return self.new_state()
+        return state
+
+    def validate(self):
+        "Loop through stacks and validate each one"
+        for order_item in self.stack_orders:
+            if order_item.order == StackOrder.PROVISION:
+                if isinstance(order_item.stack, StackGroup):
+                    order_item.stack.validate()
+                else:
+                    self.filtered_stack_action(
+                        order_item.stack,
+                        order_item.stack.validate
+                    )
+
+    def provision(self):
+        "Loop through stacks and provision each one"
+        wait_last_list = []
+        for order_item in self.stack_orders:
+            if order_item.order == StackOrder.PROVISION:
+                if isinstance(order_item.stack, StackGroup):
+                    # Nested StackGroup
+                    order_item.stack.provision()
+                else:
+                    self.filtered_stack_action(
+                        order_item.stack,
+                        order_item.stack.provision
+                    )
+            elif isinstance(order_item.stack, StackGroup):
+                # Nested StackGroup
+                pass
+            elif order_item.order == StackOrder.WAIT:
+                # Nested StackGroup
+                if order_item.stack.cached == False:
+                    order_item.stack.wait_for_complete()
+            elif order_item.order == StackOrder.WAITLAST:
+                wait_last_list.append(order_item)
+
+        for order_item in wait_last_list:
+            if order_item.stack.cached == False:
+                order_item.stack.wait_for_complete()
+
+    def delete(self):
+        "Loop through stacks and delete each one"
+        for order_item in reversed(self.stack_orders):
+            if order_item.order == StackOrder.PROVISION:
+                if isinstance(order_item.stack, StackGroup):
+                    # Nested StackGroup
+                    order_item.stack.delete()
+                else:
+                    self.filtered_stack_action(
+                        order_item.stack,
+                        order_item.stack.delete
+                    )
+
+        for order_item in reversed(self.stack_orders):
+            if order_item.order == StackOrder.WAIT:
+                if isinstance(order_item.stack, StackGroup) == True:
+                    continue
+                order_item.stack.wait_for_complete()
+
+    def get_stack_order(self, stack, order):
+        for stack_order in self.stack_orders:
+            if stack_order.stack == stack and stack_order.order == order:
+                return stack_order
+        return None
+
+    def pop_stack_order(self, stack, order):
+        stack_order = self.get_stack_order(stack, order)
+        if stack_order == None:
+            # If one does not exist, create a new one
+            return StackOrderItem(order, stack)
+        self.stack_orders.remove(stack_order)
+        return stack_order
+
+    def add_stack_order(self, stack, orders=[StackOrder.PROVISION, StackOrder.WAIT]):
+        "Add Stack orders to the StackGroups orders"
+        for order in orders:
+            stack_order = self.pop_stack_order(stack, order)
+            self.stack_orders.append(stack_order)
+        if not stack in self.stacks:
+            self.stacks.append(stack)
+
+    def get_stack_from_ref(self, ref):
+        "Returns a Stack whose stack_ref matches a given ref. Recursively searches all StackGroups."
+        for stack_obj in self.stacks:
+            if isinstance(stack_obj, StackGroup) == True:
+                # stack_obj is a StackGroup
+                stack = stack_obj.get_stack_from_ref(ref)
+                if stack != None:
+                    return stack
+            else:
+                # stack_obj is a Stack
+                stack_ref = stack_obj.stack_ref
+                if stack_ref and stack_ref != '' and ref.raw.find(stack_ref) != -1:
+                    if stack_ref == ref.ref or ref.ref.startswith(stack_ref + '.'):
+                        return stack_obj
+        # Nothing found, None returned
+        return None
+
+    def filtered_stack_action(self, stack, action_method):
+        "Call a stack action only if it falls within the scope"
+        if self.filter_config == None:
+            return action_method()
+        stack_ref = None
+        if ICloudFormationStack.providedBy(stack):
+            stack_ref = stack.template.config_ref
+        elif IBotoStack.providedBy(stack):
+            stack_ref = stack.resource.paco_ref_parts
+        # Exact match or append '.' otherwise foo.bar would match with foo.bar_bad
+        if stack_ref == self.filter_config or stack_ref.startswith(self.filter_config + '.'):
+            action_method()
+        else:
+            stack.log_action(action_method.__func__.__name__.capitalize(), 'Filtered')
+
+    # methods specific to CloudFormation Stacks
     def add_new_stack(
         self,
         aws_region,
@@ -119,192 +252,73 @@ class StackGroup():
 
         return stack
 
-    def add_stack_group(self, stack_group):
-        self.add_stack_order(stack_group)
+    # methods for BotoStacks
+    def add_new_boto_stack(
+        self,
+        aws_region,
+        resource,
+        stack_class,
+        account_ctx=None,
+        stack_tags=None,
+        stack_hooks=None,
+        stack_orders=None,
+        change_protected=None,
+        extra_context={},
+        set_resource_stack=False,
+    ):
+        "Creates an API Stack and adds it to the StackGroup"
+        if account_ctx == None:
+            account_ctx = self.account_ctx
+        if stack_orders == None:
+            stack_orders = [StackOrder.PROVISION, StackOrder.WAIT]
 
-    def get_aws_name(self):
-        name = '-'.join([self.controller.get_aws_name(), self.aws_name])
-        return name
+        stack = stack_class(
+            self.paco_ctx,
+            account_ctx,
+            self,
+            resource,
+            aws_region=aws_region,
+            stack_tags=stack_tags,
+            hooks=stack_hooks,
+            change_protected=change_protected,
+            extra_context=extra_context,
+        )
+        self.add_stack_order(stack, stack_orders)
 
-    def new_state(self):
-        state = {
-            'stack_names': [],
-            'account_names': [],
-            'regions': []
-        }
-        return state
+        # initialize the stack
+        stack.init()
 
-    def load_state(self):
-        if os.path.isfile(self.state_filepath) == False:
-            return self.new_state()
-        with open(self.state_filepath, "r") as stream:
-            state = yaml.load(stream)
-        if state == None:
-            return self.new_state()
-        return state
+        # make the stack available to the model
+        # this only happens when there is one primary stack representing the resource and is
+        # requested explicitly or the Class name matches the YAML resource type.
+        # type: ACM --> stack_class ACMBotoStack
+        resource_type_name = stack_class.__name__[:-len('BotoStack')]
+        if set_resource_stack or resource.__class__.__name__ == resource_type_name:
+            resource.stack = stack
 
-    def gen_state(self):
-        state = self.new_state()
-        for stack in self.stacks:
-            state['stack_names'].append(stack.get_name())
-            state['account_names'].append(stack.account_ctx.get_name())
-            state['regions'].append(stack.aws_region)
-
-        return state
-
-    def filtered_stack_action(self, stack, action_method):
-        if self.filter_config != None:
-            # Exact match or append '.' otherwise we might match
-            # foo.bar wtih foo.bar_bad
-            if stack.template.config_ref == self.filter_config or \
-                stack.template.config_ref.startswith(self.filter_config+'.'):
-                action_method()
-            else:
-                stack.log_action(
-                    action_method.__func__.__name__.capitalize(),
-                    'Filtered'
-                )
+        if not hasattr(resource, 'is_enabled'):
+            enabled = True
         else:
-            action_method()
+            enabled = resource.is_enabled()
+        self.paco_ctx.log_action_col(
+            "Init",
+            resource_type_name,
+            account_ctx.name + '.' + aws_region,
+            "stack: " + stack.get_name(),
+            enabled=enabled
+        )
 
-    def validate(self):
-        # Loop through stacks and validate each
-        for order_item in self.stack_orders:
-            if order_item.order == StackOrder.PROVISION:
-                if isinstance(order_item.stack, StackGroup):
-                    order_item.stack.validate()
-                else:
-                    self.filtered_stack_action(
-                        order_item.stack,
-                        order_item.stack.validate
-                    )
+        # Add Paco-Stack-Name tag
+        if hasattr(stack, 'tags'):
+            stack.tags.add_tag('Paco-Stack-Name', stack.get_name())
+        # Log hooks
+        stack.hooks.log_hooks()
 
-    def provision(self):
-        "Loop through stacks and provision each one"
-        wait_last_list = []
-        for order_item in self.stack_orders:
-            if order_item.order == StackOrder.PROVISION:
-                if isinstance(order_item.stack, StackGroup):
-                    # Nested StackGroup
-                    order_item.stack.provision()
-                else:
-                    self.filtered_stack_action(
-                        order_item.stack,
-                        order_item.stack.provision
-                    )
-            elif isinstance(order_item.stack, StackGroup):
-                # Nested StackGroup
-                pass
-            elif order_item.order == StackOrder.WAIT:
-                # Nested StackGroup
-                if order_item.stack.cached == False:
-                    order_item.stack.wait_for_complete()
-            elif order_item.order == StackOrder.WAITLAST:
-                wait_last_list.append(order_item)
+        # add StackHooks set on the model
+        if hasattr(resource, '_stack_hooks') and resource._stack_hooks != None and \
+            hasattr(resource, 'stack') and resource.stack != None:
+            for stack_hook in resource._stack_hooks:
+                stack.add_hooks(stack_hook)
 
-        for order_item in wait_last_list:
-            if order_item.stack.cached == False:
-                order_item.stack.wait_for_complete()
+        return stack
 
-    def delete(self):
-        "Loop through stacks and deletes each one"
-        for order_item in reversed(self.stack_orders):
-            if order_item.order == StackOrder.PROVISION:
-                if isinstance(order_item.stack, StackGroup):
-                    # Nested StackGroup
-                    order_item.stack.delete()
-                else:
-                    self.filtered_stack_action(
-                        order_item.stack,
-                        order_item.stack.delete
-                    )
-
-        for order_item in reversed(self.stack_orders):
-            if order_item.order == StackOrder.WAIT:
-                if isinstance(order_item.stack, StackGroup) == True:
-                    continue
-                order_item.stack.wait_for_complete()
-
-    def get_stack_order(self, stack, order):
-        for stack_order in self.stack_orders:
-            if stack_order.stack == stack and stack_order.order == order:
-                return stack_order
-        return None
-
-    def pop_stack_order(self, stack, order):
-        stack_order = self.get_stack_order(stack, order)
-        if stack_order == None:
-            # If one does not exist, create a new one
-            return StackOrderItem(order, stack)
-        self.stack_orders.remove(stack_order)
-        return stack_order
-
-    def add_stack_order(self, stack, orders=[StackOrder.PROVISION, StackOrder.WAIT]):
-        "Add Stack orders to the StackGroups orders"
-        for order in orders:
-            stack_order = self.pop_stack_order(stack, order)
-            self.stack_orders.append(stack_order)
-        if not stack in self.stacks:
-            self.stacks.append(stack)
-
-    def get_stack_from_ref(self, ref):
-        "Returns a Stack whose stack_ref matches a given ref. Recursively searches all StackGroups."
-        for stack_obj in self.stacks:
-            if isinstance(stack_obj, StackGroup) == True:
-                # stack_obj is a StackGroup
-                stack = stack_obj.get_stack_from_ref(ref)
-                if stack != None:
-                    return stack
-            else:
-                # stack_obj is a Stack
-                stack_ref = stack_obj.stack_ref
-                if stack_ref and stack_ref != '' and ref.raw.find(stack_ref) != -1:
-                    if stack_ref == ref.ref or ref.ref.startswith(stack_ref + '.'):
-                        return stack_obj
-        # Nothing found, None returned
-        return None
-
-
-    # Stacks can be created, then a user can remove the configuration for those Stacks.
-    # This code is an attempt to detect those Stacks and offer to delete them ... but it's
-    # not robust and not currently being used
-    def update_state(self):
-        "Detect Paco Stacks which do not match configuration and offer to delete them"
-        cur_state = self.load_state()
-        new_state = self.gen_state()
-        deleted_stacks = []
-        for stack_name in cur_state['stack_names']:
-            if stack_name not in new_state['stack_names']:
-                stack_idx = cur_state['stack_names'].index(stack_name)
-                deleted_stacks.append(stack_idx)
-
-        if len(deleted_stacks) > 0:
-            print("The following Stacks are no longer needed:\n")
-            for idx in deleted_stacks:
-                print("   - %s.%s: %s" % (
-                    cur_state['account_names'][idx],
-                    cur_state['regions'][idx],
-                    cur_state['stack_names'][idx]
-                ))
-            answer = self.paco_ctx.input_confirm_action("\nDelete them from your AWS environment?")
-            if answer == True:
-                for idx in deleted_stacks:
-                    self.delete_stack(
-                        cur_state['account_names'][idx],
-                        cur_state['regions'][idx],
-                        cur_state['stack_names'][idx]
-                    )
-
-                    # TODO: Wait for the stacks
-
-        with open(self.state_filepath, "w") as output_fd:
-                yaml.dump(  data=new_state,
-                            stream=output_fd)
-
-    def delete_stack(self, account_name, region, stack_name):
-        pass
-        # XXX: not used
-        # Delete Stack
-        #account_ctx = self.paco_ctx.get_account_context(account_name=account_name)
-        #cf_client = account_ctx.get_aws_client('cloudformation', region)
-        #cf_client.delete_stack( StackName=stack_name )

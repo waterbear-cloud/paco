@@ -9,8 +9,9 @@ class ACMBotoStack(BotoStack):
     def init(self):
         self.cert_config_map = {}
         self.cert_config_list = []
-        self.register_stack_output_config(self.stack_ref + '.arn', 'ViewerCertificateArn')
         self.cert_arn_cache = None
+        self.register_stack_output_config(self.stack_ref + '.arn', 'ViewerCertificateArn')
+        self.enabled = self.resource.is_enabled()
 
     def get_outputs_value(self, key):
         if self.cert_arn_cache != None:
@@ -83,25 +84,8 @@ class ACMBotoStack(BotoStack):
 class ACMResourceEngine(ResourceEngine):
 
     def init_resource(self):
-        # create a BotoStack, initialize and return it
-        acmstack = ACMBotoStack(
-            self.paco_ctx,
-            self.account_ctx,
-            None, # ToDo: replace with a BotoStackGroup
-            self.resource,
-            aws_region=self.aws_region,
-        )
-        acmstack.init()
-        self.resource.stack = acmstack
-
-        # ToDo: replace with a BotoStackGroup
-        # register to be provisioned
-        acm_ctl = self.paco_ctx.get_controller('ACM')
-        cert_group_id = self.resource.paco_ref_parts
-        acm_ctl.add_certificate_config(
-            self.account_ctx,
+        self.stack_group.add_new_boto_stack(
             self.aws_region,
-            cert_group_id,
-            self.res_id,
-            self.resource
+            self.resource,
+            ACMBotoStack,
         )

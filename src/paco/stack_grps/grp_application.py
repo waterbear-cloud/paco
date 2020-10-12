@@ -1,9 +1,6 @@
-from paco.stack import StackGroup, StackTags
-from paco.core.yaml import YAML
+from paco.stack import StackGroup
 from paco.application.app_engine import ApplicationEngine
 
-yaml=YAML()
-yaml.default_flow_sytle = False
 
 class ApplicationStackGroup(StackGroup):
     def __init__(
@@ -42,10 +39,6 @@ class ApplicationStackGroup(StackGroup):
         self.app_engine.init()
 
     def provision(self):
-        # Provision any SSL Cerificates
-        acm_ctl = self.paco_ctx.get_controller('ACM')
-        acm_ctl.provision()
-
         # Provison Application Group
         super().provision()
 
