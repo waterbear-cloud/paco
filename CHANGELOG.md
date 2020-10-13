@@ -11,6 +11,10 @@ Changelog for Paco
 
 ### Added
 
+- `paco provision` has a new `-a, --auto-publish-code` option which will compare the md5 hash of a
+  local or directory or file for Lambad resources that use a `zipfile:` with a local path. If the loal
+  code is changed, a new artifact will be zipped and uploaded to an S3 Bucket.
+
 - CloudFront Outputs for `id` and `domain_name`.
 
 - Support for LambdaFunctionAssociations for CloudFront.
