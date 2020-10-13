@@ -35,6 +35,8 @@ Changelog for Paco
 
 ### Changed
 
+- New `BotoStack` with `ACM` and `IoTPolicy` Resources types.
+
 - `set_parameter` for `paso.stack.Stack` will now replace a Parameter with the same name. This allows
   Parameters to be changed by hooks.
 

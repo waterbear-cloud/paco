@@ -7,6 +7,8 @@ class ACMBotoStack(BotoStack):
 
     def init(self):
         "Prepare Resource State"
+        if self.resource.region != None:
+            self.aws_region = self.resource.region
         self.register_stack_output_config(self.stack_ref + '.arn', 'ViewerCertificateArn')
         self.enabled = self.resource.is_enabled()
 
