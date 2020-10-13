@@ -152,7 +152,6 @@ def marshal_value_to_cfn_yaml(value):
     elif type(value) == str:
         return value
     else:
-        breakpoint()
         raise PacoException(
             PacoErrorCode.Unknown,
             message="Parameter could not be cast to a YAML value: {}".format(type(value))

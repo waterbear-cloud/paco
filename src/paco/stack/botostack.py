@@ -42,7 +42,31 @@ class BotoStack(BaseStack):
         self.extra_context = extra_context
         self.enabled = enabled
 
+    def provision(self):
+        "Provision Resource"
+        raise NotImplemented
+
+    def validate(self):
+        "Validate Resource"
+        pass
+
+    def delete(self):
+        "Delete Resource"
+        pass
+
+    def get_outputs(self):
+        "Get all Outputs of a Resource"
+        raise NotImplemented
+
     def get_outputs_value(self, key):
+        "Get Stack OutputValue by Stack OutputKey"
+        if key in self.outputs_value_cache.keys():
+            return self.outputs_value_cache[key]
+        self.outputs_value_cache = self.get_outputs()
+        return self.outputs_value_cache[key]
+
+    def get_status(self):
+        "Status of the Stack in AWS"
         raise NotImplemented
 
     def get_name(self):

@@ -38,12 +38,3 @@ class ApplicationStackGroup(StackGroup):
         )
         self.app_engine.init()
 
-    def provision(self):
-        # Provison Application Group
-        super().provision()
-
-        # Provision any IoT Policies
-        # ToDo: provision these according to their order instead of last
-        # so that subsequent resources could use an IoTPolicy output
-        iotpolicy_ctl = self.paco_ctx.get_controller('IoTPolicy')
-        iotpolicy_ctl.provision(scope=self.app.paco_ref_parts)

@@ -84,7 +84,6 @@ class ApplicationEngine():
                     resource,
                     StackTags(stack_tags),
                 )
-                #resource_engine.log_init_status()
                 resource_engine.init_resource()
                 resource_engine.init_monitoring()
 

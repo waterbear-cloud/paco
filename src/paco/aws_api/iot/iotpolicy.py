@@ -52,18 +52,18 @@ class IoTPolicyClient():
         return self._document
 
     def policy_exists(self):
+        "Return the Arn of the IoT Policy or None"
         try:
             response = self.iot_client.get_policy(
                 policyName=self.iotpolicy.get_aws_name()
             )
             self.aws_state = response
-
+            return response['policyArn']
         except ClientError as e:
             if e.response['Error']['Code'] != 'ResourceNotFoundException':
                 raise e
             else:
-                return False
-        return True
+                return None
 
     def is_policy_document_same(self):
         if self.processed_document == self.aws_state['policyDocument']:
