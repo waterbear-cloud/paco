@@ -33,8 +33,13 @@ pip install awscli
 """,
 		'ubuntu_20': """apt-get update
 apt-get -y install python3-pip
-pip3 install awscli
+apt install awscli -y
 """,
+#		'ubuntu_20': """apt-get update
+#apt-get -y install python3-pip
+#pip3 install awscli
+#apt install awscli -y
+#""",
 		'centos': 'ec2lm_pip install awscli'
 	},
 	'install_wget': {
@@ -47,6 +52,16 @@ pip3 install awscli
 		'centos': 'yum install -y amazon-efs-utils cachefilesd',
 		'ubuntu': 'apt-get install cachefilesd -y',
         'ubuntu_16': """
+    apt-get install cachefilesd git binutils make -y
+    LB_DIR=$(pwd)
+    cd /tmp
+    git clone https://github.com/aws/efs-utils
+    cd efs-utils/
+    ./build-deb.sh
+    apt-get -y install ./build/amazon-efs-utils*deb
+    cd ${LB_DIR}
+""",
+        'ubuntu_20': """
     apt-get install cachefilesd git binutils make -y
     LB_DIR=$(pwd)
     cd /tmp
@@ -97,6 +112,7 @@ systemctl enable cachefilesd
 		'amazon': 'mount -a -t efs',
 		'ubuntu': 'mount -a -t nfs',
         'ubuntu_16': 'mount -a -t efs',
+        'ubuntu_20': 'mount -a -t efs',
 		'centos': 'mount -a -t nfs'
 	}
 
@@ -162,6 +178,11 @@ ssm_agent = {
         "install": "dpkg -i"
     },
     "ubuntu_16": {
+        "path": "/debian_amd64",
+        "object": "amazon-ssm-agent.deb",
+        "install": "dpkg -i"
+    },
+    "ubuntu_20": {
         "path": "/debian_amd64",
         "object": "amazon-ssm-agent.deb",
         "install": "dpkg -i"
