@@ -1,5 +1,4 @@
 from paco.cftemplates.tests import BaseTestProject
-from paco.cftemplates.ecs import ECS
 import troposphere
 import troposphere.ecs
 

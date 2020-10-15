@@ -1,6 +1,7 @@
 from botocore.exceptions import ClientError, WaiterError
 from copy import deepcopy
 from enum import Enum
+from paco.models.exceptions import InvalidPacoReference
 from paco import utils
 from paco.core.yaml import YAML
 from paco.core.exception import StackException, PacoErrorCode, PacoException, StackOutputException
@@ -25,6 +26,28 @@ log_next_header = None
 
 StackStatus = Enum('StackStatus', 'NONE DOES_NOT_EXIST CREATE_IN_PROGRESS CREATE_FAILED CREATE_COMPLETE ROLLBACK_IN_PROGRESS ROLLBACK_FAILED ROLLBACK_COMPLETE DELETE_IN_PROGRESS DELETE_FAILED DELETE_COMPLETE UPDATE_IN_PROGRESS UPDATE_COMPLETE_CLEANUP_IN_PROGRESS UPDATE_COMPLETE UPDATE_ROLLBACK_IN_PROGRESS UPDATE_ROLLBACK_FAILED UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS UPDATE_ROLLBACK_COMPLETE REVIEW_IN_PROGRESS')
 
+class StackOutputConfig():
+    def __init__(self, config_ref, key):
+        self.key = key
+        self.config_ref = config_ref
+
+    def get_config_dict(self, stack):
+        conf_dict = current = last_dict = {}
+        ref_part = None
+        ref_part_list = self.config_ref.split('.')
+        for ref_part in ref_part_list:
+            current[ref_part] = {}
+            last_dict = current
+            current = current[ref_part]
+
+        last_dict[ref_part]['__name__'] = stack.get_outputs_value(self.key)
+
+        return conf_dict
+
+    def __repr__(self):
+        return f'config_ref: {self.config_ref}, key: {self.key}'
+
+
 class StackOutputParam():
     """
     Holds a list of dicts describing a stack and the outputs that are required
@@ -47,7 +70,7 @@ class StackOutputParam():
         self.resolved_value = ""
         self.stack = stack
         self.param_template = param_template
-        self.ignore_changes = False
+        self.ignore_changes = ignore_changes
         if stack !=None and stack_output_key !=None:
             self.add_stack_output( stack, stack_output_key)
 
@@ -196,19 +219,22 @@ class StackHooks():
 
     def add(self, name, stack_action, stack_timing, hook_method, cache_method=None, hook_arg=None):
         "Add a hook"
-        hook = {
-            'name': name,
-            'method': hook_method,
-            'cache_method': cache_method,
-            'arg': hook_arg,
-            'stack_action': stack_action,
-            'stack_timing': stack_timing,
-            'stack': None,
-        }
-        self.hooks[stack_action][stack_timing].append(hook)
-        if self.stack != None:
-            if self.stack.template.enabled == True:
-                self.stack.log_action("Init", "Hook", message=": {}: {}: {}".format(name, stack_action, stack_timing))
+        if not isinstance(stack_action, list):
+            stack_action = [stack_action]
+        for action in stack_action:
+            hook = {
+                'name': name,
+                'method': hook_method,
+                'cache_method': cache_method,
+                'arg': hook_arg,
+                'stack_action': action,
+                'stack_timing': stack_timing,
+                'stack': None,
+            }
+            self.hooks[action][stack_timing].append(hook)
+            if self.stack != None:
+                if self.stack.template.enabled == True:
+                    self.stack.log_action("Init", "Hook", message=": {}: {}: {}".format(name, action, stack_timing))
 
     def merge(self, new_hooks):
         "Merge another StackHooks' hooks into this StackHooks' hooks"
@@ -327,6 +353,7 @@ class Stack():
         self.yaml_path = None
         self.applied_yaml_path = None
         self.parameters = []
+        self.parameters_dict = {}
         self.template_file_id = None
         self.build_folder = paco_ctx.build_path / "templates"
         self.stack_output_config_list = []
@@ -359,27 +386,6 @@ class Stack():
                 self._cfn_client_expired = False
             self._cfn_client = self.account_ctx.get_aws_client('cloudformation', self.aws_region, force=force)
         return self._cfn_client
-
-    @property
-    def stack_ref(self):
-        "The reference to the resource for the stack or a support resource"
-        if self.support_resource_ref_ext != None:
-            return self.resource.paco_ref_parts + '.' + self.support_resource_ref_ext
-        else:
-            return self.resource.paco_ref_parts
-
-    def get_outputs_key_from_ref(self, ref):
-        "Return a key for an output from a Reference object"
-        for stack_output_config in self.stack_output_config_list:
-            if stack_output_config.config_ref == ref.ref:
-                return stack_output_config.key
-        # raise an error if no key was found
-        message = self.get_stack_error_message()
-        message += "Error: Unable to find outputs key for ref: {}\n".format(ref.raw)
-        raise StackException(
-            PacoErrorCode.Unknown,
-            message=message
-        )
 
     def init_template_store_paths(self):
         new_file_path = pathlib.Path(self.get_yaml_path())
@@ -676,6 +682,7 @@ your cache may be out of sync. Try running again the with the --nocache option.
             ref.set_region(self.aws_region)
             ref_value = ref.resolve(self.paco_ctx.project, account_ctx=self.account_ctx)
             if ref_value == None:
+                ref.resolve(self.paco_ctx.project, account_ctx=self.account_ctx)
                 message = "Error: Unable to locate value for ref: {}\n".format(param_value)
                 if self.template != None:
                     message += "Template: {}\n".format(self.template.aws_name)
@@ -708,9 +715,11 @@ your cache may be out of sync. Try running again the with the --nocache option.
             )
             if param_entry == None:
                 raise StackException(PacoErrorCode.Unknown, message = "set_parameter says NOOOOOOOOOO")
-        # Append the parameter to our list
-        self.parameters.append(param_entry)
 
+        # Add or update the Parameter
+        # Parameters can be updated after initialization by StackHooks
+        self.parameters_dict[param_key] = param_entry
+        self.parameters = list(self.parameters_dict.values())
 
     def set_list_parameter(self, param_name, param_list, ref_att=None):
         "Sets a parameter from a list as a comma-separated value"
@@ -747,21 +756,6 @@ your cache may be out of sync. Try running again the with the --nocache option.
             for param_ref, value in value_list:
                 param_list.append(value)
             self.set_parameter(param_name, ','.join(param_list))
-
-    def get_stack_outputs_key_from_ref(self, ref, stack=None):
-        "Gets the output key of a project reference"
-        if isinstance(ref, references.Reference) == False:
-            raise StackException(
-                PacoErrorCode.Unknown,
-                message="Invalid Reference object")
-        if stack == None:
-            stack = ref.resolve(self.paco_ctx.project)
-        output_key = stack.get_outputs_key_from_ref(ref)
-        if output_key == None:
-            raise StackException(
-                PacoErrorCode.Unknown,
-                message="Unable to find outputkey for ref: %s" % ref.raw)
-        return output_key
 
     def getFromSquareBrackets(self, s):
         return re.findall(r"\['?([A-Za-z0-9_]+)'?\]", s)
@@ -827,7 +821,6 @@ your cache may be out of sync. Try running again the with the --nocache option.
         # this method is responsible for printing an appropriate warning. This warning
         # should include a newline above and below this warning and be prefixed with "WARNING: "
         return None
-
 
     def validate_template_changes(self):
         if self.paco_ctx.disable_validation == True:
@@ -1005,45 +998,6 @@ your cache may be out of sync. Try running again the with the --nocache option.
             return True
         return False
 
-    def get_outputs_value(self, key):
-        "Get Stack OutputValue by Stack OutputKey"
-        if key in self.outputs_value_cache.keys():
-            return self.outputs_value_cache[key]
-
-        while True:
-            try:
-                stack_metadata = self.cfn_client.describe_stacks(StackName=self.get_name())
-            except ClientError as e:
-                if e.response['Error']['Code'] == 'ValidationError' and e.response['Error']['Message'].find("does not exist") != -1:
-                    message = self.get_stack_error_message()
-                    message += 'Could not describe stack to get value for Outputs Key: {}\n'.format(key)
-                    message += 'Account: ' + self.account_ctx.get_name()
-                    raise StackException(PacoErrorCode.StackDoesNotExist, message = message)
-                elif e.response['Error']['Code'] == 'ExpiredToken':
-                    self.handle_token_expired()
-                    continue
-                else:
-                    raise StackException(PacoErrorCode.Unknown, message=e.response['Error']['Message'])
-            break
-
-        if 'Outputs' not in stack_metadata['Stacks'][0].keys():
-            # this error should be caught be the calling code and re-raised with more context
-            # for example, if an ASG is looking for an EFS Id output, then the user needs to be
-            # informed that the ASG stack is failing to in find the output from the EFS stack
-            raise StackOutputException("Could not find the value for {}".format(key))
-
-        for output in stack_metadata['Stacks'][0]['Outputs']:
-            if output['OutputKey'] == key:
-                self.outputs_value_cache[key] = output['OutputValue']
-                return self.outputs_value_cache[key]
-
-        message = self.get_stack_error_message()
-        message += "Could not find Stack Output {} in stack_metadata:\n\n{}\n".format(key, stack_metadata)
-        raise StackException(
-            PacoErrorCode.StackOutputMissing,
-            message=message
-        )
-
     def gen_cache_id(self):
         """Create an MD5 cache id that is an aggregate of the stack's template, parameter values,
         hook cache ids, tags and termination protection setting."""
@@ -1133,22 +1087,6 @@ your cache may be out of sync. Try running again the with the --nocache option.
 
         return False
 
-    def save_stack_outputs(self):
-        "Process and save Stack Outputs to disk and to the StackOutputsManager"
-        # process stack output config
-        self.output_config_dict = {}
-        for output_config in self.stack_output_config_list:
-            config_dict = output_config.get_config_dict(self)
-            self.output_config_dict = dict_of_dicts_merge(self.output_config_dict, config_dict)
-        # save to disk cache
-        with open(self.output_filename, "w") as output_fd:
-            yaml.dump(
-                data=self.output_config_dict,
-                stream=output_fd
-            )
-        # add to StackOutputsManager
-        stack_outputs_manager.add(self.paco_ctx.outputs_path, self.output_config_dict)
-
     def stack_success(self):
         "Actions to perform when a stack action has been successfully finished"
         if self.action != "delete":
@@ -1202,11 +1140,11 @@ your cache may be out of sync. Try running again the with the --nocache option.
             self.log_action("Provision", "Protected")
             return
         self.action = "update"
+        self.hooks.run("update", "pre", self)
+        self.log_action("Provision", "Update")
         stack_parameters = self.generate_stack_parameters(action=self.action)
         self.confirm_stack_parameter_changes(stack_parameters)
         self.validate_template_changes()
-        self.hooks.run("update", "pre", self)
-        self.log_action("Provision", "Update")
         while True:
             try:
                 self.cfn_client.update_stack(
@@ -1546,3 +1484,134 @@ your cache may be out of sync. Try running again the with the --nocache option.
                 self.hooks.run("delete", "post", self)
 
             break
+
+    # Stack Outputs and References
+    @property
+    def stack_ref(self):
+        "The reference to the resource for the stack or a support resource"
+        if self.support_resource_ref_ext != None:
+            return self.resource.paco_ref_parts + '.' + self.support_resource_ref_ext
+        else:
+            return self.resource.paco_ref_parts
+
+    def get_parameter_value_by_key(self, param_key):
+        "Return the value of a Parameter named by it's key"
+        for param in self.parameters:
+            if param.key == param_key:
+                return param.value
+        return None
+
+    def get_output_value_by_ref_extension(self, ref_extension):
+        """
+        Return the value of a Stack Output as named by it's reference suffix.
+
+        For example, given a Stack for a Cognito UserPool with the reference:
+
+          'service.login.dev.us-east-1.auth.groups.cog.resources.userpool'
+
+        Then that reference with the suffix '.arn':
+
+          'service.login.dev.us-east-1.auth.groups.cog.resources.userpool.arn'
+
+        Would return the Stack Output with the key 'CognitoUserPoolArn' of that UserPool.
+        """
+        ref = f'paco.ref {self.stack_ref}.{ref_extension}'
+        if not references.is_ref(ref):
+            raise InvalidPacoReference(f"Can not resolve Parameter value for reference, as it is not well-formed:\n{ref}")
+        key = self.get_outputs_key_from_ref(references.Reference(ref))
+        return self.get_outputs_value(key)
+
+    def get_outputs_key_from_ref(self, ref):
+        "Return a key for an output from a Reference object"
+        for stack_output_config in self.stack_output_config_list:
+            if stack_output_config.config_ref == ref.ref:
+                return stack_output_config.key
+        # raise an error if no key was found
+        message = self.get_stack_error_message()
+        message += "Error: Unable to find outputs key for ref: {}\n".format(ref.raw)
+        raise StackException(
+            PacoErrorCode.Unknown,
+            message=message
+        )
+
+    def register_stack_output_config(self, config_ref, stack_output_key):
+        "Register Stack Output"
+        if config_ref.startswith('paco.ref'):
+            raise PacoException(
+                PacoErrorCode.Unknown,
+                message='Registered stack output config reference must not start with paco.ref: ' + config_ref
+            )
+        stack_output_config = StackOutputConfig(config_ref, stack_output_key)
+        self.stack_output_config_list.append(stack_output_config)
+
+    def get_stack_outputs_key_from_ref(self, ref, stack=None):
+        "Gets the output key of a project reference"
+        # ToDo: refactor - this should be a function and not a Stack method as it
+        # doesn't apply to this Stack
+        if isinstance(ref, references.Reference) == False:
+            raise StackException(
+                PacoErrorCode.Unknown,
+                message="Invalid Reference object")
+        if stack == None:
+            stack = ref.resolve(self.paco_ctx.project)
+        output_key = stack.get_outputs_key_from_ref(ref)
+        if output_key == None:
+            raise StackException(
+                PacoErrorCode.Unknown,
+                message="Unable to find outputkey for ref: %s" % ref.raw)
+        return output_key
+
+    def get_outputs_value(self, key):
+        "Get Stack OutputValue by Stack OutputKey"
+        if key in self.outputs_value_cache.keys():
+            return self.outputs_value_cache[key]
+
+        while True:
+            try:
+                stack_metadata = self.cfn_client.describe_stacks(StackName=self.get_name())
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'ValidationError' and e.response['Error']['Message'].find("does not exist") != -1:
+                    message = self.get_stack_error_message()
+                    message += 'Could not describe stack to get value for Outputs Key: {}\n'.format(key)
+                    message += 'Account: ' + self.account_ctx.get_name()
+                    raise StackException(PacoErrorCode.StackDoesNotExist, message = message)
+                elif e.response['Error']['Code'] == 'ExpiredToken':
+                    self.handle_token_expired()
+                    continue
+                else:
+                    raise StackException(PacoErrorCode.Unknown, message=e.response['Error']['Message'])
+            break
+
+        if 'Outputs' not in stack_metadata['Stacks'][0].keys():
+            # this error should be caught be the calling code and re-raised with more context
+            # for example, if an ASG is looking for an EFS Id output, then the user needs to be
+            # informed that the ASG stack is failing to in find the output from the EFS stack
+            raise StackOutputException("Could not find the value for {}".format(key))
+
+        for output in stack_metadata['Stacks'][0]['Outputs']:
+            if output['OutputKey'] == key:
+                self.outputs_value_cache[key] = output['OutputValue']
+                return self.outputs_value_cache[key]
+
+        message = self.get_stack_error_message()
+        message += "Could not find Stack Output {} in stack_metadata:\n\n{}\n".format(key, stack_metadata)
+        raise StackException(
+            PacoErrorCode.StackOutputMissing,
+            message=message
+        )
+
+    def save_stack_outputs(self):
+        "Process and save Stack Outputs to disk and to the StackOutputsManager"
+        # process stack output config
+        self.output_config_dict = {}
+        for output_config in self.stack_output_config_list:
+            config_dict = output_config.get_config_dict(self)
+            self.output_config_dict = dict_of_dicts_merge(self.output_config_dict, config_dict)
+        # save to disk cache
+        with open(self.output_filename, "w") as output_fd:
+            yaml.dump(
+                data=self.output_config_dict,
+                stream=output_fd
+            )
+        # add to StackOutputsManager
+        stack_outputs_manager.add(self.paco_ctx.outputs_path, self.output_config_dict)

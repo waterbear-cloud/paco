@@ -474,6 +474,48 @@ Application Engine : A template describing an application
 
 *Base Schemas* `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Notifiable`_, `Title`_
 
+
+VPCConfiguration
+-----------------
+
+
+
+.. _VPCConfiguration:
+
+.. list-table:: :guilabel:`VPCConfiguration`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - security_groups
+      - List<PacoReference>
+      - List of VPC Security Group Ids
+      - Paco Reference to `SecurityGroup`_.
+      - 
+    * - segments
+      - List<PacoReference>
+      - VPC Segments to attach the function
+      - Paco Reference to `Segment`_.
+      - 
+
+*Base Schemas* `Named`_, `Title`_
+
+
+HostedZone
+-----------
+
+Base interface for IRoute53HostedZone and IPrivateHostedZone
+    * -
+      -
+      -
+      -
+      -
+
+
 Function
 --------
 
@@ -486,6 +528,10 @@ A callable function that returns a value.
 .. _cloudwatchlogsets: yaml-monitoring.html#cloudwatchlogsets
 
 .. _resourcegroups: yaml-netenv.html#resourcegroups
+
+.. _securitygroup: yaml-netenv.html#securitygroup
+
+.. _segment: yaml-netenv.html#segment
 
 .. _metric: yaml-monitoring.html#metric
 

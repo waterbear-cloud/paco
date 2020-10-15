@@ -81,7 +81,7 @@ def hash_smaller(text, max_len=99, suffix=False):
         return text[:hex_len] + '-' + hash_sig
     return hash_sig + '-'  + text[-hex_len:]
 
-def md5sum(filename=None, str_data=None):
+def md5sum(filename=None, str_data=None, bytes_data=None):
     """Computes and returns an MD5 sum in hexdigest format on a file or string"""
     d = hashlib.md5()
     if filename != None:
@@ -90,6 +90,8 @@ def md5sum(filename=None, str_data=None):
                 d.update(buf)
     elif str_data != None:
         d.update(bytearray(str_data, 'utf-8'))
+    elif bytes_data != None:
+        d.update(bytes_data)
     else:
         raise StackException(PacoErrorCode.Unknown, message="cli: md5sum: Filename or String data expected")
 

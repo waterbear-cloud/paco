@@ -1,10 +1,12 @@
-from awacs.aws import PolicyDocument, Principal, Statement, Allow, Action, Condition, ForAnyValueStringLike
+from awacs.aws import PolicyDocument, Principal, Statement, Allow, Action, Condition, ForAnyValueStringLike, Policy
 from awacs.aws import StringEquals
 from paco.models.references import Reference
 from paco.models.schemas import ICognitoUserPool, get_parent_by_interface
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.cftemplates.iam_roles import role_to_troposphere
+from paco.stack import StackHooks
 from paco.utils import md5sum
+import awacs.sns
 import troposphere.cognito
 import troposphere.iam
 
@@ -12,15 +14,55 @@ import troposphere.iam
 class CognitoUserPool(StackTemplate):
     def __init__(self, stack, paco_ctx):
         cup = stack.resource
-        super().__init__(stack, paco_ctx)
+        super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_IAM"])
         self.set_aws_name('CUP', self.resource_group_name, self.resource.name)
 
         self.init_template('Cognito User Pool')
         if not cup.is_enabled():
             return
 
-        # Cognito User Pool
         cfn_export_dict = cup.cfn_export_dict
+
+        # SNS Role for SMS
+        if cup.mfa != 'off':
+            # CloudFormation requires an SMS Role even if only software tokens are used
+            sms_role_resource = troposphere.iam.Role(
+                'CognitoSMSRole',
+                AssumeRolePolicyDocument=PolicyDocument(
+                    Statement=[
+                        Statement(
+                            Effect=Allow,
+                            Principal=Principal('Service',"cognito-idp.amazonaws.com"),
+                            Action=[Action('sts', 'AssumeRole')],
+                            Condition=Condition([
+                                StringEquals({"sts:ExternalId": cup.paco_ref_parts}),
+                            ]),
+                        ),
+                    ],
+                ),
+                Policies=[
+                    troposphere.iam.Policy(
+                        PolicyName="AllowSMS",
+                        PolicyDocument=Policy(
+                            Version='2012-10-17',
+                            Statement=[
+                                Statement(
+                                    Effect=Allow,
+                                    Action=[awacs.sns.Publish],
+                                    Resource=['*'],
+                                )
+                            ]
+                        )
+                    )
+                ],
+            )
+            self.template.add_resource(sms_role_resource)
+            cfn_export_dict['SmsConfiguration'] = {
+                'ExternalId': cup.paco_ref_parts,
+                'SnsCallerArn': troposphere.GetAtt(sms_role_resource, "Arn")
+            }
+
+        # Cognito User Pool
         cup_resource = troposphere.cognito.UserPool.from_dict(
             'CognitoUserPool',
             cfn_export_dict
@@ -79,6 +121,47 @@ class CognitoUserPool(StackTemplate):
                     UserPoolId=troposphere.Ref(cup_resource)
                 )
                 self.template.add_resource(domain_resource)
+
+        # UI Customizations
+        if cup.ui_customizations != None:
+            if cup.ui_customizations.logo_file != None or cup.ui_customizations.css_file != None:
+                # Add a Hook to set UI Customizations
+                # CloudFormation doesn't support the Logo customization
+                # Paco also uses the hook for CSS (this could be migration to the CloudFormation ~shrug~)
+                stack_hooks = StackHooks()
+                stack_hooks.add(
+                    name='SetCognitoUICustomizations',
+                    stack_action=['create','update'],
+                    stack_timing='post',
+                    hook_method=self.add_ui_customizations_hook,
+                    cache_method=self.add_ui_customizations_cache,
+                    hook_arg=cup,
+                )
+                stack.add_hooks(stack_hooks)
+
+    def add_ui_customizations_cache(self, hook, cup):
+        value = ''
+        if cup.ui_customizations.logo_file != None:
+            value += md5sum(bytes_data=cup.ui_customizations.logo_file)
+        if cup.ui_customizations.css_file != None:
+            value += md5sum(str_data=cup.ui_customizations.css_file)
+        return value
+
+    def add_ui_customizations_hook(self, hook, cup):
+        cup_id = cup.stack.get_output_value_by_ref_extension('id')
+        # ToDo: add support for per app_client customizations
+        # app_client_id = cup.stack.get_output_value_by_ref_extension('app_clients.<xxx≥.id')
+        # ClientId=app_client_id,
+        client = self.account_ctx.get_aws_client('cognito-idp', self.aws_region)
+        args_dict = {
+            'UserPoolId': cup_id,
+        }
+        if cup.ui_customizations.css_file != None:
+            args_dict['CSS'] = cup.ui_customizations.css_file
+        if cup.ui_customizations.css_file != None:
+            args_dict['ImageFile'] = cup.ui_customizations.logo_file
+        client.set_ui_customization(**args_dict)
+
 
 class CognitoIdentityPool(StackTemplate):
     def __init__(self, stack, paco_ctx):

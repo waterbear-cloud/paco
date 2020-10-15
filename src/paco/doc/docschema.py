@@ -56,6 +56,10 @@ A generic placeholder for any schema.
 
 {IApplicationEngine}
 
+{IVPCConfiguration}
+
+{IHostedZone}
+
 Function
 --------
 
@@ -68,6 +72,10 @@ A callable function that returns a value.
 .. _cloudwatchlogsets: yaml-monitoring.html#cloudwatchlogsets
 
 .. _resourcegroups: yaml-netenv.html#resourcegroups
+
+.. _securitygroup: yaml-netenv.html#securitygroup
+
+.. _segment: yaml-netenv.html#segment
 
 .. _metric: yaml-monitoring.html#metric
 
@@ -252,7 +260,11 @@ IAM Users can be managed, see `Managing IAM Users with Paco`_.
 
 {IIAMUserPermissions}
 
+{IBaseRole}
+
 {IRole}
+
+{IRoleDefaultEnabled}
 
 {IAssumeRolePolicy}
 
@@ -808,12 +820,38 @@ as part of an Application.
 
 {ICloudFrontCookies}
 
+{ICloudFrontLambdaFunctionAssocation}
+
 
 {ICodeDeployApplication}
 
 {ICodeDeployDeploymentGroups}
 
 {ICodeDeployDeploymentGroup}
+
+
+{ICognitoUserPool}
+
+{ICognitoInviteMessageTemplates}
+
+{ICognitoUserPoolClients}
+
+{ICognitoUserPoolClient}
+
+{ICognitoEmailConfiguration}
+
+{ICognitoUserPoolPasswordPolicy}
+
+{ICognitoUserPoolSchemaAttribute}
+
+{ICognitoUICustomizations}
+
+{ICognitoUserCreation}
+
+
+{ICognitoIdentityPool}
+
+{ICognitoIdentityProvider}
 
 
 {IDeploymentPipeline}
@@ -857,13 +895,16 @@ as part of an Application.
 
 {IECRRepository}
 
+{IECRRepositoryPermission}
 
 {IECSCluster}
 
 
-{IECSService}
+{IECSServices}
 
 {IECSServicesContainer}
+
+{IECSService}
 
 {IECSTaskDefinitions}
 
@@ -892,6 +933,12 @@ as part of an Application.
 {IECSLogging}
 
 {IECSVolumesFrom}
+
+{IECSTargetTrackingScalingPolicies}
+
+{IECSTargetTrackingScalingPolicy}
+
+{IServiceVPCConfiguration}
 
 {IECSMountPoint}
 
@@ -935,6 +982,8 @@ An unconstrainted set of key-value pairs used to set advanced options for Elasti
 
 {ILambdaVariable}
 
+{ILambdaAtEdgeConfiguration}
+
 
 {ILBApplication}
 
@@ -952,7 +1001,13 @@ An unconstrainted set of key-value pairs used to set advanced options for Elasti
 
 {ITargetGroup}
 
+
 {IPinpointApplication}
+
+{IPinpointSMSChannel}
+
+{IPinpointEmailChannel}
+
 
 {IIoTTopicRule}
 
@@ -1274,6 +1329,8 @@ Console to switch between performance and debug configuration quickl in an emerg
 
 .. _role: yaml-global-resources.html#role
 
+.. _roledefaultenabled: yaml-global-resources.html#roledefaultenabled
+
 .. _ec2keypair: yaml-global-resources.html#ec2keypair
 
 .. _secretsmanagersecret: yaml-netenv#secretsmanagersecret
@@ -1295,6 +1352,11 @@ Console to switch between performance and debug configuration quickl in an emerg
 .. _cloudwatchlogretention: yaml-monitoring.html#cloudwatchlogretention
 
 .. _statement: yaml-global-resources.html#statement
+
+.. _vpcconfiguration: yaml-base.html#vpcconfiguration
+
+.. _hostedzone: yaml-base.html#hostedzone
+
 
 """
 
@@ -1600,6 +1662,8 @@ MINOR_SCHEMAS = {
     'IASGRollingUpdatePolicy': None,
     'IECSASGConfiguration': None,
     'IECSCapacityProvider': None,
+    'IECSTargetTrackingScalingPolicies': None,
+    'IECSTargetTrackingScalingPolicy': None,
     'ISSHAccess': None,
     'IListener': None,
     'ITargetGroup': None,
@@ -1632,6 +1696,7 @@ MINOR_SCHEMAS = {
     'ILambdaEnvironment': None,
     'ILambdaVpcConfig': None,
     'ILambdaVariable': None,
+    'ILambdaAtEdgeConfiguration': None,
     'IS3BucketPolicy': None,
     'IS3StaticWebsiteHosting': None,
     'IS3StaticWebsiteHostingRedirectRequests': None,
@@ -1650,6 +1715,7 @@ MINOR_SCHEMAS = {
     'ICloudFrontDefaultCacheBehavior': None,
     'ICloudFrontForwardedValues': None,
     'ICloudFrontCookies': None,
+    'ICloudFrontLambdaFunctionAssocation': None,
     'ICloudFrontDefaultCacheBehavior': None,
     'ICodePipelineStages': None,
     'ICodePipelineStage': None,
@@ -1682,6 +1748,7 @@ MINOR_SCHEMAS = {
     'IElastiCacheRedis': None,
     'IElasticsearchCluster': None,
     'IECSServicesContainer': None,
+    'IECSService': None,
     'IECSTaskDefinitions': None,
     'IECSTaskDefinition': None,
     'IECSContainerDefinitions': None,
@@ -1697,6 +1764,7 @@ MINOR_SCHEMAS = {
     'IECSLogging': None,
     'IECSVolumesFrom': None,
     'IECSMountPoint': None,
+    'IServiceVPCConfiguration': None,
     'IPortMapping': None,
     'IEBSOptions': None,
     'IESAdvancedOptions': None,
@@ -1707,7 +1775,9 @@ MINOR_SCHEMAS = {
     'IIAMUser': None,
     'IIAMUserProgrammaticAccess': None,
     'IIAMUserPermissions': None,
+    'IBaseRole': None,
     'IRole': None,
+    'IRoleDefaultEnabled': None,
     'IAssumeRolePolicy': None,
     'IPolicy': None,
     'IStatement': None,
@@ -1830,6 +1900,16 @@ MINOR_SCHEMAS = {
     'IStorageRetention': None,
     'IPinpointSMSChannel': None,
     'IPinpointEmailChannel': None,
+    'ICognitoUserPoolClients': None,
+    'ICognitoInviteMessageTemplates': None,
+    'ICognitoUserPoolClient': None,
+    'ICognitoEmailConfiguration': None,
+    'ICognitoUserPoolPasswordPolicy': None,
+    'ICognitoUserPoolSchemaAttribute': None,
+    'ICognitoUICustomizations': None,
+    'ICognitoUserCreation': None,
+    'ICognitoIdentityProvider': None,
+    'IECRRepositoryPermission': None,
 }
 
 def create_tables_from_schema():

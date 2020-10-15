@@ -1,0 +1,223 @@
+# Lambda
+Lambda:
+  error-duration:
+    # Alert if Lambda dumps any tracebacks
+    ErrorSum-High:
+      classification: health
+      severity: critical
+      metric_name: Errors
+      period: 60
+      evaluation_periods: 1
+      threshold: 1
+      comparison_operator: GreaterThanOrEqualToThreshold
+      statistic: Sum
+      treat_missing_data: notBreaching
+    # Lambda duration greater than 80%
+    # base threshold is 12 minutes and assumes 15 minute timeout
+    Duration-High:
+      classification: health
+      severity: critical
+      metric_name: Duration
+      period: 60
+      evaluation_periods: 1
+      threshold: 720000
+      comparison_operator: GreaterThanOrEqualToThreshold
+      statistic: Maximum
+      treat_missing_data: notBreaching
+
+# AutoScalingGroup sets
+ASG:
+  launch-health:
+    # GroupPendingInstances metric
+    # Purpose: detect new instances trying to launch and getting 'stuck'
+    GroupPendingInstances-Low:
+      classification: health
+      severity: low
+      metric_name: "GroupPendingInstances"
+      period: 60
+      evaluation_periods: 5
+      threshold: 1
+      comparison_operator: GreaterThanOrEqualToThreshold
+      statistic: Maximum
+      treat_missing_data: notBreaching
+    GroupPendingInstances-Critical:
+      classification: health
+      severity: critical
+      metric_name: "GroupPendingInstances"
+      period: 60
+      evaluation_periods: 60
+      threshold: 1
+      comparison_operator: GreaterThanOrEqualToThreshold
+      statistic: Maximum
+      treat_missing_data: notBreaching
+    # GroupInServiceInstances metric
+    # Purpose: detect when the number of instances in-service is too low
+    GroupInServiceInstances-Critical:
+      classification: health
+      severity: critical
+      metric_name: "GroupInServiceInstances"
+      period: 60
+      evaluation_periods: 5
+      threshold: 1
+      comparison_operator: LessThanOrEqualToThreshold
+      statistic: Minimum
+      treat_missing_data: breaching
+  instance-health-core:
+    StatusCheck-Critical:
+      classification: health
+      severity: critical
+      metric_name: "StatusCheckFailed"
+      period: 60
+      evaluation_periods: 5
+      statistic: Maximum
+      threshold: 0
+      comparison_operator: GreaterThanThreshold
+      treat_missing_data: breaching
+    CPUTotal-Low:
+      classification: performance
+      severity: low
+      metric_name: "CPUUtilization"
+      period: 60
+      evaluation_periods: 10
+      threshold: 60
+      statistic: Average
+      treat_missing_data: breaching
+      comparison_operator: GreaterThanThreshold
+    CPUTotal-Critical:
+      classification: performance
+      severity: critical
+      metric_name: "CPUUtilization"
+      period: 60
+      evaluation_periods: 30
+      threshold: 90
+      statistic: Average
+      treat_missing_data: breaching
+      comparison_operator: GreaterThanThreshold
+  instance-health-cwagent:
+    SwapPercent-Low:
+      classification: performance
+      severity: low
+      namespace: "CWAgent"
+      metric_name: "swap_used_percent"
+      period: 60
+      evaluation_periods: 5
+      statistic: Maximum
+      threshold: 20
+      comparison_operator: GreaterThanThreshold
+      treat_missing_data: breaching
+    SwapPercent-Critical:
+      classification: performance
+      severity: low
+      metric_name: "swap_used_percent"
+      namespace: "CWAgent"
+      period: 60
+      evaluation_periods: 5
+      statistic: Maximum
+      threshold: 80
+      comparison_operator: GreaterThanThreshold
+      treat_missing_data: breaching
+    DiskSpace-Low:
+      classification: health
+      severity: low
+      metric_name: "disk_used_percent"
+      namespace: "CWAgent"
+      period: 300
+      evaluation_periods: 1
+      statistic: Minimum
+      threshold: 60
+      comparison_operator: GreaterThanThreshold
+      treat_missing_data: breaching
+    DiskSpace-Critical:
+      classification: health
+      severity: low
+      metric_name: "disk_used_percent"
+      namespace: "CWAgent"
+      period: 300
+      evaluation_periods: 1
+      statistic: Minimum
+      threshold: 80
+      comparison_operator: GreaterThanThreshold
+      treat_missing_data: breaching
+
+  log-test:
+    ApacheError:
+      type: LogAlarm
+      description: "Apache is throwing errors"
+      classification: health
+      severity: low
+      #namespace: "log_sets.apache.log_groups.error"
+      log_set_name: 'apache'
+      log_group_name: 'error'
+      metric_name: "ApacheError"
+      period: 60
+      evaluation_periods: 1
+      threshold: 0
+      comparison_operator: GreaterThanThreshold
+      statistic: Sum
+      treat_missing_data: notBreaching
+
+# ALB sets
+LBApplication:
+  instance-health:
+    HealthyHostCount-Critical:
+      classification: health
+      severity: critical
+      metric_name: "HealthyHostCount"
+      period: 60
+      evaluation_periods: 5
+      statistic: Minimum
+      threshold: 1
+      comparison_operator: LessThanOrEqualToThreshold
+      treat_missing_data: breaching
+    UnHealthyHostCount-Critical:
+      classification: health
+      severity: critical
+      metric_name: "UnHealthyHostCount"
+      period: 60
+      evaluation_periods: 5
+      statistic: Maximum
+      threshold: 1
+      comparison_operator: GreaterThanOrEqualToThreshold
+      treat_missing_data: breaching
+  response-latency:
+    TargetResponseTimeP95-Low:
+      severity: low
+      classification: health
+      metric_name: "TargetResponseTime"
+      period: 60
+      evaluation_periods: 5
+      statistic: Maximum
+      threshold: 2.0
+      comparison_operator: GreaterThanOrEqualToThreshold
+      treat_missing_data: notBreaching
+  response-health:
+    HTTPCode_Target_4XX_Count-Low:
+      classification: performance
+      severity: low
+      metric_name: "HTTPCode_Target_4XX_Count"
+      period: 60
+      evaluation_periods: 5
+      statistic: Sum
+      threshold: 1
+      comparison_operator: GreaterThanOrEqualToThreshold
+      treat_missing_data: notBreaching
+    HTTPCode_Target_5XX_Count-Low:
+      classification: performance
+      severity: low
+      metric_name: "HTTPCode_Target_5XX_Count"
+      period: 60
+      evaluation_periods: 5
+      statistic: Sum
+      threshold: 1
+      comparison_operator: GreaterThanOrEqualToThreshold
+      treat_missing_data: notBreaching
+    TargetConnectionErrorCount-Low:
+      classification: health
+      severity: low
+      metric_name: "TargetConnectionErrorCount"
+      period: 60
+      evaluation_periods: 5
+      statistic: Sum
+      threshold: 1
+      comparison_operator: GreaterThanOrEqualToThreshold
+      treat_missing_data: notBreaching

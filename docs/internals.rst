@@ -199,3 +199,7 @@ contains several sub-directories that Paco will read/write to while it's working
 ``.paco-work/outputs``
     Stack outputs are cached here. These outputs are organized according to the structure of the Paco
     model as opposed to the structure of the CloudFormation stacks.
+
+``.paco-work/describe``
+    When the ``paco describe`` command is run the generated Paco web site is output here.
+

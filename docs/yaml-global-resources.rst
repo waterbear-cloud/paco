@@ -620,14 +620,14 @@ Container for IAM User Permission objects.
 *Base Schemas* `Named`_, `Title`_
 
 
-Role
-^^^^^
+BaseRole
+^^^^^^^^^
 
 
 
-.. _Role:
+.. _BaseRole:
 
-.. list-table:: :guilabel:`Role`
+.. list-table:: :guilabel:`BaseRole`
     :widths: 15 28 30 16 11
     :header-rows: 1
 
@@ -682,7 +682,57 @@ Role
       - 
       - 
 
-*Base Schemas* `Deployable`_, `Named`_, `Title`_
+*Base Schemas* `Named`_, `Title`_
+
+
+Role
+^^^^^
+
+IAM Role that is disabled by default
+
+.. _Role:
+
+.. list-table:: :guilabel:`Role`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `BaseRole`_, `Deployable`_, `Named`_, `Title`_
+
+
+RoleDefaultEnabled
+^^^^^^^^^^^^^^^^^^^
+
+IAM Role that is enabled by default
+
+.. _RoleDefaultEnabled:
+
+.. list-table:: :guilabel:`RoleDefaultEnabled`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `BaseRole`_, `Enablable`_, `Named`_, `Title`_
 
 
 AssumeRolePolicy

@@ -1,4 +1,3 @@
-import sys
 import ruamel.yaml
 from ruamel.yaml.compat import StringIO
 

@@ -37,8 +37,14 @@ class CloudFront(StackTemplate):
             'PriceClass': 'PriceClass_'+cloudfront_config.price_class
         }
         if cloudfront_config.is_enabled() == True:
+            viewer_certificate_param = self.create_cfn_parameter(
+                name='ViewerCertificateArn',
+                description="ACM Viewer Certificate ARN",
+                param_type='String',
+                value=cloudfront_config.viewer_certificate.certificate + '.arn',
+            )
             distribution_config_dict['ViewerCertificate'] = {
-                'AcmCertificateArn': self.paco_ctx.get_ref('paco.ref ' + self.stack.stack_ref + '.viewer_certificate.arn'),
+                'AcmCertificateArn': troposphere.Ref(viewer_certificate_param),
                 'SslSupportMethod': cloudfront_config.viewer_certificate.ssl_supported_method,
                 'MinimumProtocolVersion': cloudfront_config.viewer_certificate.minimum_protocol_version
             }
@@ -46,6 +52,31 @@ class CloudFront(StackTemplate):
             distribution_config_dict['DefaultCacheBehavior']['MinTTL'] = cloudfront_config.default_cache_behavior.min_ttl
         if cloudfront_config.default_cache_behavior.max_ttl != -1:
             distribution_config_dict['DefaultCacheBehavior']['MaxTTL'] = cloudfront_config.default_cache_behavior.max_ttl
+
+        # Lambda Function associations
+        lambda_associations = []
+        lambda_params = {}
+        for lambda_association in cloudfront_config.default_cache_behavior.lambda_function_associations:
+            lambda_ref = lambda_association.lambda_function
+            if lambda_ref not in lambda_params:
+                if lambda_ref.endswith('.autoversion.arn'):
+                    lambda_name = self.create_cfn_logical_id('Lambda' + utils.md5sum(str_data=lambda_ref))
+                    lambda_params[lambda_ref] = self.create_cfn_parameter(
+                        param_type='String',
+                        name=lambda_name,
+                        description=f'Lambda Function Associated for {lambda_ref}',
+                        value=lambda_ref,
+                    )
+            lambda_associations.append({
+                'EventType': lambda_association.event_type,
+                'IncludeBody': lambda_association.include_body,
+                'LambdaFunctionARN': troposphere.Ref(lambda_params[lambda_ref]),
+            })
+        if len(lambda_associations) > 0:
+            # ToDo: PR this monkey-patch into Troposphere
+            from troposphere.validators import boolean
+            troposphere.cloudfront.LambdaFunctionAssociation.props['IncludeBody'] = (boolean, False)
+            distribution_config_dict['DefaultCacheBehavior']['LambdaFunctionAssociations'] = lambda_associations
 
         # Domain Alises and Record Sets
         aliases_list = []
@@ -109,15 +140,16 @@ class CloudFront(StackTemplate):
                 }
                 cb_forwarded_values_config = cache_behavior.forwarded_values
                 cb_forwarded_values_dict = {
-                    'Cookies': {
-                        'Forward': 'none',
-                    },
                     'QueryString': str(cb_forwarded_values_config.query_string)
                 }
+
                 # Cookies
-                cb_forwarded_values_dict['Cookies']['Forward'] = cb_forwarded_values_config.cookies.forward
-                if len(cb_forwarded_values_config.cookies.whitelisted_names) > 0:
-                    cb_forwarded_values_dict['Cookies']['WhitelistedNames'] = cb_forwarded_values_config.cookies.whitelisted_names
+                if cb_forwarded_values_config.cookies != None:
+                    cb_forwarded_values_dict['Cookies'] = {'Forward': 'none'}
+                    cb_forwarded_values_dict['Cookies']['Forward'] = cb_forwarded_values_config.cookies.forward
+                    if len(cb_forwarded_values_config.cookies.whitelisted_names) > 0:
+                        cb_forwarded_values_dict['Cookies']['WhitelistedNames'] = cb_forwarded_values_config.cookies.whitelisted_names
+
                 # Headers
                 if cloudfront_config.s3_origin_exists() == False:
                     cb_forwarded_values_dict['Headers'] = cache_behavior.forwarded_values.headers
@@ -156,12 +188,14 @@ class CloudFront(StackTemplate):
             }
             if origin.s3_bucket == None:
                 origin_dict['CustomOriginConfig'] = {
-                    'HTTPSPort': origin.custom_origin_config.https_port,
                     'OriginKeepaliveTimeout': origin.custom_origin_config.keepalive_timeout,
                     'OriginProtocolPolicy': origin.custom_origin_config.protocol_policy,
                     'OriginReadTimeout': origin.custom_origin_config.read_timeout,
-                    'OriginSSLProtocols': origin.custom_origin_config.ssl_protocols
                 }
+                if len(origin.custom_origin_config.ssl_protocols) > 0:
+                    origin_dict['CustomOriginConfig']['OriginSSLProtocols'] = origin.custom_origin_config.ssl_protocols
+                if origin.custom_origin_config.https_port != None:
+                    origin_dict['CustomOriginConfig']['HTTPSPort'] = origin.custom_origin_config.https_port
                 if origin.custom_origin_config.http_port:
                     origin_dict['CustomOriginConfig']['HTTPPort'] = str(origin.custom_origin_config.http_port)
             else:
@@ -213,7 +247,21 @@ class CloudFront(StackTemplate):
             'DistributionConfig': distribution_config_dict
         }
         distribution_res = troposphere.cloudfront.Distribution.from_dict(
-            'Distribution', distribution_dict )
+            'Distribution',
+            distribution_dict
+        )
+        template.add_resource(distribution_res)
+
+        self.create_output(
+            title='CloudFrontURL',
+            value=troposphere.GetAtt('Distribution', 'DomainName'),
+            ref=self.config_ref + '.domain_name'
+        )
+        self.create_output(
+            title='CloudFrontId',
+            value=troposphere.Ref(distribution_res),
+            ref=self.config_ref + '.id'
+        )
 
         if self.paco_ctx.legacy_flag('route53_record_set_2019_10_16') == True:
             if cloudfront_config.is_dns_enabled() == True:
@@ -238,19 +286,6 @@ class CloudFront(StackTemplate):
                         )
                     )
                     record_set_res.DependsOn = distribution_res
-
-        self.create_output(
-            title='CloudFrontURL',
-            value=troposphere.GetAtt('Distribution', 'DomainName'),
-            ref=self.config_ref + '.domain_name'
-        )
-        self.create_output(
-            title='CloudFrontId',
-            value=troposphere.Ref(distribution_res),
-            ref=self.config_ref + '.id'
-        )
-
-        template.add_resource(distribution_res)
 
         if origin_access_id_enabled:
           self.stack.wait_for_delete = True

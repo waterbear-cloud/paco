@@ -46,6 +46,7 @@ setup(
         'gitpython',
         'parliament',
         'Chameleon',
+        "importlib_resources ; python_version<'3.7'",
     ],
     packages=[
         'paco.adapters',

@@ -66,6 +66,9 @@ class InvalidPacoHome(PacoBaseException):
 class InvalidPacoScope(PacoBaseException):
     title = "Invalid CONFIG_SCOPE argument"
 
+class AuthenticationError(PacoBaseException):
+    title = "Error authenticating with AWS"
+
 class MissingAccountId(PacoBaseException):
     title = "No AWS account id"
 

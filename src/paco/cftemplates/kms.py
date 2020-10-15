@@ -206,7 +206,7 @@ Outputs:
         template_table = {
             'key_policy_principal': principal_yaml
         }
-        self.register_stack_output_config(self.resource.paco_ref_parts + '.kms.arn', 'CMKArn')
-        self.register_stack_output_config(self.resource.paco_ref_parts + '.kms.id', 'CMKId')
+        self.stack.register_stack_output_config(self.resource.paco_ref_parts + '.kms.arn', 'CMKArn')
+        self.stack.register_stack_output_config(self.resource.paco_ref_parts + '.kms.id', 'CMKId')
         self.set_template(template_fmt.format(template_table))
 

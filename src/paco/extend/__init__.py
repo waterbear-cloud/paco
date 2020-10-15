@@ -4,8 +4,11 @@ The ``paco.extend`` module contains convenience APIs to make it easier to extend
 These APIs will be typically called from your custom Paco Service Controllers.
 """
 
-from paco.models.loader import SUB_TYPES_CLASS_MAP
+from paco.models.loader import SUB_TYPES_CLASS_MAP, apply_attributes_from_config, load_yaml
 from paco.models.exceptions import LoaderRegistrationError
+from paco.models.references import is_ref, get_model_obj_from_ref
+from paco.models.base import RegionContainer, AccountContainer
+from paco.models.applications import Application
 import paco.models.registry
 
 
@@ -114,8 +117,50 @@ def register_model_loader(obj, fields_dict, force=False):
         )
 
     """
-    if obj in SUB_TYPES_CLASS_MAP:
-        raise LoaderRegistrationError(f"Object {obj} has already been registered with the model loader.")
+    if force == False:
+        if obj in SUB_TYPES_CLASS_MAP:
+            raise LoaderRegistrationError(f"Object {obj} has already been registered with the model loader.")
 
     # ToDo: validate fields_dict
     SUB_TYPES_CLASS_MAP[obj] = fields_dict
+
+def load_package_yaml(package, filename, replacements={}):
+    """
+    Read a YAML file from the same directory as a Python package and parse
+    the YAML into Python data structures.
+    """
+    try:
+        import importlib.resources as pkg_resources
+    except ImportError:
+        # Try backported to PY<37 `importlib_resources`.
+        import importlib_resources as pkg_resources  # type: ignore
+    yaml_contents = pkg_resources.read_text(package, filename)
+    for placeholder, value in replacements.items():
+        yaml_contents = yaml_contents.replace(placeholder, value)
+    return load_yaml(yaml_contents)
+
+def load_app_in_account_region(
+    parent,
+    account,
+    region,
+    app_name,
+    app_config,
+    project=None,
+    monitor_config=None,
+    read_file_path='not set',
+    ):
+    """
+    Load an Application from config into an AccountContainer and RegionContainer.
+    Account can be a paco.ref but then the Paco Project must be supplied too.
+    """
+    account_name = account
+    if is_ref(account):
+        account_name = get_model_obj_from_ref(account, project).name
+    account_cont = AccountContainer(account_name, parent)
+    parent[account_name] = account_cont
+    region_cont = RegionContainer(region, account_cont)
+    account_cont[region] = region_cont
+    app = Application(app_name, parent[account_name][region])
+    parent[account_name][region][app_name] = app
+    apply_attributes_from_config(app, app_config, lookup_config=monitor_config, read_file_path=read_file_path)
+    return app

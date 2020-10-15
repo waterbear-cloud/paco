@@ -27,6 +27,7 @@ class CodeCommitController(Controller):
             return
         self.config = None
         self.stack_grps = []
+        self.stack_grps_dict = {}
         self.init_done = False
 
     def init(self, command=None, model_obj=None):
@@ -62,6 +63,9 @@ class CodeCommitController(Controller):
                     self
                 )
                 self.stack_grps.append(codecommit_stack_grp)
+                if account_ctx.paco_ref not in self.stack_grps_dict:
+                    self.stack_grps_dict[account_ctx.paco_ref] = {}
+                self.stack_grps_dict[account_ctx.paco_ref][repo_region] = codecommit_stack_grp
                 codecommit_stack_grp.init()
 
     def gen_iam_roles_config_dict(self, repo_list):
@@ -126,10 +130,10 @@ policies:
         if len(ref.parts) >= 5:
             if ref.parts[4] == 'users':
                 # lookup output from CodeCommit Stack
-                return repo_config.__parent__.__parent__.stack
+                stack_group = self.stack_grps_dict[repo_config.account][repo_config.region]
+                return stack_group.stacks[0]
         if ref.last_part == "name":
             return repo_config.repository_name
-            #return repo_config.name
         if ref.last_part == "arn":
             account_ref = repo_config.account
             account_ctx = self.paco_ctx.get_account_context(account_ref)
