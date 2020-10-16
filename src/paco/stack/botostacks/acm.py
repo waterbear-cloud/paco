@@ -7,17 +7,22 @@ class ACMBotoStack(BotoStack):
 
     def init(self):
         "Prepare Resource State"
-        if self.resource.region != None:
-            self.aws_region = self.resource.region
         self.register_stack_output_config(self.stack_ref + '.arn', 'ViewerCertificateArn')
         self.enabled = self.resource.is_enabled()
+
+    @property
+    def cert_aws_region(self):
+        if self.resource.region != None:
+            return self.resource.region
+        else:
+            return self.aws_region
 
     def get_outputs(self):
         "Get all Outputs of a Resource"
         acm_client = DNSValidatedACMCertClient(
             self.account_ctx,
             self.resource.domain_name,
-            self.aws_region,
+            self.cert_aws_region,
         )
         cert_arn = acm_client.get_certificate_arn()
         return {'ViewerCertificateArn': cert_arn}
@@ -34,7 +39,7 @@ class ACMBotoStack(BotoStack):
         acm_client = DNSValidatedACMCertClient(
             self.account_ctx,
             self.resource.domain_name,
-            self.aws_region
+            self.cert_aws_region
         )
 
         # Create the certificate if it does not exists
@@ -46,7 +51,7 @@ class ACMBotoStack(BotoStack):
         self.paco_ctx.log_action_col(
             'Provision',
             action,
-            self.account_ctx.get_name() + '.' + self.aws_region,
+            self.account_ctx.get_name() + '.' + self.cert_aws_region,
             f'boto3: {self.resource.domain_name}: alt-names: {self.resource.subject_alternative_names}',
             col_2_size=9
         )
@@ -65,7 +70,7 @@ class ACMBotoStack(BotoStack):
                     self.paco_ctx.log_action_col(
                         'Waiting',
                         'DNS',
-                        self.account_ctx.get_name() + '.' + self.aws_region,
+                        self.account_ctx.get_name() + '.' + self.cert_aws_region,
                         'DNS validation record: ' + self.resource.domain_name,
                         col_2_size=9
                     )
