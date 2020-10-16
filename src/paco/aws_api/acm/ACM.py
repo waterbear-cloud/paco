@@ -78,7 +78,6 @@ class DNSValidatedACMCertClient():
             print("Waiting for certificate validation: timeout in %d seconds: %s" % (timeout-elapsed_time, certificate_arn))
             if elapsed_time > timeout:
                 raise Exception('Timeout ({}s) reached for certificate validation'.format(timeout))
-            #print("{}: Waiting {}s for validation, {}s elapsed...".format(certificate_arn, sleep_time, elapsed_time))
             time.sleep(sleep_time)
             status = self.get_certificate_status(certificate_arn)
             elapsed_time += sleep_time

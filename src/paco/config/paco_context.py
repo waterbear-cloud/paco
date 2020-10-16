@@ -254,6 +254,7 @@ class PacoContext(object):
         self.disable_validation = False
         self.paco_buckets = None
         self.skip_account_ctx = False
+        self.auto_publish_code = False
 
     def get_account_context(self, account_ref=None, account_name=None, netenv_ref=None):
         """

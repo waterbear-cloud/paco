@@ -37,6 +37,9 @@ class CloudFront(StackTemplate):
             'PriceClass': 'PriceClass_'+cloudfront_config.price_class
         }
         if cloudfront_config.is_enabled() == True:
+            # force the certificate to be in us-east-1, as that's the only CloudFront region
+            certificate = get_model_obj_from_ref(cloudfront_config.viewer_certificate.certificate, self.paco_ctx.project)
+            certificate.region = 'us-east-1'
             viewer_certificate_param = self.create_cfn_parameter(
                 name='ViewerCertificateArn',
                 description="ACM Viewer Certificate ARN",

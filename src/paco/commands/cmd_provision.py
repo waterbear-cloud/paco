@@ -4,6 +4,14 @@ from paco.commands.helpers import paco_home_option, pass_paco_context, handle_ex
 
 
 @click.command(name='provision', short_help='Provision resources to the cloud.')
+@click.option(
+    '-a', '--auto-publish-code',
+    default=False,
+    is_flag=True,
+    help="""
+Automatically update Lambda Code assets. Lambda resources that use the `zipfile:` to a local filesystem path will automatically publish new code if it differs from the currently published code asset.
+"""
+)
 @paco_home_option
 @cloud_args
 @cloud_options
@@ -18,9 +26,11 @@ def provision_command(
     disable_validation,
     quiet_changes_only,
     config_scope,
-    home='.'
+    home='.',
+    auto_publish_code=False,
 ):
     """Provision Cloud Resources"""
+    paco_ctx.auto_publish_code = auto_publish_code
     command = 'provision'
     controller_type, obj = init_cloud_command(
         command,

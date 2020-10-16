@@ -502,28 +502,33 @@ class Lambda(StackTemplate):
         Add Parameters for CodeS3Bucket and CodeS3Key. The Parameter values are placeholder values that
         will be updated by the hook.
         """
-        stack_hooks = StackHooks()
-        stack_hooks.add(
-            name='PrepLambdaCodeArtifactToS3Bucket',
-            stack_action=['create','update'],
-            stack_timing='pre',
-            hook_method=self.prepare_s3bucket_artifact_hook,
-            cache_method=self.prepare_s3bucket_artifact_cache,
-            hook_arg=is_zip,
-        )
-        self.stack.add_hooks(stack_hooks)
+        ignore_changes = True
+        if self.paco_ctx.auto_publish_code == True:
+            ignore_changes = False
+            stack_hooks = StackHooks()
+            stack_hooks.add(
+                name='PrepLambdaCodeArtifactToS3Bucket',
+                stack_action=['create','update'],
+                stack_timing='pre',
+                hook_method=self.prepare_s3bucket_artifact_hook,
+                cache_method=self.prepare_s3bucket_artifact_cache,
+                hook_arg=is_zip,
+            )
+            self.stack.add_hooks(stack_hooks)
 
         self.s3bucket_param = self.create_cfn_parameter(
             name='CodeS3Bucket',
             description="S3 Bucket for the Lambda Code artifact",
             param_type='String',
-            value='REPLACED_BY_HOOK',
+            value='',
+            ignore_changes=ignore_changes,
         )
         self.s3key_param = self.create_cfn_parameter(
             name='CodeS3Key',
             description="S3 Key for the Lambda Code artifact",
             param_type='String',
-            value='REPLACED_BY_HOOK',
+            value='',
+            ignore_changes=ignore_changes,
         )
         cfn_s3_code = {
             'S3Bucket': troposphere.Ref(self.s3bucket_param),
