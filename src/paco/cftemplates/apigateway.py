@@ -71,14 +71,14 @@ class ApiGatewayRestApi(StackTemplate):
 
         # Resource
         for resource in self.apigatewayrestapi.resources.values():
-            resource_id = 'ApiGatewayResource' + self.create_cfn_logical_id(resource.name)
+            resource_logical_id = 'ApiGatewayResource' + self.create_cfn_logical_id(resource.name)
             cfn_export_dict = resource.cfn_export_dict
             if resource.parent_id == "RootResourceId":
                 cfn_export_dict["ParentId"] = troposphere.GetAtt(restapi_resource, "RootResourceId")
                 cfn_export_dict["RestApiId"] = troposphere.Ref(restapi_resource)
             else:
                 raise NotImplemented("ToDo: handle nested resources")
-            resource_resource = troposphere.apigateway.Resource.from_dict(resource_id, cfn_export_dict)
+            resource_resource = troposphere.apigateway.Resource.from_dict(resource_logical_id, cfn_export_dict)
             resource.resource = resource_resource
             resource_resource.DependsOn = restapi_logical_id
             template.add_resource(resource_resource)
@@ -94,10 +94,10 @@ class ApiGatewayRestApi(StackTemplate):
             method_id = 'ApiGatewayMethod' + self.create_cfn_logical_id(method.name)
             method.logical_id = method_id
             cfn_export_dict = method.cfn_export_dict
-            for resource in self.apigatewayrestapi.resources.values():
-                if resource.name == method.resource_id:
-                    cfn_export_dict["ResourceId"] = troposphere.Ref(resource.resource)
-            if 'ResourceId' not in cfn_export_dict:
+            if method.resource_name:
+                resource = self.apigatewayrestapi.resources[method.resource_name]
+                cfn_export_dict["ResourceId"] = troposphere.Ref(resource.resource)
+            else:
                 cfn_export_dict["ResourceId"] = troposphere.GetAtt(restapi_resource, 'RootResourceId')
             cfn_export_dict["RestApiId"] = troposphere.Ref(restapi_resource)
             uri = troposphere.Join('', ["arn:aws:apigateway:", method.region_name, ":lambda:path/2015-03-31/functions/", method.parameter_arn_ref, "/invocations"])

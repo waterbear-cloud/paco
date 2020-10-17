@@ -315,6 +315,10 @@ class Lambda(StackTemplate):
                                     description='API Gateway Rest API Id',
                                     value=apigateway.paco_ref + '.id',
                                 )
+                            path_part = ''
+                            # ToDo: nested resource support!
+                            if method.resource_name:
+                                path_part = apigateway.resources[method.resource_name].path_part
                             troposphere.awslambda.Permission(
                                 title='ApiGatewayRestApiMethod' + md5sum(str_data=method.paco_ref),
                                 template=self.template,
@@ -328,7 +332,7 @@ class Lambda(StackTemplate):
                                     apigateway.get_account().account_id,
                                     ":",
                                     troposphere.Ref(self.apigateway_params[apigateway.paco_ref_parts]),
-                                    f"/*/{method.http_method}/",
+                                    f"/*/{method.http_method}/{path_part}",
                                 ])
                             )
 
