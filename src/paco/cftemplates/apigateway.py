@@ -59,6 +59,31 @@ class ApiGatewayRestApi(StackTemplate):
             ref=self.apigatewayrestapi.paco_ref_parts + '.root_resource_id',
         )
 
+        # Authorizers
+        troposphere.apigateway.Authorizer.props['AuthorizerUri'] = (str, False)
+        self.user_pool_params = {}
+        for cog_auth in self.apigatewayrestapi.cognito_authorizers.values():
+            provider_arns = []
+            for user_pool_ref in cog_auth.user_pools:
+                if user_pool_ref not in self.user_pool_params:
+                    self.user_pool_params[user_pool_ref] = self.create_cfn_parameter(
+                    name='CognitoUserPool' + md5sum(str_data=user_pool_ref),
+                    param_type='String',
+                    description='Cognito User Pool ARN',
+                    value=user_pool_ref + '.arn',
+                )
+                provider_arns.append(troposphere.Ref(self.user_pool_params[user_pool_ref]))
+            cog_auth_resource = troposphere.apigateway.Authorizer(
+                title=self.create_cfn_logical_id(f'CognitoAuthorizer{cog_auth.name}'),
+                Name=cog_auth.name,
+                RestApiId=troposphere.Ref(restapi_resource),
+                IdentitySource='method.request.header.' + cog_auth.identity_source,
+                Type='COGNITO_USER_POOLS',
+                ProviderARNs=provider_arns,
+            )
+            self.template.add_resource(cog_auth_resource)
+            cog_auth.resource = cog_auth_resource
+
         # Model
         for model in self.apigatewayrestapi.models.values():
             model.logical_id = self.create_cfn_logical_id('ApiGatewayModel' + model.name)
@@ -95,6 +120,14 @@ class ApiGatewayRestApi(StackTemplate):
             method_id = 'ApiGatewayMethod' + self.create_cfn_logical_id(method.name)
             method.logical_id = method_id
             cfn_export_dict = method.cfn_export_dict
+            if method.authorizer != None:
+                # ToDo: only Cognito Authorizers
+                auth_type, auth_name = method.authorizer.split('.')
+                auth_cont = getattr(self.apigatewayrestapi, auth_type)
+                auth_obj = auth_cont[auth_name]
+                cfn_export_dict["AuthorizerId"] = troposphere.Ref(auth_obj.resource)
+                if auth_type == 'cognito_authorizers':
+                    cfn_export_dict["AuthorizationType"] = 'COGNITO_USER_POOLS'
             if method.resource_name:
                 resource = self.apigatewayrestapi.resources[method.resource_name]
                 cfn_export_dict["ResourceId"] = troposphere.Ref(resource.resource)
