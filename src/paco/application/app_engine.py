@@ -187,5 +187,6 @@ class ApplicationEngine():
             return self.stack_group.get_stack_from_ref(ref)
         elif schemas.ICognitoUserPool.providedBy(ref.resource):
             return self.stack_group.get_stack_from_ref(ref)
-
+        elif schemas.IApiGatewayRestApi.providedBy(ref.resource):
+            return self.stack_group.get_stack_from_ref(ref)
         return None

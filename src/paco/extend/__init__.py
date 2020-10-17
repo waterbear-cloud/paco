@@ -10,6 +10,7 @@ from paco.models.references import is_ref, get_model_obj_from_ref
 from paco.models.base import RegionContainer, AccountContainer
 from paco.models.applications import Application
 import paco.models.registry
+from paco.models.schemas import get_parent_by_interface
 
 
 def add_cw_alarm_hook(hook):
@@ -162,5 +163,13 @@ def load_app_in_account_region(
     account_cont[region] = region_cont
     app = Application(app_name, parent[account_name][region])
     parent[account_name][region][app_name] = app
-    apply_attributes_from_config(app, app_config, lookup_config=monitor_config, read_file_path=read_file_path)
+    if project == None:
+        project = get_parent_by_interface(parent)
+    apply_attributes_from_config(
+        app,
+        app_config,
+        lookup_config=monitor_config,
+        read_file_path=read_file_path,
+        resource_registry=project.resource_registry,
+    )
     return app

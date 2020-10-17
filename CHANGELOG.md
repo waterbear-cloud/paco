@@ -11,6 +11,11 @@ Changelog for Paco
 
 ### Added
 
+- ApiGatewayRestApi can do cross-account Lambda integration. Lambda will add a Lambda Permission
+  to allow the API Gateway from the other account to invoke it.
+
+- Outputs for ApiGatewayRestApi
+
 - `paco provision` has a new `-a, --auto-publish-code` option which will compare the md5 hash of a
   local or directory or file for Lambad resources that use a `zipfile:` with a local path. If the loal
   code is changed, a new artifact will be zipped and uploaded to an S3 Bucket.

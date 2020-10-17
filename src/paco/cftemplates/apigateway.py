@@ -4,8 +4,7 @@ CloudFormation template for API Gateway
 
 from awacs.aws import Allow, Statement, Policy, Principal
 from paco.cftemplates.cftemplates import StackTemplate
-from paco.models import references
-from paco.models.references import Reference
+from paco.models.references import get_model_obj_from_ref
 import awacs.sts
 import awacs.awslambda
 import troposphere
@@ -29,16 +28,17 @@ class ApiGatewayRestApi(StackTemplate):
             return
 
         # Parameters
-        method_params = []
+        lambda_params = {}
         for method in self.apigatewayrestapi.methods.values():
             param_name = 'MethodArn' + self.create_cfn_logical_id(method.name)
-            lambda_arn_param = self.create_cfn_parameter(
-                name=param_name,
-                param_type='String',
-                description='Lambda ARN parameter.',
-                value=method.integration.integration_lambda + '.arn',
-            )
-            method.parameter_arn_ref = troposphere.Ref(param_name)
+            if method.integration.integration_lambda not in lambda_params:
+                lambda_params[method.integration.integration_lambda] = self.create_cfn_parameter(
+                    name=param_name,
+                    param_type='String',
+                    description='Lambda ARN parameter.',
+                    value=method.integration.integration_lambda + '.arn',
+                )
+            method.parameter_arn_ref = troposphere.Ref(lambda_params[method.integration.integration_lambda])
 
         # Resources
         restapi_logical_id = 'ApiGatewayRestApi'
@@ -47,6 +47,16 @@ class ApiGatewayRestApi(StackTemplate):
             self.apigatewayrestapi.cfn_export_dict
         )
         template.add_resource(restapi_resource)
+        self.create_output(
+            title='ApiGatewayRestApiId',
+            value=troposphere.Ref(restapi_resource),
+            ref=self.apigatewayrestapi.paco_ref_parts + '.id',
+        )
+        self.create_output(
+            title='ApiGatewayRestApiRootResourceId',
+            value=troposphere.GetAtt(restapi_resource, "RootResourceId"),
+            ref=self.apigatewayrestapi.paco_ref_parts + '.root_resource_id',
+        )
 
         # Model
         for model in self.apigatewayrestapi.models.values():
@@ -72,8 +82,14 @@ class ApiGatewayRestApi(StackTemplate):
             resource.resource = resource_resource
             resource_resource.DependsOn = restapi_logical_id
             template.add_resource(resource_resource)
+            self.create_output(
+                title=self.create_cfn_logical_id(f'ApiGatewayRestApiResource{resource.name}'),
+                value=troposphere.Ref(resource_resource),
+                ref=resource.paco_ref_parts + '.id',
+            )
 
         # Method
+        api_account_name = self.apigatewayrestapi.get_account().name
         for method in self.apigatewayrestapi.methods.values():
             method_id = 'ApiGatewayMethod' + self.create_cfn_logical_id(method.name)
             method.logical_id = method_id
@@ -88,39 +104,43 @@ class ApiGatewayRestApi(StackTemplate):
             cfn_export_dict["Integration"]["Uri"] = uri
 
             if method.integration.integration_type == 'AWS_PROXY':
-                # IAM Role - allows API Gateway to invoke Lambda
-                # ToDo: enable Api Gateway to invoke things other than Lambda ...
-                iam_role_resource = troposphere.iam.Role(
-                    self.create_cfn_logical_id('ApiGatewayIamRole' + self.apigatewayrestapi.name + method.name),
-                    Path='/',
-                    AssumeRolePolicyDocument=Policy(
-                        Version='2012-10-17',
-                        Statement=[
-                            Statement(
-                                Effect=Allow,
-                                Action=[awacs.sts.AssumeRole],
-                                Principal=Principal('Service',['apigateway.amazonaws.com'])
+                # Cross-account Lambda can not have a Role or gets a permission error
+                awslambda = get_model_obj_from_ref(method.integration.integration_lambda, self.project)
+                if api_account_name == awslambda.get_account().name:
+                    # IAM Role - allows API Gateway to invoke Lambda
+                    # ToDo: enable Api Gateway to invoke things other than Lambda ...
+                    # ToDo: share Roles between methods!
+                    iam_role_resource = troposphere.iam.Role(
+                        self.create_cfn_logical_id('ApiGatewayIamRole' + self.apigatewayrestapi.name + method.name),
+                        Path='/',
+                        AssumeRolePolicyDocument=Policy(
+                            Version='2012-10-17',
+                            Statement=[
+                                Statement(
+                                    Effect=Allow,
+                                    Action=[awacs.sts.AssumeRole],
+                                    Principal=Principal('Service',['apigateway.amazonaws.com'])
+                                )
+                            ],
+                        ),
+                        Policies=[
+                            troposphere.iam.Policy(
+                                PolicyName=self.create_cfn_logical_id('LambdaAccessApiGateway' + self.apigatewayrestapi.name + method.name),
+                                PolicyDocument=Policy(
+                                    Version='2012-10-17',
+                                    Statement=[
+                                        Statement(
+                                            Effect=Allow,
+                                            Action=[awacs.awslambda.InvokeFunction],
+                                            Resource=[method.parameter_arn_ref],
+                                        )
+                                    ]
+                                )
                             )
-                        ],
-                    ),
-                    Policies=[
-                        troposphere.iam.Policy(
-                            PolicyName=self.create_cfn_logical_id('LambdaAccessApiGateway' + self.apigatewayrestapi.name + method.name),
-                            PolicyDocument=Policy(
-                                Version='2012-10-17',
-                                Statement=[
-                                    Statement(
-                                        Effect=Allow,
-                                        Action=[awacs.awslambda.InvokeFunction],
-                                        Resource=[method.parameter_arn_ref],
-                                    )
-                                ]
-                            )
-                        )
-                    ]
-                )
-                template.add_resource(iam_role_resource)
-                cfn_export_dict["Integration"]["Credentials"] = troposphere.GetAtt(iam_role_resource, "Arn")
+                        ]
+                    )
+                    template.add_resource(iam_role_resource)
+                    cfn_export_dict["Integration"]["Credentials"] = troposphere.GetAtt(iam_role_resource, "Arn")
 
             elif method.integration.integration_type == 'AWS':
                 # Enable Lambda (custom) integration
@@ -157,6 +177,11 @@ class ApiGatewayRestApi(StackTemplate):
             method_resource = troposphere.apigateway.Method.from_dict(method_id, cfn_export_dict)
             method_resource.DependsOn = restapi_logical_id
             template.add_resource(method_resource)
+            self.create_output(
+                title=self.create_cfn_logical_id(f'ApiGatewayRestApiMethod{method.name}'),
+                value=troposphere.Ref(method_resource),
+                ref=method.paco_ref_parts + '.id',
+            )
 
         # Deployment
         deployment_resource = troposphere.apigateway.Deployment.from_dict(
@@ -168,6 +193,11 @@ class ApiGatewayRestApi(StackTemplate):
         for method in self.apigatewayrestapi.methods.values():
             deployment_resource.DependsOn = method.logical_id
         template.add_resource(deployment_resource)
+        self.create_output(
+            title=self.create_cfn_logical_id(f'ApiGatewayRestApiDeployment'),
+            value=troposphere.Ref(deployment_resource),
+            ref=self.apigatewayrestapi.paco_ref_parts + '.deploymnt_id',
+        )
 
         # Stage
         for stage in self.apigatewayrestapi.stages.values():
@@ -177,3 +207,8 @@ class ApiGatewayRestApi(StackTemplate):
             cfn_export_dict["DeploymentId"] = troposphere.Ref(deployment_resource)
             stage_resource = troposphere.apigateway.Stage.from_dict(stage_id, cfn_export_dict)
             template.add_resource(stage_resource)
+            self.create_output(
+                title=self.create_cfn_logical_id(f'ApiGatewayRestApiStag{stage.name}'),
+                value=troposphere.Ref(stage_resource),
+                ref=stage.paco_ref_parts + '.id',
+            )
