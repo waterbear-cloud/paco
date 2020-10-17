@@ -5,6 +5,7 @@ CloudFormation template for API Gateway
 from awacs.aws import Allow, Statement, Policy, Principal
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.models.references import get_model_obj_from_ref
+from paco.utils import md5sum
 import awacs.sts
 import awacs.awslambda
 import troposphere
@@ -212,3 +213,50 @@ class ApiGatewayRestApi(StackTemplate):
                 value=troposphere.Ref(stage_resource),
                 ref=stage.paco_ref_parts + '.id',
             )
+
+class ApiGatewayLamdaPermissions(StackTemplate):
+    def __init__(self, stack, paco_ctx, awslambda):
+        super().__init__(stack, paco_ctx)
+        self.set_aws_name('ApiGatewayLamdaPermission', self.resource_group_name, self.resource_name)
+        self.init_template('Cross-account Api Gateway Lambda Permission')
+        apigateway = self.resource
+
+        api_gateway_id_param = self.create_cfn_parameter(
+            name=self.create_cfn_logical_id('ApiGatewayRestApiId'),
+            param_type='String',
+            description='API Gateway Rest API Id',
+            value=apigateway.paco_ref + '.id',
+        )
+        lambda_arn_param = self.create_cfn_parameter(
+            name=self.create_cfn_logical_id('LambdaArn'),
+            param_type='String',
+            description='Lambda Arn',
+            value=awslambda.paco_ref + '.arn',
+        )
+
+        # Lambda Permission for cross-account API Gateway invocation
+        for method in apigateway.methods.values():
+            if method.integration != None and method.integration.integration_lambda != None:
+                if awslambda.paco_ref == method.integration.integration_lambda:
+                    if apigateway.get_account().name != awslambda.get_account().name:
+                        # Grant Cross-Account API Gateway permission
+                        path_part = ''
+                        # ToDo: nested resource support!
+                        if method.resource_name:
+                            path_part = apigateway.resources[method.resource_name].path_part
+                        lambda_permission_resource = troposphere.awslambda.Permission(
+                            title='ApiGatewayRestApiMethod' + md5sum(str_data=method.paco_ref),
+                            Action="lambda:InvokeFunction",
+                            FunctionName=troposphere.Ref(lambda_arn_param),
+                            Principal='apigateway.amazonaws.com',
+                            SourceArn=troposphere.Join('', [
+                                "arn:aws:execute-api:",
+                                awslambda.region_name, # lambda region
+                                ":",
+                                apigateway.get_account().account_id, # account id
+                                ":",
+                                troposphere.Ref(api_gateway_id_param),
+                                f"/*/{method.http_method}/{path_part}",
+                            ])
+                        )
+                        self.template.add_resource(lambda_permission_resource)

@@ -299,43 +299,6 @@ class Lambda(StackTemplate):
             )
             idx += 1
 
-
-        # Lambda Permission for cross-account API Gateway
-        self.apigateway_params = {}
-        for apigateway in self.paco_ctx.project.get_all_resources_by_type('ApiGatewayRestApi'):
-            for method in apigateway.methods.values():
-                if method.integration != None and method.integration.integration_lambda != None:
-                    if awslambda.paco_ref == method.integration.integration_lambda:
-                        if apigateway.get_account().name != awslambda.get_account().name:
-                            # Grant Cross-Account API Gateway permission
-                            if apigateway.paco_ref_parts not in self.apigateway_params:
-                                self.apigateway_params[apigateway.paco_ref_parts] = self.create_cfn_parameter(
-                                    name=self.create_cfn_logical_id('ApiGatewayRestApiId' + md5sum(str_data=apigateway.paco_ref_parts)),
-                                    param_type='String',
-                                    description='API Gateway Rest API Id',
-                                    value=apigateway.paco_ref + '.id',
-                                )
-                            path_part = ''
-                            # ToDo: nested resource support!
-                            if method.resource_name:
-                                path_part = apigateway.resources[method.resource_name].path_part
-                            troposphere.awslambda.Permission(
-                                title='ApiGatewayRestApiMethod' + md5sum(str_data=method.paco_ref),
-                                template=self.template,
-                                Action="lambda:InvokeFunction",
-                                FunctionName=troposphere.GetAtt(self.awslambda_resource, 'Arn'),
-                                Principal='apigateway.amazonaws.com',
-                                SourceArn=troposphere.Join('', [
-                                    "arn:aws:execute-api:",
-                                    apigateway.env_region_obj.name,
-                                    ":",
-                                    apigateway.get_account().account_id,
-                                    ":",
-                                    troposphere.Ref(self.apigateway_params[apigateway.paco_ref_parts]),
-                                    f"/*/{method.http_method}/{path_part}",
-                                ])
-                            )
-
         # Lambda permissions for connected Paco resources
         app = get_parent_by_interface(awslambda, schemas.IApplication)
         for obj in get_all_nodes(app):
@@ -601,3 +564,4 @@ class Lambda(StackTemplate):
         )
         self.template.add_output(loggroup_output)
         return loggroup_resource
+

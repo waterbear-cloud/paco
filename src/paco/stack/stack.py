@@ -28,6 +28,14 @@ log_next_header = None
 StackStatus = Enum('StackStatus', 'NONE DOES_NOT_EXIST CREATE_IN_PROGRESS CREATE_FAILED CREATE_COMPLETE ROLLBACK_IN_PROGRESS ROLLBACK_FAILED ROLLBACK_COMPLETE DELETE_IN_PROGRESS DELETE_FAILED DELETE_COMPLETE UPDATE_IN_PROGRESS UPDATE_COMPLETE_CLEANUP_IN_PROGRESS UPDATE_COMPLETE UPDATE_ROLLBACK_IN_PROGRESS UPDATE_ROLLBACK_FAILED UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS UPDATE_ROLLBACK_COMPLETE REVIEW_IN_PROGRESS')
 
 class StackOutputConfig():
+    """
+Maps from a Stacks Output Key to a reference. For example,
+the CloudFormationStack for an SNSTopic:
+
+  key: 'SNSTopicArnsnstopic',
+  confif_ref: 'service.notification.tools.us-west-2.topic.groups.topic.resources.snstopic.arn',
+
+    """
     def __init__(self, config_ref, key):
         self.key = key
         self.config_ref = config_ref
@@ -782,22 +790,12 @@ your cache may be out of sync. Try running again the with the --nocache option.
         stack_output_config = StackOutputConfig(config_ref, stack_output_key)
         self.stack_output_config_list.append(stack_output_config)
 
-    def get_stack_outputs_key_from_ref(self, ref, stack=None):
+    def get_stack_outputs_key_from_ref(self, ref):
         "Gets the output key of a project reference"
         # ToDo: refactor - this should be a function and not a Stack method as it
         # doesn't apply to this Stack
-        if isinstance(ref, references.Reference) == False:
-            raise StackException(
-                PacoErrorCode.Unknown,
-                message="Invalid Reference object")
-        if stack == None:
-            stack = ref.resolve(self.paco_ctx.project)
-        output_key = stack.get_outputs_key_from_ref(ref)
-        if output_key == None:
-            raise StackException(
-                PacoErrorCode.Unknown,
-                message="Unable to find outputkey for ref: %s" % ref.raw)
-        return output_key
+        stack = ref.resolve(self.paco_ctx.project)
+        return stack.get_outputs_key_from_ref(ref)
 
     def get_outputs_value(self, key):
         "Get Stack OutputValue by Stack OutputKey"
@@ -955,7 +953,7 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
                 # enabled, then avoid setting this parameter to avoid lookup errors later
                 if self.enabled == False and ref_value.enabled == False:
                     return None
-                stack_output_key = self.get_stack_outputs_key_from_ref(ref, ref_value)
+                stack_output_key = ref_value.get_outputs_key_from_ref(ref)
                 param_entry = StackOutputParam(param_key, ref_value, stack_output_key, self)
             else:
                 param_entry = Parameter(

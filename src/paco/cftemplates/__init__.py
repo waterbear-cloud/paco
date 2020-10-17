@@ -27,7 +27,7 @@ from paco.cftemplates.cloudfront import CloudFront
 from paco.cftemplates.rds import RDS, DBParameterGroup, DBClusterParameterGroup, RDSAurora
 from paco.cftemplates.elasticache import ElastiCache
 from paco.cftemplates.vpc_peering import VPCPeering
-from paco.cftemplates.apigateway import ApiGatewayRestApi
+from paco.cftemplates.apigateway import ApiGatewayRestApi, ApiGatewayLamdaPermissions
 from paco.cftemplates.iam_users import IAMUsers
 from paco.cftemplates.iam_user_account_delegates import IAMUserAccountDelegates
 from paco.cftemplates.efs import EFS
