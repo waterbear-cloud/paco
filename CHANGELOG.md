@@ -11,6 +11,8 @@ Changelog for Paco
 
 ### Added
 
+- ApiGatewayRestApi supports all fields needed to enable OPTIONS for CORS.
+
 - ApiGatewayRestApi can do cross-account Lambda integration. Lambda will add a Lambda Permission
   to allow the API Gateway from the other account to invoke it.
 

@@ -31,15 +31,16 @@ class ApiGatewayRestApi(StackTemplate):
         # Parameters
         lambda_params = {}
         for method in self.apigatewayrestapi.methods.values():
-            param_name = 'MethodArn' + self.create_cfn_logical_id(method.name)
-            if method.integration.integration_lambda not in lambda_params:
-                lambda_params[method.integration.integration_lambda] = self.create_cfn_parameter(
-                    name=param_name,
-                    param_type='String',
-                    description='Lambda ARN parameter.',
-                    value=method.integration.integration_lambda + '.arn',
-                )
-            method.parameter_arn_ref = troposphere.Ref(lambda_params[method.integration.integration_lambda])
+            if method.integration.integration_lambda != None:
+                param_name = 'MethodArn' + self.create_cfn_logical_id(method.name)
+                if method.integration.integration_lambda not in lambda_params:
+                    lambda_params[method.integration.integration_lambda] = self.create_cfn_parameter(
+                        name=param_name,
+                        param_type='String',
+                        description='Lambda ARN parameter.',
+                        value=method.integration.integration_lambda + '.arn',
+                    )
+                method.parameter_arn_ref = troposphere.Ref(lambda_params[method.integration.integration_lambda])
 
         # Resources
         restapi_logical_id = 'ApiGatewayRestApi'
@@ -134,47 +135,56 @@ class ApiGatewayRestApi(StackTemplate):
             else:
                 cfn_export_dict["ResourceId"] = troposphere.GetAtt(restapi_resource, 'RootResourceId')
             cfn_export_dict["RestApiId"] = troposphere.Ref(restapi_resource)
-            uri = troposphere.Join('', ["arn:aws:apigateway:", method.region_name, ":lambda:path/2015-03-31/functions/", method.parameter_arn_ref, "/invocations"])
-            cfn_export_dict["Integration"]["Uri"] = uri
 
-            if method.integration.integration_type == 'AWS_PROXY':
-                # Cross-account Lambda can not have a Role or gets a permission error
+            # Lambad Integration
+            if method.integration.integration_lambda != None:
                 awslambda = get_model_obj_from_ref(method.integration.integration_lambda, self.project)
-                if api_account_name == awslambda.get_account().name:
-                    # IAM Role - allows API Gateway to invoke Lambda
-                    # ToDo: enable Api Gateway to invoke things other than Lambda ...
-                    # ToDo: share Roles between methods!
-                    iam_role_resource = troposphere.iam.Role(
-                        self.create_cfn_logical_id('ApiGatewayIamRole' + self.apigatewayrestapi.name + method.name),
-                        Path='/',
-                        AssumeRolePolicyDocument=Policy(
-                            Version='2012-10-17',
-                            Statement=[
-                                Statement(
-                                    Effect=Allow,
-                                    Action=[awacs.sts.AssumeRole],
-                                    Principal=Principal('Service',['apigateway.amazonaws.com'])
+                uri = troposphere.Join('', [
+                    "arn:aws:apigateway:",
+                    awslambda.region_name,
+                    ":lambda:path/2015-03-31/functions/",
+                    method.parameter_arn_ref,
+                    "/invocations"]
+                )
+                cfn_export_dict["Integration"]["Uri"] = uri
+
+                if method.integration.integration_type == 'AWS_PROXY':
+                    # Cross-account Lambda can not have a Role or gets a permission error
+                    if api_account_name == awslambda.get_account().name:
+                        # IAM Role - allows API Gateway to invoke Lambda
+                        # ToDo: enable Api Gateway to invoke things other than Lambda ...
+                        # ToDo: share Roles between methods!
+                        iam_role_resource = troposphere.iam.Role(
+                            self.create_cfn_logical_id('ApiGatewayIamRole' + self.apigatewayrestapi.name + method.name),
+                            Path='/',
+                            AssumeRolePolicyDocument=Policy(
+                                Version='2012-10-17',
+                                Statement=[
+                                    Statement(
+                                        Effect=Allow,
+                                        Action=[awacs.sts.AssumeRole],
+                                        Principal=Principal('Service',['apigateway.amazonaws.com'])
+                                    )
+                                ],
+                            ),
+                            Policies=[
+                                troposphere.iam.Policy(
+                                    PolicyName=self.create_cfn_logical_id('LambdaAccessApiGateway' + self.apigatewayrestapi.name + method.name),
+                                    PolicyDocument=Policy(
+                                        Version='2012-10-17',
+                                        Statement=[
+                                            Statement(
+                                                Effect=Allow,
+                                                Action=[awacs.awslambda.InvokeFunction],
+                                                Resource=[method.parameter_arn_ref],
+                                            )
+                                        ]
+                                    )
                                 )
-                            ],
-                        ),
-                        Policies=[
-                            troposphere.iam.Policy(
-                                PolicyName=self.create_cfn_logical_id('LambdaAccessApiGateway' + self.apigatewayrestapi.name + method.name),
-                                PolicyDocument=Policy(
-                                    Version='2012-10-17',
-                                    Statement=[
-                                        Statement(
-                                            Effect=Allow,
-                                            Action=[awacs.awslambda.InvokeFunction],
-                                            Resource=[method.parameter_arn_ref],
-                                        )
-                                    ]
-                                )
-                            )
-                        ]
-                    )
-                    template.add_resource(iam_role_resource)
-                    cfn_export_dict["Integration"]["Credentials"] = troposphere.GetAtt(iam_role_resource, "Arn")
+                            ]
+                        )
+                        template.add_resource(iam_role_resource)
+                        cfn_export_dict["Integration"]["Credentials"] = troposphere.GetAtt(iam_role_resource, "Arn")
 
             elif method.integration.integration_type == 'AWS':
                 # Enable Lambda (custom) integration
@@ -205,6 +215,8 @@ class ApiGatewayRestApi(StackTemplate):
                         for model in self.apigatewayrestapi.models.values():
                             if model.name == response_model.model_name:
                                 response_dict["ResponseModels"][response_model.content_type] = troposphere.Ref(model.resource)
+                if method_response.response_parameters:
+                    response_dict["ResponseParameters"] = method_response.response_parameters
                 responses.append(response_dict)
             cfn_export_dict["MethodResponses"] = responses
 
