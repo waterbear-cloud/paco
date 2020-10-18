@@ -61,29 +61,31 @@ class ApiGatewayRestApi(StackTemplate):
         )
 
         # Authorizers
-        troposphere.apigateway.Authorizer.props['AuthorizerUri'] = (str, False)
-        self.user_pool_params = {}
-        for cog_auth in self.apigatewayrestapi.cognito_authorizers.values():
-            provider_arns = []
-            for user_pool_ref in cog_auth.user_pools:
-                if user_pool_ref not in self.user_pool_params:
-                    self.user_pool_params[user_pool_ref] = self.create_cfn_parameter(
-                    name='CognitoUserPool' + md5sum(str_data=user_pool_ref),
-                    param_type='String',
-                    description='Cognito User Pool ARN',
-                    value=user_pool_ref + '.arn',
+        if self.apigatewayrestapi.cognito_authorizers != None:
+            # monkey patch for Troposphere ... ToDo: file a PR
+            troposphere.apigateway.Authorizer.props['AuthorizerUri'] = (str, False)
+            self.user_pool_params = {}
+            for cog_auth in self.apigatewayrestapi.cognito_authorizers.values():
+                provider_arns = []
+                for user_pool_ref in cog_auth.user_pools:
+                    if user_pool_ref not in self.user_pool_params:
+                        self.user_pool_params[user_pool_ref] = self.create_cfn_parameter(
+                        name='CognitoUserPool' + md5sum(str_data=user_pool_ref),
+                        param_type='String',
+                        description='Cognito User Pool ARN',
+                        value=user_pool_ref + '.arn',
+                    )
+                    provider_arns.append(troposphere.Ref(self.user_pool_params[user_pool_ref]))
+                cog_auth_resource = troposphere.apigateway.Authorizer(
+                    title=self.create_cfn_logical_id(f'CognitoAuthorizer{cog_auth.name}'),
+                    Name=cog_auth.name,
+                    RestApiId=troposphere.Ref(restapi_resource),
+                    IdentitySource='method.request.header.' + cog_auth.identity_source,
+                    Type='COGNITO_USER_POOLS',
+                    ProviderARNs=provider_arns,
                 )
-                provider_arns.append(troposphere.Ref(self.user_pool_params[user_pool_ref]))
-            cog_auth_resource = troposphere.apigateway.Authorizer(
-                title=self.create_cfn_logical_id(f'CognitoAuthorizer{cog_auth.name}'),
-                Name=cog_auth.name,
-                RestApiId=troposphere.Ref(restapi_resource),
-                IdentitySource='method.request.header.' + cog_auth.identity_source,
-                Type='COGNITO_USER_POOLS',
-                ProviderARNs=provider_arns,
-            )
-            self.template.add_resource(cog_auth_resource)
-            cog_auth.resource = cog_auth_resource
+                self.template.add_resource(cog_auth_resource)
+                cog_auth.resource = cog_auth_resource
 
         # Model
         for model in self.apigatewayrestapi.models.values():
