@@ -1,21 +1,16 @@
 from paco import utils
-from paco.aws_api.awslambda.code import update_lambda_code
 from paco.controllers.controllers import Controller
-from paco.core.exception import StackException, PacoErrorCode, UnknownSetCommand, MissingRequiredOption, PacoUnsupportedFeature
+from paco.controllers.mixins import LambdaDeploy
+from paco.core.exception import UnknownSetCommand
 from paco.core.yaml import YAML
-from paco.models.resources import SSMDocument
 from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
-from paco.models.references import get_model_obj_from_ref
 from paco.stack_grps.grp_application import ApplicationStackGroup
 from paco.stack_grps.grp_network import NetworkStackGroup
 from paco.stack_grps.grp_secretsmanager import SecretsManagerStackGroup
 from paco.stack_grps.grp_backup import BackupVaultsStackGroup
-from paco.stack import StackTags, stack_group, StackGroup
-import click
+from paco.stack import StackTags, StackGroup
 import getpass
-import os
-import pathlib
 
 
 yaml=YAML(typ="safe", pure=True)
@@ -179,7 +174,7 @@ class EnvironmentRegionContext():
             stack_grp.delete()
 
 
-class NetEnvController(Controller):
+class NetEnvController(Controller, LambdaDeploy):
     "NetworkEnvironment Controller"
 
     def __init__(self, paco_ctx):
@@ -253,20 +248,6 @@ class NetEnvController(Controller):
             self.secrets_manager(secret_name, account_ctx, self.env_region.name)
         else:
             raise UnknownSetCommand(f"Unable to apply set command for resource of type '{resource.__class__.__name__}'\nObject: {resource.paco_ref_parts}")
-
-    def lambda_deploy_command(self, resource):
-        "Deploy Lambda funciton(s) to AWS"
-        if schemas.ILambda.providedBy(resource):
-            account_ctx = self.paco_ctx.get_account_context(account_ref=self.env_region.network.aws_account)
-            # ToDo: support -s, --src option and validate
-            src = resource.code.zipfile
-            function_name = resource.stack.get_outputs_value('FunctionName')
-            print(f"Uploading code for Lambda '{resource.name}' ({function_name})")
-            update_lambda_code(resource, function_name, src, account_ctx, self.env_region.name)
-            print(f"Lambda {resource.name} has been updated.")
-        else:
-            # ToDo: support netenv/env_region/app scopes
-            raise PacoUnsupportedFeature("Scope not a Lambda")
 
     def validate(self):
         self.paco_ctx.log_start("Validate", self.netenv)
