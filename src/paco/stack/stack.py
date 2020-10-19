@@ -852,6 +852,51 @@ your cache may be out of sync. Try running again the with the --nocache option.
         # add to StackOutputsManager
         stack_outputs_manager.add(self.paco_ctx.outputs_path, self.output_config_dict)
 
+    def log_action_header(self):
+        global log_next_header
+        if log_next_header != None:
+            self.paco_ctx.log_action_col(log_next_header, 'Account', 'Action', 'Stack Name')
+            log_next_header = None
+
+    def log_action(self, action, stack_action, account_name=None, stack_name=None, message=None, return_it=False):
+        if self.paco_ctx.quiet_changes_only == True:
+            if stack_action in ['Protected', 'Disabled', 'Cache', 'Wait', 'Done']:
+                return
+        if self.paco_ctx.verbose == False:
+            if stack_action in ['Wait', 'Done']:
+                return
+        if account_name == None:
+            msg_account_name = self.account_ctx.get_name()
+        else:
+            msg_account_name = account_name
+
+        if stack_name == None:
+            msg_stack_name = self.get_name()
+        else:
+            msg_stack_name = stack_name
+
+        if self.template_file_id != None:
+            msg_stack_name += ': dependency group: ' + self.template_file_id
+        stack_message = msg_stack_name
+        if message != None:
+            stack_message += ': '+message
+        global log_next_header
+        if return_it == False:
+            self.log_action_header()
+        if action == "Init":
+            col_2_size=19
+        else:
+            col_2_size=9
+        log_message = self.paco_ctx.log_action_col(
+            action,
+            stack_action,
+            msg_account_name + '.' + self.aws_region,
+            'stack: ' + stack_message,
+            return_it,
+            col_2_size=col_2_size
+        )
+        if return_it == True:
+            return log_message
 
 @implementer(ICloudFormationStack)
 class Stack(BaseStack):
@@ -1523,52 +1568,6 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
             os.remove(self.output_filename)
         except FileNotFoundError:
             pass
-
-    def log_action_header(self):
-        global log_next_header
-        if log_next_header != None:
-            self.paco_ctx.log_action_col(log_next_header, 'Account', 'Action', 'Stack Name')
-            log_next_header = None
-
-    def log_action(self, action, stack_action, account_name=None, stack_name=None, message=None, return_it=False):
-        if self.paco_ctx.quiet_changes_only == True:
-            if stack_action in ['Protected', 'Disabled', 'Cache', 'Wait', 'Done']:
-                return
-        if self.paco_ctx.verbose == False:
-            if stack_action in ['Wait', 'Done']:
-                return
-        if account_name == None:
-            msg_account_name = self.account_ctx.get_name()
-        else:
-            msg_account_name = account_name
-
-        if stack_name == None:
-            msg_stack_name = self.get_name()
-        else:
-            msg_stack_name = stack_name
-
-        if self.template_file_id != None:
-            msg_stack_name += ': dependency group: ' + self.template_file_id
-        stack_message = msg_stack_name
-        if message != None:
-            stack_message += ': '+message
-        global log_next_header
-        if return_it == False:
-            self.log_action_header()
-        if action == "Init":
-            col_2_size=19
-        else:
-            col_2_size=9
-        log_message = self.paco_ctx.log_action_col(
-            action,
-            stack_action,
-            msg_account_name + '.' + self.aws_region,
-            'stack: ' + stack_message,
-            return_it,
-            col_2_size=col_2_size
-        )
-        if return_it == True:
-            return log_message
 
     def wait_for_complete(self):
         "Wait for a Stack's action to COMPLETE and finish and take"
