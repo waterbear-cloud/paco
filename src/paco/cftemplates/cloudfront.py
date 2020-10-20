@@ -56,10 +56,14 @@ class CloudFront(StackTemplate):
         if cloudfront_config.default_cache_behavior.max_ttl != -1:
             distribution_config_dict['DefaultCacheBehavior']['MaxTTL'] = cloudfront_config.default_cache_behavior.max_ttl
 
-        # Lambda Function associations
+        # Lambda Function Association Parameters - for both DefaultCacheBehaviour and CacheBehaviours
         lambda_associations = []
         lambda_params = {}
-        for lambda_association in cloudfront_config.default_cache_behavior.lambda_function_associations:
+        associations = cloudfront_config.default_cache_behavior.lambda_function_associations[:]
+        for cache_behaviour in cloudfront_config.cache_behaviors:
+            for lambda_association in cache_behaviour.lambda_function_associations:
+                associations.append(lambda_association)
+        for lambda_association in associations:
             lambda_ref = lambda_association.lambda_function
             if lambda_ref not in lambda_params:
                 if lambda_ref.endswith('.autoversion.arn'):
@@ -70,10 +74,12 @@ class CloudFront(StackTemplate):
                         description=f'Lambda Function Associated for {lambda_ref}',
                         value=lambda_ref,
                     )
+        # Lambda Function Association for DefaultCacheBehavior
+        for lambda_association in cloudfront_config.default_cache_behavior.lambda_function_associations:
             lambda_associations.append({
                 'EventType': lambda_association.event_type,
                 'IncludeBody': lambda_association.include_body,
-                'LambdaFunctionARN': troposphere.Ref(lambda_params[lambda_ref]),
+                'LambdaFunctionARN': troposphere.Ref(lambda_params[lambda_association.lambda_function]),
             })
         if len(lambda_associations) > 0:
             # ToDo: PR this monkey-patch into Troposphere
@@ -141,6 +147,17 @@ class CloudFront(StackTemplate):
                     'TargetOriginId': troposphere.Ref(cb_target_origin_param),
                     'ViewerProtocolPolicy': cache_behavior.viewer_protocol_policy
                 }
+                # CacheBehavior Lambda Function Associations
+                if len(cache_behavior.lambda_function_associations) > 0:
+                    lambda_associations = []
+                    for lambda_association in cache_behavior.lambda_function_associations:
+                        lambda_associations.append({
+                            'EventType': lambda_association.event_type,
+                            'IncludeBody': lambda_association.include_body,
+                            'LambdaFunctionARN': troposphere.Ref(lambda_params[lambda_association.lambda_function]),
+                        })
+                    cache_behavior_dict['LambdaFunctionAssociations'] = lambda_associations
+
                 cb_forwarded_values_config = cache_behavior.forwarded_values
                 cb_forwarded_values_dict = {
                     'QueryString': str(cb_forwarded_values_config.query_string)
