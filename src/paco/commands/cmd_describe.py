@@ -1,5 +1,6 @@
 from paco.commands.helpers import pass_paco_context, paco_home_option, init_paco_home_option, handle_exceptions
 from paco.commands.display import display_project_as_html
+from paco.core.exception import InvalidOption
 import click
 import pathlib
 import shutil
@@ -23,10 +24,13 @@ def describe_command(paco_ctx, home='.', output='html', display='chrome'):
     """Describe a Paco project"""
     paco_ctx.command = 'describe'
     paco_ctx.skip_account_ctx = True
+    layout_options = ('html', 'spa')
+    if output not in layout_options:
+        raise InvalidOption('Output option (-o, --output) can only be html or spa')
     init_paco_home_option(paco_ctx, home)
     paco_ctx.load_project(validate_local_paths=False)
     project = paco_ctx.project
-    static_path, html_files, envs_html = display_project_as_html(project)
+    static_path, html_files, envs_html = display_project_as_html(project, output)
     describe_path = paco_ctx.describe_path
     pathlib.Path(describe_path).mkdir(parents=True, exist_ok=True)
     shutil.copytree(static_path, describe_path, dirs_exist_ok=True)

@@ -102,6 +102,9 @@ class UnknownSetCommand(PacoBaseException):
 class InvalidFilesystemPath(PacoBaseException):
     title = "Inavlid filesystem path"
 
+class InvalidOption(PacoBaseException):
+    title = "Optional argument not valid"
+
 class MissingRequiredOption(PacoBaseException):
     title = "Missing required option for object type"
 

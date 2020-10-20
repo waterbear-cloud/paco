@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html metal:define-macro="layout" lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title tal:content="'Paco project: ' + project.title_or_name"></title>
+</head>
+
+<body>
+
+<metal:content define-slot="content">
+Content goes here
+</metal:content>
+
+</body>
+</html>
+
+<div metal:define-macro="globalnav">
+  <div></div>
+</div>

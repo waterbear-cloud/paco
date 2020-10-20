@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<metal:master use-macro="templates['layout.pt'].macros.layout">
+<metal:master use-macro="templates[f'layout-{output}.pt'].macros.layout">
   <div metal:fill-slot="content">
 
-    <metal:master use-macro="templates['layout.pt'].macros.globalnav">
+    <metal:master use-macro="templates[f'layout-{output}.pt'].macros.globalnav">
     </metal:master>
 
     <h6 class="section-header">Global Resources</h6>

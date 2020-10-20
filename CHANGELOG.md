@@ -11,6 +11,8 @@ Changelog for Paco
 
 ### Added
 
+- Describe Command has a `--output spa` option with minimal containing HTML. Contents suitable to use in a SPA.
+
 - ApiGatewayRestApi supports all fields needed to enable OPTIONS for CORS.
 
 - ApiGatewayRestApi can do cross-account Lambda integration. Lambda will add a Lambda Permission

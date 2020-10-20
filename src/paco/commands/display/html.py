@@ -57,7 +57,7 @@ def has_logs(res):
 def parent_obj(child_obj, interfacename):
     return get_parent_by_interface(child_obj, getattr(schemas, interfacename))
 
-def display_project_as_html(project):
+def display_project_as_html(project, output):
     path = os.path.dirname(__file__)
     static_path = pathlib.Path(path) / 'static'
     templates = PageTemplateLoader(path)
@@ -75,6 +75,7 @@ def display_project_as_html(project):
             userinfo=userinfo,
             resolve_ref=resolve_ref,
             templates=templates,
+            output=output,
         )
 
     # Environments
@@ -93,6 +94,7 @@ def display_project_as_html(project):
                 resolve_ref=resolve_ref,
                 parent_obj=parent_obj,
                 prefixed_name=prefixed_name,
+                output=output,
             )
 
     return static_path, html_files, envs_html
