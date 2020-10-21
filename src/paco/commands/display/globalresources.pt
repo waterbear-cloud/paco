@@ -5,7 +5,7 @@
     <metal:master use-macro="templates[f'layout-{output}.pt'].macros.globalnav">
     </metal:master>
 
-    <h6 class="section-header">Global Resources</h6>
+    <h6 class="local-nav section-header">Global Resources</h6>
     <p class="description">AWS Resources that are available at the account-level.</p>
     <h6 class="resource-header">IAM Users</h6>
     <p class="resource-description">IAM Users are AWS login accounts. Paco creates IAM Users that enforce multi-factor authentication (MFA) and creates IAM Roles

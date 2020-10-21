@@ -8,9 +8,11 @@
 
 <body>
 
-<metal:content define-slot="content">
-Content goes here
-</metal:content>
+<div id="paco-node">
+  <metal:content define-slot="content">
+  Content goes here
+  </metal:content>
+</div>
 
 </body>
 </html>

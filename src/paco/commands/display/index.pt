@@ -6,7 +6,7 @@
     </metal:master>
 
     <div id="home">
-      <h6 class="section-header">Paco Project: ${project.title_or_name}</h6>
+      <h6 class="local-nav section-header">Paco Project: ${project.title_or_name}</h6>
       <div class="list-header"><b>Project Settings</b></div>
       <ul class="sub-list">
         <li class="sub-item"><b>Paco Project Version:</b> ${project.paco_project_version}</li>

@@ -7,7 +7,7 @@
     </metal:master>
 
     <div id="netenvs">
-      <h6 class="section-header">Network Environments</h6>
+      <h6 class="local-nav section-header">Network Environments</h6>
       <div tal:repeat="netenv project.netenv.values()">
         <table tal:attributes="id netenv.name" id="netenv-name" class="full-width">
           <thead>
@@ -19,7 +19,13 @@
             <tr tal:repeat="env netenv.values()">
               <td>
                 <div><b>Environment:</b></div>
-                <div><a tal:content="env.title_or_name" tal:attributes="href f'ne-{netenv.name}-{env.name}.html'">env</a></div>
+                <div>
+                  <a tal:condition="output == 'html'" tal:content="env.title_or_name"
+                    tal:attributes="href f'ne-{netenv.name}-{env.name}.html';">env</a>
+                  <a tal:condition="output == 'spa'" type="button" tal:content="env.title_or_name"
+                    tal:attributes="v-on:click f'$parent.loadPage(\'ne-{netenv.name}-{env.name}.html\')'"
+                  />
+                </div>
               </td>
               <td>
                 <ul class="res-list">
