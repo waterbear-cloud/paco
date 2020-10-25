@@ -24,7 +24,7 @@
               <span tal:replace="alarm.description" />
               <a tal:condition="alarm.runbook_url" tal:attributes="href alarm.runbook_url">Runbook</a>
             </p>
-            <div class="row">
+            <div class="paco-row">
               <div class="six columns">
                 <ul class="sub-list">
                   <li class="sub-item"><b>Clasification:</b> ${alarm.classification}</li>
@@ -64,7 +64,7 @@
           <div tal:repeat="log_group log_set.log_groups.values()" style="clear: both;">
             <a class="anchor" tal:attributes="id f'log_set-{log_set.name}-{log_group.name}'"></a>
             <h6 class="list-header">Log Group: ${log_group.name}</h6>
-            <div class="row" style="clear: both;">
+            <div class="paco-row" style="clear: both;">
               <div class="six columns">
                 <h6 class="column-header">Log Sources</h6>
                 <ul class="sub-list">

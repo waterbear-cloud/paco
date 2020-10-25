@@ -16,7 +16,10 @@
         <div class="list-header">Alarms</div>
         <ul tal:condition="has_alarms(res)" class="sub-list">
           <li tal:repeat="alarm_set res.monitoring.alarm_sets.values()">
-            <a tal:attributes="href f'./monitoring.html#alarms_set-{res.type}-{alarm_set.name}'" tal:content="alarm_set.title_or_name" />
+            <a tal:condition="output == 'html'" tal:content="alarm_set.title_or_name"
+               tal:attributes="href f'./monitoring.html#alarms_set-{res.type}-{alarm_set.name}'" />
+            <a tal:condition="output == 'spa'" tal:content="alarm_set.title_or_name"
+               tal:attributes="v-on:click f'$parent.loadPage(\'monitoring.html\', \'alarms_set-{res.type}-{alarm_set.name}\')'" />
           </li>
         </ul>
         <ul tal:condition="not has_alarms(res)" class="sub-list">
@@ -27,7 +30,11 @@
         <div class="list-header">Logs</div>
         <ul tal:condition="has_logs(res)" class="sub-list">
           <li tal:repeat="log_set res.monitoring.log_sets.values()">
-            <b>Log Set:</b> <a tal:attributes="href f'./monitoring.html#log_set-{log_set.name}'" tal:content="log_set.title_or_name" />
+            <b>Log Set:</b>
+            <a tal:condition="output == 'html'" tal:content="log_set.title_or_name"
+               tal:attributes="href f'./monitoring.html#log_set-{log_set.name}'"/>
+            <a tal:condition="output == 'spa'" tal:content="log_set.title_or_name"
+               tal:attributes="href f'$parent.loadPage(\'monitoring.html\', \'log_set-{log_set.name}\')'"/>
             <ul class="fieldlist">
               <li tal:repeat="log_group log_set.log_groups.values()">
                 <a tal:attributes="href f'https://{env_reg.name}.console.aws.amazon.com/cloudwatch/home?region={env_reg.name}#logsV2:log-groups/log-group/{prefixed_name(res, log_group.get_full_log_group_name())}'"
