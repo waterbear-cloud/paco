@@ -467,31 +467,6 @@ class Lambda(StackTemplate):
             ref=awslambda.paco_ref_parts + '.arn',
         )
 
-    def prepare_s3bucket_artifact_hook(self, hook, is_zip):
-        if self.code_bucket_name == None:
-            self.prepare_s3bucket_artifact_cache(hook, is_zip)
-        self.awslambda.stack.set_parameter(
-            'CodeS3Bucket',
-            self.code_bucket_name,
-            ignore_changes=False
-        )
-        self.awslambda.stack.set_parameter(
-            'CodeS3Key',
-            self.code_artifact_name,
-            ignore_changes=False
-        )
-
-    def prepare_s3bucket_artifact_cache(self, hook, is_zip):
-        self.code_bucket_name, self.code_artifact_name, md5_hash = init_lambda_code(
-            self.paco_ctx.paco_buckets,
-            self.stack.resource,
-            self.awslambda.code.zipfile,
-            self.stack.account_ctx,
-            self.stack.aws_region,
-            is_zip=is_zip,
-        )
-        return md5_hash
-
     def prepare_s3bucket_artifact(self, is_zip=False):
         """
         Add a Hook which will prepare the Lambda Code artifact and upload to an S3 Bucket if it
@@ -501,12 +476,25 @@ class Lambda(StackTemplate):
         will be updated by the hook.
         """
         ignore_changes = True
+        # always create an artifact on CREATE
+        stack_hooks = StackHooks()
+        stack_hooks.add(
+            name='PrepLambdaCodeArtifactToS3Bucket',
+            stack_action=['create',],
+            stack_timing='pre',
+            hook_method=self.prepare_s3bucket_artifact_hook,
+            cache_method=self.prepare_s3bucket_artifact_cache,
+            hook_arg=is_zip,
+        )
+        self.stack.add_hooks(stack_hooks)
+
+        # only UPDATE an artifact if --auto-publish-code is true
         if self.paco_ctx.auto_publish_code == True:
             ignore_changes = False
             stack_hooks = StackHooks()
             stack_hooks.add(
                 name='PrepLambdaCodeArtifactToS3Bucket',
-                stack_action=['create','update'],
+                stack_action=['update'],
                 stack_timing='pre',
                 hook_method=self.prepare_s3bucket_artifact_hook,
                 cache_method=self.prepare_s3bucket_artifact_cache,
@@ -533,6 +521,31 @@ class Lambda(StackTemplate):
             'S3Key': troposphere.Ref(self.s3key_param),
         }
         return cfn_s3_code
+
+    def prepare_s3bucket_artifact_hook(self, hook, is_zip):
+        if self.code_bucket_name == None:
+            self.prepare_s3bucket_artifact_cache(hook, is_zip)
+        self.awslambda.stack.set_parameter(
+            'CodeS3Bucket',
+            self.code_bucket_name,
+            ignore_changes=False
+        )
+        self.awslambda.stack.set_parameter(
+            'CodeS3Key',
+            self.code_artifact_name,
+            ignore_changes=False
+        )
+
+    def prepare_s3bucket_artifact_cache(self, hook, is_zip):
+        self.code_bucket_name, self.code_artifact_name, md5_hash = init_lambda_code(
+            self.paco_ctx.paco_buckets,
+            self.stack.resource,
+            self.awslambda.code.zipfile,
+            self.stack.account_ctx,
+            self.stack.aws_region,
+            is_zip=is_zip,
+        )
+        return md5_hash
 
     def add_log_group(self, loggroup_name, logical_name=None):
         "Add a LogGroup resource to the template"
