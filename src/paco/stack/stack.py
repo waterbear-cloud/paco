@@ -1294,6 +1294,7 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
             self.log_action("Provision", "Disabled")
             return
         self.action = "create"
+        self.hooks.run("create", "pre", self)
         self.log_action("Provision", "Create")
         try:
             stack_parameters = self.generate_stack_parameters()
@@ -1304,7 +1305,6 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
                 e.message += "Stack: {}\n".format(self.get_name())
                 e.message += "Error: Depends on StackOutputs from a stack that does not yet exist.\n"
             raise e
-        self.hooks.run("create", "pre", self)
         response = self.cfn_client.create_stack(
             StackName=self.get_name(),
             TemplateBody=self.template.body,
