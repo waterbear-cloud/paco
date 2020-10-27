@@ -11,6 +11,11 @@ Changelog for Paco
 
 ### Added
 
+- Paco refs for secrets can have an additional part at the end to resolve to the JSON field inside the value of the secret.
+
+- `ECSServices` has new `setting_groups` field which allows sharing the same set of Secrets and Environments
+  between container definitions.
+
 - Handy `enable_cors` for `ApiGatewayRestApi` template.
 
 - Nested Resources for `ApiGatewayRestApi`.

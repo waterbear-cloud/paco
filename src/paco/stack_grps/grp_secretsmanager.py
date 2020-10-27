@@ -1,3 +1,4 @@
+from troposphere import Not
 from paco.stack import StackOrder, Stack, StackGroup, StackTags
 from paco.models import schemas
 import paco.cftemplates
@@ -47,5 +48,12 @@ class SecretsManagerStackGroup(StackGroup):
 
     def resolve_ref(self, ref):
         if schemas.ISecretsManagerSecret.providedBy(ref.resource):
-            return self.secrets_stack[self.secret_account_lookup['paco.ref '+'.'.join(ref.parts[:-1])]]
+            # assumes the secret has had '.arn' appended to the final part
+            strip = -1 # will remove the '.arn' part
+            if ref.type == 'netenv':
+                if len(ref.parts) == 10:
+                    strip = -2 # will remove '.jsonfield.arn' parts
+            else:
+                raise NotImplemented('Only netenv ref types supported for Secrets')
+            return self.secrets_stack[self.secret_account_lookup['paco.ref '+'.'.join(ref.parts[:strip])]]
         return None

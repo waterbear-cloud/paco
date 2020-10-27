@@ -51,6 +51,9 @@ class ECSServices(StackTemplate):
         self.init_template('Elastic Container Service (ECS) Services and TaskDefinitions')
         if not ecs_config.is_enabled(): return
 
+        self.secret_params = {}
+        self.environment_params = {}
+
         # Task Execution Role
         task_execution_role_param = self.create_cfn_parameter(
             name='TaskExecutionRole',
@@ -67,10 +70,16 @@ class ECSServices(StackTemplate):
             index = 0
             task._depends_on = []
             for container_definition in task.container_definitions.values():
-                # ContainerDefinition Environment variables
+                # Environment variables
+                # Merge setting_groups env vars with container_definition specific env vars
+                merged_environment = {}
+                for group_name in container_definition.setting_groups:
+                    for env_pair in ecs_config.setting_groups[group_name].environment:
+                        merged_environment[env_pair.name] = env_pair.value
                 for env_pair in container_definition.environment:
-                    key = env_pair.name
-                    value = env_pair.value
+                    merged_environment[env_pair.name] = env_pair.value
+
+                for key, value in merged_environment.items():
                     # only paco refs are passed as Parameters to avoid tripping the 60 Parameter CloudFormation limit
                     if references.is_ref(value):
                         if type(value) == type(str()):
@@ -83,17 +92,54 @@ class ECSServices(StackTemplate):
                                     value, type(value)
                                 )
                             )
-                        param_name = self.create_cfn_logical_id(f'{task.name}{container_definition.name}{key}')
-                        environment_param = self.create_cfn_parameter(
-                            param_type=param_type,
-                            name=param_name,
-                            description=f'Environment variable for container definition {container_definition.name} for task definition {task.name}',
-                            value=value,
-                        )
-                        value = troposphere.Ref(environment_param)
+                        if value not in self.environment_params:
+                            self.environment_params[value] = self.create_cfn_parameter(
+                                name=self.create_cfn_logical_id('EnvironmentValue' + md5sum(str_data=value)),
+                                description=f'Environment variable for container definition {container_definition.name} for task definition {task.name}',
+                                param_type=param_type,
+                                value=value,
+                            )
+                        value = troposphere.Ref(self.environment_params[value])
                     if 'Environment' not in task_dict['ContainerDefinitions'][index]:
                         task_dict['ContainerDefinitions'][index]['Environment'] = []
                     task_dict['ContainerDefinitions'][index]['Environment'].append({'Name': key, 'Value': value})
+
+                # Secrets
+                # merge shared setting_groups secrets with container definition specific secrets
+                merged_secrets = {}
+                for group_name in container_definition.setting_groups:
+                    for secret_pair in ecs_config.setting_groups[group_name].secrets:
+                        merged_secrets[secret_pair.name] = secret_pair.value_from
+                for secret_pair in container_definition.secrets:
+                    merged_secrets[secret_pair.name] = secret_pair.value_from
+
+                for key, value_from in merged_secrets.items():
+                    if value_from not in self.secret_params:
+                        self.secret_params[value_from] = self.create_cfn_parameter(
+                            name=self.create_cfn_logical_id('SecretArn' + md5sum(str_data=value_from)),
+                            description='The arn of the Secrets Manger Secret.',
+                            param_type='String',
+                            value=value_from + '.arn'
+                        )
+                    if 'Secrets' not in task_dict['ContainerDefinitions'][index]:
+                        task_dict['ContainerDefinitions'][index]['Secrets'] = []
+
+                    # To use the full value of the secret
+                    # paco.ref netenv.mynet.dev.ca-central-1.secrets_manager.myco.myapp.mysecret
+                    # To use the field of JSON doc in the the secret
+                    # paco.ref netenv.mynet.dev.ca-central-1.secrets_manager.myco.myapp.mysecret.myjsonfield
+                    value_from_ref = references.Reference(value_from)
+                    value_from_final = troposphere.Ref(self.secret_params[value_from])
+                    if value_from_ref.type != 'netenv':
+                        raise NotImplemented('Only netenv ref types are supported')
+                    if len(value_from_ref.parts) == 9:
+                        value_from_final = troposphere.Join(':', [
+                            troposphere.Ref(self.secret_params[value_from]), f'{value_from_ref.parts[8]}::'
+                        ])
+                    task_dict['ContainerDefinitions'][index]['Secrets'].append({
+                        'Name': key,
+                        'ValueFrom': value_from_final
+                    })
 
                 # Image can be a paco.ref to an ECR Repository
                 if references.is_ref(container_definition.image):
@@ -143,21 +189,6 @@ class ECSServices(StackTemplate):
                         task._depends_on.append(log_group_resource)
                         log_dict['Options']['awslogs-stream-prefix'] = container_definition.name
                 index += 1
-
-            # Setup Secrets
-            for task_dict_container_def in task_dict['ContainerDefinitions']:
-                if 'Secrets' in task_dict_container_def:
-                    for secrets_pair in task_dict_container_def['Secrets']:
-                        # Secerts Arn Parameters
-                        name_hash = md5sum(str_data=secrets_pair['ValueFrom'])
-                        secret_param_name = 'TaskDefinitionSecretArn'+name_hash
-                        secret_param = self.create_cfn_parameter(
-                            param_type='String',
-                            name=secret_param_name,
-                            description='The arn of the Secrets Manger Secret.',
-                            value=secrets_pair['ValueFrom']+'.arn'
-                        )
-                        secrets_pair['ValueFrom'] = '!ManualTroposphereRef '+secret_param_name
 
             task_res = troposphere.ecs.TaskDefinition.from_dict(
                 self.create_cfn_logical_id('TaskDefinition' + task.name),
