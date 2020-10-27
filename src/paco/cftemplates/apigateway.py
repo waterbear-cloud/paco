@@ -3,6 +3,9 @@ CloudFormation template for API Gateway
 """
 
 from awacs.aws import Allow, Statement, Policy, Principal
+from paco.models import schemas
+from paco.models.resources import ApiGatewayMethod
+from paco.models.loader import apply_attributes_from_config
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.models.references import get_model_obj_from_ref
 from paco.utils import md5sum
@@ -44,19 +47,19 @@ class ApiGatewayRestApi(StackTemplate):
 
         # Resources
         restapi_logical_id = 'ApiGatewayRestApi'
-        restapi_resource = troposphere.apigateway.RestApi.from_dict(
+        self.restapi_resource = troposphere.apigateway.RestApi.from_dict(
             restapi_logical_id,
             self.apigatewayrestapi.cfn_export_dict
         )
-        template.add_resource(restapi_resource)
+        template.add_resource(self.restapi_resource)
         self.create_output(
             title='ApiGatewayRestApiId',
-            value=troposphere.Ref(restapi_resource),
+            value=troposphere.Ref(self.restapi_resource),
             ref=self.apigatewayrestapi.paco_ref_parts + '.id',
         )
         self.create_output(
             title='ApiGatewayRestApiRootResourceId',
-            value=troposphere.GetAtt(restapi_resource, "RootResourceId"),
+            value=troposphere.GetAtt(self.restapi_resource, "RootResourceId"),
             ref=self.apigatewayrestapi.paco_ref_parts + '.root_resource_id',
         )
 
@@ -79,7 +82,7 @@ class ApiGatewayRestApi(StackTemplate):
                 cog_auth_resource = troposphere.apigateway.Authorizer(
                     title=self.create_cfn_logical_id(f'CognitoAuthorizer{cog_auth.name}'),
                     Name=cog_auth.name,
-                    RestApiId=troposphere.Ref(restapi_resource),
+                    RestApiId=troposphere.Ref(self.restapi_resource),
                     IdentitySource='method.request.header.' + cog_auth.identity_source,
                     Type='COGNITO_USER_POOLS',
                     ProviderARNs=provider_arns,
@@ -91,7 +94,7 @@ class ApiGatewayRestApi(StackTemplate):
         for model in self.apigatewayrestapi.models.values():
             model.logical_id = self.create_cfn_logical_id('ApiGatewayModel' + model.name)
             cfn_export_dict = model.cfn_export_dict
-            cfn_export_dict['RestApiId'] = troposphere.Ref(restapi_resource)
+            cfn_export_dict['RestApiId'] = troposphere.Ref(self.restapi_resource)
             if 'Schema' not in cfn_export_dict:
                 cfn_export_dict['Schema'] = {}
             model_resource = troposphere.apigateway.Model.from_dict(model.logical_id, cfn_export_dict)
@@ -99,23 +102,7 @@ class ApiGatewayRestApi(StackTemplate):
             template.add_resource(model_resource)
 
         # Resource
-        for resource in self.apigatewayrestapi.resources.values():
-            resource_logical_id = 'ApiGatewayResource' + self.create_cfn_logical_id(resource.name)
-            cfn_export_dict = resource.cfn_export_dict
-            if resource.parent_id == "RootResourceId":
-                cfn_export_dict["ParentId"] = troposphere.GetAtt(restapi_resource, "RootResourceId")
-                cfn_export_dict["RestApiId"] = troposphere.Ref(restapi_resource)
-            else:
-                raise NotImplemented("ToDo: handle nested resources")
-            resource_resource = troposphere.apigateway.Resource.from_dict(resource_logical_id, cfn_export_dict)
-            resource.resource = resource_resource
-            resource_resource.DependsOn = restapi_logical_id
-            template.add_resource(resource_resource)
-            self.create_output(
-                title=self.create_cfn_logical_id(f'ApiGatewayRestApiResource{resource.name}'),
-                value=troposphere.Ref(resource_resource),
-                ref=resource.paco_ref_parts + '.id',
-            )
+        self.recursively_add_resources(self.apigatewayrestapi.resources)
 
         # Method
         api_account_name = self.apigatewayrestapi.get_account().name
@@ -132,11 +119,10 @@ class ApiGatewayRestApi(StackTemplate):
                 if auth_type == 'cognito_authorizers':
                     cfn_export_dict["AuthorizationType"] = 'COGNITO_USER_POOLS'
             if method.resource_name:
-                resource = self.apigatewayrestapi.resources[method.resource_name]
-                cfn_export_dict["ResourceId"] = troposphere.Ref(resource.resource)
+                cfn_export_dict["ResourceId"] = troposphere.Ref(method.get_resource().resource)
             else:
-                cfn_export_dict["ResourceId"] = troposphere.GetAtt(restapi_resource, 'RootResourceId')
-            cfn_export_dict["RestApiId"] = troposphere.Ref(restapi_resource)
+                cfn_export_dict["ResourceId"] = troposphere.GetAtt(self.restapi_resource, 'RootResourceId')
+            cfn_export_dict["RestApiId"] = troposphere.Ref(self.restapi_resource)
 
             # Lambad Integration
             if method.integration.integration_lambda != None:
@@ -235,11 +221,14 @@ class ApiGatewayRestApi(StackTemplate):
         deployment_resource = troposphere.apigateway.Deployment.from_dict(
             'ApiGatewayDeployment',
             {'Description': 'Deployment',
-             'RestApiId': troposphere.Ref(restapi_resource) }
+             'RestApiId': troposphere.Ref(self.restapi_resource) }
         )
-        # ToDo: Deployment depends upon all Methods
-        for method in self.apigatewayrestapi.methods.values():
-            deployment_resource.DependsOn = method.logical_id
+        # this is needed otherwise you can get 'No integration defined for method'
+        # as the Deployment can be created before the Methods
+        deployment_resource.DependsOn = [
+            method.logical_id for method in self.apigatewayrestapi.methods.values()
+        ]
+
         template.add_resource(deployment_resource)
         self.create_output(
             title=self.create_cfn_logical_id(f'ApiGatewayRestApiDeployment'),
@@ -251,7 +240,7 @@ class ApiGatewayRestApi(StackTemplate):
         for stage in self.apigatewayrestapi.stages.values():
             stage_id = self.create_cfn_logical_id('ApiGatewayStage' + stage.name)
             cfn_export_dict = stage.cfn_export_dict
-            cfn_export_dict["RestApiId"] = troposphere.Ref(restapi_resource)
+            cfn_export_dict["RestApiId"] = troposphere.Ref(self.restapi_resource)
             cfn_export_dict["DeploymentId"] = troposphere.Ref(deployment_resource)
             stage_resource = troposphere.apigateway.Stage.from_dict(stage_id, cfn_export_dict)
             template.add_resource(stage_resource)
@@ -260,6 +249,71 @@ class ApiGatewayRestApi(StackTemplate):
                 value=troposphere.Ref(stage_resource),
                 ref=stage.paco_ref_parts + '.id',
             )
+
+    def recursively_add_resources(self, resources_container):
+        for resource in resources_container.values():
+            self.add_apigateway_resource(resource)
+            if len(resource.child_resources.keys()) > 0:
+                self.recursively_add_resources(resource.child_resources)
+
+    def add_apigateway_resource(self, resource):
+        resource_logical_id = 'ApiGatewayResource' + self.create_cfn_logical_id(resource.name + md5sum(str_data=resource.paco_ref_parts))
+        cfn_export_dict = resource.cfn_export_dict
+        parent_resource = resource.__parent__.__parent__
+        # root resource
+        if schemas.IApiGatewayRestApi.providedBy(parent_resource):
+            cfn_export_dict["ParentId"] = troposphere.GetAtt(self.restapi_resource, "RootResourceId")
+        # child resource
+        else:
+            cfn_export_dict["ParentId"] = troposphere.Ref(parent_resource.resource)
+        cfn_export_dict["RestApiId"] = troposphere.Ref(self.restapi_resource)
+        resource_resource = troposphere.apigateway.Resource.from_dict(resource_logical_id, cfn_export_dict)
+        resource.resource = resource_resource
+        self.template.add_resource(resource_resource)
+        self.create_output(
+            title=self.create_cfn_logical_id(f'ApiGatewayRestApiResource{resource.name}' + md5sum(str_data=resource.paco_ref_parts)),
+            value=troposphere.Ref(resource_resource),
+            ref=resource.paco_ref_parts + '.id',
+        )
+        # Add an OPTIONS method if CORS is enabled
+        if resource.enable_cors == True:
+            options_config = {
+                'http_method': 'OPTIONS',
+                'integration': {
+                    'integration_type': 'MOCK',
+                    'integration_http_method': 'OPTIONS',
+                    'pass_through_behavior': 'WHEN_NO_MATCH',
+                    'request_templates': {'application/json': '{"statusCode": 200}'},
+                    'integration_responses': [{
+                        'status_code': '200',
+                        'response_parameters': {
+                            'method.response.header.Access-Control-Allow-Headers': "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+                            'method.response.header.Access-Control-Allow-Methods': "'POST,OPTIONS'",
+                            'method.response.header.Access-Control-Allow-Origin': "'*'",
+                        },
+                        'response_templates': {'application/json': ''},
+                    },],
+                },
+                'method_responses': [{
+                    'status_code': '200',
+                    'response_models': [{
+                        'content_type': 'application/json',
+                        'model_name': 'emptyjson',
+                    }],
+                    'response_parameters': {
+                        'method.response.header.Access-Control-Allow-Headers': False,
+                        'method.response.header.Access-Control-Allow-Methods': False,
+                        'method.response.header.Access-Control-Allow-Origin': False,
+                    },
+                }],
+            }
+            options_config['resource_name'] = resource.nested_name
+            method_name = f'{resource.nested_name}PacoCORS'
+            options_method = ApiGatewayMethod(method_name, self.apigatewayrestapi.methods)
+            apply_attributes_from_config(options_method, options_config)
+            self.apigatewayrestapi.methods[method_name] = options_method
+
+        return resource_resource
 
 class ApiGatewayLamdaPermissions(StackTemplate):
     def __init__(self, stack, paco_ctx, awslambda):
@@ -290,7 +344,8 @@ class ApiGatewayLamdaPermissions(StackTemplate):
                         path_part = ''
                         # ToDo: nested resource support!
                         if method.resource_name:
-                            path_part = apigateway.resources[method.resource_name].path_part
+                            resource = method.get_resource()
+                            path_part = resource.path_part
                         lambda_permission_resource = troposphere.awslambda.Permission(
                             title='ApiGatewayRestApiMethod' + md5sum(str_data=method.paco_ref),
                             Action="lambda:InvokeFunction",

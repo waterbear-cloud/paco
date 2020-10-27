@@ -11,6 +11,10 @@ Changelog for Paco
 
 ### Added
 
+- Handy `enable_cors` for `ApiGatewayRestApi` template.
+
+- Nested Resources for `ApiGatewayRestApi`.
+
 - Describe Command has a `--output spa` option with minimal containing HTML. Contents suitable to use in a SPA.
 
 - ApiGatewayRestApi supports all fields needed to enable OPTIONS for CORS.
