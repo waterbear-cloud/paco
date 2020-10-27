@@ -26,6 +26,8 @@ class ApiGatewayRestApiResourceEngine(ResourceEngine):
                             account = lambda_ref.get_account(self.paco_ctx.project, awslambda)
                             account_ctx = self.paco_ctx.get_account_context(account_name=account.name)
 
+                            # XXX FixMe: if more than one Lambda in given account/region, they will have same Stack
+                            # make template have permissions for all Lambdas
                             # create LambdaPermission Stack
                             self.stack_group.add_new_stack(
                                 lambda_ref.region,

@@ -2,10 +2,12 @@
 CloudFormation template for API Gateway
 """
 
+from importlib import resources
 from awacs.aws import Allow, Statement, Policy, Principal
 from paco.models import schemas
 from paco.models.resources import ApiGatewayMethod
 from paco.models.loader import apply_attributes_from_config
+from paco.models.schemas import get_parent_by_interface
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.models.references import get_model_obj_from_ref
 from paco.utils import md5sum
@@ -344,8 +346,18 @@ class ApiGatewayLamdaPermissions(StackTemplate):
                         path_part = ''
                         # ToDo: nested resource support!
                         if method.resource_name:
+                            name_parts = method.resource_name.split('.')
                             resource = method.get_resource()
-                            path_part = resource.path_part
+                            if len(name_parts) > 1:
+                                # child resource
+                                last_resource = resource
+                                while schemas.IApiGatewayResource.providedBy(resource):
+                                    last_resource = resource
+                                    resource = resource.__parent__.__parent__
+                                path_part = last_resource.path_part + '/*' # add /* to match all child resource
+                            else:
+                                # parent resource
+                                path_part = resource.path_part
                         lambda_permission_resource = troposphere.awslambda.Permission(
                             title='ApiGatewayRestApiMethod' + md5sum(str_data=method.paco_ref),
                             Action="lambda:InvokeFunction",
