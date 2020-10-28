@@ -264,6 +264,20 @@ class RDSAurora(StackTemplate):
                 )
                 db_cluster_dict['MasterUserPassword'] = troposphere.Ref(master_password_param)
 
+        # VPC Security Groups Ids
+        sg_param_ref_list = []
+        for sg_ref in rds_aurora.security_groups:
+            sg_hash = utils.md5sum(str_data=sg_ref)
+            sg_param = self.create_cfn_parameter(
+                param_type='AWS::EC2::SecurityGroup::Id',
+                name=self.create_cfn_logical_id(f'SecurityGroup{sg_hash}'),
+                description='VPC Security Group for DB Cluster',
+                value=sg_ref + '.id',
+            )
+            sg_param_ref_list.append(troposphere.Ref(sg_param))
+        if len(sg_param_ref_list) > 0:
+            db_cluster_dict['VpcSecurityGroupIds'] = sg_param_ref_list
+
         db_cluster_res = troposphere.rds.DBCluster.from_dict(
             rds_cluster_logical_id,
             db_cluster_dict
@@ -296,6 +310,8 @@ class RDSAurora(StackTemplate):
                 'AllowMajorVersionUpgrade': db_instance.get_value_or_default('allow_major_version_upgrade'),
                 'AutoMinorVersionUpgrade': db_instance.get_value_or_default('auto_minor_version_upgrade'),
             }
+
+            # Enhanced Monitoring
             enhanced_monitoring_interval = db_instance.get_value_or_default('enhanced_monitoring_interval_in_seconds')
             if enhanced_monitoring_interval != 0:
                 db_instance_dict['MonitoringInterval'] = enhanced_monitoring_interval

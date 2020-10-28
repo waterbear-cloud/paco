@@ -344,7 +344,6 @@ class ApiGatewayLamdaPermissions(StackTemplate):
                     if apigateway.get_account().name != awslambda.get_account().name:
                         # Grant Cross-Account API Gateway permission
                         path_part = ''
-                        # ToDo: nested resource support!
                         if method.resource_name:
                             name_parts = method.resource_name.split('.')
                             resource = method.get_resource()
