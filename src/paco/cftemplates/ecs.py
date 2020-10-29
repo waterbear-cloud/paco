@@ -114,27 +114,28 @@ class ECSServices(StackTemplate):
                     merged_secrets[secret_pair.name] = secret_pair.value_from
 
                 for key, value_from in merged_secrets.items():
-                    if value_from not in self.secret_params:
-                        self.secret_params[value_from] = self.create_cfn_parameter(
-                            name=self.create_cfn_logical_id('SecretArn' + md5sum(str_data=value_from)),
-                            description='The arn of the Secrets Manger Secret.',
+                    # To use the full value of the secret
+                    #   paco.ref netenv.mynet.dev.ca-central-1.secrets_manager.myco.myapp.mysecret
+                    # To use the field of JSON doc in the the secret
+                    #   paco.ref netenv.mynet.dev.ca-central-1.secrets_manager.myco.myapp.mysecret.myjsonfield
+                    value_from_ref_obj = references.Reference(value_from)
+                    base_ref_obj = value_from_ref_obj.secret_base_ref()
+
+                    if base_ref_obj.ref not in self.secret_params:
+                        self.secret_params[base_ref_obj.ref] = self.create_cfn_parameter(
+                            name=self.create_cfn_logical_id('SecretArn' + md5sum(str_data=base_ref_obj.ref)),
+                            description=f'Arn of a Secrets Manger Secret for {base_ref_obj.ref}',
                             param_type='String',
-                            value=value_from + '.arn'
+                            value=base_ref_obj.raw + '.arn'
                         )
                     if 'Secrets' not in task_dict['ContainerDefinitions'][index]:
                         task_dict['ContainerDefinitions'][index]['Secrets'] = []
 
-                    # To use the full value of the secret
-                    # paco.ref netenv.mynet.dev.ca-central-1.secrets_manager.myco.myapp.mysecret
-                    # To use the field of JSON doc in the the secret
-                    # paco.ref netenv.mynet.dev.ca-central-1.secrets_manager.myco.myapp.mysecret.myjsonfield
-                    value_from_ref = references.Reference(value_from)
-                    value_from_final = troposphere.Ref(self.secret_params[value_from])
-                    if value_from_ref.type != 'netenv':
-                        raise NotImplemented('Only netenv ref types are supported')
-                    if len(value_from_ref.parts) == 9:
+                    value_from_final = troposphere.Ref(self.secret_params[base_ref_obj.ref])
+                    if base_ref_obj.raw != value_from_ref_obj.raw:
+                        jsonfield_name = value_from_ref_obj.parts[8]
                         value_from_final = troposphere.Join(':', [
-                            troposphere.Ref(self.secret_params[value_from]), f'{value_from_ref.parts[8]}::'
+                            troposphere.Ref(self.secret_params[base_ref_obj.ref]), f'{jsonfield_name}::'
                         ])
                     task_dict['ContainerDefinitions'][index]['Secrets'].append({
                         'Name': key,

@@ -48,12 +48,6 @@ class SecretsManagerStackGroup(StackGroup):
 
     def resolve_ref(self, ref):
         if schemas.ISecretsManagerSecret.providedBy(ref.resource):
-            # assumes the secret has had '.arn' appended to the final part
-            strip = -1 # will remove the '.arn' part
-            if ref.type == 'netenv':
-                if len(ref.parts) == 10:
-                    strip = -2 # will remove '.jsonfield.arn' parts
-            else:
-                raise NotImplemented('Only netenv ref types supported for Secrets')
-            return self.secrets_stack[self.secret_account_lookup['paco.ref '+'.'.join(ref.parts[:strip])]]
+            base_ref_obj = ref.secret_base_ref()
+            return self.secrets_stack[self.secret_account_lookup[base_ref_obj.raw]]
         return None

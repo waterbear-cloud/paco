@@ -770,22 +770,17 @@ your cache may be out of sync. Try running again the with the --nocache option.
     def get_outputs_key_from_ref(self, ref):
         "Return a key for an output from a Reference object"
         # Secrets .jsonfield ref special case
+        # remove the .jsonfield part as Stacks do not provide an Output for that, the Output
+        # is simply the Secret Arn
         if schemas.ISecretsManagerSecret.providedBy(ref.resource):
-            if ref.type == 'netenv':
-                if len(ref.parts) == 10:
-                    new_ref = ref.parts[:-2]
-                    new_ref.append('arn')
-                    new_ref = '.'.join(new_ref)
-                    ref = references.Reference(f'paco.ref {new_ref}')
-            else:
-                raise NotImplemented('Only netenv ref types supported for Secrets')
+            base_ref = ref.secret_base_ref()
+            ref = references.Reference(f'{base_ref.raw}.arn')
 
         for stack_output_config in self.stack_output_config_list:
             if stack_output_config.config_ref == ref.ref:
                 return stack_output_config.key
 
         # raise an error if no key was found
-        breakpoint()
         message = self.get_stack_error_message()
         message += "Error: Unable to find outputs key for ref: {}\n".format(ref.raw)
         raise StackException(
