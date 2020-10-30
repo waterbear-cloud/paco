@@ -1,6 +1,7 @@
 from troposphere import Not
 from paco.stack import StackOrder, Stack, StackGroup, StackTags
 from paco.models import schemas
+from paco.models import references
 import paco.cftemplates
 
 
@@ -47,7 +48,8 @@ class SecretsManagerStackGroup(StackGroup):
             )
 
     def resolve_ref(self, ref):
-        if schemas.ISecretsManagerSecret.providedBy(ref.resource):
-            base_ref_obj = ref.secret_base_ref()
-            return self.secrets_stack[self.secret_account_lookup[base_ref_obj.raw]]
-        return None
+        ref_obj = ref
+        if isinstance(ref, str):
+            ref_obj = references.Reference(ref)
+        base_ref_obj = ref_obj.secret_base_ref()
+        return self.secrets_stack[self.secret_account_lookup[base_ref_obj.raw]]
