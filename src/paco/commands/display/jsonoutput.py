@@ -101,11 +101,12 @@ def display_project_as_json(project):
                 if env_region.name == 'default':
                     continue
                 env_region_dict = export_fields_to_dict(env_region)
+                env_region_dict['account_ref'] = network.aws_account.split(' ')[1]
                 json_docs['env_regions'].append(env_region_dict)
 
                 # Network
                 network_dict = export_fields_to_dict(network, fields=['availability_zones'])
-                network_dict['account'] = network.aws_account.split('.')[-1:]
+                network_dict['account_ref'] = network.aws_account.split(' ')[1]
                 json_docs['networks'].append(network_dict)
 
                 # Backup Vaults
@@ -126,7 +127,7 @@ def display_project_as_json(project):
                         resource_group_dict = export_fields_to_dict(resource_group)
                         json_docs['resourcegroups'].append(resource_group_dict)
                         for resource in resource_group.resources.values():
-                            resource_dict = export_fields_to_dict(resource)
+                            resource_dict = export_fields_to_dict(resource, fields=['type', 'order', 'change_protected'])
                             json_docs['resources'].append(resource_dict)
 
     return json_docs
