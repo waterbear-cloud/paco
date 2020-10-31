@@ -109,6 +109,7 @@ class ApiGatewayRestApi(StackTemplate):
         # Method
         api_account_name = self.apigatewayrestapi.get_account().name
         for method in self.apigatewayrestapi.methods.values():
+            method_depends_on = [ restapi_logical_id ]
             method_id = 'ApiGatewayMethod' + self.create_cfn_logical_id(method.name)
             method.logical_id = method_id
             cfn_export_dict = method.cfn_export_dict
@@ -122,6 +123,7 @@ class ApiGatewayRestApi(StackTemplate):
                     cfn_export_dict["AuthorizationType"] = 'COGNITO_USER_POOLS'
             if method.resource_name:
                 cfn_export_dict["ResourceId"] = troposphere.Ref(method.get_resource().resource)
+                method_depends_on.append(method.get_resource().resource)
             else:
                 cfn_export_dict["ResourceId"] = troposphere.GetAtt(self.restapi_resource, 'RootResourceId')
             cfn_export_dict["RestApiId"] = troposphere.Ref(self.restapi_resource)
@@ -211,7 +213,7 @@ class ApiGatewayRestApi(StackTemplate):
             cfn_export_dict["MethodResponses"] = responses
 
             method_resource = troposphere.apigateway.Method.from_dict(method_id, cfn_export_dict)
-            method_resource.DependsOn = restapi_logical_id
+            method_resource.DependsOn = method_depends_on
             template.add_resource(method_resource)
             self.create_output(
                 title=self.create_cfn_logical_id(f'ApiGatewayRestApiMethod{method.name}'),
