@@ -157,10 +157,12 @@ def load_app_in_account_region(
     account_name = account
     if is_ref(account):
         account_name = get_model_obj_from_ref(account, project).name
-    account_cont = AccountContainer(account_name, parent)
-    parent[account_name] = account_cont
-    region_cont = RegionContainer(region, account_cont)
-    account_cont[region] = region_cont
+    if account_name not in parent:
+        account_cont = AccountContainer(account_name, parent)
+        parent[account_name] = account_cont
+    if region not in parent[account_name]:
+        region_cont = RegionContainer(region, parent[account_name])
+        parent[account_name][region] = region_cont
     app = Application(app_name, parent[account_name][region])
     parent[account_name][region][app_name] = app
     if project == None:
