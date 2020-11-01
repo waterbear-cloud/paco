@@ -1,5 +1,5 @@
 from paco.models import schemas
-from paco.models.base import most_specialized_interfaces
+from paco.models.base import most_specialized_interfaces, get_all_fields
 from zope.interface import Interface
 import zope.schema
 import zope.schema.interfaces
@@ -20,7 +20,7 @@ def export_fields_to_dict(obj, fields=None, parentname=None):
     if fields != None:
         for fieldname in fields:
             value = getattr(obj, fieldname, None)
-            if value == None:
+            if value == None or value == '':
                 continue
             if Interface.providedBy(value):
                 if not isinstance(value, (str, int, float, list)):
@@ -28,6 +28,20 @@ def export_fields_to_dict(obj, fields=None, parentname=None):
             export_dict[fieldname] = value
     if parentname != None:
         export_dict[parentname] = obj.__parent__.name
+    return export_dict
+
+def autoexport_fields_to_dict(obj):
+    export_dict = {}
+    export_dict['ref'] = obj.paco_ref_parts
+    for fieldname in get_all_fields(obj).keys():
+        if fieldname in ('enabled'):
+            continue
+        value = getattr(obj, fieldname, None)
+        if value == None or value == '' or value == [] or value == {}:
+            continue
+        export_dict[fieldname] = value
+    if schemas.IDeployable.providedBy(obj):
+        export_dict['enabled'] = obj.is_enabled()
     return export_dict
 
 def mapping_to_key_list(obj):
@@ -44,6 +58,7 @@ def display_project_as_json(project):
         'backupvaults': [],
         'secretsmanagers': [],
         'applications': [],
+        'notifications': [],
         'resourcegroups': [],
         'resources': [],
         'globalresources': [],
@@ -51,6 +66,9 @@ def display_project_as_json(project):
         'cloudtrails': [],
         'codecommits': [],
         'iamuserpermissions': [],
+        'alarms': [],
+        'logsources': [],
+        'healthchecks': [],
     }
     json_docs['project'].append(
         export_fields_to_dict(
@@ -86,6 +104,43 @@ def display_project_as_json(project):
                 ])
                 perm_dict['iamuser_name'] = user.name
                 json_docs['iamuserpermissions'].append(perm_dict)
+    for (set_type, alarms_container) in project.monitor.alarm_sets.items():
+        for alarms_set in alarms_container.values():
+            for alarm in alarms_set.values():
+                alarm_dict = export_fields_to_dict(
+                    alarm,
+                    fields=[
+                        'classification', 'severity', 'log_set_name', 'log_group_name', 'metric_name',
+                        'threshold', 'comparison_operator', 'statistic', 'period',
+                        'evaluation_periods', 'treat_missing_data', 'runbook_url'
+                    ]
+                )
+                alarm_dict['set_type'] = set_type
+                alarm_dict['alarms_set_name'] = alarms_set.name
+                dimensions = []
+                for dimension in alarm.dimensions:
+                    dimensions.append({'name': dimension.name, 'value': dimension.value})
+                alarm_dict['dimensions'] = dimensions
+                json_docs['alarms'].append(alarm_dict)
+    for log_set in project.monitor.cw_logging.log_sets.values():
+        for log_group in log_set.log_groups.values():
+            for source in log_group.sources.values():
+                log_source_dict = export_fields_to_dict(
+                    source,
+                    fields=['path', 'log_stream_name']
+                )
+                log_source_dict['log_set_name'] = log_set.name
+                log_source_dict['log_set_title'] = log_set.title
+                log_source_dict['log_group_name'] = log_group.name
+                metric_filters = []
+                for mf in log_group.metric_filters.values():
+                    mts = []
+                    for mt in mf.metric_transformations:
+                        mts.append({'metric_name': mt.metric_name, 'metric_value': mt.metric_value})
+                    metric_filters.append({'filter_pattern': mf.filter_pattern, 'metric_transformations': mts})
+                if len(metric_filters) > 0:
+                    log_source_dict['metric_filters'] = metric_filters
+                json_docs['logsources'].append(log_source_dict)
     for netenv in project['netenv'].values():
         netenv_dict = export_fields_to_dict(netenv)
         # netenv_dict['environments'] = mapping_to_key_list(netenv)
@@ -123,6 +178,14 @@ def display_project_as_json(project):
                 for app in env_region.applications.values():
                     app_dict = export_fields_to_dict(app)
                     json_docs['applications'].append(app_dict)
+                    for notif in app.notifications.values():
+                        notif_dict = autoexport_fields_to_dict(notif)
+                        json_docs['notifications'].append(notif_dict)
+                    if app.monitoring != None and app.monitoring.health_checks != None:
+                        for check in app.monitoring.health_checks.values():
+                            if check.is_enabled():
+                                check_dict = autoexport_fields_to_dict(check)
+                                json_docs['healthchecks'].append(check_dict)
                     for resource_group in app.groups.values():
                         resource_group_dict = export_fields_to_dict(resource_group)
                         json_docs['resourcegroups'].append(resource_group_dict)
