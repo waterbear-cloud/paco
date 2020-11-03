@@ -66,7 +66,7 @@ def display_project_as_json(project):
         'cloudtrails': [],
         'codecommits': [],
         'iamuserpermissions': [],
-        'alarms': [],
+        'cloudwatchalarms': [],
         'logsources': [],
         'healthchecks': [],
     }
@@ -104,24 +104,6 @@ def display_project_as_json(project):
                 ])
                 perm_dict['iamuser_name'] = user.name
                 json_docs['iamuserpermissions'].append(perm_dict)
-    for (set_type, alarms_container) in project.monitor.alarm_sets.items():
-        for alarms_set in alarms_container.values():
-            for alarm in alarms_set.values():
-                alarm_dict = export_fields_to_dict(
-                    alarm,
-                    fields=[
-                        'classification', 'severity', 'log_set_name', 'log_group_name', 'metric_name',
-                        'threshold', 'comparison_operator', 'statistic', 'period',
-                        'evaluation_periods', 'treat_missing_data', 'runbook_url'
-                    ]
-                )
-                alarm_dict['set_type'] = set_type
-                alarm_dict['alarms_set_name'] = alarms_set.name
-                dimensions = []
-                for dimension in alarm.dimensions:
-                    dimensions.append({'name': dimension.name, 'value': dimension.value})
-                alarm_dict['dimensions'] = dimensions
-                json_docs['alarms'].append(alarm_dict)
     for log_set in project.monitor.cw_logging.log_sets.values():
         for log_group in log_set.log_groups.values():
             for source in log_group.sources.values():
@@ -178,6 +160,8 @@ def display_project_as_json(project):
                 for app in env_region.applications.values():
                     app_dict = export_fields_to_dict(app)
                     json_docs['applications'].append(app_dict)
+                    # App Alarms
+                    add_alarms(app.monitoring, json_docs['cloudwatchalarms'], 'app')
                     for notif in app.notifications.values():
                         notif_dict = autoexport_fields_to_dict(notif)
                         json_docs['notifications'].append(notif_dict)
@@ -192,5 +176,31 @@ def display_project_as_json(project):
                         for resource in resource_group.resources.values():
                             resource_dict = export_fields_to_dict(resource, fields=['type', 'order', 'change_protected'])
                             json_docs['resources'].append(resource_dict)
+                            # Resource Alarms
+                            if hasattr(resource, 'monitoring'):
+                                add_alarms(resource.monitoring, json_docs['cloudwatchalarms'], 'resource')
 
     return json_docs
+
+def add_alarms(monitoring, alarms, alarm_context):
+    if monitoring == None:
+        return
+    for alarm_set in monitoring.alarm_sets.values():
+        for alarm in alarm_set.values():
+            if not alarm.is_enabled():
+                continue
+            alarm_dict = export_fields_to_dict(
+                alarm,
+                fields=[
+                    'description', 'classification', 'severity', 'log_set_name', 'log_group_name', 'metric_name',
+                    'threshold', 'comparison_operator', 'statistic', 'period',
+                    'evaluation_periods', 'treat_missing_data', 'runbook_url'
+                ]
+            )
+            alarm_dict['alarm_context'] = alarm_context
+            alarm_dict['alarm_set_name'] = alarm_set.name
+            dimensions = []
+            for dimension in alarm.dimensions:
+                dimensions.append({'name': dimension.name, 'value': dimension.value})
+            alarm_dict['dimensions'] = dimensions
+            alarms.append(alarm_dict)
