@@ -25,7 +25,7 @@ def create_zip_artifact(artifact_prefix, src_dir):
 def init_lambda_code(paco_buckets, resource, src, account_ctx, aws_region, is_zip=False):
     "Creates an S3 Bucket and uploads an artifact only if one does not yet exist"
     zip_output = src
-    artifact_prefix = f'LambdaArtifacts/{resource.paco_ref_parts}'
+    artifact_prefix = f'Paco/LambdaArtifacts/{resource.paco_ref_parts}'
     # create Zip file from src directory
     if not is_zip:
         src_dir = Path(src)
@@ -35,7 +35,7 @@ def init_lambda_code(paco_buckets, resource, src, account_ctx, aws_region, is_zi
     # create md5 of Zip file
     else:
         md5_hash = md5sum(src)
-    artifact_name = f'LambdaArtifacts/{resource.paco_ref_parts}-{md5_hash}.zip'
+    artifact_name = f'Paco/LambdaArtifacts/{resource.paco_ref_parts}-{md5_hash}.zip'
     if paco_buckets.is_object_in_bucket(artifact_name, account_ctx, aws_region):
         bucket_name = paco_buckets.get_bucket_name(account_ctx, aws_region)
     else:
@@ -47,7 +47,7 @@ def upload_lambda_code(paco_buckets, zip_output, artifact_name, account_ctx, aws
     # src_dir = Path(src)
     # if not src_dir.exists():
     #     raise InvalidFilesystemPath(f"Source directory for Lambda code does not exist: {src}")
-    # artifact_name = f'LambdaArtifacts/{resource.paco_ref_parts}.zip'
+    # artifact_name = f'Paco/LambdaArtifacts/{resource.paco_ref_parts}.zip'
     # zip_output, md5_hash = create_zip_artifact(artifact_name, src_dir)
 
     # upload to Paco Bucket

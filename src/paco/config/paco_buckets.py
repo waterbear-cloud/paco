@@ -94,6 +94,15 @@ class PacoBuckets():
             Bucket=bucket_name,
             VersioningConfiguration={'Status':'Enabled'},
         )
+        s3_client.put_public_access_block(
+            Bucket=bucket_name,
+            PublicAccessBlockConfiguration={
+                'BlockPublicAcls': True,
+                'IgnorePublicAcls': True,
+                'BlockPublicPolicy': True,
+                'RestrictPublicBuckets': True,
+            }
+        )
 
     def is_bucket_created(self, account_ctx, region):
         "True if the S3 Bucket for the account and region exists"

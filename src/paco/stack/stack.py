@@ -951,14 +951,13 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
         stream.close()
 
         yaml_path = self.get_yaml_path()
-        # Template size limit is 51,200 bytes
+        # Template size limit is 1,000,000 bytes (1 MB)
         if self.paco_ctx.warn:
             # Start warning if the template size gets close
-            warning_size_limite_bytes = 41200
-            if yaml_path.stat().st_size >= warning_size_limite_bytes:
-                print("WARNING: Template is reaching size limit of 51,200 bytes: Current size: {} bytes ".format(yaml_path.stat().st_size))
+            warning_size_limit_bytes = 950000
+            if yaml_path.stat().st_size >= warning_size_limit_bytes:
+                print("WARNING: Template is reaching size limit of 1 MB: Current size: {} bytes ".format(yaml_path.stat().st_size))
                 print("template: {}".format(yaml_path))
-
 
     def set_parameter(
         self,
@@ -1296,6 +1295,25 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
             return True
         return False
 
+    def sync_template_to_s3bucket(self):
+        """
+        Creates or updates the CloudFormation template body to a Paco Bucket
+        Returns a template URL to object in the S3 Bucket
+        """
+        template_region = self.aws_region
+        if self.paco_ctx.project.shared_state != None:
+            if self.paco_ctx.project.shared_state.cloudformation_region != None:
+                template_region = self.paco_ctx.project.shared_state.cloudformation_region
+        s3_key = f"Paco/CloudFormationTemplates/{self.get_name()}.yaml"
+        bucket_name = self.paco_ctx.paco_buckets.upload_fileobj(
+            file_contents=self.template.body,
+            s3_key=s3_key,
+            account_ctx=self.account_ctx,
+            region=template_region
+        )
+        # https://paco-waterbear-networks-tools-usw2-wbpaco88.s3-us-west-2.amazonaws.com/Paco/CloudFormationTemplates/NE-anet-dev-Secrets-SecretsManager.yaml
+        return f"https://{bucket_name}.s3-{template_region}.amazonaws.com/{s3_key}"
+
     def create_stack(self):
         "Create an AWS CloudFormation stack"
         if not self.enabled:
@@ -1313,14 +1331,14 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
                 e.message += "Stack: {}\n".format(self.get_name())
                 e.message += "Error: Depends on StackOutputs from a stack that does not yet exist.\n"
             raise e
+        template_url = self.sync_template_to_s3bucket()
         response = self.cfn_client.create_stack(
             StackName=self.get_name(),
-            TemplateBody=self.template.body,
+            TemplateURL=template_url,
             Parameters=stack_parameters,
             DisableRollback=True,
             Capabilities=self.template.capabilities,
-            Tags=self.tags.cf_list()
-            # EnableTerminationProtection=False
+            Tags=self.tags.cf_list(),
         )
         self.stack_id = response['StackId']
 
@@ -1342,9 +1360,10 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
         self.validate_template_changes()
         while True:
             try:
+                template_url = self.sync_template_to_s3bucket()
                 self.cfn_client.update_stack(
                     StackName=self.get_name(),
-                    TemplateBody=self.template.body,
+                    TemplateURL=template_url,
                     Parameters=stack_parameters,
                     Capabilities=self.template.capabilities,
                     UsePreviousTemplate=False,
@@ -1524,7 +1543,8 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
             new_str = ':new'
         self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name() + '.' + self.aws_region, "Template"+new_str, short_yaml_path)
         try:
-            self.cfn_client.validate_template(TemplateBody=self.template.body)
+            template_url = self.sync_template_to_s3bucket()
+            self.cfn_client.validate_template(TemplateURL=template_url)
         except ClientError as e:
             if e.response['Error']['Code'] == 'ValidationError':
                 message = "Validation Error: {}\nStack: {}\nTemplate: {}\n".format(
