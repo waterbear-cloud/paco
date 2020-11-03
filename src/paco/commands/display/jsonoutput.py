@@ -69,6 +69,7 @@ def display_project_as_json(project):
         'cloudwatchalarms': [],
         'logsources': [],
         'healthchecks': [],
+        'services': [],
     }
     json_docs['project'].append(
         export_fields_to_dict(
@@ -104,6 +105,13 @@ def display_project_as_json(project):
                 ])
                 perm_dict['iamuser_name'] = user.name
                 json_docs['iamuserpermissions'].append(perm_dict)
+    for service in project['service'].values():
+        json_docs['services'].append({
+            'ref': service.paco_ref_parts,
+            'name': service.name,
+            'version': getattr(service, 'version', None)
+        })
+
     for log_set in project.monitor.cw_logging.log_sets.values():
         for log_group in log_set.log_groups.values():
             for source in log_group.sources.values():

@@ -216,14 +216,14 @@ class StackGroup():
         )
         self.add_stack_order(stack, stack_orders)
 
-        # cook the template and add it to the stack
-        stack.template = template_class(stack, self.paco_ctx, **extra_context)
-
         # make the stack available in the model
         # this only happens when there is one primary stack representing the resource
         # some resources have several stacks (CloudFront) or they have secondary stacks (Alarms, LogGroups)
-        if set_resource_stack or resource.__class__.__name__ == stack.template.__class__.__name__:
+        if set_resource_stack or resource.__class__.__name__ == template_class.__name__:
             resource.stack = stack
+
+        # cook the template and add it to the stack
+        stack.template = template_class(stack, self.paco_ctx, **extra_context)
 
         # now that the template has been created, post-template actions are possible
         if not hasattr(resource, 'is_enabled'):
