@@ -1,3 +1,4 @@
+from paco.config.interfaces import IAccountContext
 from paco.models.vocabulary import aws_regions
 from botocore.exceptions import ClientError
 import io
@@ -19,7 +20,10 @@ class PacoBuckets():
     def get_bucket_name(self, account_ctx, region):
         "Name of an Paco S3 Bucket in an account and region"
         short_region = aws_regions[region]['short_name']
-        name = f"paco-{self.project.name}-{account_ctx.name}-{short_region}"
+        account_name = account_ctx
+        if IAccountContext.providedBy(account_ctx):
+            account_name = account_ctx.name
+        name = f"paco-{self.project.name}-{account_name}-{short_region}"
         if self.project.s3bucket_hash != None:
             name += f"-{self.project.s3bucket_hash}"
         # ToDo: validate bucket name

@@ -7,9 +7,11 @@ from paco.models import references
 from paco.models import load_project_from_yaml
 from paco.models.references import get_model_obj_from_ref
 from paco.core.yaml import read_yaml_file
+from paco.config.interfaces import IAccountContext
 from paco.config.paco_buckets import PacoBuckets
 from shutil import copyfile
 from deepdiff import DeepDiff
+from zope.interface import implementer
 import paco.config.aws_credentials
 import paco.core.log
 import paco.controllers
@@ -17,7 +19,7 @@ import paco.models.services
 import os, sys, re
 import pathlib
 
-
+@implementer(IAccountContext)
 class AccountContext(object):
     "Manages the credentials and connection to an AWS Account"
 
