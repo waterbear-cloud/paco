@@ -292,6 +292,22 @@ class ApiGatewayRestApi(StackTemplate):
                     ref=f'{dns.paco_ref_parts}.{domain_name_name}.regional_domain_name',
                 )
 
+                # ApiGateway BasePathMapping
+                for base_path_mapping in dns.base_path_mappings:
+                    cfn_export_dict = {
+                        'DomainName': dns.domain_name,
+                        'RestApiId': troposphere.Ref(self.restapi_resource),
+                        'Stage': base_path_mapping.stage,
+                    }
+                    if base_path_mapping.base_path != '':
+                        cfn_export_dict['BasePath'] = base_path_mapping.base_path
+                    base_path_mapping_logical_id = self.create_cfn_logical_id('BasePathMapping' + dns.domain_name)
+                    base_path_mapping_resource = troposphere.apigateway.BasePathMapping.from_dict(
+                        base_path_mapping_logical_id,
+                        cfn_export_dict,
+                    )
+                    template.add_resource(base_path_mapping_resource)
+
                 # CNAME for DomainName
                 route53_ctl.add_record_set(
                     self.account_ctx,
