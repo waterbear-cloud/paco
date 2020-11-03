@@ -60,6 +60,16 @@ class ApiGatewayRestApi(StackTemplate):
             ref=self.apigatewayrestapi.paco_ref_parts + '.id',
         )
         self.create_output(
+            title='ApiGatewayRestApiAddress',
+            value=troposphere.Join('.', [
+                troposphere.Ref(self.restapi_resource),
+                'execute-api',
+                self.stack.aws_region,
+                'amazonaws.com',
+            ]),
+            ref=self.apigatewayrestapi.paco_ref_parts + '.address',
+        )
+        self.create_output(
             title='ApiGatewayRestApiRootResourceId',
             value=troposphere.GetAtt(self.restapi_resource, "RootResourceId"),
             ref=self.apigatewayrestapi.paco_ref_parts + '.root_resource_id',
@@ -249,10 +259,51 @@ class ApiGatewayRestApi(StackTemplate):
             stage_resource = troposphere.apigateway.Stage.from_dict(stage_id, cfn_export_dict)
             template.add_resource(stage_resource)
             self.create_output(
-                title=self.create_cfn_logical_id(f'ApiGatewayRestApiStag{stage.name}'),
+                title=self.create_cfn_logical_id(f'ApiGatewayRestApiStage{stage.name}'),
                 value=troposphere.Ref(stage_resource),
                 ref=stage.paco_ref_parts + '.id',
             )
+
+        # DNS
+        # Caution: experimental code: REGIONAL endpoints only and
+        # the dns.ssl_certificate field expects an Arn instead of a paco.ref to an ACM resource ...
+        if self.apigatewayrestapi.is_dns_enabled() == True:
+            route53_ctl = self.paco_ctx.get_controller('route53')
+            for dns in self.apigatewayrestapi.dns:
+                # ApiGateway DomainName resource
+                domain_name_logical_id = self.create_cfn_logical_id('DomainName' + dns.domain_name)
+                # ToDo: currently SSL Certificate must be an Arn
+                # A paco.ref to an SSL Cert is typically in a netenv, which isn't initialized in a Service
+                # either init the netenv or have some way of managing ACM certs globally?
+                cfn_export_dict = {
+                    'DomainName': dns.domain_name,
+                    'RegionalCertificateArn': dns.ssl_certificate,
+                    'EndpointConfiguration': {"Types": ['REGIONAL']},
+                }
+                domain_name_resource = troposphere.apigateway.DomainName.from_dict(
+                    domain_name_logical_id,
+                    cfn_export_dict
+                )
+                template.add_resource(domain_name_resource)
+                domain_name_name = dns.domain_name.replace('.', '')
+                self.create_output(
+                    title=domain_name_logical_id,
+                    value=troposphere.GetAtt(domain_name_resource, 'RegionalDomainName'),
+                    ref=f'{dns.paco_ref_parts}.{domain_name_name}.regional_domain_name',
+                )
+
+                # CNAME for DomainName
+                route53_ctl.add_record_set(
+                    self.account_ctx,
+                    self.aws_region,
+                    self.apigatewayrestapi,
+                    enabled=self.apigatewayrestapi.is_enabled(),
+                    dns=dns,
+                    record_set_type='CNAME',
+                    resource_records=[f'{dns.paco_ref}.{domain_name_name}.regional_domain_name'],
+                    stack_group=self.stack.stack_group,
+                    async_stack_provision=False,
+                )
 
     def recursively_add_resources(self, resources_container):
         for resource in resources_container.values():
