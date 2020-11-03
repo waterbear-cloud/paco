@@ -28,15 +28,16 @@ class IAMUserResourceEngine(ResourceEngine):
         )
 
         # Stack hooks for managing access keys
-        for hook_action in ['create', 'update']:
-            self.iamuser_stack.hooks.add(
-                name='IAMUser-AccessKey',
-                stack_action=hook_action,
-                stack_timing='post',
-                hook_method=self.iam_user_access_keys_hook,
-                cache_method=self.iam_user_access_keys_hook_cache_id,
-                hook_arg=self.resource
-            )
+        if self.resource.is_enabled():
+            for hook_action in ['create', 'update']:
+                self.iamuser_stack.hooks.add(
+                    name='IAMUser-AccessKey',
+                    stack_action=hook_action,
+                    stack_timing='post',
+                    hook_method=self.iam_user_access_keys_hook,
+                    cache_method=self.iam_user_access_keys_hook_cache_id,
+                    hook_arg=self.resource
+                )
 
     def iam_user_access_keys_hook(self, hook, iamuser):
         "Manage the IAM User's Access Keys"
