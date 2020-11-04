@@ -9,6 +9,7 @@ from paco.utils import md5sum
 import awacs.sns
 import troposphere.cognito
 import troposphere.iam
+import troposphere.awslambda
 
 
 class CognitoUserPool(StackTemplate):
@@ -62,6 +63,35 @@ class CognitoUserPool(StackTemplate):
                 'SnsCallerArn': troposphere.GetAtt(sms_role_resource, "Arn")
             }
 
+        # Lambda Triggers
+        lambda_trigger_mapping = [
+            ('create_auth_challenge', 'CreateAuthChallenge'),
+            ('custom_message', 'CustomMessage'),
+            ('define_auth_challenge', 'DefineAuthChallenge'),
+            ('post_authentication', 'PostAuthentication'),
+            ('post_confirmation', 'PostConfirmation'),
+            ('pre_authentication', 'PreAuthentication'),
+            ('pre_sign_up', 'PreSignUp'),
+            ('pre_token_generation', 'PreTokenGeneration'),
+            ('user_migration', 'UserMigration'),
+            ('verify_auth_challenge_response', 'VerifyAuthChallengeResponse'),
+        ]
+        self.lambda_trigger_params = {}
+        if cup.lambda_triggers != None:
+            triggers = {}
+            for name, cfn_key in lambda_trigger_mapping:
+                lambda_ref = getattr(cup.lambda_triggers, name, None)
+                if lambda_ref != None:
+                    if lambda_ref not in self.lambda_trigger_params:
+                        self.lambda_trigger_params[lambda_ref] = self.create_cfn_parameter(
+                            param_type='String',
+                            name='LambdaTrigger' + md5sum(str_data=lambda_ref),
+                            description=f'LambdaTrigger for Lambda {lambda_ref}',
+                            value=lambda_ref + '.arn',
+                        )
+                    triggers[cfn_key] = troposphere.Ref(self.lambda_trigger_params[lambda_ref])
+            cfn_export_dict['LambdaConfig'] = triggers
+
         # Cognito User Pool
         cup_resource = troposphere.cognito.UserPool.from_dict(
             'CognitoUserPool',
@@ -69,6 +99,24 @@ class CognitoUserPool(StackTemplate):
         )
         self.template.add_resource(cup_resource)
 
+        # Add Lambda Permissions for Lambda Triggers
+        # Need to do this after the cup_resource is created
+        lambda_permissions = {}
+        if cup.lambda_triggers != None:
+            for name, cfn_key in lambda_trigger_mapping:
+                lambda_ref = getattr(cup.lambda_triggers, name, None)
+                if lambda_ref != None:
+                    # Lambda Permission
+                    if lambda_ref not in lambda_permissions:
+                        lambda_permissions[lambda_ref] = True
+                        troposphere.awslambda.Permission(
+                            title='LambdaPermission' + md5sum(str_data=cup.paco_ref_parts),
+                            template=self.template,
+                            Action="lambda:InvokeFunction",
+                            FunctionName=troposphere.Ref(self.lambda_trigger_params[lambda_ref]),
+                            Principal='cognito-idp.amazonaws.com',
+                            SourceArn=troposphere.GetAtt(cup_resource, "Arn"),
+                        )
 
         # Outputs
         self.create_output(
