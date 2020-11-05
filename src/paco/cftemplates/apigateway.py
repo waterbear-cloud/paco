@@ -306,9 +306,11 @@ class ApiGatewayRestApi(StackTemplate):
                         base_path_mapping_logical_id,
                         cfn_export_dict,
                     )
+                    base_path_mapping_resource.DependsOn = [domain_name_logical_id]
                     template.add_resource(base_path_mapping_resource)
 
                 # CNAME for DomainName
+                # ToDo: this may fail if the ApiGateway DomainName resource isn't created first?
                 route53_ctl.add_record_set(
                     self.account_ctx,
                     self.aws_region,
