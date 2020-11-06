@@ -37,7 +37,7 @@ def load_cached_project(project_path):
     if not os.path.isfile(mtime_cache_file):
         with open(mtime_cache_file, 'w') as cache_file:
             cache_file.write(str(last_mtime))
-        project = load_project_from_yaml(project_path, None)
+        project = load_project_from_yaml(project_path)
         with open(model_cache_file, 'wb') as model_cache_file:
             pickle.dump(project, model_cache_file)
 
@@ -49,7 +49,7 @@ def load_cached_project(project_path):
         # if you CTRL-C right after running paco, you can create the mtime file but not the pickle cache
         if cache_mtime < last_mtime or not os.path.isfile(model_cache_file):
             # cache is stale
-            project = load_project_from_yaml(project_path, None)
+            project = load_project_from_yaml(project_path)
             with open(model_cache_file, 'wb') as model_cache_file:
                 pickle.dump(project, model_cache_file)
             with open(mtime_cache_file, 'w') as cache_file:

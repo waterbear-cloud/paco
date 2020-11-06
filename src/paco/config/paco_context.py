@@ -351,7 +351,6 @@ This directory contains several sub-directories that Paco uses:
         print("Loading Paco project: %s" % (self.home))
         self.project = load_project_from_yaml(
             self.project_folder,
-            None,
             warn=self.warn,
             validate_local_paths=validate_local_paths,
         )
