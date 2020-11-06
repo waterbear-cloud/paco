@@ -1312,7 +1312,11 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
             region=template_region
         )
         # https://paco-waterbear-networks-tools-usw2-wbpaco88.s3-us-west-2.amazonaws.com/Paco/CloudFormationTemplates/NE-anet-dev-Secrets-SecretsManager.yaml
-        return f"https://{bucket_name}.s3-{template_region}.amazonaws.com/{s3_key}"
+        if self.aws_region == 'us-east-1':
+            # us-east-1 is a 'special' S3 region that does not include the region in the URL
+            return f"https://{bucket_name}.s3.amazonaws.com/{s3_key}"
+        else:
+            return f"https://{bucket_name}.s3-{template_region}.amazonaws.com/{s3_key}"
 
     def create_stack(self):
         "Create an AWS CloudFormation stack"
