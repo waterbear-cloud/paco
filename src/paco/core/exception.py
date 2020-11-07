@@ -110,3 +110,6 @@ class MissingRequiredOption(PacoBaseException):
 
 class UnexpectedAwsResponse(PacoBaseException):
     title = "AWS Resource(s) in an unexpected configuration"
+
+class LambdaInvocationError(PacoBaseException):
+    title = "AWS Lambda could not be invoked"
