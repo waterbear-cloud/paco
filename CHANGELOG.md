@@ -5,7 +5,9 @@ Changelog for Paco
 9.0.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Added
+
+- Invoke a Lambda from the CLI with `paco lambda invoke <paco-ref-parts>`.
 
 
 9.0.0 (2020-11-07)
