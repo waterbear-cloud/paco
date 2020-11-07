@@ -49,9 +49,13 @@ class ApiGatewayRestApi(StackTemplate):
 
         # Resources
         restapi_logical_id = 'ApiGatewayRestApi'
+        cfn_export_dict = self.apigatewayrestapi.cfn_export_dict
+        if self.paco_ctx.legacy_flag('aim_name_2019_11_28') == True:
+            cfn_export_dict['Name'] = self.apigatewayrestapi.name
+
         self.restapi_resource = troposphere.apigateway.RestApi.from_dict(
             restapi_logical_id,
-            self.apigatewayrestapi.cfn_export_dict
+            cfn_export_dict
         )
         template.add_resource(self.restapi_resource)
         self.create_output(
@@ -251,12 +255,14 @@ class ApiGatewayRestApi(StackTemplate):
         )
 
         # Stage
+        self.stage_resources = []
         for stage in self.apigatewayrestapi.stages.values():
             stage_id = self.create_cfn_logical_id('ApiGatewayStage' + stage.name)
             cfn_export_dict = stage.cfn_export_dict
             cfn_export_dict["RestApiId"] = troposphere.Ref(self.restapi_resource)
             cfn_export_dict["DeploymentId"] = troposphere.Ref(deployment_resource)
             stage_resource = troposphere.apigateway.Stage.from_dict(stage_id, cfn_export_dict)
+            self.stage_resources.append(stage_resource)
             template.add_resource(stage_resource)
             self.create_output(
                 title=self.create_cfn_logical_id(f'ApiGatewayRestApiStage{stage.name}'),
@@ -307,21 +313,23 @@ class ApiGatewayRestApi(StackTemplate):
                         cfn_export_dict,
                     )
                     base_path_mapping_resource.DependsOn = [domain_name_logical_id]
+                    for stage in self.stage_resources:
+                        base_path_mapping_resource.DependsOn.append(stage.title)
                     template.add_resource(base_path_mapping_resource)
 
                 # CNAME for DomainName
-                # ToDo: this may fail if the ApiGateway DomainName resource isn't created first?
-                route53_ctl.add_record_set(
-                    self.account_ctx,
-                    self.aws_region,
-                    self.apigatewayrestapi,
-                    enabled=self.apigatewayrestapi.is_enabled(),
-                    dns=dns,
-                    record_set_type='CNAME',
-                    resource_records=[f'{dns.paco_ref}.{domain_name_name}.regional_domain_name'],
-                    stack_group=self.stack.stack_group,
-                    async_stack_provision=False,
-                )
+                # ToDo: this fails if the ApiGateway DomainName resource isn't created first - make in the reseng?
+                # route53_ctl.add_record_set(
+                #     self.account_ctx,
+                #     self.aws_region,
+                #     self.apigatewayrestapi,
+                #     enabled=self.apigatewayrestapi.is_enabled(),
+                #     dns=dns,
+                #     record_set_type='CNAME',
+                #     resource_records=[f'{dns.paco_ref}.{domain_name_name}.regional_domain_name'],
+                #     stack_group=self.stack.stack_group,
+                #     async_stack_provision=False,
+                # )
 
     def recursively_add_resources(self, resources_container):
         for resource in resources_container.values():
