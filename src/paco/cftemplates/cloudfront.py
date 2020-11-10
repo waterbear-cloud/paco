@@ -27,7 +27,7 @@ class CloudFront(StackTemplate):
         distribution_config_dict = {
             'Enabled': cloudfront_config.is_enabled(),
             'DefaultRootObject': cloudfront_config.default_root_object,
-            'HttpVersion': 'http1.1',
+            'HttpVersion': 'http2',
             'DefaultCacheBehavior': {
                 'AllowedMethods': cloudfront_config.default_cache_behavior.allowed_methods,
                 'DefaultTTL': cloudfront_config.default_cache_behavior.default_ttl,
