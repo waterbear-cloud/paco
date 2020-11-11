@@ -1797,7 +1797,7 @@ function stop_agent() {{
         return 0
     fi
     set +e
-    TIMEOUT=30
+    TIMEOUT=60
     T_COUNT=0
     echo "EC2LM: CodeDeploy: Attempting to stop Agent"
     while :
