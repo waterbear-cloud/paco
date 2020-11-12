@@ -9,6 +9,9 @@ Changelog for Paco
 
 - Invoke a Lambda from the CLI with `paco lambda invoke <paco-ref-parts>`.
 
+### Fixed
+
+- Initialize more than one netenv, in-case another netenv is initialized already by a Service.
 
 9.0.0 (2020-11-07)
 ------------------
