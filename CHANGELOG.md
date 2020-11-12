@@ -5,7 +5,9 @@ Changelog for Paco
 9.0.2 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Fixed
+
+- Require `paco.models` 7.6.1 with `codedeploy_agent` field.
 
 
 9.0.1 (2020-11-12)
