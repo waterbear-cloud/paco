@@ -1,10 +1,43 @@
+from enum import unique
 from paco.tests import cwd_to_fixtures
 from paco.stack import Stack
+from paco.models.applications import EBS
+from paco.models.project import Project
 import paco.config.paco_context
 import unittest
 
 
+class BaseTestStack(unittest.TestCase):
+    """Stack for testing"""
+    fixture_name = 'config_city'
+
+    def setUp(self):
+
+        # miniml Project with EBS resource
+        project = Project('test', None)
+        ebs = EBS('ebs', project)
+        ebs.enabled = True
+        ebs.size_gib = 20
+        ebs.volume_type = 'gp2'
+        ebs.availability_zone = 1
+
+        # minimal PacoContext
+        path = cwd_to_fixtures()
+        home = path / self.fixture_name
+        self.paco_ctx = paco.config.paco_context.PacoContext(home)
+        self.paco_ctx.project = project
+
+        self.stack = Stack(
+            paco_ctx=self.paco_ctx,
+            account_ctx=None,
+            stack_group=self,
+            resource=ebs,
+            aws_region='us-west-2',
+        )
+
+
 class BaseTestProject(unittest.TestCase):
+    """Complete mock Paco Project for testing"""
 
     fixture_name = 'config_city'
     app_name = 'app'

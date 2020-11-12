@@ -3,6 +3,39 @@ from paco.cftemplates.cftemplates import StackTemplate
 from paco.utils import md5sum
 import troposphere.iam
 
+def policy_to_troposphere(policy):
+    "Convert a Paco Policy to an awacs PolicyDocument for use with Troposphere"
+    # ToDo: add support for statement.condition and statement.principal
+    # (this is only used by iam_managed_policies.py ATM, which doesn't support those fields ATM)
+    statements = []
+    for statement in policy.statement:
+        args_dict = {}
+
+        # Effect
+        effect = Allow
+        if statement.effect == 'Deny':
+            effect = Deny
+        args_dict['Effect'] = effect
+
+        # Action
+        actions = []
+        for action in statement.action:
+            prefix, action = action.split(':')
+            actions.append(Action(prefix, action))
+        args_dict['Action'] = actions
+
+        # Resource
+        args_dict['Resource'] = statement.resource
+
+        statements.append(
+            Statement(**args_dict)
+        )
+
+    return PolicyDocument(
+        Version='2012-10-17',
+        Statement=statements,
+    )
+
 # convenience function - currently not used by IAMRoles as it's still fmt strings
 # but should migrate to use this eventually
 def role_to_troposphere(role, logical_id, assume_role_policy=None):
@@ -31,25 +64,7 @@ def role_to_troposphere(role, logical_id, assume_role_policy=None):
 
     policies = []
     for policy in role.policies:
-        statements = []
-        for statement in policy.statement:
-            args_dict = {}
-            effect = Allow
-            if statement.effect == 'Deny':
-                effect = Deny
-            args_dict['Effect'] = effect
-            actions = []
-            for action in statement.action:
-                prefix, action = action.split(':')
-                actions.append(Action(prefix, action))
-            args_dict['Action'] = actions
-            args_dict['Resource'] = statement.resource
-            statements.append(
-                Statement(**args_dict)
-            )
-        policy_doc = PolicyDocument(
-            Statement=statements,
-        )
+        policy_doc = policy_to_troposphere(policy)
         policies.append(
             troposphere.iam.Policy(
                 PolicyName=policy.name,

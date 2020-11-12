@@ -3,7 +3,35 @@ from paco.models.base import most_specialized_interfaces, get_all_fields
 from zope.interface import Interface
 import zope.schema
 import zope.schema.interfaces
+import zope.interface.common.mapping
 
+def full_recursive_export(obj):
+    "Export all fields, include sub-fields"
+    export_dict = {}
+    for fieldname, field in get_all_fields(obj).items():
+        if fieldname == 'enabled': continue
+        value = getattr(obj, fieldname, None)
+        # List
+        if zope.schema.interfaces.IList.providedBy(field):
+            export_dict[fieldname] = []
+            for item in value:
+                if zope.schema.interfaces.IObject.providedBy(field.value_type):
+                    item_export = full_recursive_export(item)
+                else:
+                    item_export = item
+                export_dict[fieldname].append(item_export)
+        # Mapping
+        elif zope.interface.common.mapping.IMapping.providedBy(value):
+            export_dict[fieldname] = {}
+            for name, childvalue in value.items():
+                export_dict[fieldname][name] = full_recursive_export(childvalue)
+        # Object
+        elif zope.schema.interfaces.IObject.providedBy(field):
+            export_dict[fieldname] = full_recursive_export(value)
+        # Simple value: String, Float, Int, Ref
+        else:
+            export_dict[fieldname] = getattr(obj, fieldname, None)
+    return export_dict
 
 def auto_export_obj_to_dict(obj):
     export_dict = {}
@@ -11,23 +39,6 @@ def auto_export_obj_to_dict(obj):
         fields = zope.schema.getFields(interface)
         for name, field in fields.items():
             export_dict[name] = getattr(obj, name, None)
-    return export_dict
-
-def export_fields_to_dict(obj, fields=None, parentname=None):
-    export_dict = {'name': obj.name, 'title': obj.title, 'ref': obj.paco_ref_parts}
-    if schemas.IDeployable.providedBy(obj):
-        export_dict['enabled'] = obj.is_enabled()
-    if fields != None:
-        for fieldname in fields:
-            value = getattr(obj, fieldname, None)
-            if value == None or value == '':
-                continue
-            if Interface.providedBy(value):
-                if not isinstance(value, (str, int, float, list)):
-                    value = auto_export_obj_to_dict(value)
-            export_dict[fieldname] = value
-    if parentname != None:
-        export_dict[parentname] = obj.__parent__.name
     return export_dict
 
 def autoexport_fields_to_dict(obj):
@@ -42,6 +53,30 @@ def autoexport_fields_to_dict(obj):
         export_dict[fieldname] = value
     if schemas.IDeployable.providedBy(obj):
         export_dict['enabled'] = obj.is_enabled()
+    return export_dict
+
+def recursive_resource_export(obj):
+    export_dict = full_recursive_export(obj)
+    export_dict['ref'] = obj.paco_ref_parts
+    if schemas.IDeployable.providedBy(obj):
+        export_dict['enabled'] = obj.is_enabled()
+    return export_dict
+
+def export_fields_to_dict(obj, fields=None, parentname=None):
+    export_dict = {'name': obj.name, 'title': obj.title, 'ref': obj.paco_ref_parts}
+    if schemas.IDeployable.providedBy(obj):
+        export_dict['enabled'] = obj.is_enabled()
+    elif fields != None:
+        for fieldname in fields:
+            value = getattr(obj, fieldname, None)
+            if value == None or value == '':
+                continue
+            if Interface.providedBy(value):
+                if not isinstance(value, (str, int, float, list)):
+                    value = auto_export_obj_to_dict(value)
+            export_dict[fieldname] = value
+    if parentname != None:
+        export_dict[parentname] = obj.__parent__.name
     return export_dict
 
 def mapping_to_key_list(obj):
@@ -70,6 +105,7 @@ def display_project_as_json(project):
         'logsources': [],
         'healthchecks': [],
         'services': [],
+        'deploymentpipelines': [],
     }
     json_docs['project'].append(
         export_fields_to_dict(
@@ -184,6 +220,9 @@ def display_project_as_json(project):
                         for resource in resource_group.resources.values():
                             resource_dict = export_fields_to_dict(resource, fields=['type', 'order', 'change_protected'])
                             json_docs['resources'].append(resource_dict)
+                            if resource.type == 'DeploymentPipeline':
+                                full_resource_dict = recursive_resource_export(resource)
+                                json_docs['deploymentpipelines'].append(full_resource_dict)
                             # Resource Alarms
                             if hasattr(resource, 'monitoring'):
                                 add_alarms(resource.monitoring, json_docs['cloudwatchalarms'], 'resource')
