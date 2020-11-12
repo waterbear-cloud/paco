@@ -180,16 +180,23 @@ class NetEnvController(Controller, LambdaDeploy):
     def __init__(self, paco_ctx):
         super().__init__(paco_ctx, "NE", None)
         self.sub_envs = {}
+        self.cur_network_env = None
 
     def init(self, command=None, model_obj=None):
         # Stack group filter is always set as the netenv controller object is cached and reused.
         # Not setting the filter each time can result in the filter failing
         self.stack_group_filter = model_obj.paco_ref_parts
-        if self.init_done == True:
+
+        # Cache the controller based on the netenv being initialized
+        netenv_cache_id = '.'.join(model_obj.paco_ref_parts.split('.', 4)[:3])
+        if self.cur_network_env == netenv_cache_id:
             return
-        self.init_done = True
+        self.cur_network_env = netenv_cache_id
+
+        # Initialize Globals
         self.env = None
         self.env_region = None
+        self.sub_envs = {}
         netenv_arg = model_obj.paco_ref_parts
         netenv_parts = netenv_arg.split('.', 4)
         self.netenv = self.paco_ctx.project['netenv'][netenv_parts[1]]
