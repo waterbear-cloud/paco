@@ -66,7 +66,7 @@ def export_fields_to_dict(obj, fields=None, parentname=None):
     export_dict = {'name': obj.name, 'title': obj.title, 'ref': obj.paco_ref_parts}
     if schemas.IDeployable.providedBy(obj):
         export_dict['enabled'] = obj.is_enabled()
-    elif fields != None:
+    if fields != None:
         for fieldname in fields:
             value = getattr(obj, fieldname, None)
             if value == None or value == '':
