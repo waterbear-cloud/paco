@@ -200,6 +200,36 @@ class ASG(StackTemplate):
             troposphere.autoscaling.Tag('Name', asg_dict['AutoScalingGroupName'], True)
         ]
 
+        # TODO: DNS: To be enabled once cftempaltes/iam_managed_policies.py
+        #            is ported to troposphere
+        # if len(asg_config.dns) > 0 and asg_config.is_enabled():
+        #     idx = 0
+        #     for dns_config in asg_config.dns:
+        #         if references.is_ref(dns_config.hosted_zone):
+        #             hosted_zone_value = dns_config.hosted_zone+'.id'
+        #         else:
+        #             hosted_zone_value = dns_config.hosted_zone
+        #         dns_hosted_zone_param = self.create_cfn_parameter(
+        #             param_type='String',
+        #             name=f'DNSHostedZone{idx}',
+        #             description=f'DNS Hosted Zone for index {idx}',
+        #             value=dns_value
+        #         )
+        #         asg_dict['Tags'].append(
+        #             troposphere.autoscaling.Tag(f'Paco-DNS-Hosted-Zone-{idx}', troposphere.Ref(dns_hosted_zone_param), True)
+        #         )
+        #         dns_domain_param = self.create_cfn_parameter(
+        #             param_type='String',
+        #             name=f'DNSDomain{idx}',
+        #             description=f'DNS Domain name for index {idx}',
+        #             value=dns_value
+        #         )
+        #         asg_dict['Tags'].append(
+        #             troposphere.autoscaling.Tag(f'Paco-DNS-Domain-{idx}', troposphere.Ref(dns_domain_param), True)
+        #         )
+
+        #         idx += 1
+
         # EIP
         if asg_config.eip != None and asg_config.is_enabled():
             if references.is_ref(asg_config.eip) == True:

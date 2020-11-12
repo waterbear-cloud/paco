@@ -133,7 +133,7 @@ class EC2LaunchManager():
         self.ec2lm_functions_script = {}
         self.ec2lm_buckets = {}
         self.launch_bundle_names = [
-            'SSM', 'EIP', 'CloudWatchAgent', 'EFS', 'EBS', 'cfn-init', 'SSHAccess', 'ECS',
+            'SSM', 'EIP', 'CloudWatchAgent', 'EFS', 'EBS', 'cfn-init', 'SSHAccess', 'ECS', 'CodeDeploy'#, 'DNS'
         ]
         self.build_path = os.path.join(
             self.paco_ctx.build_path,
@@ -542,6 +542,12 @@ function ec2lm_install_wget() {{
         {ec2lm_commands.user_data_script['install_wget'][resource.instance_ami_type_generic]}
     fi
 }}
+
+# Install Wget
+function ec2lm_install_package() {{
+    {ec2lm_commands.user_data_script['install_package'][resource.instance_ami_type_generic]} $1
+}}
+
 """
         if resource.secrets != None and len(resource.secrets) > 0:
             self.ec2lm_functions_script[ec2lm_bucket_name] += self.add_secrets_function_policy(resource)
@@ -1688,6 +1694,165 @@ statement:
                 policy_config_yaml=policy_config_yaml,
                 extra_ref_names=['ec2lm','ssmagent'],
             )
+
+    # TODO: Blocked until cftemplates/iam_managed_policies.py supports toposphere
+    # and paco.ref Parameters!
+    def lb_add_dns(self, bundle_name, resource):
+        """Creates a launch bundle to install and configure the DNS agent"""
+        # Create the Launch Bundle
+        dns_lb = LaunchBundle(resource, self, bundle_name)
+        dns_enabled = True
+        if len(resource.dns) == 0:
+            dns_enabled = False
+
+        for dns_config in resource.dns:
+            ec2_dns_domain = "placeholder"
+            ec2_dns_hosted_zone = "placeholder"
+
+
+        launch_script = f"""#!/bin/bash
+
+function set_dns() {{
+    INSTANCE_HOSTNAME="$(curl http://169.254.169.254/latest/meta-data/hostname)"
+    RECORD_SET_FILE=/tmp/internal_record_set.json
+    HOSTED_ZONE_ID=$1
+    DOMAIN=$2
+    cat << EOF >$RECORD_SET_FILE
+    {{
+        "Comment": "API Server",
+        "Changes": [ {{
+            "Action": "UPSERT",
+            "ResourceRecordSet": {{
+                "Name": "$DOMAIN",
+                "Type": "CNAME",
+                "TTL": 60,
+                "ResourceRecords": [ {{
+                    "Value": "$INSTANCE_HOSTNAME"
+                }} ]
+            }}
+        }} ]
+    }}
+    EOF
+    aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch file://$RECORD_SET_FILE
+    echo "EC2LM: DNS: $HOSTED_ZONE_ID: $DOMAIN -> $INSTANCE_HOSTNAME"
+}}
+
+function run_launch_bundle() {{
+    echo "EC2LM: DNS: Begin"
+    # Load EC2 Launch Manager helper functions
+    . {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
+
+    for IDX in {{0..{len(resource.dns)}}}
+    do
+        HOSTED_ZONE_ID=$(ec2lm_instance_tag_value Paco-DNS-Hosted-Zone-$IDX)
+        DOMAIN=$(ec2lm_instance_tag_value Paco-DNS-Domain-$IDX)
+
+        set_dns $HOSTED_ZONE_ID $DOMAIN
+    done
+    echo "EC2LM: DNS: End"
+}}
+
+function disable_launch_bundle() {{
+    :
+}}
+"""
+        dns_lb.set_launch_script(launch_script, dns_enabled)
+        self.add_bundle(dns_lb)
+
+        if dns_enabled:
+            # Create instance managed policy for the agent
+            iam_policy_name = '-'.join([resource.name, 'dns-policy'])
+            policy_config_yaml = f"""
+policy_name: '{iam_policy_name}'
+enabled: true
+statement:
+  - effect: Allow
+    action:
+      - route53:ChangeResourceRecordSets
+    resource:
+      - paco.sub '${{paco.ref {get_parent_by_interface(resource, schemas.IEnvironmentRegion).paco_ref}.network.vpc.private_hosted_zone.arn'}}
+"""
+            iam_ctl = self.paco_ctx.get_controller('IAM')
+            iam_ctl.add_managed_policy(
+                role=resource.instance_iam_role,
+                resource=resource,
+                policy_name='policy',
+                policy_config_yaml=policy_config_yaml,
+                extra_ref_names=['ec2lm','dns'],
+            )
+
+    def lb_add_codedeploy(self, bundle_name, resource):
+        """Creates a launch bundle to install and configure the CodeDeploy agent"""
+        # Create the Launch Bundle
+        codedeploy_lb = LaunchBundle(resource, self, bundle_name)
+        codedeploy_enabled = True
+        if not resource.launch_options.codedeploy_agent:
+            codedeploy_enabled = False
+
+        launch_script = f"""#!/bin/bash
+
+function stop_agent() {{
+    CODEDEPLOY_BIN="/opt/codedeploy-agent/bin/codedeploy-agent"
+    if [ ! -e $CODEDEPLOY_BIN ] ; then
+        return 0
+    fi
+    set +e
+    TIMEOUT=60
+    T_COUNT=0
+    echo "EC2LM: CodeDeploy: Attempting to stop Agent"
+    while :
+    do
+        OUTPUT=$($CODEDEPLOY_BIN stop 2>/dev/null)
+        if [ $? -eq 0 ] ; then
+            break
+        fi
+        echo "EC2LM: CodeDeploy: A deployment is in progress, waiting for deployment to complete."
+        sleep 10
+        T_COUNT=$(($T_COUNT+1))
+        if [ $T_COUNT -eq $TIMEOUT ] ; then
+            echo "EC2LM: CodeDeploy: ERROR: Timeout after $TIMEOUT seconds waiting for deployment to complete."
+            exit 1
+        fi
+    done
+    echo "EC2LM: Agent has been stopped."
+    set -e
+}}
+
+function run_launch_bundle() {{
+    echo "EC2LM: CodeDeploy: Agent Install: Begin"
+    # Load EC2 Launch Manager helper functions
+    . {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
+
+    cd /tmp/
+    ec2lm_install_wget
+    ec2lm_install_package ruby
+    echo "EC2LM: CodeDeploy: Downloading Agent"
+    rm -f install
+    wget https://aws-codedeploy-ca-central-1.s3.amazonaws.com/latest/install
+    chmod u+x ./install
+    # Stopping the current agent
+    stop_agent
+
+    echo "EC2LM: CodeDeploy: Installing Agent"
+    ./install auto
+    CODEDEPLOY_AGENT_CONF="/etc/codedeploy-agent/conf/codedeployagent.yml"
+    grep -v max_revisions $CODEDEPLOY_AGENT_CONF >$CODEDEPLOY_AGENT_CONF.new
+    echo ":max_revisions: 1" >>$CODEDEPLOY_AGENT_CONF.new
+    mv $CODEDEPLOY_AGENT_CONF.new $CODEDEPLOY_AGENT_CONF
+    service codedeploy-agent start
+    echo
+    echo "EC2LM: CodeDeploy: Agent install complete."
+
+    echo "EC2LM: CodeDeploy: End"
+}}
+
+function disable_launch_bundle() {{
+    stop_agent
+    yum erase codedeploy-agent -y
+}}
+"""
+        codedeploy_lb.set_launch_script(launch_script, codedeploy_enabled)
+        self.add_bundle(codedeploy_lb)
 
     def process_bundles(self, resource, instance_iam_role_ref):
         "Initialize launch bundle S3 bucket and iterate through all launch bundles and add every applicable bundle"

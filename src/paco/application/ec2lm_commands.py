@@ -14,6 +14,11 @@ user_data_script = {
 		'ubuntu': [
 		],
 	},
+    'install_package': {
+        'amazon': 'yum install -y',
+        'centos': 'yum install -y',
+		'ubuntu': 'apt-get install -y'
+    },
 	'update_packages': {
 		'amazon': 'yum update -y',
 		'centos': 'yum update -y',
