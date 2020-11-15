@@ -97,9 +97,11 @@ def display_project_as_json(project):
         'resourcegroups': [],
         'resources': [],
         'globalresources': [],
-        'iamusers': [],
-        'cloudtrails': [],
-        'codecommits': [],
+        'iam': [],
+        'cloudtrail': [],
+        'codecommit': [],
+        'sns': [],
+        'snsdefaultlocations': [],
         'iamuserpermissions': [],
         'cloudwatchalarms': [],
         'logsources': [],
@@ -107,12 +109,12 @@ def display_project_as_json(project):
         'services': [],
         'deploymentpipelines': [],
     }
-    json_docs['project'].append(
-        export_fields_to_dict(
-            project,
-            fields=['paco_project_version','active_regions', 's3bucket_hash'],
-        )
+    project_dict = export_fields_to_dict(
+        project,
+        fields=['paco_project_version','active_regions', 's3bucket_hash'],
     )
+    project_dict['ref'] = 'project'
+    json_docs['project'].append(project_dict)
     for account in project['accounts'].values():
         account_dict = export_fields_to_dict(account, fields=['account_id', 'region'])
         json_docs['account'].append(account_dict)
@@ -121,20 +123,28 @@ def display_project_as_json(project):
     if 'cloudtrail' in project['resource']:
         for trail in project['resource']['cloudtrail'].trails.values():
             ct_dict = export_fields_to_dict(trail, fields=['s3_bucket_account','s3_key_prefix'])
-            json_docs['cloudtrails'].append(ct_dict)
+            json_docs['cloudtrail'].append(ct_dict)
     if 'codecommit' in project['resource']:
         for repo in project['resource']['codecommit'].repo_list():
             repo_dict = export_fields_to_dict(repo, fields=[
                 'description','account','region'
             ])
             repo_dict['usernames'] = [user.name for user in repo.users.values()]
-            json_docs['codecommits'].append(repo_dict)
+            json_docs['codecommit'].append(repo_dict)
+    if 'sns' in project['resource']:
+        sns = project['resource']['sns']
+        for location in sns.default_locations:
+            location_dict = recursive_resource_export(location)
+            json_docs['snsdefaultlocations'].append(location_dict)
+        for sns in sns.topics.values():
+            sns_dict = recursive_resource_export(sns)
+            json_docs['sns'].append(sns_dict)
     if 'iam' in project['resource']:
         for user in project['resource']['iam'].users.values():
             user_dict = export_fields_to_dict(user, fields=[
                 'username','description','account_whitelist','console_access_enabled','programmatic_access',
             ])
-            json_docs['iamusers'].append(user_dict)
+            json_docs['iam'].append(user_dict)
             for perm in user.permissions.values():
                 perm_dict = export_fields_to_dict(perm, fields=[
                     'type','accounts','read_only','managed_policies',
