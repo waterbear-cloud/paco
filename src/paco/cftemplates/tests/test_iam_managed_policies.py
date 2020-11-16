@@ -142,3 +142,11 @@ statement:
         statement = tmpl_policy.properties['PolicyDocument'].properties['Statement'][0]
         assert statement.properties['Resource'][0] == '!Ref SecretArnOne'
         assert statement.properties['Resource'][1] == '!Ref SecretArnTwo'
+
+        # When a Troposphere template is converted to YAML, it uses the cfn-flip library
+        # this in turn uses PyYAML, which puts single-quotes (') around tagged strings.
+        # This:
+        #   - !Ref SecretArnOne
+        # Becomes invalid CloudFormation
+        #   - '!Ref SecretArnOne'
+        assert managed_policy_stack_template.body.find("'!Ref SecretArnOne'") == -1

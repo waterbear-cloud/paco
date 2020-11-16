@@ -97,6 +97,11 @@ network:
       webapp:
         enabled: true
 
+secrets_manager:
+  testgroup:
+    app:
+      secret:
+        enabled: true
 
 applications:
   app:
@@ -219,6 +224,17 @@ applications:
             enabled: true
             cluster: paco.ref netenv.res.applications.app.groups.things.resources.ECSCluster
             order: 40
+            # secrets_manager_access:
+            #   - paco.ref netenv.res.secrets_manager.testgroup.app.secret
+            # setting_groups:
+            #   testland:
+            #     environment:
+            #       - name: TEST
+            #         value: example
+            #   testapp:
+            #     secrets:
+            #       - name: TEST_SECRET
+            #         value_from: paco.ref netenv.res.secrets_manager.testgroup.app.secret.TEST_SECRET
             task_definitions:
               hello_web:
                 container_definitions:
@@ -227,6 +243,9 @@ applications:
                     essential: true
                     image: repository-url/image:tag
                     memory: 200 # in MiB
+                    # secrets:
+                    #   - name: HIDDEN_SECRET
+                    #     value_from: paco.ref netenv.res.secrets_manager.testgroup.app.secret.HIDDEN_SECRET
             services:
               simple_app:
                 desired_count: 2

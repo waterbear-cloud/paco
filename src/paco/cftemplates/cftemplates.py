@@ -6,7 +6,31 @@ from paco.models.locations import get_parent_by_interface
 from paco.stack import StackOutputParam, Stack
 from paco.utils import md5sum, big_join
 import troposphere
+import re
 
+
+single_quoted_cfn_regex = re.compile(r"(.*)'(!Ref\W+\S+)'(.*)")
+
+
+def fix_yaml_tagged_string_quotes(body):
+    """
+    Remove single-quotes around CFN Tags from the generated CloudFormation YAML.
+
+    Works around a bug in Troposphere .to_yaml(). This uses the cfn-flip library,
+    which in turn uses PyYAML to generate the YAML from Troposphere. This is a known bug
+    where a desired YAML such as:
+
+        - !Ref SecretArnOne
+
+    Is incorrectly wrapped in single-quotes:
+
+        - '!Ref SecretArnOne'
+
+    The fix requries cfn-flip using another YAML library that offers better control over the output:
+    https://github.com/awslabs/aws-cfn-template-flip/issues/48
+    """
+    new_body = single_quoted_cfn_regex.sub(r'\1\2\3', body)
+    return new_body
 
 class StackTemplate():
     """A CloudFormation template with access to a Stack object and a Project object."""
@@ -52,7 +76,10 @@ class StackTemplate():
     @property
     def body(self):
         if self._body == None:
-            self._body = self.template.to_yaml()
+            # generate YAML from Troposphere and perform replacement on '!Ref SomeParam'
+            self._body = fix_yaml_tagged_string_quotes(
+                self.template.to_yaml()
+            )
         return self._body
 
     @body.setter

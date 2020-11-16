@@ -51,6 +51,7 @@ class BaseTestProject(unittest.TestCase):
         path = cwd_to_fixtures()
         home = path / self.fixture_name
         self.paco_ctx = paco.config.paco_context.PacoContext(home)
+        self.paco_ctx.development = True
         self.paco_ctx.load_project(project_only=True)
         self.project = self.paco_ctx.project
 
