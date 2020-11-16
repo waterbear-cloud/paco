@@ -1,9 +1,6 @@
 from paco.cftemplates import cftemplates
 from paco.cftemplates.tests import BaseTestStack
-from paco.cftemplates.iam_managed_policies import IAMManagedPolicies
 from paco.core.yaml import YAML
-from paco.models.iam import ManagedPolicy
-import paco.models.loader
 
 yaml=YAML(typ='safe')
 
