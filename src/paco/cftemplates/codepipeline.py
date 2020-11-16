@@ -926,6 +926,14 @@ class CodePipeline(StackTemplate):
             )
         )
 
+        # Output
+        self.create_output(
+            title='CodePipelineName',
+            description="CodePipeline Name",
+            value=troposphere.Ref(pipeline_res),
+            ref=self.pipeline.paco_ref_parts + ".name"
+        )
+
         # Add GitHub WebHook after pipeline_res is created
         for action in self.pipeline.source.values():
             if not action.is_enabled():
