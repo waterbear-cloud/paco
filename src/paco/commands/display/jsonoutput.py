@@ -1,5 +1,6 @@
 from paco.models import schemas
 from paco.models.base import most_specialized_interfaces, get_all_fields
+from paco.models.loader import RESOURCES_CLASS_MAP
 from zope.interface import Interface
 import zope.schema
 import zope.schema.interfaces
@@ -82,6 +83,56 @@ def export_fields_to_dict(obj, fields=None, parentname=None):
 def mapping_to_key_list(obj):
     return [key for key in obj.keys()]
 
+resource_type_entity_map = {
+    'ASG': 'asgs',
+    'DeploymentPipeline': 'deploymentpipelines',
+    'ECRRepository': 'ecrrepositories',
+    'ECSServices': 'ecsservices',
+    'LBApplication': 'lbapplications',
+    'S3Bucket': 's3buckets'
+}
+
+"""
+    'ACM': ACM,
+    'ApiGatewayRestApi': ApiGatewayRestApi,
+    'ASG': ASG,
+    'DBParameterGroup': DBParameterGroup,
+    'DBClusterParameterGroup': DBClusterParameterGroup,
+    'DeploymentPipeline': DeploymentPipeline,
+    'EC2': EC2,
+    'CloudFront': CloudFront,
+    'CodeDeployApplication': CodeDeployApplication,
+    'CognitoIdentityPool': CognitoIdentityPool,
+    'CognitoUserPool': CognitoUserPool,
+    'Dashboard': CloudWatchDashboard,
+    'EBS': EBS,
+    'EBSVolumeMount': EBSVolumeMount,
+    'ECSCluster': ECSCluster,
+    'ECSServices': ECSServices,
+    'ECRRepository': ECRRepository,
+    'EIP': EIP,
+    'EFS': EFS,
+    'ElastiCacheRedis': ElastiCacheRedis,
+    'ElasticsearchDomain': ElasticsearchDomain,
+    'EventsRule': EventsRule,
+    'IAMUser': IAMUserResource,
+    'IoTPolicy': IoTPolicy,
+    'IoTTopicRule': IoTTopicRule,
+    'IoTAnalyticsPipeline': IoTAnalyticsPipeline,
+    'Lambda': Lambda,
+    'LBApplication': LBApplication,
+    'ManagedPolicy': ManagedPolicy,
+    'PinpointApplication': PinpointApplication,
+    'RDS': RDS,
+    'RDSMysql': RDSMysql,
+    'RDSMysqlAurora': RDSMysqlAurora,
+    'RDSPostgresql': RDSPostgresql,
+    'RDSPostgresqlAurora': RDSPostgresqlAurora,
+    'Route53HealthCheck': Route53HealthCheck,
+    'S3Bucket': ApplicationS3Bucket,
+    'SNSTopic': SNSTopic,
+"""
+
 def display_project_as_json(project):
     json_docs = {
         'project': [],
@@ -107,8 +158,9 @@ def display_project_as_json(project):
         'logsources': [],
         'healthchecks': [],
         'services': [],
-        'deploymentpipelines': [],
     }
+    for entity_name in RESOURCES_CLASS_MAP.keys():
+        json_docs[entity_name.lower()] = []
     project_dict = export_fields_to_dict(
         project,
         fields=['paco_project_version','active_regions', 's3bucket_hash'],
@@ -133,12 +185,27 @@ def display_project_as_json(project):
             json_docs['codecommit'].append(repo_dict)
     if 'sns' in project['resource']:
         sns = project['resource']['sns']
+        index = 0
         for location in sns.default_locations:
             location_dict = recursive_resource_export(location)
+            location_dict['ref'] = f"resource.sns.default_locations.{index}"
+            index += 1
             json_docs['snsdefaultlocations'].append(location_dict)
         for sns in sns.topics.values():
             sns_dict = recursive_resource_export(sns)
             json_docs['sns'].append(sns_dict)
+    # legacy 'snstopics' which are exported as if they were 'sns' for simplicity
+    if 'snstopics' in project['resource']:
+        snstopics = project['resource']['snstopics']
+        regions = snstopics.regions
+        if snstopics.regions == ['ALL']:
+            regions = project.active_regions
+        for region in regions:
+            for snstopic in project['resource']['snstopics'][region].values():
+                sns_dict = recursive_resource_export(snstopic)
+                sns_dict['ref'] = f"resource.sns.topics.{snstopic.name}"
+                sns_dict['locations'] = [{'account': snstopics.account, 'regions': regions}]
+                json_docs['sns'].append(sns_dict)
     if 'iam' in project['resource']:
         for user in project['resource']['iam'].users.values():
             user_dict = export_fields_to_dict(user, fields=[
@@ -230,9 +297,13 @@ def display_project_as_json(project):
                         for resource in resource_group.resources.values():
                             resource_dict = export_fields_to_dict(resource, fields=['type', 'order', 'change_protected'])
                             json_docs['resources'].append(resource_dict)
-                            if resource.type == 'DeploymentPipeline':
-                                full_resource_dict = recursive_resource_export(resource)
-                                json_docs['deploymentpipelines'].append(full_resource_dict)
+                            # details export
+                            entity_name = resource.type.lower()
+                            full_resource_dict = recursive_resource_export(resource)
+                            if resource.type == 'S3Bucket':
+                                full_resource_dict['awsBucketName'] = resource.get_bucket_name()
+                            json_docs[entity_name].append(full_resource_dict)
+
                             # Resource Alarms
                             if hasattr(resource, 'monitoring'):
                                 add_alarms(resource.monitoring, json_docs['cloudwatchalarms'], 'resource')
