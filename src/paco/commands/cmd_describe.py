@@ -33,10 +33,10 @@ def describe_command(paco_ctx, home='.', output='html', display='chrome'):
     project = paco_ctx.project
 
     # Output HTML
-    describe_path = paco_ctx.describe_path
+    describe_path = pathlib.Path(paco_ctx.describe_path)
+    describe_path.mkdir(parents=True, exist_ok=True)
     if output == 'html':
         static_path, html_files, envs_html = display_project_as_html(project, output)
-        pathlib.Path(describe_path).mkdir(parents=True, exist_ok=True)
         shutil.copytree(static_path, describe_path, dirs_exist_ok=True)
         for fname, html in html_files.items():
             with open(str(describe_path / fname), 'w') as fh:
