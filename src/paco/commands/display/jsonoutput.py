@@ -2,9 +2,13 @@ from paco.models import schemas
 from paco.models.base import most_specialized_interfaces, get_all_fields
 from paco.models.loader import RESOURCES_CLASS_MAP
 from zope.interface import Interface
+from zope.schema import Field
+import inspect
 import zope.schema
 import zope.schema.interfaces
 import zope.interface.common.mapping
+import zope.interface.interface
+
 
 def full_recursive_export(obj):
     "Export all fields, include sub-fields"
@@ -136,6 +140,7 @@ resource_type_entity_map = {
 def display_project_as_json(project):
     json_docs = {
         'project': [],
+        'fieldhelp': [],
         'account': [],
         'netenv': [],
         'env': [],
@@ -155,6 +160,7 @@ def display_project_as_json(project):
         'snsdefaultlocations': [],
         'iamuserpermissions': [],
         'cloudwatchalarms': [],
+        'cloudwatchlogs': [],
         'logsources': [],
         'healthchecks': [],
         'services': [],
@@ -167,14 +173,32 @@ def display_project_as_json(project):
     )
     project_dict['ref'] = 'project'
     json_docs['project'].append(project_dict)
+
+    # Help - export from schemas
+    for name, obj in inspect.getmembers(schemas):
+        if isinstance(obj, zope.interface.interface.InterfaceClass):
+            for iface_name in list(obj):
+                if obj[iface_name].interface.__name__ == name:
+                    if isinstance(obj[iface_name], Field):
+                        # strip the leading I from the interface name, e.g.
+                        #   ICloudTrail becomes CloudTrail
+                        # keys would be in the form:
+                        #   CloudTrail.is_multi_region_trail
+                        key = f"{name[1:]}.{obj[iface_name].__name__}"
+                        helpfields_dict = {
+                            'id': key,
+                            'help': obj[iface_name].title,
+                        }
+                        json_docs['fieldhelp'].append(helpfields_dict)
+
     for account in project['accounts'].values():
-        account_dict = export_fields_to_dict(account, fields=['account_id', 'region'])
+        account_dict = recursive_resource_export(account) # export_fields_to_dict(account, fields=['account_id', 'region'])
         json_docs['account'].append(account_dict)
     for name in project['resource'].keys():
         json_docs['globalresources'].append({'name': name})
     if 'cloudtrail' in project['resource']:
         for trail in project['resource']['cloudtrail'].trails.values():
-            ct_dict = export_fields_to_dict(trail, fields=['s3_bucket_account','s3_key_prefix'])
+            ct_dict = recursive_resource_export(trail)
             json_docs['cloudtrail'].append(ct_dict)
     if 'codecommit' in project['resource']:
         for repo in project['resource']['codecommit'].repo_list():
@@ -208,9 +232,7 @@ def display_project_as_json(project):
                 json_docs['sns'].append(sns_dict)
     if 'iam' in project['resource']:
         for user in project['resource']['iam'].users.values():
-            user_dict = export_fields_to_dict(user, fields=[
-                'username','description','account_whitelist','console_access_enabled','programmatic_access',
-            ])
+            user_dict = recursive_resource_export(user)
             json_docs['iam'].append(user_dict)
             for perm in user.permissions.values():
                 perm_dict = export_fields_to_dict(perm, fields=[
@@ -307,8 +329,20 @@ def display_project_as_json(project):
                             # Resource Alarms
                             if hasattr(resource, 'monitoring'):
                                 add_alarms(resource.monitoring, json_docs['cloudwatchalarms'], 'resource')
+                                add_logs(resource.monitoring, json_docs['cloudwatchlogs'], 'resource')
 
     return json_docs
+
+def add_logs(monitoring, logs, log_context):
+    if monitoring == None:
+        return
+    if not monitoring.is_enabled():
+        return
+    for log_set in monitoring.log_sets.values():
+        for log_group in log_set.log_groups.values():
+            log_group_dict = recursive_resource_export(log_group)
+            log_group_dict['log_set_name'] = log_set.name
+            logs.append(log_group_dict)
 
 def add_alarms(monitoring, alarms, alarm_context):
     if monitoring == None:
