@@ -233,6 +233,7 @@ def display_project_as_json(project):
     if 'iam' in project['resource']:
         for user in project['resource']['iam'].users.values():
             user_dict = recursive_resource_export(user)
+            user_dict['programmatic_access']['enabled'] = user.programmatic_access.enabled
             json_docs['iam'].append(user_dict)
             for perm in user.permissions.values():
                 perm_dict = export_fields_to_dict(perm, fields=[
