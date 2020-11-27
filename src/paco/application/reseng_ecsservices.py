@@ -72,7 +72,7 @@ class ECSServicesResourceEngine(ResourceEngine):
                     'key': f'SecretsManagerArn{name_hash}',
                     'value': secret_ref+'.arn',
                     'type': 'String',
-                    'description': 'Secrets Manager Secreest Arn'
+                    'description': 'Secrets Manager Secret Arn'
                 })
 
                 secrets_statement['resource'].append(f'!Ref SecretsManagerArn{name_hash}')
