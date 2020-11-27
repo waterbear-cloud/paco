@@ -2,10 +2,12 @@ Changelog for Paco
 ==================
 
 
-9.0.3 (unreleased)
+9.1.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Added
+
+- Support for `copy_actions` for BackupPlanRules in AWS Backup to allow cross-account backups.
 
 
 9.0.2 (2020-11-12)

@@ -3,6 +3,20 @@ from paco.cftemplates.cftemplates import StackTemplate
 import troposphere
 import troposphere.backup
 
+# Troposphere monkey-patch for CopyActions
+# (remove once PR for this is merged and released)
+
+from troposphere import AWSProperty
+basestring = str
+
+class CopyActionResourceType(AWSProperty):
+    props = {
+        'DestinationBackupVaultArn': (basestring, True),
+        'Lifecycle': (troposphere.backup.LifecycleResourceType, False),
+    }
+
+troposphere.backup.CopyActionResourceType = CopyActionResourceType
+troposphere.backup.BackupRuleResourceType.props['CopyActions'] = ([CopyActionResourceType], False)
 
 class BackupVault(StackTemplate):
     def __init__(self, stack, paco_ctx, role):
@@ -81,6 +95,23 @@ class BackupVault(StackTemplate):
                     if rule.lifecycle_move_to_cold_storage_after_days != None:
                         lifecycle_dict['MoveToColdStorageAfterDays'] = rule.lifecycle_move_to_cold_storage_after_days
                     rule_dict['Lifecycle'] = lifecycle_dict
+
+                # CopyActions
+                for copy_action in rule.copy_actions:
+                    copy_action_dict = {
+                        'DestinationBackupVaultArn': copy_action.destination_vault,
+                    }
+                    if 'CopyActions' not in rule_dict:
+                        rule_dict['CopyActions'] = []
+                    if copy_action.lifecycle_delete_after_days != None or copy_action.lifecycle_move_to_cold_storage_after_days != None:
+                        copy_lifecycle_dict = {}
+                        if copy_action.lifecycle_delete_after_days != None:
+                            copy_lifecycle_dict['DeleteAfterDays'] =  copy_action.lifecycle_delete_after_days
+                        if copy_action.lifecycle_move_to_cold_storage_after_days != None:
+                            copy_lifecycle_dict['MoveToColdStorageAfterDays'] = copy_action.lifecycle_move_to_cold_storage_after_days
+                        copy_action_dict['Lifecycle'] = copy_lifecycle_dict
+                    rule_dict['CopyActions'].append(copy_action_dict)
+
                 rules_list.append(rule_dict)
             cfn_export_dict = {
                 'BackupPlan': {
