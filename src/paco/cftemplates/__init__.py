@@ -8,6 +8,7 @@ from paco.cftemplates.iam_managed_policies import IAMManagedPolicies
 from paco.cftemplates.iam_roles import IAMRoles
 from paco.cftemplates.iam_sl_roles import IAMSLRoles
 from paco.cftemplates.s3 import S3
+from paco.cftemplates.s3 import S3BucketPolicy
 from paco.cftemplates.codecommit import CodeCommit
 from paco.cftemplates.codedeploy import CodeDeploy
 from paco.cftemplates.codebuild import CodeBuild

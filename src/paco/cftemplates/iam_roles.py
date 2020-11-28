@@ -1,4 +1,4 @@
-from awacs.aws import Allow, Deny, Action, Principal, Statement, PolicyDocument
+from awacs.aws import *
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.utils import md5sum
 import troposphere.iam
@@ -27,9 +27,23 @@ def policy_to_troposphere(policy):
         # Resource
         args_dict['Resource'] = statement.resource
 
+        # Condition
+        if statement.condition and statement.condition != {}:
+            conditions = []
+            for condition_key, condition_value in statement.condition.items():
+                # Conditions can be simple:
+                #   StringEquals
+                # Or prefixed with ForAnyValue or ForAllValues
+                #   ForAnyValue:StringEquals
+                condition_key = condition_key.replace(':', '')
+                condition_class = globals()[condition_key]
+                conditions.append(condition_class(condition_value))
+            args_dict['Condition'] = Condition(conditions)
+
         statements.append(
             Statement(**args_dict)
         )
+
 
     return PolicyDocument(
         Version='2012-10-17',

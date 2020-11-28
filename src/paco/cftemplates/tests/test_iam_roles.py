@@ -61,6 +61,32 @@ policies:
 
 aws_principal_role_json = '{"Properties": {"AssumeRolePolicyDocument": {"Statement": [{"Effect": "Allow", "Principal": {"AWS": ["*"]}, "Action": ["sts:AssumeRole"]}]}, "Policies": [{"PolicyName": "AllowS3Get", "PolicyDocument": {"Statement": [{"Effect": "Allow", "Action": ["s3:GetObject"], "Resource": ["*"]}]}}]}, "Type": "AWS::IAM::Role"}'
 
+aws_condition_role_yaml = """
+assume_role_policy:
+  effect: Allow
+  aws:
+    - '*'
+policies:
+  - name: AllowS3Get
+    statement:
+      - effect: Allow
+        action:
+          - 's3:GetObject'
+        resource:
+          - '*'
+        condition:
+          StringEquals:
+            s3:x-amz-acl:
+              "public-read"
+          IpAddress:
+            "aws:SourceIp": "192.0.2.0/24"
+          NotIpAddress:
+            "aws:SourceIp": "192.0.2.188/32"
+
+"""
+
+condition_role_json = '{"Properties": {"AssumeRolePolicyDocument": {"Statement": [{"Effect": "Allow", "Principal": {"AWS": ["*"]}, "Action": ["sts:AssumeRole"]}]}, "Policies": [{"PolicyName": "AllowS3Get", "PolicyDocument": {"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Action": ["s3:GetObject"], "Resource": ["*"], "Condition": {"StringEquals": {"s3:x-amz-acl": "public-read"}, "IpAddress": {"aws:SourceIp": "192.0.2.0/24"}, "NotIpAddress": {"aws:SourceIp": "192.0.2.188/32"}}}]}}]}, "Type": "AWS::IAM::Role"}'
+
 def create_role_from_yaml(yaml):
     config = load_yaml(yaml)
     role = RoleDefaultEnabled('role', None)
@@ -139,3 +165,9 @@ class TestIAMRoles(TestCase):
         role = create_role_from_yaml(aws_principal_role_yaml)
         resource = role_to_troposphere(role, 'SimpleAWS')
         assert backup_role_json, json.dumps(resource.to_dict())
+
+        # Role with a Condition
+        role = create_role_from_yaml(aws_condition_role_yaml)
+        resource = role_to_troposphere(role, 'Condition')
+        breakpoint()
+        assert condition_role_json, json.dumps(resource.to_dict())

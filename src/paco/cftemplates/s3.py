@@ -6,19 +6,83 @@ from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.models import schemas
-from awacs.aws import Action, Allow, Statement, Policy, Principal, Condition, StringEquals
+from awacs.aws import *
+
+def create_policy_statments(policies, s3bucket_arn_param=None, s3bucket_arn=None):
+    policy_statements = []
+    for policy_statement in policies:
+        statement_dict = {
+            'Effect': policy_statement.effect,
+            'Action': [
+                Action(*action.split(':')) for action in policy_statement.action
+            ],
+        }
+
+        # Sid
+        if policy_statement.sid != None and len(policy_statement.sid) > 0:
+            statement_dict['Sid'] = policy_statement.sid
+
+        # Principal
+        if policy_statement.principal != None and len(policy_statement.principal) > 0:
+            # ToDo: awacs only allows one type of Principal ... is there a use-case where
+            # multiple principal types are needed?
+            for key, value in policy_statement.principal.items():
+                statement_dict['Principal'] = Principal(key, value)
+        elif policy_statement.aws != None and len(policy_statement.aws) > 0:
+            statement_dict['Principal'] = Principal('AWS', policy_statement.aws)
+
+        # Condition
+        if policy_statement.condition != {}:
+            conditions = []
+            for condition_key, condition_value in policy_statement.condition.items():
+                # Conditions can be simple:
+                #   StringEquals
+                # Or prefixed with ForAnyValue or ForAllValues
+                #   ForAnyValue:StringEquals
+                condition_key = condition_key.replace(':', '')
+                condition_class = globals()[condition_key]
+                conditions.append(condition_class(condition_value))
+
+            statement_dict['Condition'] = Condition(conditions)
+
+        # Resource
+        # S3BucketPolicy uses Parameters
+        if s3bucket_arn_param != None:
+            if policy_statement.resource_suffix and len(policy_statement.resource_suffix) > 0:
+                statement_dict['Resource'] = []
+                for res_suffix in policy_statement.resource_suffix:
+                    if res_suffix == '':
+                        statement_dict['Resource'].append(
+                            troposphere.Ref(s3bucket_arn_param)
+                        )
+                    else:
+                        statement_dict['Resource'].append(
+                            troposphere.Join(
+                                '',
+                                [troposphere.Ref(s3bucket_arn_param), res_suffix]
+                            )
+                        )
+            else:
+                statement_dict['Resource'] = [troposphere.Ref(s3bucket_arn_param)]
+        # S3Bucket uses embdedded strings
+        else:
+            if policy_statement.resource_suffix and len(policy_statement.resource_suffix) > 0:
+                statement_dict['Resource'] = [
+                    s3bucket_arn + res_suffix
+                    for res_suffix in policy_statement.resource_suffix
+                ]
+            else:
+                statement_dict['Resource'] = [ s3bucket_arn ]
+
+        policy_statements.append(
+            Statement(**statement_dict)
+        )
+    return policy_statements
 
 
 class S3(StackTemplate):
-    def __init__(
-        self,
-        stack,
-        paco_ctx,
-        bucket_context,
-        bucket_policy_only,
-    ):
+    def __init__(self, stack, paco_ctx, bucket_context, bucket_policy_only):
         bucket = bucket_context['config']
-        config_ref = bucket.paco_ref_parts
 
         # Application Group
         aws_name_list = []
@@ -44,10 +108,9 @@ class S3(StackTemplate):
             iam_capabilities=["CAPABILITY_NAMED_IAM"],
         )
         self.set_aws_name('S3', aws_name_list)
-        self.s3_context_id = config_ref
         self.bucket_context = bucket_context
         s3_ctl = self.paco_ctx.get_controller('S3')
-        bucket_name = s3_ctl.get_bucket_name(self.s3_context_id)
+        bucket_name = s3_ctl.get_bucket_name(bucket.paco_ref_parts)
 
         # Init Troposphere template
         self.init_template(bucket.title_or_name)
@@ -90,7 +153,7 @@ class S3(StackTemplate):
             self.create_output(
                 title=s3_logical_id + 'Name',
                 value=troposphere.Ref(s3_resource),
-                ref=config_ref + '.name'
+                ref=bucket.paco_ref_parts + '.name'
             )
 
         # Bucket Policy
@@ -99,7 +162,7 @@ class S3(StackTemplate):
             # CloudFront OriginAccessIdentity resource
             cloudfront_origin_resource = troposphere.cloudfront.CloudFrontOriginAccessIdentity.from_dict(
                 'CloudFrontOriginAccessIdentity',
-                {'CloudFrontOriginAccessIdentityConfig': {'Comment': self.s3_context_id}},
+                {'CloudFrontOriginAccessIdentityConfig': {'Comment': bucket.paco_ref_parts}},
             )
             template.add_resource(cloudfront_origin_resource)
 
@@ -112,94 +175,23 @@ class S3(StackTemplate):
                 )
             )
 
-            # S3 BucketPolicy resource
-            #policy = Policy(
-            #    Version='2012-10-17',
-            #    Statement=[
-            #        Statement(
-            #            Effect = Allow,
-            #            Principal = Principal('CanonicalUser',troposphere.GetAtt('CloudFrontOriginAccessIdentity','S3CanonicalUserId')),
-            #            Action = [awacs.s3.GetObject],
-            #            Resource = ['arn:aws:s3:::{}/*'.format(bucket_name)],
-            #        )
-            #    ]
-            #)
-            #bucket_policy_resource = troposphere.s3.BucketPolicy(
-            #    'CloudFrontBucketPolicy',
-            #    Bucket = bucket_name,
-            #    PolicyDocument = policy,
-            #)
-            #bucket_policy_resource.DependsOn = [
-            #    'CloudFrontOriginAccessIdentity',
-            #    s3_logical_id
-            #]
-            #template.add_resource(bucket_policy_resource)
-
-            # Output CloudFrontOriginAccessIdentity
             self.create_output(
                 title='CloudFrontOriginAccessIdentity',
                 value=troposphere.Ref(cloudfront_origin_resource),
-                ref=config_ref + '.origin_id',
+                ref=bucket.paco_ref_parts + '.origin_id',
             )
 
         if len(bucket.policy) > 0:
             # Bucket Policy
             # ToDo: allow mixing CloudFront Origin policies and other bucket policies together
+            bucket_arn = s3_ctl.get_bucket_arn(bucket.paco_ref_parts)
+            bucket_policy_statements = create_policy_statments(
+                bucket.policy,
+                s3bucket_arn=bucket_arn,
+            )
+            for statement in bucket_policy_statements:
+                policy_statements.append(statement)
 
-            # Statement
-            for policy_statement in bucket.policy:
-                # XXX: Disabled: Bucket policies are overwritten when updated with a new stack.
-                #                This means we want all of the policies previously provisioned.
-                #if policy_statement.processed == True:
-                #    continue
-                statement_dict = {
-                    'Effect': policy_statement.effect,
-                    'Action': [
-                        Action(*action.split(':')) for action in policy_statement.action
-                    ],
-                }
-
-                # Sid
-                if policy_statement.sid != None and len(policy_statement.sid) > 0:
-                    statement_dict['Sid'] = policy_statement.sid
-
-                # Principal
-                if policy_statement.principal != None and len(policy_statement.principal) > 0:
-                    # ToDo: awacs only allows one type of Principal ... is there a use-case where
-                    # multiple principal types are needed?
-                    for key, value in policy_statement.principal.items():
-                        statement_dict['Principal'] = Principal(key, value)
-                elif policy_statement.aws != None and len(policy_statement.aws) > 0:
-                    statement_dict['Principal'] = Principal('AWS', policy_statement.aws)
-
-                # Condition
-                if policy_statement.condition != {}:
-                    # ToDo: support all conditions!
-                    # currently only invoked by ctl_cloudtrail.py
-                    conditions = []
-                    for condition_key, condition_value in policy_statement.condition.items():
-                        if condition_key == 'StringEquals':
-                            conditions.append(StringEquals(condition_value))
-                        else:
-                            raise StackException(
-                                PacoErrorCode.Unknown,
-                                message="Only StringEquals is a supported condition (*fix-me!*). Bucket name: {}".format(bucket_name)
-                            )
-                    statement_dict['Condition'] = Condition(conditions)
-
-                # Resource
-                bucket_arn = s3_ctl.get_bucket_arn(self.s3_context_id)
-                if policy_statement.resource_suffix and len(policy_statement.resource_suffix) > 0:
-                    statement_dict['Resource'] = [
-                        bucket_arn + res_suffix
-                        for res_suffix in policy_statement.resource_suffix
-                    ]
-                else:
-                    statement_dict['Resource'] = [bucket_arn]
-
-                policy_statements.append(
-                    Statement(**statement_dict)
-                )
         if len(policy_statements) > 0:
             bucket_policy_resource = troposphere.s3.BucketPolicy(
                 cfn_logical_id_prefix + 'BucketPolicy',
@@ -210,7 +202,6 @@ class S3(StackTemplate):
                     Statement = policy_statements,
                 )
             )
-
             depends_on = []
             if bucket_policy_only == False:
                 depends_on.append(s3_resource)
@@ -218,11 +209,54 @@ class S3(StackTemplate):
                 depends_on.append('CloudFrontOriginAccessIdentity')
             bucket_policy_resource.DependsOn = depends_on
 
-        # Generate the Template
-        self.set_template()
-
-
     def delete(self):
         s3_ctl = self.paco_ctx.get_controller('S3')
         s3_ctl.empty_bucket(self.bucket_context['ref'])
         super().delete()
+
+
+class S3BucketPolicy(StackTemplate):
+    """
+    S3 Bucket Policy
+
+    Allows creating only selected policies for an S3 Bucket, as an s3bucket.policies model
+    may have policies with dependencies on a variety of different resources and it may be
+    necessary to only provision policies scoped to a specific resource.
+    """
+
+    def __init__(self, stack, paco_ctx, s3bucket, policies):
+        super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_NAMED_IAM"])
+        self.set_aws_name('BucketPolicy', self.resource_group_name, self.resource.name)
+
+        self.init_template('S3 Bucket Policy')
+        if not stack.resource.is_enabled():
+            return
+
+        s3bucket_arn_param = self.create_cfn_parameter(
+            name='S3BucketArn',
+            param_type='String',
+            description='S3 Bucket Arn',
+            value=s3bucket.paco_ref + '.arn',
+        )
+        s3bucket_name_param = self.create_cfn_parameter(
+            name='S3BucketName',
+            param_type='String',
+            description='S3 Bucket Name',
+            value=s3bucket.get_bucket_name(),
+        )
+
+        # Statement
+        policy_statements = create_policy_statments(
+            policies,
+            s3bucket_arn_param=s3bucket_arn_param,
+        )
+
+        bucket_policy_resource = troposphere.s3.BucketPolicy(
+            'S3BucketPolicy',
+            Bucket=troposphere.Ref(s3bucket_name_param),
+            PolicyDocument = Policy(
+                Version = '2012-10-17',
+                Statement = policy_statements,
+            )
+        )
+        self.template.add_resource(bucket_policy_resource)
