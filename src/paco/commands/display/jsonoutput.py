@@ -14,7 +14,7 @@ def full_recursive_export(obj):
     "Export all fields, include sub-fields"
     export_dict = {}
     for fieldname, field in get_all_fields(obj).items():
-        if fieldname == 'enabled': continue
+        # if fieldname == 'enabled': continue
         value = getattr(obj, fieldname, None)
         # List
         if zope.schema.interfaces.IList.providedBy(field):
@@ -286,8 +286,10 @@ def display_project_as_json(project):
                 json_docs['env_regions'].append(env_region_dict)
 
                 # Network
-                network_dict = export_fields_to_dict(network, fields=['availability_zones'])
+                network_dict = recursive_resource_export(network)
                 network_dict['account_ref'] = network.aws_account.split(' ')[1]
+                if network.vpc.private_hosted_zone != None and network.vpc.private_hosted_zone.enabled == True:
+                    network_dict['vpc']['private_dns_name'] = network.vpc.private_hosted_zone.name
                 json_docs['networks'].append(network_dict)
 
                 # Backup Vaults
@@ -315,7 +317,7 @@ def display_project_as_json(project):
                                 check_dict = autoexport_fields_to_dict(check)
                                 json_docs['healthchecks'].append(check_dict)
                     for resource_group in app.groups.values():
-                        resource_group_dict = export_fields_to_dict(resource_group)
+                        resource_group_dict = export_fields_to_dict(resource_group, fields=['type'])
                         json_docs['resourcegroups'].append(resource_group_dict)
                         for resource in resource_group.resources.values():
                             resource_dict = export_fields_to_dict(resource, fields=['type', 'order', 'change_protected'])
