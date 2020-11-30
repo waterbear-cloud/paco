@@ -5,14 +5,6 @@ Changelog for Paco
 9.1.0 (unreleased)
 ------------------
 
-### Migration
-
-- DeploymentPipeline now creates a dedicated Stack for it's S3 Bucket Policy that allows it
-  to interact with it's configured artifacts bucket. DeploymentPipelines previously shared
-  a single S3 Bucket Policy Stack that was part of the S3 Bucket resource. This Stack
-  (with the suffix `s3-policy-S3`) will be orphaned - it can be left in place or manually removed
-  after the DeploymentPipeline has been provisioned with it's own dedicated Bucket Policy Stack.
-
 ### Added
 
 - New `S3BucketPolicy` StackTemplate.

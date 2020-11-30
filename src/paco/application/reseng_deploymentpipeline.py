@@ -167,31 +167,17 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         if not self.pipeline.is_enabled():
             return
 
-        # Create S3 Bucket Policy for artifacts bucket to allow all of the DeploymentPipelines needed interactions
         self.artifacts_bucket_policy_resource_arns.append(
             "paco.sub '${%s}'" % (self.pipeline.paco_ref + '.codepipeline_role.arn')
         )
-        policy_dict = {
+        cpbd_s3_bucket_policy = {
             'aws': self.artifacts_bucket_policy_resource_arns,
             'action': [ 's3:*' ],
             'effect': 'Allow',
             'resource_suffix': [ '/*', '' ]
         }
-        policy = s3_bucket.add_policy(policy_dict)
-
-        bucket_account_ctx = self.paco_ctx.get_account_context(s3_bucket.account)
-        self.s3bucket_policy_stack = self.stack_group.add_new_stack(
-            self.aws_region,
-            self.resource,
-            cftemplates.S3BucketPolicy,
-            account_ctx=bucket_account_ctx,
-            stack_tags=self.stack_tags,
-            support_resource_ref_ext='s3bucketpolicy',
-            extra_context={
-                's3bucket': s3_bucket,
-                'policies': [policy],
-            }
-        )
+        # the S3 Bucket Policy can be added to by multiple DeploymentPipelines
+        s3_ctl.add_bucket_policy(self.artifacts_bucket_meta['ref'], cpbd_s3_bucket_policy)
 
     def init_stage_action_github_source(self, action_config):
         "Initialize a GitHub.Source action"
