@@ -290,6 +290,12 @@ def display_project_as_json(project):
                 network_dict['account_ref'] = network.aws_account.split(' ')[1]
                 if network.vpc.private_hosted_zone != None and network.vpc.private_hosted_zone.enabled == True:
                     network_dict['vpc']['private_dns_name'] = network.vpc.private_hosted_zone.name
+                security_groups_dict = {}
+                for key1 in network.vpc.security_groups.keys():
+                    security_groups_dict[key1] = {}
+                    for key2 in network.vpc.security_groups[key1].keys():
+                        security_groups_dict[key1][key2] = recursive_resource_export(network.vpc.security_groups[key1][key2])
+                network_dict['vpc']['security_groups'] = security_groups_dict
                 json_docs['networks'].append(network_dict)
 
                 # Backup Vaults
