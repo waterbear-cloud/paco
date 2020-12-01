@@ -319,6 +319,7 @@ class ALB(StackTemplate):
                 if alb_config.is_dns_enabled() == True:
                     hosted_zone_param = self.create_cfn_parameter(
                         param_type='String',
+                        description='ALB DNS Hosted Zone ID',
                         name='HostedZoneID%d' % (record_set_index),
                         value=alb_dns.hosted_zone+'.id'
                     )
@@ -331,7 +332,7 @@ class ALB(StackTemplate):
                         'HostedZoneId': troposphere.GetAtt(alb_resource, 'CanonicalHostedZoneID')
                     }
                     record_set_resource = troposphere.route53.RecordSet.from_dict(
-                        'RecordSet' + record_set_index,
+                        'RecordSet' + str(record_set_index),
                         cfn_export_dict
                     )
                     record_set_resource.Condition = "ALBIsEnabled"
