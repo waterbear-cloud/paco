@@ -38,7 +38,7 @@ class SecretsManager(StackTemplate):
                     cfn_export_dict = {
                         'Name': secret_config.paco_ref_parts
                     }
-                    if secret_config.generate_secret_string.enabled:
+                    if secret_config.generate_secret_string != None and secret_config.generate_secret_string.enabled:
                         cfn_export_dict['GenerateSecretString'] = secret_config.generate_secret_string.cfn_export_dict
                     else:
                         # Secret will be changed later
