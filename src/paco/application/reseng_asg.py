@@ -27,7 +27,20 @@ class ASGResourceEngine(ResourceEngine):
             name_list.append('ASG')
 
         stack_name = '-'.join(name_list)
-        return stack_name
+
+        # The following code duplicates the function in stack.py:BaseStack().create_stack_name()
+        # because we need the name of the stack before the stack is created.
+        # TODO: Merge this into one function somewhere.
+        if stack_name.isalnum():
+            return stack_name
+
+        new_name = ""
+        for ch in stack_name:
+            if ch.isalnum() == False:
+                ch = '-'
+            new_name += ch
+
+        return new_name
 
     def init_resource(self):
         # Create instance role

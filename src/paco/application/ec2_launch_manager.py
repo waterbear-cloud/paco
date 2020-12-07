@@ -567,6 +567,7 @@ statement:
         # allow cloudformation SignalResource and DescribeStacks if needed
         if resource.rolling_update_policy.wait_on_resource_signals == True:
             policy_config_yaml += f"""
+
   - effect: Allow
     action:
       - "cloudformation:SignalResource"
@@ -1705,9 +1706,8 @@ statement:
         if len(resource.dns) == 0:
             dns_enabled = False
 
-        for dns_config in resource.dns:
-            ec2_dns_domain = "placeholder"
-            ec2_dns_hosted_zone = "placeholder"
+        ec2_dns_domain = resource.dns[0].domain_name
+        ec2_dns_hosted_zone = resource.dns[0].domain_name
 
 
         launch_script = f"""#!/bin/bash
@@ -1762,6 +1762,14 @@ function disable_launch_bundle() {{
         if dns_enabled:
             # Create instance managed policy for the agent
             iam_policy_name = '-'.join([resource.name, 'dns-policy'])
+            param = {
+                'description': 'DNS Hosted Zone ID',
+                'type': 'String',
+                'key': 'DNSHostedZoneId' + hostedzone_hash,
+                'value': ec2_dns_hosted_zone + '.id'
+            }
+            template_params.append(param)
+
             policy_config_yaml = f"""
 policy_name: '{iam_policy_name}'
 enabled: true
@@ -1798,6 +1806,7 @@ function stop_agent() {{
     fi
     set +e
     TIMEOUT=60
+    SLEEP_SECS=10
     T_COUNT=0
     echo "EC2LM: CodeDeploy: Attempting to stop Agent"
     while :
@@ -1807,10 +1816,10 @@ function stop_agent() {{
             break
         fi
         echo "EC2LM: CodeDeploy: A deployment is in progress, waiting for deployment to complete."
-        sleep 10
+        sleep $SLEEP_SECS
         T_COUNT=$(($T_COUNT+1))
         if [ $T_COUNT -eq $TIMEOUT ] ; then
-            echo "EC2LM: CodeDeploy: ERROR: Timeout after $TIMEOUT seconds waiting for deployment to complete."
+            echo "EC2LM: CodeDeploy: ERROR: Timeout after $(($TIMEOUT*$SLEEP_SECS)) seconds waiting for deployment to complete."
             exit 1
         fi
     done
