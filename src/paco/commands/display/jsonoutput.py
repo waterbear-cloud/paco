@@ -301,9 +301,9 @@ def display_project_as_json(project):
                 json_docs['networks'].append(network_dict)
 
                 # Backup Vaults
-                backup_dict = export_fields_to_dict(backup_vaults, fields=[])
-                backup_dict['vaults'] = [vault.name for vault in backup_vaults.values()]
-                json_docs['backupvaults'].append(backup_dict)
+                for backup_vault in backup_vaults.values():
+                    backup_dict = recursive_resource_export(backup_vault)
+                    json_docs['backupvaults'].append(backup_dict)
 
                 # Secrets Manager
                 #   - SM Application -> secretsmanagerapps
