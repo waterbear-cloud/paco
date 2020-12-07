@@ -147,7 +147,9 @@ def display_project_as_json(project):
         'env_regions': [],
         'networks': [],
         'backupvaults': [],
-        'secretsmanagers': [],
+        'secretsmanagerapps': [],
+        'secretsmanagergroups': [],
+        'secretsmanagersecrets': [],
         'applications': [],
         'notifications': [],
         'resourcegroups': [],
@@ -299,15 +301,23 @@ def display_project_as_json(project):
                 json_docs['networks'].append(network_dict)
 
                 # Backup Vaults
-                backup_dict = export_fields_to_dict(backup_vaults, fields=[])
-                backup_dict['vaults'] = [vault.name for vault in backup_vaults.values()]
-                json_docs['backupvaults'].append(backup_dict)
+                for backup_vault in backup_vaults.values():
+                    backup_dict = recursive_resource_export(backup_vault)
+                    json_docs['backupvaults'].append(backup_dict)
 
                 # Secrets Manager
+                #   - SM Application -> secretsmanagerapps
+                #     - SM Group -> secretsmanagergroups
+                #       - SM Secret -> secretsmanagersecrets
                 for sm_app in secrets_manager.values():
-                    secrets_manager_dict = export_fields_to_dict(sm_app, fields=[])
-                    secrets_manager_dict['managers'] = []
-                    json_docs['secretsmanagers'].append(secrets_manager_dict)
+                    sm_app_dict = export_fields_to_dict(sm_app, fields=[])
+                    json_docs['secretsmanagerapps'].append(sm_app_dict)
+                    for sm_group in sm_app.values():
+                        sm_group_dict = export_fields_to_dict(sm_group, fields=[])
+                        json_docs['secretsmanagergroups'].append(sm_group_dict)
+                        for secret in sm_group.values():
+                            secret_dict = recursive_resource_export(secret)
+                            json_docs['secretsmanagersecrets'].append(secret_dict)
 
                 for app in env_region.applications.values():
                     app_dict = export_fields_to_dict(app)
