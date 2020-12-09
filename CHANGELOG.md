@@ -13,6 +13,10 @@ Changelog for Paco
 
 - IAM Policies and S3 Bucket Policies now support all allowable AWS Conditions.
 
+### Changed
+
+ - EC2LM cfn-init bundle now uses the Python 3 cfn-init 2.0 package rather than installing Python 2
+   and the legacy cfn-init 1.4 package.
 
 9.0.2 (2020-11-12)
 ------------------

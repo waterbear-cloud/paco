@@ -87,12 +87,11 @@ easy_install --script-dir {cfn_base_path}/bin aws-cfn-bootstrap-latest.tar.gz
 """,
 		'ubuntu_20': """
 mkdir -p {cfn_base_path}/bin
-apt-get install -y python2 python-setuptools
-wget https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
-tar -xzvf aws-cfn-bootstrap-latest.tar.gz
-cd aws-cfn-bootstrap-1.4/
-python2 setup.py install --install-scripts {cfn_base_path}/bin
-sed -i "s~/usr/bin/env python$~/usr/bin/env python2~" {cfn_base_path}/bin/cfn-*
+wget https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
+tar -xzvf aws-cfn-bootstrap-py3-latest.tar.gz
+cd aws-cfn-bootstrap-2.0/
+python3 setup.py install --install-scripts {cfn_base_path}/bin
+cp ./init/ubuntu/cfn-hup /etc/init.d/cfn-hup
 """,
 		'centos': """
 yum install -y pystache python-daemon
