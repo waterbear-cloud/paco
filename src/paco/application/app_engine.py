@@ -161,6 +161,8 @@ class ApplicationEngine():
             return self.stack_group.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.LBApplication):
             return self.stack_group.get_stack_from_ref(ref)
+        elif isinstance(ref.resource, models.applications.DynamoDB):
+            return self.stack_group.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.EFS):
             return self.stack_group.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.EIP):

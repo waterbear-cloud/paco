@@ -7,6 +7,8 @@ Changelog for Paco
 
 ### Added
 
+- New `DynamoDB` resource for provisioning DynamoDB Tables.
+
 - New `S3BucketPolicy` StackTemplate.
 
 - Support for `copy_actions` for BackupPlanRules in AWS Backup to allow cross-account backups.
