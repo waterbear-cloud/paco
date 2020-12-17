@@ -2,7 +2,7 @@ from paco.cftemplates.cftemplates import StackTemplate
 from paco.cftemplates.vpc import VPC
 from paco.cftemplates.segment import Segment
 from paco.cftemplates.security_groups import SecurityGroups
-from paco.cftemplates.alb import ALB
+from paco.cftemplates.lb import ALB
 from paco.cftemplates.asg import ASG
 from paco.cftemplates.iam_managed_policies import IAMManagedPolicies
 from paco.cftemplates.iam_roles import IAMRoles

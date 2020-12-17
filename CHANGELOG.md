@@ -7,6 +7,8 @@ Changelog for Paco
 
 ### Added
 
+- Initial support for LBNetwork type: Network Load Balancers.
+
 - New `DynamoDB` resource for provisioning DynamoDB Tables.
 
 - New `S3BucketPolicy` StackTemplate.

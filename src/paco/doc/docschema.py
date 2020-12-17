@@ -985,7 +985,7 @@ An unconstrainted set of key-value pairs used to set advanced options for Elasti
 {ILambdaAtEdgeConfiguration}
 
 
-{ILBApplication}
+{ILoadBalancer}
 
 {IDNS}
 

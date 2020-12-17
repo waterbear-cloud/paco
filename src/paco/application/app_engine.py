@@ -159,7 +159,9 @@ class ApplicationEngine():
             return acm_certificate.stack
         elif isinstance(ref.resource, models.applications.CloudFrontFactory):
             return self.stack_group.get_stack_from_ref(ref)
-        elif isinstance(ref.resource, models.applications.LBApplication):
+        elif isinstance(ref.resource, models.applications.ApplicationLoadBalancer):
+            return self.stack_group.get_stack_from_ref(ref)
+        elif isinstance(ref.resource, models.applications.NetworkLoadBalancer):
             return self.stack_group.get_stack_from_ref(ref)
         elif isinstance(ref.resource, models.applications.DynamoDB):
             return self.stack_group.get_stack_from_ref(ref)

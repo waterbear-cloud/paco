@@ -1,5 +1,5 @@
 from paco.models.references import get_model_obj_from_ref
-from paco.models.schemas import ILBApplication, get_parent_by_interface
+from paco.models.schemas import ILoadBalancer, get_parent_by_interface
 from troposphere.ecs import AwsvpcConfiguration
 from troposphere.events import AwsVpcConfiguration
 from paco.cftemplates.cftemplates import StackTemplate
@@ -402,7 +402,7 @@ class ECSServices(StackTemplate):
                 }
                 if target_tracking_policy.predefined_metric == 'ALBRequestCountPerTarget':
                     target_group = get_model_obj_from_ref(target_tracking_policy.target_group, self.project)
-                    load_balancer = get_parent_by_interface(target_group, ILBApplication)
+                    load_balancer = get_parent_by_interface(target_group, ILoadBalancer)
                     lb_name = self.create_cfn_logical_id('ALBFullName' + md5sum(str_data=load_balancer.paco_ref_parts))
                     tg_name = self.create_cfn_logical_id('TargetGroupFullName' + md5sum(str_data=target_group.paco_ref_parts))
                     if lb_name not in alb_params:

@@ -6,8 +6,8 @@
   <div tal:condition="len(res.target_groups) > 0"><b>Load Balancer Target Groups:</b>
     <ul class="fieldlist">
       <li tal:repeat="tg_ref res.target_groups">
-        <a tal:attributes="href '#REF_' + parent_obj(resolve_ref(tg_ref), 'ILBApplication').paco_ref_parts"
-        tal:content="parent_obj(resolve_ref(tg_ref), 'ILBApplication').title_or_name"></a>
+        <a tal:attributes="href '#REF_' + parent_obj(resolve_ref(tg_ref), 'ILoadBalancer').paco_ref_parts"
+        tal:content="parent_obj(resolve_ref(tg_ref), 'ILoadBalancer').title_or_name"></a>
       </li>
     </ul>
   </div>
