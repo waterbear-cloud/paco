@@ -166,14 +166,18 @@ class ALB(StackTemplate):
             cfn_export_dict['HealthCheckIntervalSeconds'] = target_group.health_check_interval
             cfn_export_dict['HealthCheckTimeoutSeconds'] = target_group.health_check_timeout
             cfn_export_dict['HealthyThresholdCount'] = target_group.healthy_threshold
-            cfn_export_dict['HealthCheckPath'] = target_group.health_check_path
+            cfn_export_dict['HealthCheckProtocol'] = target_group.health_check_protocol
+            # HTTP Health Checks
+            if target_group.health_check_protocol in ['HTTP', 'HTTPS']:
+                cfn_export_dict['HealthCheckPath'] = target_group.health_check_path
+                cfn_export_dict['Matcher'] = {'HttpCode': target_group.health_check_http_code }
+
             cfn_export_dict['Port'] = target_group.port
             cfn_export_dict['Protocol'] = target_group.protocol
             cfn_export_dict['UnhealthyThresholdCount'] = target_group.unhealthy_threshold
             cfn_export_dict['TargetGroupAttributes'] = [
                 {'Key': 'deregistration_delay.timeout_seconds', 'Value': str(target_group.connection_drain_timeout) }
             ]
-            cfn_export_dict['Matcher'] = {'HttpCode': target_group.health_check_http_code }
             cfn_export_dict['VpcId'] = troposphere.Ref(vpc_param)
             if target_group.target_type != 'instance':
                 cfn_export_dict['TargetType'] = target_group.target_type
