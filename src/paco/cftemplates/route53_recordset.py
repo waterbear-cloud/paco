@@ -18,7 +18,7 @@ class Route53RecordSet(StackTemplate):
         super().__init__(stack, paco_ctx)
 
         hosted_zone_is_private = False
-        if is_ref(record_set_config['dns'].hosted_zone):
+        if references.is_ref(record_set_config['dns'].hosted_zone):
             hosted_zone_is_private = self.paco_ctx.get_ref(record_set_config['dns'].hosted_zone+'.private_hosted_zone')
         aws_name = 'RecordSet'
         if hosted_zone_is_private == True:
