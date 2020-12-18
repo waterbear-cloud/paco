@@ -82,7 +82,7 @@ child accounts.
       - 
       - Paco-Organization-Account-Delegate-Role
     * - admin_iam_users
-      - Container<AdminIAMUser_>
+      - Container<AdminIAMUsers_>
       - Admin IAM Users
       - 
       - 
@@ -110,6 +110,31 @@ child accounts.
 *Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
+AdminIAMUsers
+--------------
+
+A container for AdminIAMUser objects
+
+.. _AdminIAMUsers:
+
+.. list-table:: :guilabel:`AdminIAMUsers` |bars| Container<`AdminIAMUser`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
 AdminIAMUser
 -------------
 
@@ -132,7 +157,7 @@ An AWS Account Administerator IAM User
       - 
       - 
 
-*Base Schemas* `Deployable`_
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
 .. _Named: yaml-base.html#Named

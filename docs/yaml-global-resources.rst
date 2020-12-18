@@ -104,7 +104,7 @@ A CloudTrail can be used to set-up a multi-account CloudTrail that sends logs fr
       - 
     * - s3_bucket_account
       - PacoReference |star|
-      - Account which will contain the S3 Bucket that the CloudTrails will be stored in
+      - Account which will contain the S3 Bucket where the CloudTrail is stored.
       - Must be an paco.ref to an account Paco Reference to `Account`_.
       - 
     * - s3_key_prefix
@@ -508,6 +508,10 @@ have delegate IAM Roles in other accounts that they are allowed to assume.
                   - 'polly:*'
                 resource:
                   - '*'
+                condition:
+                  StringEquals:
+                    aws:username:
+                      "yourusername"
 
     
 
