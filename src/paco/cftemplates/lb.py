@@ -24,26 +24,26 @@ class LBBase(StackTemplate):
         self.config_ref = self.lb_config.paco_ref_parts
         super().__init__(stack, paco_ctx)
 
-    def init_lb(self, type_name):
-        self.set_aws_name(type_name, self.resource_group_name, self.lb_config.name)
+    def init_lb(self, aws_name, template_title):
+        self.set_aws_name(aws_name, self.resource_group_name, self.lb_config.name)
         self.network = self.lb_config.env_region_obj.network
 
         # Init Troposphere template
-        self.init_template('Application Load Balancer')
+        self.init_template(template_title)
         if not self.lb_config.is_enabled():
             return self.set_template()
 
         # Parameters
         if self.lb_config.is_enabled():
-            alb_enable = 'true'
+            lb_enable = 'true'
         else:
-            alb_enable = 'false'
+            lb_enable = 'false'
 
-        alb_is_enabled_param = self.create_cfn_parameter(
+        lb_is_enabled_param = self.create_cfn_parameter(
             param_type='String',
-            name='ALBEnabled',
-            description='Enable the ALB in this template',
-            value=alb_enable
+            name='LBEnabled',
+            description='Enable the LB in this template',
+            value=lb_enable
         )
         vpc_stack = self.env_ctx.get_vpc_stack()
         vpc_param = self.create_cfn_parameter(
@@ -52,16 +52,20 @@ class LBBase(StackTemplate):
             description='VPC ID',
             value=StackOutputParam('VPC', vpc_stack, 'VPC', self)
         )
-        alb_region = self.env_ctx.region
-        alb_hosted_zone_id_param = self.create_cfn_parameter(
+        lb_region = self.env_ctx.region
+        if self.lb_config.type == 'LBApplication':
+            lb_type = 'alb'
+        else:
+            lb_type = 'nlb'
+        lb_hosted_zone_id_param = self.create_cfn_parameter(
             param_type='String',
-            name='ALBHostedZoneId',
+            name='LBHostedZoneId',
             description='The Regonal AWS Route53 Hosted Zone ID',
-            value=self.lb_hosted_zone_id('alb', alb_region)
+            value=self.lb_hosted_zone_id(lb_type, lb_region)
         )
 
         # 32 Characters max
-        # <proj>-<env>-<app>-<alb.name>
+        # <proj>-<env>-<app>-<lb.name>
         # TODO: Limit each name item to 7 chars
         # Name collision risk:, if unique identifying characrtes are truncated
         #   - Add a hash?
@@ -92,16 +96,17 @@ class LBBase(StackTemplate):
         subnet_list_param = self.create_cfn_parameter(
             param_type='List<AWS::EC2::Subnet::Id>',
             name='SubnetList',
-            description='A list of subnets where the ALBs instances will be provisioned',
+            description='A list of subnets where the LBs instances will be provisioned',
             value=subnet_list_ref,
         )
-        security_group_list_param = self.create_cfn_ref_list_param(
-            param_type='List<AWS::EC2::SecurityGroup::Id>',
-            name='SecurityGroupList',
-            description='A List of security groups to attach to the ALB',
-            value=self.lb_config.security_groups,
-            ref_attribute='id'
-        )
+        if self.lb_config.type == 'LBApplication':
+            security_group_list_param = self.create_cfn_ref_list_param(
+                param_type='List<AWS::EC2::SecurityGroup::Id>',
+                name='SecurityGroupList',
+                description='A List of security groups to attach to the LB',
+                value=self.lb_config.security_groups,
+                ref_attribute='id'
+            )
         idle_timeout_param = self.create_cfn_parameter(
             param_type='String',
             name='IdleTimeoutSecs',
@@ -111,8 +116,8 @@ class LBBase(StackTemplate):
 
         # Conditions
         self.template.add_condition(
-            "ALBIsEnabled",
-            troposphere.Equals(troposphere.Ref(alb_is_enabled_param), "true")
+            "LBIsEnabled",
+            troposphere.Equals(troposphere.Ref(lb_is_enabled_param), "true")
         )
 
         # Resources
@@ -121,14 +126,23 @@ class LBBase(StackTemplate):
         load_balancer_logical_id = 'LoadBalancer'
         cfn_export_dict = {}
         cfn_export_dict['Name'] = troposphere.Ref(load_balancer_name_param)
-        cfn_export_dict['Type'] = 'application'
+        if self.lb_config.type == 'LBApplication':
+            lb_v2_type = 'application'
+        else:
+            lb_v2_type = 'network'
+        cfn_export_dict['Type'] = lb_v2_type
         cfn_export_dict['Scheme'] = troposphere.Ref(scheme_param)
-        cfn_export_dict['SecurityGroups'] = troposphere.Ref(security_group_list_param)
         cfn_export_dict['Subnets'] = troposphere.Ref(subnet_list_param)
 
-        lb_attributes = [
-            {'Key': 'idle_timeout.timeout_seconds', 'Value': troposphere.Ref(idle_timeout_param)}
-        ]
+        # Application Load Balancer Logic
+        lb_attributes = []
+        if self.lb_config.type == 'LBApplication':
+            cfn_export_dict['SecurityGroups'] = troposphere.Ref(security_group_list_param)
+
+            lb_attributes.append(
+                {'Key': 'idle_timeout.timeout_seconds', 'Value': troposphere.Ref(idle_timeout_param)}
+            )
+
         if self.lb_config.enable_access_logs:
             # ToDo: automatically create a bucket when access_logs_bucket is not set
             s3bucket = get_model_obj_from_ref(self.lb_config.access_logs_bucket, self.paco_ctx.project)
@@ -145,12 +159,12 @@ class LBBase(StackTemplate):
 
         cfn_export_dict['LoadBalancerAttributes'] = lb_attributes
 
-        alb_resource = troposphere.elasticloadbalancingv2.LoadBalancer.from_dict(
+        lb_resource = troposphere.elasticloadbalancingv2.LoadBalancer.from_dict(
             load_balancer_logical_id,
             cfn_export_dict
         )
-        alb_resource.Condition = "ALBIsEnabled"
-        self.template.add_resource(alb_resource)
+        lb_resource.Condition = "LBIsEnabled"
+        self.template.add_resource(lb_resource)
 
         # Target Groups
         for target_group_name, target_group in sorted(self.lb_config.target_groups.items()):
@@ -234,7 +248,7 @@ class LBBase(StackTemplate):
                     'TargetGroupArn': troposphere.Ref('TargetGroup' + target_group_id)
                 }
             cfn_export_dict['DefaultActions'] = [action]
-            cfn_export_dict['LoadBalancerArn'] = troposphere.Ref(alb_resource)
+            cfn_export_dict['LoadBalancerArn'] = troposphere.Ref(lb_resource)
 
             # Listener - SSL Certificates
             ssl_cert_param_obj_list = []
@@ -316,77 +330,77 @@ class LBBase(StackTemplate):
                         logical_listener_rule_name,
                         cfn_export_dict
                     )
-                    listener_rule_resource.Condition = "ALBIsEnabled"
+                    listener_rule_resource.Condition = "LBIsEnabled"
                     self.template.add_resource(listener_rule_resource)
 
         # Record Sets
         if self.paco_ctx.legacy_flag('route53_record_set_2019_10_16'):
             record_set_index = 0
-            for alb_dns in self.lb_config.dns:
+            for lb_dns in self.lb_config.dns:
                 if self.lb_config.is_dns_enabled() == True:
                     hosted_zone_param = self.create_cfn_parameter(
                         param_type='String',
-                        description='ALB DNS Hosted Zone ID',
+                        description='LB DNS Hosted Zone ID',
                         name='HostedZoneID%d' % (record_set_index),
-                        value=alb_dns.hosted_zone+'.id'
+                        value=lb_dns.hosted_zone+'.id'
                     )
                     cfn_export_dict = {}
                     cfn_export_dict['HostedZoneId'] = troposphere.Ref(hosted_zone_param)
-                    cfn_export_dict['Name'] = alb_dns.domain_name
+                    cfn_export_dict['Name'] = lb_dns.domain_name
                     cfn_export_dict['Type'] = 'A'
                     cfn_export_dict['AliasTarget'] = {
-                        'DNSName': troposphere.GetAtt(alb_resource, 'DNSName'),
-                        'HostedZoneId': troposphere.GetAtt(alb_resource, 'CanonicalHostedZoneID')
+                        'DNSName': troposphere.GetAtt(lb_resource, 'DNSName'),
+                        'HostedZoneId': troposphere.GetAtt(lb_resource, 'CanonicalHostedZoneID')
                     }
                     record_set_resource = troposphere.route53.RecordSet.from_dict(
                         'RecordSet' + str(record_set_index),
                         cfn_export_dict
                     )
-                    record_set_resource.Condition = "ALBIsEnabled"
+                    record_set_resource.Condition = "LBIsEnabled"
                     self.template.add_resource(record_set_resource)
                     record_set_index += 1
 
         if self.enabled == True:
             self.create_output(
                 title='LoadBalancerArn',
-                value=troposphere.Ref(alb_resource),
+                value=troposphere.Ref(lb_resource),
                 ref=self.lb_config.paco_ref_parts + '.arn'
             )
             self.create_output(
                 title='LoadBalancerName',
-                value=troposphere.GetAtt(alb_resource, 'LoadBalancerName'),
+                value=troposphere.GetAtt(lb_resource, 'LoadBalancerName'),
                 ref=self.lb_config.paco_ref_parts + '.name'
             )
             self.create_output(
                 title='LoadBalancerFullName',
-                value=troposphere.GetAtt(alb_resource, 'LoadBalancerFullName'),
+                value=troposphere.GetAtt(lb_resource, 'LoadBalancerFullName'),
                 ref=self.lb_config.paco_ref_parts + '.fullname'
             )
             self.create_output(
                 title='LoadBalancerCanonicalHostedZoneID',
-                value=troposphere.GetAtt(alb_resource, 'CanonicalHostedZoneID'),
+                value=troposphere.GetAtt(lb_resource, 'CanonicalHostedZoneID'),
                 ref=self.lb_config.paco_ref_parts + '.canonicalhostedzoneid'
             )
             self.create_output(
                 title='LoadBalancerDNSName',
-                value=troposphere.GetAtt(alb_resource, 'DNSName'),
+                value=troposphere.GetAtt(lb_resource, 'DNSName'),
                 ref=self.lb_config.paco_ref_parts + '.dnsname',
             )
 
             if self.paco_ctx.legacy_flag('route53_record_set_2019_10_16') == False:
                 route53_ctl = self.paco_ctx.get_controller('route53')
-                for alb_dns in self.lb_config.dns:
+                for lb_dns in self.lb_config.dns:
                     if self.lb_config.is_dns_enabled() == True:
                         alias_dns_ref = self.lb_config.paco_ref + '.dnsname'
                         alias_hosted_zone_ref = self.lb_config.paco_ref + '.canonicalhostedzoneid'
-                        hosted_zone = get_model_obj_from_ref(alb_dns.hosted_zone, self.paco_ctx.project)
+                        hosted_zone = get_model_obj_from_ref(lb_dns.hosted_zone, self.paco_ctx.project)
                         account_ctx = self.paco_ctx.get_account_context(account_ref=hosted_zone.account)
                         route53_ctl.add_record_set(
                             account_ctx,
                             self.aws_region,
                             self.lb_config,
                             enabled=self.lb_config.is_enabled(),
-                            dns=alb_dns,
+                            dns=lb_dns,
                             record_set_type='Alias',
                             alias_dns_name=alias_dns_ref,
                             alias_hosted_zone_id=alias_hosted_zone_ref,
@@ -400,10 +414,10 @@ class ALB(LBBase):
 
     def __init__(self, stack, paco_ctx, env_ctx, app_id):
         super().__init__(stack, paco_ctx, env_ctx, app_id)
-        self.init_lb('ALB')
+        self.init_lb('ALB', 'Application Load Balancer')
 
 class NLB(LBBase):
 
     def __init__(self, stack, paco_ctx, env_ctx, app_id):
         super().__init__(stack, paco_ctx, env_ctx, app_id)
-        self.init_lb('NLB')
+        self.init_lb('NLB', 'Network Load Balancer')
