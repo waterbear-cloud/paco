@@ -6,6 +6,7 @@ from paco.core.exception import StackException, PacoException
 from paco.core.exception import PacoErrorCode
 from paco.controllers.controllers import Controller
 from paco.models import schemas
+from paco.models.references import is_ref, get_model_obj_from_ref
 import os
 
 
@@ -105,6 +106,10 @@ class Route53Controller(Controller):
             #    extra_context={'record_set_config': record_set_config, 'record_set_name': dns.domain_name}
             #)
         else:
+            stack_account_ctx = account_ctx
+            if is_ref(dns.hosted_zone):
+                hosted_zone_obj = get_model_obj_from_ref(dns.hosted_zone, self.paco_ctx.project)
+                stack_account_ctx = self.paco_ctx.get_account_context(account_ref=hosted_zone_obj.account)
             stack_orders = None
             if async_stack_provision == True:
                 stack_orders = [StackOrder.PROVISION]
@@ -112,7 +117,7 @@ class Route53Controller(Controller):
                 region,
                 resource,
                 Route53RecordSet,
-                account_ctx=account_ctx,
+                account_ctx=stack_account_ctx,
                 stack_orders=stack_orders,
                 extra_context={'record_set_config': record_set_config, 'record_set_name': dns.domain_name}
             )
