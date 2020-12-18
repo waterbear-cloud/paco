@@ -104,6 +104,8 @@ defines one AWS account, the filename is the ``name`` of the account, with a .ym
 
 {IAccount}
 
+{IAdminIAMUsers}
+
 {IAdminIAMUser}
 
 """
@@ -733,6 +735,10 @@ as part of an Application.
 
 {IApiGatewayMethodMethodResponseModel}
 
+{IApiGatewayCognitoAuthorizers}
+
+{IApiGatewayDNS}
+
 
 {IASG}
 
@@ -797,7 +803,7 @@ as part of an Application.
 {ICloudFormationInitUsers}
 
 
-{IAWSCertificateManager}
+{IACM}
 
 
 {ICloudFront}
@@ -821,6 +827,8 @@ as part of an Application.
 {ICloudFrontCookies}
 
 {ICloudFrontLambdaFunctionAssocation}
+
+{ICognitoLambdaTriggers}
 
 
 {ICodeDeployApplication}
@@ -986,6 +994,10 @@ An unconstrainted set of key-value pairs used to set advanced options for Elasti
 
 
 {ILoadBalancer}
+
+{IApplicationLoadBalancer}
+
+{INetworkLoadBalancer}
 
 {IDNS}
 
@@ -1656,6 +1668,8 @@ MINOR_SCHEMAS = {
     'IApiGatewayMethodMethodResponseModel': None,
     'IApiGatewayMethodIntegration': None,
     'IApiGatewayMethodIntegrationResponse': None,
+    'IApiGatewayCognitoAuthorizers': None,
+    'IApiGatewayDNS': None,
     'IDNS': None,
     'IASGLifecycleHook': None,
     'IASGScalingPolicy': None,
@@ -1717,6 +1731,9 @@ MINOR_SCHEMAS = {
     'ICloudFrontCookies': None,
     'ICloudFrontLambdaFunctionAssocation': None,
     'ICloudFrontDefaultCacheBehavior': None,
+    'ICognitoLambdaTriggers': None,
+    'ICloudFrontOrigins': None,
+    'ICloudFrontFactories': None,
     'ICodePipelineStages': None,
     'ICodePipelineStage': None,
     'IDeploymentPipelineStageAction': None,

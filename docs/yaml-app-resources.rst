@@ -12,9 +12,7 @@ ApiGatewayRestApi
 ------------------
 
 
-An Api Gateway Rest API resource.
-
-Intended to allow provisioning of all API Gateway REST API resources (currently only parital field support).
+An ApiGateway Rest API resource.
 
 .. code-block:: yaml
     :caption: API Gateway REST API example
@@ -29,9 +27,22 @@ Intended to allow provisioning of all API Gateway REST API resources (currently 
     models:
       emptyjson:
         content_type: 'application/json'
+    cognito_authorizers:
+      cognito:
+        identity_source: 'Authorization'
+        user_pools:
+          - paco.ref netenv.mynet.applications.app.groups.cognito.resources.userpool
+    dns:
+      - domain_name: api.example.com
+        hosted_zone: paco.ref resource.route53.example_com
+        ssl_certificate:  arn:aws:acm:us-east-1:*******:certificate/********
+        base_path_mappings:
+            - base_path: ''
+              stage: 'prod'
     methods:
       get:
         http_method: GET
+        authorizer: cognito_authorizers.cognito
         integration:
           integration_type: AWS
           integration_lambda: paco.ref netenv.mynet.applications.app.groups.restapi.resources.mylambda
@@ -114,9 +125,19 @@ Intended to allow provisioning of all API Gateway REST API resources (currently 
       - CloneFrom. The ID of the RestApi resource that you want to clone.
       - 
       - 
+    * - cognito_authorizers
+      - Container<ApiGatewayCognitoAuthorizers_>
+      - Authorizors
+      - 
+      - 
     * - description
       - String
       - Description of the RestApi resource.
+      - 
+      - 
+    * - dns
+      - List<ApiGatewayDNS_>
+      - DNS domains to create to resolve to the ApiGateway Endpoint
       - 
       - 
     * - endpoint_configuration
@@ -210,9 +231,14 @@ API Gateway Method
       - Constraints
       - Default
     * - authorization_type
-      - String |star|
+      - String
       - Authorization Type
       - Must be one of NONE, AWS_IAM, CUSTOM or COGNITO_USER_POOLS
+      - NONE
+    * - authorizer
+      - String
+      - Authorizer
+      - Must be tan authorizer type and authorizer name in this API Gateway, seperated by a . char. For example, 'cognito_authorizers.cognito'.
       - 
     * - http_method
       - String
@@ -237,9 +263,9 @@ API Gateway Method
                 a parameter is required. A source must match the format method.request.location.name,
                 where the location is query string, path, or header, and name is a valid, unique parameter name.
       - {}
-    * - resource_id
+    * - resource_name
       - String
-      - Resource Id
+      - Resource Name
       - 
       - 
 
@@ -338,7 +364,7 @@ ApiGatewayResource
 
 .. _ApiGatewayResource:
 
-.. list-table:: :guilabel:`ApiGatewayResource`
+.. list-table:: :guilabel:`ApiGatewayResource` |bars| Container<`unknown`_>
     :widths: 15 28 30 16 11
     :header-rows: 1
 
@@ -347,23 +373,23 @@ ApiGatewayResource
       - Purpose
       - Constraints
       - Default
-    * - parent_id
-      - String
-      - Id of the parent resource. Default is 'RootResourceId' for a resource without a parent.
+    * - child_resources
+      - Container<ApiGatewayResources_>
+      - Child Api Gateway Resources
       - 
-      - RootResourceId
+      - 
+    * - enable_cors
+      - Boolean
+      - Enable CORS
+      - 
+      - False
     * - path_part
       - String |star|
       - Path Part
       - 
       - 
-    * - rest_api_id
-      - String |star|
-      - Name of the API Gateway REST API this resource belongs to.
-      - 
-      - 
 
-*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Named`_, `Title`_, `Type`_
+*Base Schemas* `Named`_, `Title`_
 
 
 ApiGatewayStages
@@ -462,6 +488,11 @@ ApiGatewayMethodIntegration
       - Integration Type
       - Must be one of AWS, AWS_PROXY, HTTP, HTTP_PROXY or MOCK.
       - AWS
+    * - pass_through_behavior
+      - Choice
+      - Pass Through Behaviour
+      - 
+      - 
     * - request_parameters
       - Dict
       - The request parameters that API Gateway sends with the backend request.
@@ -474,6 +505,11 @@ ApiGatewayMethodIntegration
         enclose static values in single quotation marks and pre-encode these values based on
         their destination in the request.
                 
+      - {}
+    * - request_templates
+      - Dict
+      - Request Templates
+      - 
       - {}
     * - uri
       - String
@@ -557,6 +593,11 @@ ApiGatewayMethodMethodResponse
       - Specify response models as key-value pairs (string-to-string maps),
         with a content type as the key and a Model Paco name as the value.
       - 
+    * - response_parameters
+      - Dict
+      - Response Parameters
+      - 
+      - {}
     * - status_code
       - String |star|
       - HTTP Status code
@@ -592,6 +633,61 @@ ApiGatewayMethodMethodResponseModel
       - 
       - 
 
+
+
+ApiGatewayCognitoAuthorizers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Container for `ApiGatewayAuthorizer`_ objects.
+
+.. _ApiGatewayCognitoAuthorizers:
+
+.. list-table:: :guilabel:`ApiGatewayCognitoAuthorizers` |bars| Container<`ApiGatewayCognitoAuthorizer`_>
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `Named`_, `Title`_
+
+
+ApiGatewayDNS
+^^^^^^^^^^^^^^
+
+
+
+.. _ApiGatewayDNS:
+
+.. list-table:: :guilabel:`ApiGatewayDNS`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - base_path_mappings
+      - List<String>
+      - Base Path Mappings
+      - 
+      - []
+    * - ssl_certificate
+      - PacoReference|String
+      - SSL certificate Reference
+      - Paco Reference to `ACM`_. String Ok.
+      - 
+
+*Base Schemas* `DNS`_
 
 
 
@@ -1518,6 +1614,11 @@ EC2 Launch Options
       - List of cfn-init config sets
       - 
       - []
+    * - codedeploy_agent
+      - Boolean
+      - Install CodeDeploy Agent
+      - 
+      - False
     * - ssm_agent
       - Boolean
       - Install SSM Agent
@@ -2182,14 +2283,14 @@ Container for CloudFormationInit Users
 
 
 
-AWSCertificateManager
-----------------------
+ACM
+----
 
 
 
-.. _AWSCertificateManager:
+.. _ACM:
 
-.. list-table:: :guilabel:`AWSCertificateManager`
+.. list-table:: :guilabel:`ACM`
     :widths: 15 28 30 16 11
     :header-rows: 1
 
@@ -2212,6 +2313,11 @@ AWSCertificateManager
       - String
       - Private Certificate Authority ARN
       - 
+      - 
+    * - region
+      - String
+      - AWS Region
+      - Must be a valid AWS Region name
       - 
     * - subject_alternative_names
       - List<String>
@@ -2267,12 +2373,12 @@ CloudFront CDN Configuration
       - 
       - 
     * - factory
-      - Container<CloudFrontFactory_>
+      - Container<CloudFrontFactories_>
       - CloudFront Factory
       - 
       - 
     * - origins
-      - Container<CloudFrontOrigin_>
+      - Container<CloudFrontOrigins_>
       - Map of Origins
       - 
       - 
@@ -2565,7 +2671,7 @@ CloudFrontViewerCertificate
     * - certificate
       - PacoReference
       - Certificate Reference
-      - Paco Reference to `AWSCertificateManager`_.
+      - Paco Reference to `ACM`_.
       - 
     * - minimum_protocol_version
       - String
@@ -2679,6 +2785,75 @@ CloudFrontLambdaFunctionAssocation
       - 
 
 *Base Schemas* `Named`_, `Title`_
+
+
+CognitoLambdaTriggers
+^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+.. _CognitoLambdaTriggers:
+
+.. list-table:: :guilabel:`CognitoLambdaTriggers`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - create_auth_challenge
+      - PacoReference
+      - CreateAuthChallenge Lambda trigger
+      - Paco Reference to `Lambda`_.
+      - 
+    * - custom_message
+      - PacoReference
+      - CustomMessage Lambda trigger
+      - Paco Reference to `Lambda`_.
+      - 
+    * - define_auth_challenge
+      - PacoReference
+      - DefineAuthChallenge Lambda trigger
+      - Paco Reference to `Lambda`_.
+      - 
+    * - post_authentication
+      - PacoReference
+      - PostAuthentication Lambda trigger
+      - Paco Reference to `Lambda`_.
+      - 
+    * - post_confirmation
+      - PacoReference
+      - PostConfirmation Lambda trigger
+      - Paco Reference to `Lambda`_.
+      - 
+    * - pre_authentication
+      - PacoReference
+      - PreAuthentication Lambda trigger
+      - Paco Reference to `Lambda`_.
+      - 
+    * - pre_sign_up
+      - PacoReference
+      - PreSignUp Lambda trigger
+      - Paco Reference to `Lambda`_.
+      - 
+    * - pre_token_generation
+      - PacoReference
+      - PreTokenGeneration Lambda trigger
+      - Paco Reference to `Lambda`_.
+      - 
+    * - user_migration
+      - PacoReference
+      - UserMigration Lambda trigger
+      - Paco Reference to `Lambda`_.
+      - 
+    * - verify_auth_challenge_response
+      - PacoReference
+      - VerifyAuthChallengeResponse Lambda trigger
+      - Paco Reference to `Lambda`_.
+      - 
+
 
 
 
@@ -2876,6 +3051,8 @@ users can sign in to your web or mobile app through Amazon Cognito.
           <p><b>Username:</b> {username}</p>
           <p><b>Temporary password:</b> {####}</p>
           <p>Please login and set a secure password. This request will expire in 7 days.</p>
+    lambda_triggers:
+      pre_sign_up: paco.ref netenv.mynet.applications.app.groups.serverless.resources.mylambda
     schema:
       - attribute_name: email
         attribute_data_type: string
@@ -2941,6 +3118,11 @@ users can sign in to your web or mobile app through Amazon Cognito.
     * - email
       - Object<CognitoEmailConfiguration_>
       - Email Configuration
+      - 
+      - 
+    * - lambda_triggers
+      - Object<CognitoLambdaTriggers_>
+      - Lambda Triggers
       - 
       - 
     * - mfa
@@ -4539,6 +4721,11 @@ that can run in an `ECSCluster`_.
       - Service
       - 
       - 
+    * - setting_groups
+      - Container<ECSSettingsGroups_>
+      - Setting Groups
+      - 
+      - 
     * - task_definitions
       - Container<ECSTaskDefinitions_> |star|
       - Task Definitions
@@ -4909,6 +5096,11 @@ ECS Container Definition
       - List of name, value_from pairs to secret manager Paco references.
       - 
       - 
+    * - setting_groups
+      - List<String>
+      - List of names of setting_groups.
+      - 
+      - []
     * - start_timeout
       - Int
       - Time duration (in seconds) to wait before giving up on resolving dependencies for a container.
@@ -5186,9 +5378,9 @@ A Name/ValueFrom pair of Paco references to Secrets Manager secrets
       - 
       - 
     * - value_from
-      - PacoReference|String |star|
+      - PacoReference |star|
       - Paco reference to Secrets manager
-      - Paco Reference to `SecretsManagerSecret`_. String Ok.
+      - Paco Reference to `SecretsManagerSecret`_.
       - 
 
 
@@ -6266,8 +6458,78 @@ LambdaAtEdgeConfiguration
 
 
 
-LBApplication
---------------
+LoadBalancer
+-------------
+
+Base class for Load Balancers
+
+.. _LoadBalancer:
+
+.. list-table:: :guilabel:`LoadBalancer`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * - access_logs_bucket
+      - PacoReference
+      - Bucket to store access logs in
+      - Paco Reference to `S3Bucket`_.
+      - 
+    * - access_logs_prefix
+      - String
+      - Access Logs S3 Bucket prefix
+      - 
+      - 
+    * - dns
+      - List<DNS_>
+      - List of DNS for the ALB
+      - 
+      - 
+    * - enable_access_logs
+      - Boolean
+      - Write access logs to an S3 Bucket
+      - 
+      - 
+    * - idle_timeout_secs
+      - Int
+      - Idle timeout in seconds
+      - The idle timeout value, in seconds.
+      - 60
+    * - listeners
+      - Container<Listeners_>
+      - Listeners
+      - 
+      - 
+    * - scheme
+      - Choice
+      - Scheme
+      - 
+      - 
+    * - security_groups
+      - List<PacoReference>
+      - Security Groups
+      - Paco Reference to `SecurityGroup`_.
+      - 
+    * - segment
+      - String
+      - Id of the segment stack
+      - 
+      - 
+    * - target_groups
+      - Container<TargetGroups_>
+      - Target Groups
+      - 
+      - 
+
+*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
+
+
+ApplicationLoadBalancer
+------------------------
 
 
 The ``LBApplication`` resource type creates an Application Load Balancer. Use load balancers to route traffic from
@@ -6331,9 +6593,9 @@ to a target group, use the ``target_groups`` field on an ASG resource.
 
 
 
-.. _LBApplication:
+.. _ApplicationLoadBalancer:
 
-.. list-table:: :guilabel:`LBApplication`
+.. list-table:: :guilabel:`ApplicationLoadBalancer`
     :widths: 15 28 30 16 11
     :header-rows: 1
 
@@ -6342,58 +6604,89 @@ to a target group, use the ``target_groups`` field on an ASG resource.
       - Purpose
       - Constraints
       - Default
-    * - access_logs_bucket
-      - PacoReference
-      - Bucket to store access logs in
-      - Paco Reference to `S3Bucket`_.
-      - 
-    * - access_logs_prefix
-      - String
-      - Access Logs S3 Bucket prefix
-      - 
-      - 
-    * - dns
-      - List<DNS_>
-      - List of DNS for the ALB
-      - 
-      - 
-    * - enable_access_logs
-      - Boolean
-      - Write access logs to an S3 Bucket
-      - 
-      - 
-    * - idle_timeout_secs
-      - Int
-      - Idle timeout in seconds
-      - The idle timeout value, in seconds.
-      - 60
-    * - listeners
-      - Container<Listeners_>
-      - Listeners
-      - 
-      - 
-    * - scheme
-      - Choice
-      - Scheme
-      - 
-      - 
-    * - security_groups
-      - List<PacoReference>
-      - Security Groups
-      - Paco Reference to `SecurityGroup`_.
-      - 
-    * - segment
-      - String
-      - Id of the segment stack
-      - 
-      - 
-    * - target_groups
-      - Container<TargetGroups_>
-      - Target Groups
-      - 
-      - 
+    * -
+      -
+      -
+      -
+      -
 
-*Base Schemas* `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
+*Base Schemas* `LoadBalancer`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
+
+
+NetworkLoadBalancer
+--------------------
+
+
+The ``LBNetwork`` resource type creates a Network Load Balancer. Use load balancers to route traffic from
+the internet to your web servers.
+
+.. sidebar:: Prescribed Automation
+
+    ``dns``: Creates Route 53 Record Sets that will resolve DNS records to the domain name of the load balancer.
+
+    ``enable_access_logs``: Set to True to turn on access logs for the load balancer, and will automatically create
+    an S3 Bucket with permissions for AWS to write to that bucket.
+
+    ``access_logs_bucket``: Name an existing S3 Bucket (in the same region) instead of automatically creating a new one.
+    Remember that if you supply your own S3 Bucket, you are responsible for ensuring that the bucket policy for
+    it grants AWS the `s3:PutObject` permission.
+
+.. code-block:: yaml
+    :caption: Example LBNetwork load balancer resource YAML
+
+    type: LBNetwork
+    enabled: true
+    enable_access_logs: true
+    target_groups:
+        api:
+            health_check_interval: 30
+            health_check_timeout: 10
+            healthy_threshold: 2
+            unhealthy_threshold: 2
+            port: 3000
+            protocol: HTTP
+            health_check_http_code: 200
+            health_check_path: /
+            connection_drain_timeout: 30
+    listeners:
+        http:
+            port: 80
+            protocol: HTTP
+            redirect:
+                port: 443
+                protocol: HTTPS
+        https:
+            port: 443
+            protocol: HTTPS
+            ssl_certificates:
+                - paco.ref netenv.app.applications.app.groups.certs.resources.root
+            target_group: api
+    dns:
+        - hosted_zone: paco.ref resource.route53.mynetenv
+          domain_name: api.example.com
+    scheme: internet-facing
+    segment: public
+
+    
+
+.. _NetworkLoadBalancer:
+
+.. list-table:: :guilabel:`NetworkLoadBalancer`
+    :widths: 15 28 30 16 11
+    :header-rows: 1
+
+    * - Field name
+      - Type
+      - Purpose
+      - Constraints
+      - Default
+    * -
+      -
+      -
+      -
+      -
+
+*Base Schemas* `LoadBalancer`_, `Resource`_, `DNSEnablable`_, `Deployable`_, `Monitorable`_, `Named`_, `Title`_, `Type`_
 
 
 DNS
@@ -6425,7 +6718,7 @@ DNS
     * - ssl_certificate
       - PacoReference
       - SSL certificate Reference
-      - Paco Reference to `AWSCertificateManager`_.
+      - Paco Reference to `ACM`_.
       - 
     * - ttl
       - Int
@@ -6484,14 +6777,14 @@ Listener
       - 
       - 
     * - rules
-      - Container<ListenerRule_>
+      - Container<ListenerRules_>
       - Container of listener rules
       - 
       - 
     * - ssl_certificates
       - List<PacoReference>
       - List of SSL certificate References
-      - Paco Reference to `AWSCertificateManager`_.
+      - Paco Reference to `ACM`_.
       - 
     * - ssl_policy
       - Choice
@@ -6554,7 +6847,7 @@ ListenerRule
       - 
       - 
 
-*Base Schemas* `Deployable`_
+*Base Schemas* `Deployable`_, `Named`_, `Title`_
 
 
 PortProtocol
@@ -6649,6 +6942,11 @@ Target Group
       - Health check path
       - 
       - /
+    * - health_check_protocol
+      - Choice
+      - Protocol
+      - 
+      - HTTP
     * - health_check_timeout
       - Int
       - Health check timeout
@@ -8535,7 +8833,7 @@ Route53 Health Check
     * - load_balancer
       - PacoReference|String
       - Load Balancer Endpoint
-      - Paco Reference to `LBApplication`_. String Ok.
+      - Paco Reference to `LoadBalancer`_. String Ok.
       - 
     * - match_string
       - String
@@ -8599,6 +8897,7 @@ it is still possible to override this to use other accouns and regions if desire
     cloudfront_origin: false
     external_resource: false
     versioning: false
+    add_paco_suffix: true
     policy:
       - principal:
           Service: iotanalytics.amazonaws.com
@@ -8611,6 +8910,15 @@ it is still possible to override this to use other accouns and regions if desire
         resource_suffix:
           - '/*'
           - ''
+        condition:
+          StringEquals:
+            s3:x-amz-acl:
+              "public-read"
+          IpAddress:
+            "aws:SourceIp": "192.0.2.0/24"
+          NotIpAddress:
+            "aws:SourceIp": "192.0.2.188/32"
+
       - aws:
           - paco.sub '${paco.ref netenv.mynet.applications.app.groups.site.resources.demo.instance_iam_role.arn}'
         effect: 'Allow'
@@ -8639,6 +8947,11 @@ it is still possible to override this to use other accouns and regions if desire
       - Account that S3 Bucket belongs to.
       - Paco Reference to `Account`_.
       - 
+    * - add_paco_suffix
+      - Boolean
+      - Add the Paco s3bucket_hash suffix to the bucket name
+      - 
+      - False
     * - bucket_name
       - String |star|
       - Bucket Name

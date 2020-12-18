@@ -1449,6 +1449,11 @@ BackupPlanRule
       - Purpose
       - Constraints
       - Default
+    * - copy_actions
+      - List<BackupPlanCopyActionResourceType_>
+      - Copy actions
+      - 
+      - []
     * - lifecycle_delete_after_days
       - Int
       - Delete after days
