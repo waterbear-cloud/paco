@@ -112,7 +112,7 @@ class Route53Controller(Controller):
                 stack_account_ctx = self.paco_ctx.get_account_context(account_ref=hosted_zone_obj.account)
             stack_orders = None
             if async_stack_provision == True:
-                stack_orders = [StackOrder.PROVISION]
+                stack_orders = [StackOrder.PROVISION, StackOrder.WAITLAST]
             stack_group.add_new_stack(
                 region,
                 resource,
