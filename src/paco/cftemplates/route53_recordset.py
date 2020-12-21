@@ -49,7 +49,7 @@ class Route53RecordSet(StackTemplate):
                 param_type='String',
                 name='PrivateHostedZoneId',
                 description='Record Set Hosted Zone Id',
-                value=hosted_zone_id,
+                value=private_hosted_zone_id,
             )
 
         record_set_type = record_set_config['record_set_type']
