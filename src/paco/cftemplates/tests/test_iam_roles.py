@@ -169,5 +169,4 @@ class TestIAMRoles(TestCase):
         # Role with a Condition
         role = create_role_from_yaml(aws_condition_role_yaml)
         resource = role_to_troposphere(role, 'Condition')
-        breakpoint()
         assert condition_role_json, json.dumps(resource.to_dict())
