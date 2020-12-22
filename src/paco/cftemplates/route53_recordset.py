@@ -17,7 +17,9 @@ class Route53RecordSet(StackTemplate):
             record_set_name = paco_ctx.get_ref(record_set_name)
         super().__init__(stack, paco_ctx)
 
-        hosted_zone_is_private = self.paco_ctx.get_ref(record_set_config['dns'].hosted_zone+'.private_hosted_zone')
+        hosted_zone_is_private = False
+        if references.is_ref(record_set_config['dns'].hosted_zone):
+            hosted_zone_is_private = self.paco_ctx.get_ref(record_set_config['dns'].hosted_zone+'.private_hosted_zone')
         aws_name = 'RecordSet'
         if hosted_zone_is_private == True:
             aws_name = aws_name+'-Private'
@@ -28,14 +30,27 @@ class Route53RecordSet(StackTemplate):
 
         # Parameters
         hosted_zone_id = record_set_config['dns'].hosted_zone
-        if references.is_ref(record_set_config['dns'].hosted_zone):
-            hosted_zone_id = record_set_config['dns'].hosted_zone + '.id'
+        private_hosted_zone_id = record_set_config['dns'].private_hosted_zone
+        if references.is_ref(hosted_zone_id):
+            hosted_zone_id = hosted_zone_id + '.id'
+
+        if private_hosted_zone_id != None and references.is_ref(private_hosted_zone_id):
+            private_hosted_zone_id = private_hosted_zone_id + '.id'
+
         hosted_zone_id_param = self.create_cfn_parameter(
             param_type='String',
             name='HostedZoneId',
             description='Record Set Hosted Zone Id',
             value=hosted_zone_id,
         )
+
+        if private_hosted_zone_id != None:
+            private_hosted_zone_id_param = self.create_cfn_parameter(
+                param_type='String',
+                name='PrivateHostedZoneId',
+                description='Record Set Hosted Zone Id',
+                value=private_hosted_zone_id,
+            )
 
         record_set_type = record_set_config['record_set_type']
         if record_set_config['record_set_type'] == 'Alias':
@@ -87,3 +102,12 @@ class Route53RecordSet(StackTemplate):
             record_set_dict
         )
         self.template.add_resource(record_set_res)
+
+        # Private Hosted Zone
+        if private_hosted_zone_id != None:
+            record_set_dict['HostedZoneId'] = troposphere.Ref(private_hosted_zone_id_param)
+            private_record_set_res = troposphere.route53.RecordSetType.from_dict(
+                self.create_cfn_logical_id_join(['PrivateRecordSet']),
+                record_set_dict
+            )
+            self.template.add_resource(private_record_set_res)
