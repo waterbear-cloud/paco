@@ -254,14 +254,16 @@ class IAMUserAccountDelegates(StackTemplate):
         readonly_arn_list = []
         retrystages_arn_list = []
         for pipeline_ctx in pipeline_list:
-            if pipeline_ctx['permission'].find('ReadOnly') != -1:
+            if pipeline_ctx == None:
+                continue
+            if pipeline_ctx['permission'].find('ReadOnly') != -1 and pipeline_ctx['pipeline'].build != None:
                 for action_name in pipeline_ctx['pipeline'].build:
                     action = pipeline_ctx['pipeline'].build[action_name]
                     if action.type == 'CodeBuild.Build':
                         codebuild_arn = self.paco_ctx.get_ref(action.paco_ref+'.project.arn')
                         readonly_arn_list.append(codebuild_arn)
-
-        self.set_codebuild_permissions(readonly_arn_list, assume_role_res)
+        if len(readonly_arn_list) > 0:
+            self.set_codebuild_permissions(readonly_arn_list, assume_role_res)
 
     def init_codebuild_permission(self, permission_config, assume_role_res):
         """CodeBuild Web Console Permissions"""
