@@ -131,6 +131,7 @@ class CodeBuild(StackTemplate):
                     Action('s3', 'ListBucket'),
                     Action('s3', 'DeleteObject'),
                     Action('s3', 'GetBucketPolicy'),
+                    Action('s3', 'HeadObject'),
                 ],
                 Resource=[
                     troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}'),
@@ -146,6 +147,14 @@ class CodeBuild(StackTemplate):
                     Action('logs', 'PutLogEvents'),
                 ],
                 Resource=[ 'arn:aws:logs:*:*:*' ]
+            ),
+            Statement(
+                Sid='ECSAccess',
+                Effect=Allow,
+                Action=[
+                    Action('ecs', '*'),
+                ],
+                Resource=[ '*' ]
             ),
             Statement(
                 Sid='KMSCMK',

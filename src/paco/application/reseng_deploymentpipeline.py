@@ -2,8 +2,11 @@ from paco import cftemplates
 from paco.application.res_engine import ResourceEngine
 from paco.core.yaml import YAML
 from paco.core.exception import InvalidAWSConfiguration
+from paco.models.locations import get_parent_by_interface
 from paco.models.references import get_model_obj_from_ref
 from paco.models import schemas
+from paco.stack import StackHooks
+from paco.utils import md5sum
 from paco import models
 import os
 import pathlib
@@ -12,6 +15,216 @@ import shutil
 
 yaml=YAML()
 yaml.default_flow_sytle = False
+
+
+RELEASE_PHASE_SCRIPT = """#!/bin/bash -e
+
+set -e
+# ECS Release Phase Command
+
+DOCKER_PORT=7777
+
+IMAGE_TAG="$1"
+export AWS_DEFAULT_REGION=$2
+
+# Globals
+ECHO_PREFIX="ecs-release-phase"
+ECS_INSTANCE_ID=""
+TASK_ARN=""
+TASK_ID=""
+REGISTERED_TASK_DEFINITION=""
+REGISTERED_TASK_DEFINITION_ARN=""
+
+# -----------------------------
+# Set the global registered task definition variable
+function set_registered_task_definition() {
+    local TASK_DEFINITION_ARN=$1
+    REGISTERED_TASK_DEFINITION_ARN=${TASK_DEFINITION_ARN}
+    REGISTERED_TASK_DEFINITION=$(echo $TASK_DEFINITION_ARN | awk -F ':' '{print $6":"$7}' | awk -F '/' '{print $2}')
+    echo "${ECHO_PREFIX}: set_registered_task_definition: ${REGISTERED_TASK_DEFINITION}"
+}
+
+# -----------------------------
+# Register a new task definition
+function register_task_definition() {
+    local CLUSTER_ID=$1
+    local SERVICE_ID=$2
+    local RELEASE_PHASE_NAME=$3
+
+    echo "${ECHO_PREFIX}: register_task_definition: ${RELEASE_PHASE_NAME}"
+
+    # Get service task definition
+    TASK_DEFINITION=$(aws ecs describe-services --cluster ${CLUSTER_ID} --services ${SERVICE_ID} --query 'services[0].taskDefinition' | tr -d '"')
+    TEMP_FILE=$(mktemp)
+    # echo "${ECHO_PREFIX}: register_task_definition: aws ecs describe-task-definition --task-definition ${TASK_DEFINITION} >${TEMP_FILE}"
+    aws ecs describe-task-definition --task-definition ${TASK_DEFINITION} >${TEMP_FILE}
+    SED_PATTERN="s/\\"image\\": \\"(.*):.*\\"/\\"image\\": \\"\\1:${IMAGE_TAG}\\"/g"
+    #echo sed -iE "${SED_PATTERN}" ${TEMP_FILE}
+    cat ${TEMP_FILE} | sed -E "${SED_PATTERN}" >${TEMP_FILE}.new
+    mv ${TEMP_FILE}.new ${TEMP_FILE}
+
+    # remove status, compatibilities, taskDefinitionArn, requiresAttributes, revision
+    for FIELD in 'status' 'compatibilities' 'taskDefinitionArn' 'requiresAttributes' 'revision'
+    do
+        JQ_PATTERN="del(.taskDefinition.${FIELD})"
+        #echo cat "${TEMP_FILE} | jq \\"${JQ_PATTERN}\\" > ${TEMP_FILE}.new"
+        cat ${TEMP_FILE} | jq "${JQ_PATTERN}" > ${TEMP_FILE}.new
+        mv ${TEMP_FILE}.new ${TEMP_FILE}
+    done
+
+    # Remove json that is invalid for 'aws ecs register-task-definition'
+    #echo sed -iE 's/^{$//' ${TEMP_FILE}
+    sed -iE 's/^{$//' ${TEMP_FILE}
+    #echo sed -iE 's/^.*"taskDefinition": {.*/{/' ${TEMP_FILE}
+    sed -iE 's/^.*"taskDefinition": {.*/{/' ${TEMP_FILE}
+    #echo sed -iE 's/^}$//' ${TEMP_FILE}
+    sed -iE 's/^}$//' ${TEMP_FILE}
+
+    # Create new task definition
+    FAMILY="paco-release-phase-"$(echo ${RELEASE_PHASE_NAME} | tr '.' '-')
+    #echo aws ecs register-task-definition --family ${FAMILY} --cli-input-json file://${TEMP_FILE}
+    echo "${ECHO_PREFIX}: register_task_definition: registering: ${FAMILY}"
+    TASK_DEFINITION_ARN=$(aws ecs register-task-definition --family ${FAMILY} --cli-input-json file://${TEMP_FILE} --query "taskDefinition.taskDefinitionArn" --output text)
+
+    rm ${TEMP_FILE}
+    set_registered_task_definition ${TASK_DEFINITION_ARN}
+    echo "${ECHO_PREFIX}: register_task_definition: created: ${REGISTERED_TASK_DEFINITION}"
+}
+
+# -----------------------------
+# Run Task
+function run_task() {
+    local CLUSTER_ID=$1
+    local RELEASE_PHASE_NAME=$2
+
+    echo "${ECHO_PREFIX}: run_task: ${RELEASE_PHASE_NAME}"
+    RESPONSE=$(aws ecs run-task --cluster ${CLUSTER_ID} --task-definition ${REGISTERED_TASK_DEFINITION_ARN} --tags "key=PACO-RELEASE-PHASE,value=${RELEASE_PHASE_NAME}" --query 'tasks[0].[taskArn,containerInstanceArn]' --output text)
+    TASK_ARN=$(echo $RESPONSE | awk '{print $1}')
+    TASK_ID=$(echo $TASK_ARN |awk -F '/' '{print $3}')
+    ECS_INSTANCE_ID=$(echo $RESPONSE | awk '{print $2}' | awk -F ':container-instance/' '{print $2}')
+    echo "${ECHO_PREFIX}: run-task: pending: ${TASK_ARN}"
+    aws ecs wait tasks-running --cluster ${CLUSTER_ID} --task ${TASK_ARN}
+    echo "${ECHO_PREFIX}: run-task: running: ${TASK_ARN}"
+}
+
+
+# -----------------------------
+# Stop Task
+function stop_task() {
+    # Task stop
+    local CLUSTER_ID=$1
+    local TASK_ARN=$2
+
+    echo "${ECHO_PREFIX}: stop_task: stopping: ${TASK_ARN}"
+    RESPONSE=$(aws ecs stop-task --cluster ${CLUSTER_ID} --task ${TASK_ARN})
+    aws ecs wait tasks-stopped --cluster ${CLUSTER_ID} --task ${TASK_ARN}
+    echo "${ECHO_PREFIX}: stop_task: stopped: ${TASK_ARN}"
+}
+
+# -----------------------------
+# Deregister release TaskDefinition
+function deregister_task_definition() {
+    echo "${ECHO_PREFIX}: deregister_task_definition: pending: ${REGISTERED_TASK_DEFINITION_ARN}"
+    RESPONSE="$(aws ecs deregister-task-definition --task-definition ${REGISTERED_TASK_DEFINITION_ARN})"
+    echo "${ECHO_PREFIX}: deregister_task_definition: degregistered: ${REGISTERED_TASK_DEFINITION_ARN}"
+}
+
+# -----------------------------
+# Checks if a task if a release phase task
+# returns "True" | "False"
+function is_release_phase_task() {
+    local RELEASE_PHASE_NAME=$1
+    local TASK_ARN=$2
+
+    TAG_QUERY="tags[?key==\`PACO-RELEASE-PHASE\`][value==\`${RELEASE_PHASE_NAME}\`]"
+    aws ecs list-tags-for-resource --resource-arn ${TASK_ARN} --query ${TAG_QUERY} --output text
+}
+
+# -----------------------------
+# Stale Task Check
+function stale_task_check() {
+    # Check to make sure the task is not already running, if it is, stop it.
+    local CLUSTER_ID=$1
+    local RELEASE_PHASE_NAME=$2
+    for TASK_ARN in $(aws ecs list-tasks --cluster ${CLUSTER_ID} --query 'taskArns[*]' --output text)
+    do
+        RELEASE_TASK_RUNNING=$(is_release_phase_task ${RELEASE_PHASE_NAME} ${TASK_ARN})
+        if [ "${RELEASE_TASK_RUNNING}" == "True" ] ; then
+            echo "${ECHO_PREFIX}: stale_task_check: WARNING: Stopping stale release phase task for ${RELEASE_PHASE_NAME}"
+            TASK_DEFINITION_ARN=$(aws ecs describe-tasks --tasks ${TASK_ARN} --cluster ${CLUSTER_ID} --query "tasks[0].taskDefinitionArn" --output text)
+            set_registered_task_definition ${TASK_DEFINITION_ARN}
+            stop_task ${CLUSTER_ID} ${TASK_ARN}
+            deregister_task_definition
+        fi
+    done
+}
+
+# -----------------------------
+# Task Docker Exec
+function task_docker_exec() {
+    local CLUSTER_ID=$1
+    local TASK_ID=$2
+    local ECS_INSTANCE_ID=$3
+    local RELEASE_PHASE_COMMAND=$4
+
+    # TODO: SSM Support
+    # Get the EC2 Instance ID that the taskis running on
+    # EC2_INSTANCE_ID=$(ecsctl get container-instance --cluster ${CLUSTER_ID} | grep ${ECS_INSTANCE_ID} | awk '{print $2}')
+    # echo "${ECHO_PREFIX}: EC2_INSTANCE_ID: ${EC2_INSTANCE_ID}"
+    # echo "${ECHO_PREFIX}: Execute SSM command here using instance ID"
+
+
+    # For now, ecsctl exec support
+    echo "${ECHO_PREFIX}: task_docker_exec: command start: ${TASK_ID}"
+    ecsctl exec --docker-port ${DOCKER_PORT} --cluster ${CLUSTER_ID} ${TASK_ID} ${RELEASE_PHASE_COMMAND}
+    RES=$?
+    RESULT="failed"
+    if [ $RES -eq 0 ] ; then
+        RESULT="success"
+    fi
+    echo "${ECHO_PREFIX}: task_docker_exec: command finished: ${RESULT}: ${TASK_ID}"
+
+    return $RES
+}
+
+# -----------------------------
+# Task Docker Exec
+function run_release_phase() {
+    local CLUSTER_ID="$1"
+    local SERVICE_ID="$2"
+    local RELEASE_PHASE_NAME="$3"
+    local RELEASE_PHASE_COMMAND="$4"
+
+    echo "${ECHO_PREFIX}: ECS Relase Phase: ${RELEASE_PHASE_NAME}"
+
+    echo "${ECHO_PREFIX}: CLUSTER_ID: ${CLUSTER_ID}"
+    echo "${ECHO_PREFIX}: SERVICE_ID: ${SERVICE_ID}"
+    echo "${ECHO_PREFIX}: RELEASE_PHASE_NAME: ${RELEASE_PHASE_NAME}"
+    echo "${ECHO_PREFIX}: RELEASE_PHASE_COMMAND: ${RELEASE_PHASE_COMMAND}"
+
+    # 1. Stop any stale tasks if there are any
+    stale_task_check ${CLUSTER_ID} ${RELEASE_PHASE_NAME}
+
+    # 2. Register a new task definition for the release phase
+    register_task_definition ${CLUSTER_ID} ${SERVICE_ID} ${RELEASE_PHASE_NAME}
+
+    # 3. Run a new task: run-task returns values for global variables: TASK_ARN, TASK_ID, & ECS_INSTANCE_ID
+    run_task ${CLUSTER_ID} ${RELEASE_PHASE_NAME}
+
+    # 4. Execute the release phase script
+    task_docker_exec ${CLUSTER_ID} ${TASK_ID} ${ECS_INSTANCE_ID} ${RELEASE_PHASE_COMMAND}
+
+    # 5. stop the task
+    stop_task ${CLUSTER_ID} ${TASK_ARN}
+
+    # 6. Deregister the task definition created for the release phase
+    deregister_task_definition
+}
+
+# ----------------------------------------------------------
+# Main
+
+"""
 
 class DeploymentPipelineResourceEngine(ResourceEngine):
 
@@ -31,6 +244,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         self.codecommit_role_name = 'codecommit_role'
         self.github_role_name = 'github_role'
         self.source_stage = None
+        self.codebuild_ecs_release_phase_cache_id = ""
 
     def init_stage(self, stage_config):
         "Initialize an Action in a Stage: for source/build/deploy-style"
@@ -569,6 +783,46 @@ policies:
         self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (role_config.paco_ref + '.arn'))
         action_config._delegate_role_arn = iam_ctl.role_arn(role_config.paco_ref_parts)
 
+    def stack_hook_codebuild_ecs_release_phase_cache_id(self, hook, config):
+        "Cache method to return a bundle's cache id"
+        return self.codebuild_ecs_release_phase_cache_id
+
+    def stack_hook_codebuild_ecs_release_phase(self, hook, config):
+        "Uploads the release phase script to an S3 bucket"
+        if 'ecs' not in config.release_phase.keys():
+            return
+        # Genreate script
+        release_phase_script_name = "release-phase.sh"
+        release_phase_script = RELEASE_PHASE_SCRIPT
+        for command in config.release_phase['ecs'].commands:
+            release_phase_name = command.service.split(' ')[1]
+            # cluster_id = ecs client lookup using paco tags
+            # service_id = ecs client lookup using paco tags
+            cluster_id = "NE-anet-dev-App-ecs-container-ecs-cluster-ECSCluster-Cluster-71MsaDT7mViF"
+            service_id = "NE-anet-dev-App-ecs-container-ecs-config-ECS-Services-Servicesimpleapp-PhbenGljrpvb"
+            release_phase_script += f"""
+CLUSTER_ID=arn:aws:ecs:eu-central-1:766324244139:cluster/{cluster_id}
+SERVICE_ID=arn:aws:ecs:eu-central-1:766324244139:service/{cluster_id}/{service_id}
+RELEASE_PHASE_NAME={release_phase_name}
+RELEASE_PHASE_COMMAND="{command.command}"
+run_release_phase "${{CLUSTER_ID}}" "${{SERVICE_ID}}" "${{RELEASE_PHASE_NAME}}" "${{RELEASE_PHASE_COMMAND}}"
+"""
+
+        unqiue_folder_name = config.paco_ref_parts
+        build_folder = os.path.join(self.paco_ctx.build_path, 'ReleasePhase', unqiue_folder_name)
+        pathlib.Path(build_folder).mkdir(parents=True, exist_ok=True)
+        file_path = os.path.join(build_folder, release_phase_script_name)
+        with open(file_path, "w") as output_fd:
+            output_fd.write(release_phase_script)
+        self.codebuild_ecs_release_phase_cache_id = md5sum(str_data=release_phase_script)
+
+        s3_ctl = self.paco_ctx.get_controller('S3')
+        pipeline_config = get_parent_by_interface(config, schemas.IDeploymentPipeline)
+        bucket_name = s3_ctl.get_bucket_name(pipeline_config.configuration.artifacts_bucket)
+        s3_client = self.account_ctx.get_aws_client('s3')
+        s3_key = os.path.join('ReleasePhase', 'ECS', unqiue_folder_name, release_phase_script_name)
+        s3_client.upload_file(file_path, bucket_name, s3_key, ExtraArgs={'ACL':'bucket-owner-full-control'})
+        print(f"Release Phase: aws s3 cp s3://{bucket_name}/{s3_key} ./{release_phase_script_name}")
 
     def init_stage_action_codebuild_build(self, action_config):
         if not action_config.is_enabled():
@@ -576,12 +830,32 @@ policies:
 
         self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (action_config.paco_ref + '.project_role.arn'))
         self.kms_crypto_principle_list.append("paco.sub '${%s}'" % (action_config.paco_ref+'.project_role.arn'))
+
+        stack_hooks = StackHooks()
+        stack_hooks.add(
+            name='CodeBuild.ECSReleasePhase',
+            stack_action='create',
+            stack_timing='post',
+            hook_method=self.stack_hook_codebuild_ecs_release_phase,
+            cache_method=self.stack_hook_codebuild_ecs_release_phase_cache_id,
+            hook_arg=action_config
+        )
+        stack_hooks.add(
+            name='CodeBuild.ECSReleasePhase',
+            stack_action='update',
+            stack_timing='post',
+            hook_method=self.stack_hook_codebuild_ecs_release_phase,
+            cache_method=self.stack_hook_codebuild_ecs_release_phase_cache_id,
+            hook_arg=action_config
+        )
+
         action_config._stack = self.stack_group.add_new_stack(
             self.aws_region,
             self.resource,
             cftemplates.CodeBuild,
             account_ctx=self.pipeline_account_ctx,
             stack_tags=self.stack_tags,
+            stack_hooks=stack_hooks,
             extra_context={
                 'base_aws_name': self.base_aws_name,
                 'app_name': self.app.name,
