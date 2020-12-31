@@ -153,6 +153,7 @@ class CodeBuild(StackTemplate):
                 Effect=Allow,
                 Action=[
                     Action('ecs', '*'),
+                    Action('ssm', '*'),
                 ],
                 Resource=[ '*' ]
             ),

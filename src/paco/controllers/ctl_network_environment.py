@@ -161,6 +161,8 @@ class EnvironmentRegionContext():
         if self.env_region.has_ec2lm_resources():
             ssm_ctl = self.paco_ctx.get_controller('SSM')
             ssm_ctl.provision(f'resource.ssm.ssm_documents.paco_ec2lm_update_instance.{self.account_ctx.name}.{self.env_region.name}')
+        if 'paco_ecs_docker_exec' in self.paco_ctx.project['resource']['ssm'].ssm_documents:
+            ssm_ctl.provision(f'resource.ssm.ssm_documents.paco_ecs_docker_exec.{self.account_ctx.name}.{self.env_region.name}')
         if len(self.stack_grps) > 0:
             for stack_grp in self.stack_grps:
                 stack_grp.provision()

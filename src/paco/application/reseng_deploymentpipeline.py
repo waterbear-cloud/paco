@@ -4,10 +4,12 @@ from paco.core.yaml import YAML
 from paco.core.exception import InvalidAWSConfiguration
 from paco.models.locations import get_parent_by_interface
 from paco.models.references import get_model_obj_from_ref
+from paco.models.resources import SSMDocument
 from paco.models import schemas
 from paco.stack import StackHooks
 from paco.utils import md5sum
 from paco import models
+import json
 import os
 import pathlib
 import shutil
@@ -789,12 +791,12 @@ policies:
 
     def stack_hook_codebuild_ecs_release_phase(self, hook, config):
         "Uploads the release phase script to an S3 bucket"
-        if 'ecs' not in config.release_phase.keys():
+        if len(config.release_phase.ecs) == 0:
             return
         # Genreate script
         release_phase_script_name = "release-phase.sh"
         release_phase_script = RELEASE_PHASE_SCRIPT
-        for command in config.release_phase['ecs'].commands:
+        for command in config.release_phase.ecs:
             release_phase_name = command.service.split(' ')[1]
             # cluster_id = ecs client lookup using paco tags
             # service_id = ecs client lookup using paco tags
@@ -824,6 +826,46 @@ run_release_phase "${{CLUSTER_ID}}" "${{SERVICE_ID}}" "${{RELEASE_PHASE_NAME}}" 
         s3_client.upload_file(file_path, bucket_name, s3_key, ExtraArgs={'ACL':'bucket-owner-full-control'})
         print(f"Release Phase: aws s3 cp s3://{bucket_name}/{s3_key} ./{release_phase_script_name}")
 
+    def codebuild_ecs_release_phase_ssm(self):
+        ssm_documents = self.paco_ctx.project['resource']['ssm'].ssm_documents
+        if 'paco_ecs_docker_exec' not in ssm_documents:
+            ssm_doc = SSMDocument('paco_ecs_docker_exec', ssm_documents)
+            ssm_doc.add_location(self.account_ctx.paco_ref, self.aws_region)
+            content = {
+                "schemaVersion": "2.2",
+                "description": "Paco ECS Release Phase Docker Exec",
+                "parameters": {
+                    "TaskId": {
+                        "type": "String",
+                        "description": "ECS Docker Task Id"
+                    },
+                    "Command": {
+                        "type": "String",
+                        "description": "Command to execute in the task container"
+                    }
+                },
+                "mainSteps": [
+                    {
+                        "action": "aws:runShellScript",
+                        "name": "ECSTaskDockerExec",
+                        "inputs": {
+                            "runCommand": [
+                                '/usr/bin/docker exec {{TaskId}} "{{Command}}"',
+                            ]
+                        }
+                    }
+                ]
+            }
+            ssm_doc.content = json.dumps(content)
+            ssm_doc.document_type = 'Command'
+            ssm_doc.enabled = True
+            ssm_documents['paco_ecs_docker_exec'] = ssm_doc
+        else:
+            ssm_documents['paco_ecs_docker_exec'].add_location(
+                self.account_ctx.paco_ref,
+                self.aws_region,
+            )
+
     def init_stage_action_codebuild_build(self, action_config):
         if not action_config.is_enabled():
             return
@@ -831,23 +873,27 @@ run_release_phase "${{CLUSTER_ID}}" "${{SERVICE_ID}}" "${{RELEASE_PHASE_NAME}}" 
         self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (action_config.paco_ref + '.project_role.arn'))
         self.kms_crypto_principle_list.append("paco.sub '${%s}'" % (action_config.paco_ref+'.project_role.arn'))
 
-        stack_hooks = StackHooks()
-        stack_hooks.add(
-            name='CodeBuild.ECSReleasePhase',
-            stack_action='create',
-            stack_timing='post',
-            hook_method=self.stack_hook_codebuild_ecs_release_phase,
-            cache_method=self.stack_hook_codebuild_ecs_release_phase_cache_id,
-            hook_arg=action_config
-        )
-        stack_hooks.add(
-            name='CodeBuild.ECSReleasePhase',
-            stack_action='update',
-            stack_timing='post',
-            hook_method=self.stack_hook_codebuild_ecs_release_phase,
-            cache_method=self.stack_hook_codebuild_ecs_release_phase_cache_id,
-            hook_arg=action_config
-        )
+        stack_hooks = None
+        if action_config.release_phase != None and len(action_config.release_phase.ecs) > 0:
+            stack_hooks = StackHooks()
+            stack_hooks.add(
+                name='CodeBuild.ECSReleasePhase',
+                stack_action='create',
+                stack_timing='post',
+                hook_method=self.stack_hook_codebuild_ecs_release_phase,
+                cache_method=self.stack_hook_codebuild_ecs_release_phase_cache_id,
+                hook_arg=action_config
+            )
+            stack_hooks.add(
+                name='CodeBuild.ECSReleasePhase',
+                stack_action='update',
+                stack_timing='post',
+                hook_method=self.stack_hook_codebuild_ecs_release_phase,
+                cache_method=self.stack_hook_codebuild_ecs_release_phase_cache_id,
+                hook_arg=action_config
+            )
+            self.codebuild_ecs_release_phase_ssm()
+
 
         action_config._stack = self.stack_group.add_new_stack(
             self.aws_region,
