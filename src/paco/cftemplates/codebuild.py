@@ -1,6 +1,7 @@
-from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action
+from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action, Condition, StringEquals
 from awacs.sts import AssumeRole
 from paco.cftemplates.cftemplates import StackTemplate
+from paco.cftemplates.iam_roles import policy_to_statements
 from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
 from paco.models.references import get_model_obj_from_ref, Reference
@@ -162,13 +163,106 @@ class CodeBuild(StackTemplate):
 
         release_phase = action_config.release_phase
         if release_phase != None and release_phase.ecs != None:
+            ssm_doc = self.paco_ctx.project['resource']['ssm'].ssm_documents['paco_ecs_docker_exec']
+            # SSM Exec Document
             policy_statements.append(
                 Statement(
-                    Sid='ECSRelasePhase',
+                    Sid='ECSReleasePhaseSSMCore',
+                    Effect=Allow,
+                    Action=[
+                        Action('ssm', 'ListDocuments'),
+                        Action('ssm', 'ListDocumentVersions'),
+                        Action('ssm', 'DescribeDocument'),
+                        Action('ssm', 'GetDocument'),
+                        Action('ssm', 'DescribeInstanceInformation'),
+                        Action('ssm', 'DescribeDocumentParameters'),
+                        Action('ssm', 'CancelCommand'),
+                        Action('ssm', 'ListCommands'),
+                        Action('ssm', 'ListCommandInvocations'),
+                        Action('ssm', 'DescribeAutomationExecutions'),
+                        Action('ssm', 'DescribeInstanceProperties'),
+                        Action('ssm', 'GetCommandInvocation'),
+                        Action('ec2', 'DescribeInstanceStatus'),
+                    ],
+                    Resource=[ '*' ]
+                )
+            )
+            policy_statements.append(
+                Statement(
+                    Sid=f'ECSReleasePhaseSSMSendCommandDocument',
+                    Effect=Allow,
+                    Action=[
+                        Action('ssm', 'SendCommand'),
+                    ],
+                    Resource=[ f'arn:aws:ssm:{self.aws_region}:{self.account_ctx.get_id()}:document/paco_ecs_docker_exec' ]
+                )
+            )
+            idx = 0
+            for command in release_phase.ecs:
+                service_obj = get_model_obj_from_ref(command.service, self.paco_ctx.project)
+                service_obj = get_parent_by_interface(service_obj, schemas.IECSServices)
+                ecs_release_phase_cluster_name_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name=f'ReleasePhaseECSClusterName{idx}',
+                    description='ECS Cluster Name',
+                    value=service_obj.cluster+'.name',
+                )
+
+                policy_statements.append(
+                    Statement(
+                        Sid=f'ECSReleasePhaseSSMSendCommand{idx}',
+                        Effect=Allow,
+                        Action=[
+                            Action('ssm', 'SendCommand'),
+                        ],
+                        Resource=[ f'arn:aws:ssm:{self.aws_region}:{self.account_ctx.get_id()}:instance/*' ],
+                        Condition=Condition(
+                            StringEquals({
+                                'ssm:resourceTag/Paco-ECSCluster-Name': troposphere.Ref(ecs_release_phase_cluster_name_param)
+                            })
+                        )
+                    )
+                )
+
+            policy_statements.append(
+                Statement(
+                    Sid='ECSReleasePhaseSSMAutomationExecution',
+                    Effect=Allow,
+                    Action=[
+                        Action('ssm', 'StartAutomationExecution'),
+                        Action('ssm', 'StopAutomationExecution'),
+                        Action('ssm', 'GetAutomationExecution'),
+                    ],
+                    Resource=[ 'arn:aws:ssm:::automation-definition/' ]
+                )
+            )
+            # ECS Policies
+            # policy_statements.append(
+            #     Statement(
+            #         Sid='ECSRelasePhaseECS',
+            #         Effect=Allow,
+            #         Action=[
+            #             Action('ecs', 'DescribeServices'),
+            #         ],
+            #         Resource=[ '*' ]
+            #     )
+            # )
+            policy_statements.append(
+                Statement(
+                    Sid='ECSRelasePhaseECS',
                     Effect=Allow,
                     Action=[
                         Action('ecs', '*'),
-                        Action('ssm', '*'),
+                    ],
+                    Resource=[ '*' ]
+                )
+            )
+            # IAM Pass Role
+            policy_statements.append(
+                Statement(
+                    Sid='IAMPassRole',
+                    Effect=Allow,
+                    Action=[
                         Action('iam', 'passrole')
                     ],
                     Resource=[ '*' ]

@@ -766,13 +766,6 @@ policies:
     statement:
       - effect: Allow
         action:
-          - 'ecs:*'
-          - 'ecr:*'
-          - 'iam:PassRole'
-        resource:
-          - '*'
-      - effect: Allow
-        action:
           - 's3:*'
         resource:
           - {0[artifact_bucket_arn]:s}
