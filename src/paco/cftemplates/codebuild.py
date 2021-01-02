@@ -1,7 +1,9 @@
 from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action
 from awacs.sts import AssumeRole
 from paco.cftemplates.cftemplates import StackTemplate
-from paco.models.references import get_model_obj_from_ref
+from paco.models import schemas
+from paco.models.locations import get_parent_by_interface
+from paco.models.references import get_model_obj_from_ref, Reference
 from paco.utils import md5sum
 import troposphere
 import troposphere.codepipeline
@@ -149,15 +151,6 @@ class CodeBuild(StackTemplate):
                 Resource=[ 'arn:aws:logs:*:*:*' ]
             ),
             Statement(
-                Sid='ECSAccess',
-                Effect=Allow,
-                Action=[
-                    Action('ecs', '*'),
-                    Action('ssm', '*'),
-                ],
-                Resource=[ '*' ]
-            ),
-            Statement(
                 Sid='KMSCMK',
                 Effect=Allow,
                 Action=[
@@ -166,6 +159,23 @@ class CodeBuild(StackTemplate):
                 Resource=[ troposphere.Ref(self.cmk_arn_param) ]
             ),
         ]
+
+        release_phase = action_config.release_phase
+        if release_phase != None and release_phase.ecs != None:
+            policy_statements.append(
+                Statement(
+                    Sid='ECSRelasePhase',
+                    Effect=Allow,
+                    Action=[
+                        Action('ecs', '*'),
+                        Action('ssm', '*'),
+                        Action('iam', 'passrole')
+                    ],
+                    Resource=[ '*' ]
+                )
+            )
+
+
         if len(action_config.secrets) > 0:
             secrets_arn_list = []
             for secret_ref in action_config.secrets:
@@ -328,12 +338,9 @@ class CodeBuild(StackTemplate):
             value=action_config.timeout_mins,
         )
 
-        # CodeBuild: Environment
-        environment = troposphere.codebuild.Environment(
-            Type = 'LINUX_CONTAINER',
-            ComputeType = troposphere.Ref(compute_type_param),
-            Image = troposphere.Ref(image_param),
-            EnvironmentVariables = [{
+        # Environment Variables
+        codebuild_env_vars = [
+            {
                 'Name': 'ArtifactsBucket',
                 'Value': troposphere.Ref(self.artifacts_bucket_name_param),
             }, {
@@ -342,7 +349,43 @@ class CodeBuild(StackTemplate):
             }, {
                 'Name': 'KMSKey',
                 'Value': troposphere.Ref(self.cmk_arn_param)
-            }],
+            }]
+        # If ECS Release Phase, then add the config to the environment
+        release_phase = action_config.release_phase
+        if release_phase != None and release_phase.ecs != None:
+            idx = 0
+            for command in release_phase.ecs:
+                service_obj = get_model_obj_from_ref(command.service, self.paco_ctx.project)
+                service_obj = get_parent_by_interface(service_obj, schemas.IECSServices)
+                ecs_release_phase_cluster_id = self.create_cfn_parameter(
+                    param_type='String',
+                    name=f'ReleasePhaseECSClusterId{idx}',
+                    description='ECS Cluster ID',
+                    value=service_obj.cluster+'.arn',
+                )
+                ecs_release_phase_service_id = self.create_cfn_parameter(
+                    param_type='String',
+                    name=f'ReleasePhaseECSServiceId{idx}',
+                    description='ECS Service ID',
+                    value=command.service+'.arn',
+                )
+
+                codebuild_env_vars.append({
+                    'Name': f'PACO_CB_RP_ECS_CLUSTER_ID_{idx}',
+                    'Value': troposphere.Ref(ecs_release_phase_cluster_id)
+                })
+                codebuild_env_vars.append({
+                    'Name': f'PACO_CB_RP_ECS_SERVICE_ID_{idx}',
+                    'Value': troposphere.Ref(ecs_release_phase_service_id)
+                })
+                idx += 1
+
+        # CodeBuild: Environment
+        environment = troposphere.codebuild.Environment(
+            Type = 'LINUX_CONTAINER',
+            ComputeType = troposphere.Ref(compute_type_param),
+            Image = troposphere.Ref(image_param),
+            EnvironmentVariables = codebuild_env_vars,
             PrivilegedMode = action_config.privileged_mode
         )
         source = troposphere.codebuild.Source(

@@ -24,8 +24,6 @@ RELEASE_PHASE_SCRIPT = """#!/bin/bash -e
 set -e
 # ECS Release Phase Command
 
-DOCKER_PORT=7777
-
 IMAGE_TAG="$1"
 export AWS_DEFAULT_REGION=$2
 
@@ -102,8 +100,9 @@ function run_task() {
     echo "${ECHO_PREFIX}: run_task: ${RELEASE_PHASE_NAME}"
     RESPONSE=$(aws ecs run-task --cluster ${CLUSTER_ID} --task-definition ${REGISTERED_TASK_DEFINITION_ARN} --tags "key=PACO-RELEASE-PHASE,value=${RELEASE_PHASE_NAME}" --query 'tasks[0].[taskArn,containerInstanceArn]' --output text)
     TASK_ARN=$(echo $RESPONSE | awk '{print $1}')
+    CONTAINER_INSTANCE_ARN=$(echo $RESPONSE | awk '{print $2}')
     TASK_ID=$(echo $TASK_ARN |awk -F '/' '{print $3}')
-    ECS_INSTANCE_ID=$(echo $RESPONSE | awk '{print $2}' | awk -F ':container-instance/' '{print $2}')
+    ECS_INSTANCE_ID="$(aws ecs describe-container-instances --cluster ${CLUSTER_ID} --container-instances ${CONTAINER_INSTANCE_ARN} --query 'containerInstances[0].ec2InstanceId' --output text)"
     echo "${ECHO_PREFIX}: run-task: pending: ${TASK_ARN}"
     aws ecs wait tasks-running --cluster ${CLUSTER_ID} --task ${TASK_ARN}
     echo "${ECHO_PREFIX}: run-task: running: ${TASK_ARN}"
@@ -164,28 +163,51 @@ function stale_task_check() {
 # -----------------------------
 # Task Docker Exec
 function task_docker_exec() {
-    local CLUSTER_ID=$1
+   local CLUSTER_ID=$1
     local TASK_ID=$2
     local ECS_INSTANCE_ID=$3
     local RELEASE_PHASE_COMMAND=$4
 
-    # TODO: SSM Support
-    # Get the EC2 Instance ID that the taskis running on
-    # EC2_INSTANCE_ID=$(ecsctl get container-instance --cluster ${CLUSTER_ID} | grep ${ECS_INSTANCE_ID} | awk '{print $2}')
-    # echo "${ECHO_PREFIX}: EC2_INSTANCE_ID: ${EC2_INSTANCE_ID}"
-    # echo "${ECHO_PREFIX}: Execute SSM command here using instance ID"
+    RES=0
 
-
-    # For now, ecsctl exec support
     echo "${ECHO_PREFIX}: task_docker_exec: command start: ${TASK_ID}"
-    ecsctl exec --docker-port ${DOCKER_PORT} --cluster ${CLUSTER_ID} ${TASK_ID} ${RELEASE_PHASE_COMMAND}
-    RES=$?
-    RESULT="failed"
-    if [ $RES -eq 0 ] ; then
-        RESULT="success"
-    fi
-    echo "${ECHO_PREFIX}: task_docker_exec: command finished: ${RESULT}: ${TASK_ID}"
+    TASK_DOCKER_ID=$(aws ecs describe-tasks --cluster ${CLUSTER_ID} --tasks ${TASK_ID} --query 'tasks[0].containers[0].runtimeId' --output text)
+    # echo aws ssm send-command --instance-ids ${ECS_INSTANCE_ID} --document-name paco_ecs_docker_exec --parameters TaskId=${TASK_DOCKER_ID},Command=${RELEASE_PHASE_COMMAND} --query 'Command.CommandId' --output text
+    COMMAND_ID=$(aws ssm send-command --instance-ids ${ECS_INSTANCE_ID} --document-name paco_ecs_docker_exec --parameters TaskId=${TASK_DOCKER_ID},Command=${RELEASE_PHASE_COMMAND} --query 'Command.CommandId' --output text)
+    #echo "${ECHO_PREFIX}: task_docker_exec: COMMAND_ID: ${COMMAND_ID}"
 
+    while :
+    do
+        #echo "aws ssm get-command-invocation --instance-id ${ECS_INSTANCE_ID} --command-id ${COMMAND_ID}"
+        COMMAND_STATE="$(aws ssm get-command-invocation --instance-id ${ECS_INSTANCE_ID} --command-id ${COMMAND_ID})"
+        #echo "${ECHO_PREFIX}: task_docker_exec: COMMAND_STATE: ${COMMAND_STATE}"
+
+        COMMAND_STATUS="$(echo $COMMAND_STATE | jq -r '.Status')"
+        #echo "${ECHO_PREFIX}: task_docker_exec: COMMAND_STATUS: |${COMMAND_STATUS}|"
+
+        if [ "${COMMAND_STATUS}" == "InProgress" ] ; then
+            echo "${ECHO_PREFIX}: task_docker_exec: status: ${COMMAND_STATUS}: Waiting for exec to finish"
+            sleep 5
+            continue
+        fi
+
+        COMMAND_STATUS_DETAILS="$(echo $COMMAND_STATE | jq -r '.StatusDetails')"
+        #echo "${ECHO_PREFIX}: task_docker_exec: COMMAND_STATUS_DETAILS: ${COMMAND_STATUS_DETAILS}"
+        COMMAND_STDOUT="$(echo $COMMAND_STATE | jq -r '.StandardOutputContent')"
+        #echo "${ECHO_PREFIX}: task_docker_exec: COMMAND_STDOUT: ${COMMAND_STDOUT}"
+
+        if [ "${COMMAND_STATUS}" == "Failed" ] ; then
+            COMMAND_STDERR="$(echo $COMMAND_STATE | jq -r '.StandardErrorContent')"
+            echo "${ECHO_PREFIX}: task_docker_exec: StandardErrorContent: ${COMMAND_STDERR}"
+            STATUS_MSG="${COMMAND_STDERR}"
+            RES=255
+        else
+            STATUS_MSG="${COMMAND_STDOUT}"
+        fi
+        break
+    done
+
+    echo "${ECHO_PREFIX}: task_docker_exec: command finished: ${TASK_ID}: ${COMMAND_STATUS}: ${STATUS_MSG}"
     return $RES
 }
 
@@ -215,12 +237,19 @@ function run_release_phase() {
 
     # 4. Execute the release phase script
     task_docker_exec ${CLUSTER_ID} ${TASK_ID} ${ECS_INSTANCE_ID} ${RELEASE_PHASE_COMMAND}
+    EXEC_RES=$?
 
     # 5. stop the task
     stop_task ${CLUSTER_ID} ${TASK_ARN}
 
     # 6. Deregister the task definition created for the release phase
     deregister_task_definition
+
+    if [ $EXEC_RES -ne 0 ] ; then
+        exit $EXEC_RES
+    fi
+
+    return $EXEC_RES
 }
 
 # ----------------------------------------------------------
@@ -796,19 +825,17 @@ policies:
         # Genreate script
         release_phase_script_name = "release-phase.sh"
         release_phase_script = RELEASE_PHASE_SCRIPT
+        idx = 0
         for command in config.release_phase.ecs:
             release_phase_name = command.service.split(' ')[1]
-            # cluster_id = ecs client lookup using paco tags
-            # service_id = ecs client lookup using paco tags
-            cluster_id = "NE-anet-dev-App-ecs-container-ecs-cluster-ECSCluster-Cluster-71MsaDT7mViF"
-            service_id = "NE-anet-dev-App-ecs-container-ecs-config-ECS-Services-Servicesimpleapp-PhbenGljrpvb"
             release_phase_script += f"""
-CLUSTER_ID=arn:aws:ecs:eu-central-1:766324244139:cluster/{cluster_id}
-SERVICE_ID=arn:aws:ecs:eu-central-1:766324244139:service/{cluster_id}/{service_id}
-RELEASE_PHASE_NAME={release_phase_name}
-RELEASE_PHASE_COMMAND="{command.command}"
-run_release_phase "${{CLUSTER_ID}}" "${{SERVICE_ID}}" "${{RELEASE_PHASE_NAME}}" "${{RELEASE_PHASE_COMMAND}}"
+CLUSTER_ID_{idx}=${{PACO_CB_RP_ECS_CLUSTER_ID_{idx}}}
+SERVICE_ID_{idx}=${{PACO_CB_RP_ECS_SERVICE_ID_{idx}}}
+RELEASE_PHASE_NAME_{idx}={release_phase_name}
+RELEASE_PHASE_COMMAND_{idx}="{command.command}"
+run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PHASE_NAME_{idx}}}" "${{RELEASE_PHASE_COMMAND_{idx}}}"
 """
+            idx += 1
 
         unqiue_folder_name = config.paco_ref_parts
         build_folder = os.path.join(self.paco_ctx.build_path, 'ReleasePhase', unqiue_folder_name)
