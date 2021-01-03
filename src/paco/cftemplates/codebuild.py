@@ -1,7 +1,6 @@
-from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action, Condition, StringEquals
+from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action, Condition, StringEquals, StringLike
 from awacs.sts import AssumeRole
 from paco.cftemplates.cftemplates import StackTemplate
-from paco.cftemplates.iam_roles import policy_to_statements
 from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
 from paco.models.references import get_model_obj_from_ref, Reference
@@ -81,6 +80,38 @@ class CodeBuild(StackTemplate):
             description='The name of the environment codebuild will be deploying into.',
             value=action_config.deployment_environment,
         )
+        # If ECS Release Phase, then create the needed parameters
+        release_phase = action_config.release_phase
+        ecs_release_phase_cluster_arn_param = []
+        ecs_release_phase_cluster_name_param = []
+        ecs_release_phase_service_arn_param = []
+        if release_phase != None and release_phase.ecs != None:
+            idx = 0
+            for command in release_phase.ecs:
+                service_obj = get_model_obj_from_ref(command.service, self.paco_ctx.project)
+                service_obj = get_parent_by_interface(service_obj, schemas.IECSServices)
+                cluster_arn_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name=f'ReleasePhaseECSClusterArn{idx}',
+                    description='ECS Cluster Arn',
+                    value=service_obj.cluster+'.arn',
+                )
+                ecs_release_phase_cluster_arn_param.append(cluster_arn_param)
+                cluster_arn_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name=f'ReleasePhaseECSClusterName{idx}',
+                    description='ECS Cluster Name',
+                    value=service_obj.cluster+'.name',
+                )
+                ecs_release_phase_cluster_name_param.append(cluster_arn_param)
+                service_arn_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name=f'ReleasePhaseECSServiceArn{idx}',
+                    description='ECS Service Arn',
+                    value=command.service+'.arn',
+                )
+                ecs_release_phase_service_arn_param.append(service_arn_param)
+                idx += 1
         self.project_role_name = self.create_iam_resource_name(
             name_list=[self.res_name_prefix, 'CodeBuild-Project'],
             filter_id='IAM.Role.RoleName'
@@ -199,15 +230,6 @@ class CodeBuild(StackTemplate):
             )
             idx = 0
             for command in release_phase.ecs:
-                service_obj = get_model_obj_from_ref(command.service, self.paco_ctx.project)
-                service_obj = get_parent_by_interface(service_obj, schemas.IECSServices)
-                ecs_release_phase_cluster_name_param = self.create_cfn_parameter(
-                    param_type='String',
-                    name=f'ReleasePhaseECSClusterName{idx}',
-                    description='ECS Cluster Name',
-                    value=service_obj.cluster+'.name',
-                )
-
                 policy_statements.append(
                     Statement(
                         Sid=f'ECSReleasePhaseSSMSendCommand{idx}',
@@ -215,14 +237,36 @@ class CodeBuild(StackTemplate):
                         Action=[
                             Action('ssm', 'SendCommand'),
                         ],
-                        Resource=[ f'arn:aws:ssm:{self.aws_region}:{self.account_ctx.get_id()}:instance/*' ],
+                        Resource=[ f'arn:aws:ec2:*:*:instance/*' ],
                         Condition=Condition(
-                            StringEquals({
-                                'ssm:resourceTag/Paco-ECSCluster-Name': troposphere.Ref(ecs_release_phase_cluster_name_param)
+                            StringLike({
+                                'ssm:resourceTag/Paco-ECSCluster-Name': troposphere.Ref(ecs_release_phase_cluster_name_param[idx])
                             })
                         )
                     )
                 )
+
+                policy_statements.append(
+                    Statement(
+                        Sid=f'ECSRelasePhaseClusterAccess{idx}',
+                        Effect=Allow,
+                        Action=[
+                            Action('ecs', 'DescribeServices'),
+                            Action('ecs', 'RunTask'),
+                            Action('ecs', 'StopTask'),
+                            Action('ecs', 'DescribeContainerInstances'),
+                            Action('ecs', 'ListTasks'),
+                            Action('ecs', 'DescribeTasks'),
+                        ],
+                        Resource=[ '*' ],
+                        Condition=Condition(
+                            StringEquals({
+                                'ecs:cluster': troposphere.Ref(ecs_release_phase_cluster_arn_param[idx])
+                            })
+                        )
+                    )
+                )
+                idx += 1
 
             policy_statements.append(
                 Statement(
@@ -237,26 +281,20 @@ class CodeBuild(StackTemplate):
                 )
             )
             # ECS Policies
-            # policy_statements.append(
-            #     Statement(
-            #         Sid='ECSRelasePhaseECS',
-            #         Effect=Allow,
-            #         Action=[
-            #             Action('ecs', 'DescribeServices'),
-            #         ],
-            #         Resource=[ '*' ]
-            #     )
-            # )
             policy_statements.append(
                 Statement(
                     Sid='ECSRelasePhaseECS',
                     Effect=Allow,
                     Action=[
-                        Action('ecs', '*'),
+                        Action('ecs', 'DescribeTaskDefinition'),
+                        Action('ecs', 'DeregisterTaskDefinition'),
+                        Action('ecs', 'RegisterTaskDefinition'),
+                        Action('ecs', 'ListTagsForResource'),
                     ],
                     Resource=[ '*' ]
                 )
             )
+
             # IAM Pass Role
             policy_statements.append(
                 Statement(
@@ -449,28 +487,13 @@ class CodeBuild(StackTemplate):
         if release_phase != None and release_phase.ecs != None:
             idx = 0
             for command in release_phase.ecs:
-                service_obj = get_model_obj_from_ref(command.service, self.paco_ctx.project)
-                service_obj = get_parent_by_interface(service_obj, schemas.IECSServices)
-                ecs_release_phase_cluster_id = self.create_cfn_parameter(
-                    param_type='String',
-                    name=f'ReleasePhaseECSClusterId{idx}',
-                    description='ECS Cluster ID',
-                    value=service_obj.cluster+'.arn',
-                )
-                ecs_release_phase_service_id = self.create_cfn_parameter(
-                    param_type='String',
-                    name=f'ReleasePhaseECSServiceId{idx}',
-                    description='ECS Service ID',
-                    value=command.service+'.arn',
-                )
-
                 codebuild_env_vars.append({
                     'Name': f'PACO_CB_RP_ECS_CLUSTER_ID_{idx}',
-                    'Value': troposphere.Ref(ecs_release_phase_cluster_id)
+                    'Value': troposphere.Ref(ecs_release_phase_cluster_arn_param[idx])
                 })
                 codebuild_env_vars.append({
                     'Name': f'PACO_CB_RP_ECS_SERVICE_ID_{idx}',
-                    'Value': troposphere.Ref(ecs_release_phase_service_id)
+                    'Value': troposphere.Ref(ecs_release_phase_service_arn_param[idx])
                 })
                 idx += 1
 
