@@ -45,7 +45,7 @@ class ECSCapacityProviderClient():
 
         # update if it's cache is different
         if self.is_changed(cap_info[0]):
-            self.update()
+            self.update(cap_info[0])
 
     def is_changed(self, capacity_provider_info):
         local_md5 = md5sum(str_data=f"{self.asg.paco_ref}-{self.capacity_provider.target_capacity}-{self.capacity_provider.minimum_scaling_step_size}-{self.capacity_provider.maximum_scaling_step_size}")
@@ -118,7 +118,25 @@ class ECSCapacityProviderClient():
                 return
         response = self.ecs_client.delete_capacity_provider(capacityProvider=self.capacity_provider.aws_name)
 
-    def update(self):
+    def update(self, capacity_info):
         "Update an ECS Capacity Provider resource"
-        # not yet implemented by AWS. ToDo: rename, delete, re-create?
-        pass
+        # The ASG ARN can change, in which case the API needs to do a delete then create
+        if self.asg_arn != capacity_info['autoScalingGroupProvider']['autoScalingGroupArn']:
+            self.delete()
+            self.create()
+        try:
+            response = self.ecs_client.update_capacity_provider(
+                name=self.capacity_provider.aws_name,
+                autoScalingGroupProvider={
+                    'managedScaling': {
+                        'status': 'ENABLED',
+                        'targetCapacity': self.capacity_provider.target_capacity,
+                        'minimumScalingStepSize': self.capacity_provider.minimum_scaling_step_size,
+                        'maximumScalingStepSize': self.capacity_provider.maximum_scaling_step_size,
+                    },
+                    'managedTerminationProtection': 'DISABLED'
+                },
+            )
+        except ClientError as error:
+            print('ERROR: Could not update Capacity Provider')
+            print(error.response['Error']['Code'])
