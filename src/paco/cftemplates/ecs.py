@@ -51,6 +51,7 @@ class ECSServices(StackTemplate):
         self.init_template('Elastic Container Service (ECS) Services and TaskDefinitions')
         if not ecs_config.is_enabled(): return
 
+        cluster_obj = get_model_obj_from_ref(ecs_config.cluster, self.project)
         self.secret_params = {}
         self.environment_params = {}
 
@@ -351,6 +352,7 @@ class ECSServices(StackTemplate):
                 )
 
             # Capacity Providers
+            # Service-specific Capacity Provider
             if len(service.capacity_providers) > 0:
                 # ToDo: adjust cfn_export not to set LaunchType
                 del service_dict['LaunchType']
@@ -365,6 +367,23 @@ class ECSServices(StackTemplate):
                         provide_dict['Weight'] = provider.weight
                     provider_cfn.append(provide_dict)
                 service_dict['CapacityProviderStrategy'] = provider_cfn
+            # Default to ECSCluster Capacity Provider
+            # Only use this default if there is no launch_type specified
+            elif len(cluster_obj.capacity_providers) > 0:
+                if service.launch_type == None:
+                    # ToDo: adjust cfn_export not to set LaunchType
+                    del service_dict['LaunchType']
+                    provider_cfn = []
+                    for provider in cluster_obj.capacity_providers:
+                        # ToDo: validate that ASG is configured as a Capacity Provider
+                        asg = get_model_obj_from_ref(provider.provider, self.project)
+                        provide_dict = {'CapacityProvider': asg.ecs.capacity_provider.get_aws_name()}
+                        if provider.base != None:
+                            provide_dict['Base'] = provider.base
+                        if provider.weight != None:
+                            provide_dict['Weight'] = provider.weight
+                        provider_cfn.append(provide_dict)
+                    service_dict['CapacityProviderStrategy'] = provider_cfn
 
             # ECS Service Resource
             service_res = troposphere.ecs.Service.from_dict(

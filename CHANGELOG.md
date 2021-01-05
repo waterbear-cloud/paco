@@ -9,6 +9,7 @@ Changelog for Paco
 
 - ECS Service can specify it's Capacity Provider.
 
+- ECS Cluster can specify a default Capacity Provider for the whole cluster.
 
 9.1.0 (2020-12-23)
 ------------------
