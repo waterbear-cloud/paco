@@ -2,7 +2,7 @@ Changelog for Paco
 ==================
 
 
-9.1.1 (unreleased)
+9.2.0 (2021-01-05)
 ------------------
 
 ### Added
@@ -10,6 +10,17 @@ Changelog for Paco
 - ECS Service can specify it's Capacity Provider.
 
 - ECS Cluster can specify a default Capacity Provider for the whole cluster.
+
+- Release phase command for ECS. Launchs a Task via SSM and executes it via CodeBuild,
+  waits for success and then continues to the next CodePipeline Stage.
+
+### Changed
+
+ - ECS CodePipeline Deploy delegate Role permissions are more restrictive/secure.
+
+### Fixed
+
+ - resource/iam.yaml: Permissions for CodeBuild in the DeploymentPipeline resolve correctly.
 
 9.1.0 (2020-12-23)
 ------------------
