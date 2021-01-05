@@ -5,7 +5,9 @@ Changelog for Paco
 9.1.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Added
+
+- ECS Service can specify it's Capacity Provider.
 
 
 9.1.0 (2020-12-23)

@@ -350,6 +350,22 @@ class ECSServices(StackTemplate):
                     ecs_config.task_definitions[service_dict['TaskDefinition']]._troposphere_res
                 )
 
+            # Capacity Providers
+            if len(service.capacity_providers) > 0:
+                # ToDo: adjust cfn_export not to set LaunchType
+                del service_dict['LaunchType']
+                provider_cfn = []
+                for provider in service.capacity_providers:
+                    # ToDo: validate that ASG is configured as a Capacity Provider
+                    asg = get_model_obj_from_ref(provider.provider, self.project)
+                    provide_dict = {'CapacityProvider': asg.ecs.capacity_provider.get_aws_name()}
+                    if provider.base != None:
+                        provide_dict['Base'] = provider.base
+                    if provider.weight != None:
+                        provide_dict['Weight'] = provider.weight
+                    provider_cfn.append(provide_dict)
+                service_dict['CapacityProviderStrategy'] = provider_cfn
+
             # ECS Service Resource
             service_res = troposphere.ecs.Service.from_dict(
                 cfn_service_name,

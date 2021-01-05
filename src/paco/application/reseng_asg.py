@@ -138,8 +138,7 @@ role_name: %s""" % ("ASGInstance")
     def provision_ecs_capacity_provider(self, hook, asg):
         "Hook to add an ECS Capacity Provider to the ECS Cluster the ASG belongs to"
         # create a Capacity Provider
-        capacity_provider_name = f"{asg.netenv_name}-{asg.env_name}-{asg.app_name}-{asg.group_name}-{asg.name}"
-        asg.ecs.capacity_provider.aws_name = capacity_provider_name
+        asg.ecs.capacity_provider.aws_name = asg.ecs.capacity_provider.get_aws_name()
         asg_name = asg.stack.get_outputs_value('ASGName')
         asg_client = self.account_ctx.get_aws_client('autoscaling', self.aws_region)
         response = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
