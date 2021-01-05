@@ -775,6 +775,12 @@ policies:
           - 'kms:*'
         resource:
           - "!Ref CMKArn"
+      - effect: Allow
+        action:
+          - 'iam:PassRole'
+          - 'ecs:*'
+        resource:
+          - "*"
 """
         role_table = {
             'pipeline_account_id': self.pipeline_account_ctx.get_id(),
