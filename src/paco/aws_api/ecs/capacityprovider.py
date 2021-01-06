@@ -16,6 +16,10 @@ class ECSCapacityProviderClient():
         self.capacity_provider = capacity_provider
         self.asg_arn = asg_arn
         self.asg = asg
+        if self.capacity_provider.managed_instance_protection:
+            self.managed_instance_protection = 'ENABLED'
+        else:
+            self.managed_instance_protection = 'DISABLED'
 
     @property
     def ecs_client(self):
@@ -52,7 +56,9 @@ class ECSCapacityProviderClient():
         aws_target_capacity = capacity_provider_info['autoScalingGroupProvider']['managedScaling']['targetCapacity']
         aws_minimum_scaling_step_size = capacity_provider_info['autoScalingGroupProvider']['managedScaling']['minimumScalingStepSize']
         aws_maximum_scaling_step_size = capacity_provider_info['autoScalingGroupProvider']['managedScaling']['maximumScalingStepSize']
-        aws_md5 = md5sum(str_data=f"{self.asg.paco_ref}-{aws_target_capacity}-{aws_minimum_scaling_step_size}-{aws_maximum_scaling_step_size}")
+        aws_md5 = md5sum(
+            str_data=f"{self.managed_instance_protection}-{self.asg.paco_ref}-{aws_target_capacity}-{aws_minimum_scaling_step_size}-{aws_maximum_scaling_step_size}"
+        )
         if aws_md5 != local_md5:
             return True
         return False
@@ -84,7 +90,7 @@ class ECSCapacityProviderClient():
                     'minimumScalingStepSize': self.capacity_provider.minimum_scaling_step_size,
                     'maximumScalingStepSize': self.capacity_provider.maximum_scaling_step_size,
                 },
-                'managedTerminationProtection': 'DISABLED'
+                'managedTerminationProtection': self.managed_instance_protection
             },
         )
         # attach Capacity Provider to the Cluster
@@ -134,7 +140,7 @@ class ECSCapacityProviderClient():
                         'minimumScalingStepSize': self.capacity_provider.minimum_scaling_step_size,
                         'maximumScalingStepSize': self.capacity_provider.maximum_scaling_step_size,
                     },
-                    'managedTerminationProtection': 'DISABLED'
+                    'managedTerminationProtection': self.managed_instance_protection
                 },
             )
         except ClientError as error:

@@ -5,7 +5,9 @@ Changelog for Paco
 9.2.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Added
+
+- Allow Managed Instance Protection to be set to ENABLED/DISABLED for an ECS ASG Capacity Provider.
 
 
 9.2.0 (2021-01-05)
