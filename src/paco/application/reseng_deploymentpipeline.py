@@ -162,16 +162,15 @@ function task_docker_exec() {
     local CLUSTER_ID=$1
     local TASK_ID=$2
     local ECS_INSTANCE_ID=$3
-    local RELEASE_PHASE_COMMAND=$4
+    local RELEASE_PHASE_COMMAND="$4"
 
     RES=0
-
     echo "${ECHO_PREFIX}: task_docker_exec: command start: ${TASK_ID}"
     echo "${ECHO_PREFIX}: task_docker_exec: command: ${RELEASE_PHASE_COMMAND}"
     echo "${ECHO_PREFIX}: task_docker_exec: Instance Id: ${ECS_INSTANCE_ID}"
     TASK_DOCKER_ID=$(aws ecs describe-tasks --cluster ${CLUSTER_ID} --tasks ${TASK_ID} --query 'tasks[0].containers[0].runtimeId' --output text)
-    # echo aws ssm send-command --instance-ids ${ECS_INSTANCE_ID} --document-name paco_ecs_docker_exec --parameters TaskId=${TASK_DOCKER_ID},Command=${RELEASE_PHASE_COMMAND} --query 'Command.CommandId' --output text
-    COMMAND_ID=$(aws ssm send-command --instance-ids ${ECS_INSTANCE_ID} --document-name paco_ecs_docker_exec --parameters TaskId=${TASK_DOCKER_ID},Command=${RELEASE_PHASE_COMMAND} --query 'Command.CommandId' --output text)
+    echo aws ssm send-command --instance-ids ${ECS_INSTANCE_ID} --document-name paco_ecs_docker_exec --parameters TaskId=${TASK_DOCKER_ID},Command="${RELEASE_PHASE_COMMAND}" --query 'Command.CommandId' --output text
+    COMMAND_ID=$(aws ssm send-command --instance-ids ${ECS_INSTANCE_ID} --document-name paco_ecs_docker_exec --parameters TaskId=${TASK_DOCKER_ID},Command="${RELEASE_PHASE_COMMAND}" --query 'Command.CommandId' --output text)
     #echo "${ECHO_PREFIX}: task_docker_exec: COMMAND_ID: ${COMMAND_ID}"
 
     while :
@@ -234,7 +233,7 @@ function run_release_phase() {
     run_task ${CLUSTER_ID} ${RELEASE_PHASE_NAME}
 
     # 4. Execute the release phase script
-    task_docker_exec ${CLUSTER_ID} ${TASK_ID} ${ECS_INSTANCE_ID} ${RELEASE_PHASE_COMMAND}
+    task_docker_exec ${CLUSTER_ID} ${TASK_ID} ${ECS_INSTANCE_ID} "${RELEASE_PHASE_COMMAND}"
     EXEC_RES=$?
 
     # 5. stop the task
@@ -870,7 +869,7 @@ run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PH
                         "name": "ECSTaskDockerExec",
                         "inputs": {
                             "runCommand": [
-                                '/usr/bin/docker exec {{TaskId}} "{{Command}}"',
+                                '/usr/bin/docker exec {{TaskId}} {{Command}}',
                             ]
                         }
                     }
