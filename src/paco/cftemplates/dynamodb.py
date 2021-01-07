@@ -27,11 +27,11 @@ class DynamoDB(StackTemplate):
                 title=dynamodb_table_resource.title + 'Name',
                 description="DynamoDB Table Name",
                 value=troposphere.Ref(dynamodb_table_resource),
-                ref=f"{table.paco_ref_parts}.tables.{table.name}.name"
+                ref=f"{table.paco_ref_parts}.name"
             )
             self.create_output(
                 title=dynamodb_table_resource.title + 'Arn',
                 description="DynamoDB Table Arn",
                 value=troposphere.GetAtt(dynamodb_table_resource, "Arn"),
-                ref=f"{table.paco_ref_parts}.tables.{table.name}.arn"
+                ref=f"{table.paco_ref_parts}.arn"
             )
