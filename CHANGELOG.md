@@ -5,7 +5,11 @@ Changelog for Paco
 9.2.2 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Fixed
+
+- `paco.sub` will now lookup the Stack Output for refs that refer to Stacks.
+
+- Fixed DynamoDB reference strings.
 
 
 9.2.1 (2021-01-05)

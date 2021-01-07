@@ -5,8 +5,9 @@ from paco.models.references import Reference
 from paco.models.locations import get_parent_by_interface
 from paco.stack import StackOutputParam, Stack
 from paco.utils import md5sum, big_join
-import troposphere
+import paco.stack.interfaces
 import re
+import troposphere
 
 
 single_quoted_cfn_regex = re.compile(r"(.*)'(!Ref\W+\S+)'(.*)")
@@ -202,6 +203,13 @@ class StackTemplate():
                         )
                     # Replace the ${}
                     sub_var = self.body[rep_1_idx:rep_1_idx+(rep_2_idx-rep_1_idx)]
+                    # if a Stack is returned, then look-up the referenced Stack Output and use that
+                    if paco.stack.interfaces.IStack.providedBy(sub_value):
+                        sub_value = sub_value.get_outputs_value(
+                            sub_value.get_outputs_key_from_ref(
+                                Reference(sub_ref)
+                            )
+                        )
                     self.body = self.body.replace(sub_var, sub_value, 1)
                 else:
                     #print("break 3")
