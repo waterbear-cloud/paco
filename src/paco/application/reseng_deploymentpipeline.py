@@ -73,16 +73,12 @@ function register_task_definition() {
     done
 
     # Remove json that is invalid for 'aws ecs register-task-definition'
-    #echo sed -iE 's/^{$//' ${TEMP_FILE}
     sed -iE 's/^{$//' ${TEMP_FILE}
-    #echo sed -iE 's/^.*"taskDefinition": {.*/{/' ${TEMP_FILE}
     sed -iE 's/^.*"taskDefinition": {.*/{/' ${TEMP_FILE}
-    #echo sed -iE 's/^}$//' ${TEMP_FILE}
     sed -iE 's/^}$//' ${TEMP_FILE}
 
     # Create new task definition
     FAMILY="paco-release-phase-"$(echo ${RELEASE_PHASE_NAME} | tr '.' '-')
-    #echo aws ecs register-task-definition --family ${FAMILY} --cli-input-json file://${TEMP_FILE}
     echo "${ECHO_PREFIX}: register_task_definition: registering: ${FAMILY}"
     TASK_DEFINITION_ARN=$(aws ecs register-task-definition --family ${FAMILY} --cli-input-json file://${TEMP_FILE} --query "taskDefinition.taskDefinitionArn" --output text)
 
@@ -163,7 +159,7 @@ function stale_task_check() {
 # -----------------------------
 # Task Docker Exec
 function task_docker_exec() {
-   local CLUSTER_ID=$1
+    local CLUSTER_ID=$1
     local TASK_ID=$2
     local ECS_INSTANCE_ID=$3
     local RELEASE_PHASE_COMMAND=$4
@@ -171,6 +167,8 @@ function task_docker_exec() {
     RES=0
 
     echo "${ECHO_PREFIX}: task_docker_exec: command start: ${TASK_ID}"
+    echo "${ECHO_PREFIX}: task_docker_exec: command: ${RELEASE_PHASE_COMMAND}"
+    echo "${ECHO_PREFIX}: task_docker_exec: Instance Id: ${ECS_INSTANCE_ID}"
     TASK_DOCKER_ID=$(aws ecs describe-tasks --cluster ${CLUSTER_ID} --tasks ${TASK_ID} --query 'tasks[0].containers[0].runtimeId' --output text)
     # echo aws ssm send-command --instance-ids ${ECS_INSTANCE_ID} --document-name paco_ecs_docker_exec --parameters TaskId=${TASK_DOCKER_ID},Command=${RELEASE_PHASE_COMMAND} --query 'Command.CommandId' --output text
     COMMAND_ID=$(aws ssm send-command --instance-ids ${ECS_INSTANCE_ID} --document-name paco_ecs_docker_exec --parameters TaskId=${TASK_DOCKER_ID},Command=${RELEASE_PHASE_COMMAND} --query 'Command.CommandId' --output text)
@@ -192,9 +190,9 @@ function task_docker_exec() {
         fi
 
         COMMAND_STATUS_DETAILS="$(echo $COMMAND_STATE | jq -r '.StatusDetails')"
-        #echo "${ECHO_PREFIX}: task_docker_exec: COMMAND_STATUS_DETAILS: ${COMMAND_STATUS_DETAILS}"
+        echo "${ECHO_PREFIX}: task_docker_exec: COMMAND_STATUS_DETAILS: ${COMMAND_STATUS_DETAILS}"
         COMMAND_STDOUT="$(echo $COMMAND_STATE | jq -r '.StandardOutputContent')"
-        #echo "${ECHO_PREFIX}: task_docker_exec: COMMAND_STDOUT: ${COMMAND_STDOUT}"
+        echo "${ECHO_PREFIX}: task_docker_exec: COMMAND_STDOUT: ${COMMAND_STDOUT}"
 
         if [ "${COMMAND_STATUS}" == "Failed" ] ; then
             COMMAND_STDERR="$(echo $COMMAND_STATE | jq -r '.StandardErrorContent')"
