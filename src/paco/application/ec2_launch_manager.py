@@ -92,9 +92,7 @@ fi
         pathlib.Path(self.bundle_folder).mkdir(parents=True, exist_ok=True)
         contents_md5 = ""
         for bundle_file in self.bundle_files:
-            file_path = os.path.join(self.bundle_folder, bundle_file['name'])
-            with open(file_path, "w") as output_fd:
-                output_fd.write(bundle_file['contents'])
+            utils.write_to_file(self.bundle_folder, bundle_file['name'], bundle_file['contents'])
             contents_md5 += md5sum(str_data=bundle_file['contents'])
         lb_tar = tarfile.open(self.package_filename, "w:gz")
         lb_tar.add(self.bundle_folder, recursive=True)

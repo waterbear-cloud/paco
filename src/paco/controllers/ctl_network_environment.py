@@ -144,12 +144,11 @@ class EnvironmentRegionContext():
 
         # Save merged_config to yaml file
         if 'netenv' in merged_config.keys():
-            self.resource_yaml_path.mkdir(parents=True, exist_ok=True)
-            with open(self.resource_yaml, "w") as output_fd:
-                yaml.dump(
-                    data=merged_config['netenv'][self.netenv.name][self.env.name][self.env_region.name],
-                    stream=output_fd
-                )
+            utils.write_to_file(
+                folder=self.resource_yaml_path,
+                filename=self.resource_yaml_filename,
+                data= merged_config['netenv'][self.netenv.name][self.env.name][self.env_region.name]
+            )
 
     def validate(self):
         for stack_grp in self.stack_grps:

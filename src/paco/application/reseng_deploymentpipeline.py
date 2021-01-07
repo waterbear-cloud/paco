@@ -7,8 +7,8 @@ from paco.models.references import get_model_obj_from_ref
 from paco.models.resources import SSMDocument
 from paco.models import schemas
 from paco.stack import StackHooks
-from paco.utils import md5sum
 from paco import models
+from paco import utils
 import json
 import os
 import pathlib
@@ -688,9 +688,7 @@ policies:
         zip_path = work_path / 'zip'
         pathlib.Path(zip_path).mkdir(parents=True, exist_ok=True)
         os.chdir(zip_path)
-        image_def_path = zip_path / 'imagedefinitions.json'
-        with open(image_def_path, "w") as output_fd:
-            output_fd.write(file_contents)
+        utils.write_to_file(zip_path, 'imagedefinitions.json', file_contents)
         archive_path = work_path / 'imagedef'
         shutil.make_archive(archive_path, 'zip', zip_path)
         os.chdir(orig_cwd)
@@ -838,11 +836,9 @@ run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PH
 
         unqiue_folder_name = config.paco_ref_parts
         build_folder = os.path.join(self.paco_ctx.build_path, 'ReleasePhase', unqiue_folder_name)
-        pathlib.Path(build_folder).mkdir(parents=True, exist_ok=True)
         file_path = os.path.join(build_folder, release_phase_script_name)
-        with open(file_path, "w") as output_fd:
-            output_fd.write(release_phase_script)
-        self.codebuild_ecs_release_phase_cache_id = md5sum(str_data=release_phase_script)
+        utils.write_to_file(build_folder, release_phase_script_name, release_phase_script)
+        self.codebuild_ecs_release_phase_cache_id = utils.md5sum(str_data=release_phase_script)
 
         s3_ctl = self.paco_ctx.get_controller('S3')
         pipeline_config = get_parent_by_interface(config, schemas.IDeploymentPipeline)

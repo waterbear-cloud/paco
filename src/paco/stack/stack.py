@@ -9,7 +9,7 @@ from paco.models import references
 from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
 from paco.stack.interfaces import IStack, ICloudFormationStack
-from paco.utils import md5sum, dict_of_dicts_merge, list_to_comma_string
+from paco.utils import md5sum, dict_of_dicts_merge, list_to_comma_string, write_to_file
 from shutil import copyfile
 from deepdiff import DeepDiff
 from zope.interface import implementer
@@ -17,6 +17,7 @@ import base64
 import os.path
 import pathlib
 import re
+import ruamel.yaml
 import sys
 
 
@@ -297,9 +298,10 @@ class StackOutputsManager():
     def save(self, key):
         if self.outputs_path[key] == None:
             raise StackException(PacoErrorCode.Unknown, message="Outputs file has not been loaded.")
-        self.outputs_path[key].parent.mkdir(parents=True, exist_ok=True)
-        with open(self.outputs_path[key], "w") as output_fd:
-            yaml.dump(self.outputs_dict[key], output_fd)
+
+        write_to_file(self.outputs_path[key].parent, self.outputs_path[key].name, self.outputs_dict[key])
+        #with open(self.outputs_path[key], "w") as output_fd:
+        #    yaml.dump(self.outputs_dict[key], output_fd)
 
     def add(self, outputs_path, new_outputs_dict):
         if len(new_outputs_dict.keys()) > 1:
@@ -454,8 +456,8 @@ class BaseStack():
             # Create cache file
             new_cache_id = self.gen_cache_id()
             if new_cache_id != None:
-                with open(self.cache_filename, "w") as cache_fd:
-                    cache_fd.write(new_cache_id)
+                cache_filename = pathlib.Path(self.cache_filename)
+                write_to_file(cache_filename.parent, cache_filename.name, new_cache_id)
 
             # Save stack outputs to yaml
             self.save_stack_outputs()
@@ -556,9 +558,11 @@ your cache may be out of sync. Try running again the with the --nocache option.
         parameter_list = self.generate_stack_parameters()
         applied_template_path, _ = self.init_template_store_paths()
         applied_param_file_path = self.init_applied_parameters_path(applied_template_path)
-        yaml = YAML(pure=True)
-        with open(applied_param_file_path, 'w') as stream:
-            yaml.dump(parameter_list, stream)
+        applied_param_file_path_new = applied_param_file_path.with_suffix('.new')
+        special_yaml = YAML(pure=True)
+        with open(applied_param_file_path_new, 'w') as stream:
+            special_yaml.dump(parameter_list, stream)
+        applied_param_file_path_new.rename(applied_param_file_path)
 
     def generate_stack_parameters(self, action=None):
         """Sets Scheduled output parameters to be collected from one stacks Outputs.
@@ -852,11 +856,8 @@ your cache may be out of sync. Try running again the with the --nocache option.
             config_dict = output_config.get_config_dict(self)
             self.output_config_dict = dict_of_dicts_merge(self.output_config_dict, config_dict)
         # save to disk cache
-        with open(self.output_filename, "w") as output_fd:
-            yaml.dump(
-                data=self.output_config_dict,
-                stream=output_fd
-            )
+        write_to_file(self.output_filename.parent, self.output_filename.name, self.output_config_dict)
+
         # add to StackOutputsManager
         stack_outputs_manager.add(self.paco_ctx.outputs_path, self.output_config_dict)
 

@@ -11,13 +11,17 @@ Here be utils.
 """
 
 import hashlib
+import pathlib
 from paco.core.exception import StackException, PacoErrorCode
+from paco.core.yaml import YAML
 from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
 from copy import deepcopy
 from functools import partial
 from hashlib import blake2b
 
+yaml=YAML(typ="safe", pure=True)
+yaml.default_flow_sytle = False
 
 def get_support_resource_ref_ext(resource, support_resource):
     """The reference extension of a supporting resource.
@@ -187,3 +191,24 @@ def list_to_comma_string(list_to_convert):
         comma = ','
     return str_list
 
+
+def write_to_file(folder, filename, data):
+    if isinstance(folder, pathlib.PosixPath) == False:
+        folder = pathlib.PosixPath(folder)
+    if isinstance(filename, pathlib.PosixPath) == False:
+        filename = pathlib.PosixPath(filename)
+
+    folder.mkdir(parents=True, exist_ok=True)
+    file_path = folder / filename
+    file_path_new = file_path.with_suffix(".new")
+    with open(file_path_new, "w") as output_fd:
+        if isinstance(data, dict):
+            yaml.dump(
+                data=data,
+                stream=output_fd
+            )
+        elif isinstance(data, str):
+            output_fd.write(data)
+        else:
+            raise PacoException(PacoErrorCode.Unknown, message=f"utils: write_to_file: unsupported data type {type(data)}")
+    file_path_new.rename(file_path)
