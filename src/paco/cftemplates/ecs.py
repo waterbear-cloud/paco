@@ -230,6 +230,7 @@ class ECSServices(StackTemplate):
         #  Services
         for service in ecs_config.services.values():
             service_dict = service.cfn_export_dict
+            service_dict['EnableECSManagedTags'] = True
             service_dict['Cluster'] = troposphere.Ref(cluster_name_param)
             cfn_service_name = self.create_cfn_logical_id('Service' + service.name)
 
