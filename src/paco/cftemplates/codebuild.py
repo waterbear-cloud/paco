@@ -290,6 +290,7 @@ class CodeBuild(StackTemplate):
                         Action('ecs', 'DeregisterTaskDefinition'),
                         Action('ecs', 'RegisterTaskDefinition'),
                         Action('ecs', 'ListTagsForResource'),
+                        Action('ecr', 'DescribeImages')
                     ],
                     Resource=[ '*' ]
                 )
