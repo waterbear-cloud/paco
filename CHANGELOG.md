@@ -4,7 +4,9 @@ Changelog for Paco
 9.2.3 (unreleased)
 ------------------
 
-- Nothing changed yet.
+### Fixed
+
+- Update to depend upon `paco.models` 7.7.4.
 
 
 9.2.2 (2021-01-13)
