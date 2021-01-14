@@ -5,6 +5,10 @@ Changelog for Paco
 9.2.2 (unreleased)
 ------------------
 
+### Changed
+
+- ASG launch options field `codedeploy_agent` now defaults to False.
+
 ### Fixed
 
 - `paco.sub` will now lookup the Stack Output for refs that refer to Stacks.

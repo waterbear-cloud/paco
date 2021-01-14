@@ -1791,10 +1791,6 @@ statement:
         """Creates a launch bundle to install and configure the CodeDeploy agent"""
         # Create the Launch Bundle
         codedeploy_lb = LaunchBundle(resource, self, bundle_name)
-        codedeploy_enabled = True
-        if not resource.launch_options.codedeploy_agent:
-            codedeploy_enabled = False
-
         launch_script = f"""#!/bin/bash
 
 function stop_agent() {{
@@ -1858,7 +1854,7 @@ function disable_launch_bundle() {{
     yum erase codedeploy-agent -y
 }}
 """
-        codedeploy_lb.set_launch_script(launch_script, codedeploy_enabled)
+        codedeploy_lb.set_launch_script(launch_script, resource.launch_options.codedeploy_agent)
         self.add_bundle(codedeploy_lb)
 
     def process_bundles(self, resource, instance_iam_role_ref):
