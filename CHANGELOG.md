@@ -15,6 +15,7 @@ Changelog for Paco
 
 - Fixed DynamoDB reference strings.
 
+- Added `DescribeImages` permission to CodeBuild release phase.
 
 9.2.1 (2021-01-05)
 ------------------
