@@ -12,6 +12,7 @@ EC2 Launch Mangaer is currently linux-centric and does not yet work with Windows
 """
 
 
+import base64
 import paco.cftemplates
 import json
 import os
@@ -30,7 +31,7 @@ from paco.models.resources import SSMDocument
 from paco.utils import md5sum, prefixed_name
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
-
+from paco.application.reseng_deploymentpipeline import RELEASE_PHASE_SCRIPT, RELEASE_PHASE_SCRIPT_SSM_DOCUMENT_CONTENT
 
 class LaunchBundle():
     """
@@ -131,7 +132,7 @@ class EC2LaunchManager():
         self.ec2lm_functions_script = {}
         self.ec2lm_buckets = {}
         self.launch_bundle_names = [
-            'SSM', 'EIP', 'CloudWatchAgent', 'EFS', 'EBS', 'cfn-init', 'SSHAccess', 'ECS', 'CodeDeploy'#, 'DNS'
+            'SSM', 'EIP', 'CloudWatchAgent', 'EFS', 'EBS', 'cfn-init', 'SSHAccess', 'ECS', 'CodeDeploy', 'ScriptManager'#, 'DNS'
         ]
         self.build_path = os.path.join(
             self.paco_ctx.build_path,
@@ -1693,6 +1694,94 @@ statement:
                 policy_config_yaml=policy_config_yaml,
                 extra_ref_names=['ec2lm','ssmagent'],
             )
+
+    def lb_add_scriptmanager(self, bundle_name, resource):
+        "EC2 Script Manager Launch Bundle"
+        script_lb = LaunchBundle(resource, self, bundle_name)
+        launch_script = ""
+        scripts = {}
+        script_manager_enabled = False
+        # ECS Release Phase Script
+        if resource.release_phase and len(resource.release_phase.ecs) > 0:
+            # Genreate script
+            release_phase_script_name = "release-phase.sh"
+            release_phase_script = RELEASE_PHASE_SCRIPT
+            idx = 0
+            release_phase_script += ". /opt/aim/EC2Manager/ec2lm_functions.bash\n\n"
+            for command in resource.release_phase.ecs:
+                release_phase_name = command.service.split(' ')[1]
+                release_phase_script += f"""
+CLUSTER_ID_{idx}=$(ec2lm_instance_tag_value PACO_CB_RP_ECS_CLUSTER_ID_{idx})
+SERVICE_ID_{idx}=$(ec2lm_instance_tag_value PACO_CB_RP_ECS_SERVICE_ID_{idx})
+RELEASE_PHASE_NAME_{idx}={release_phase_name}
+RELEASE_PHASE_COMMAND_{idx}="{command.command}"
+run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PHASE_NAME_{idx}}}" "${{RELEASE_PHASE_COMMAND_{idx}}}"
+"""
+                idx += 1
+            scripts['release_phase'] = {
+                'path': '/usr/local/bin/paco-ecs-release-phase.sh',
+                'mode': '0755',
+                'data': base64.b64encode(release_phase_script.encode('ascii')).decode('ascii')
+            }
+
+            # Create the SSM Document if it does not exist
+            ssm_documents = self.paco_ctx.project['resource']['ssm'].ssm_documents
+            if 'paco_ecs_docker_exec' not in ssm_documents:
+                ssm_doc = SSMDocument('paco_ecs_docker_exec', ssm_documents)
+                ssm_doc.add_location(self.account_ctx.paco_ref, self.aws_region)
+                ssm_doc.content = json.dumps(RELEASE_PHASE_SCRIPT_SSM_DOCUMENT_CONTENT)
+                ssm_doc.document_type = 'Command'
+                ssm_doc.enabled = True
+                ssm_documents['paco_ecs_docker_exec'] = ssm_doc
+            else:
+                ssm_documents['paco_ecs_docker_exec'].add_location(
+                    self.account_ctx.paco_ref,
+                    self.aws_region,
+                )
+
+        # Script Manager
+        launch_script = f"""#!/bin/bash
+echo "EC2LM: Script Manager: Begin"
+
+. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
+
+declare -a SCRIPTS
+"""
+        idx = 0
+        for script_name in scripts.keys():
+            launch_script += f"""
+SCRIPTS[{idx}]="{script_name}"
+{script_name}_DATA="{scripts[script_name]['data']}"
+{script_name}_PATH="{scripts[script_name]['path']}"
+{script_name}_MODE="{scripts[script_name]['mode']}"
+"""
+            idx += 1
+
+        launch_script += f"""
+function run_launch_bundle() {{
+    ec2lm_install_package jq
+    for NAME in ${{SCRIPTS[@]}}
+    do
+        SCRIPT_PATH_VAR=${{NAME}}_PATH
+        SCRIPT_DATA_VAR=${{NAME}}_DATA
+        SCRIPT_MODE_VAR=${{NAME}}_MODE
+
+        SCRIPT_PATH=${{!SCRIPT_PATH_VAR}}
+        SCRIPT_DATA=${{!SCRIPT_DATA_VAR}}
+        SCRIPT_MODE=${{!SCRIPT_MODE_VAR}}
+        echo ${{SCRIPT_DATA}} | base64 -d >${{SCRIPT_PATH}}
+        chmod ${{SCRIPT_MODE}} ${{SCRIPT_PATH}}
+    done
+}}
+
+function disable_launch_bundle() {{
+}}
+"""
+
+        if len(scripts.keys()) == 0:
+            script_manager_enabled = True
+        script_lb.set_launch_script(launch_script, script_manager_enabled)
+        self.add_bundle(script_lb)
 
     # TODO: Blocked until cftemplates/iam_managed_policies.py supports toposphere
     # and paco.ref Parameters!

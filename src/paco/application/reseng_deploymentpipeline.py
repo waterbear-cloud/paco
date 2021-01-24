@@ -64,7 +64,7 @@ function register_task_definition() {
     mv ${TEMP_FILE}.new ${TEMP_FILE}
 
     # remove status, compatibilities, taskDefinitionArn, requiresAttributes, revision
-    for FIELD in 'status' 'compatibilities' 'taskDefinitionArn' 'requiresAttributes' 'revision'
+    for FIELD in 'registeredAt' 'registeredBy' 'status' 'compatibilities' 'taskDefinitionArn' 'requiresAttributes' 'revision'
     do
         JQ_PATTERN="del(.taskDefinition.${FIELD})"
         #echo cat "${TEMP_FILE} | jq \\"${JQ_PATTERN}\\" > ${TEMP_FILE}.new"
@@ -253,6 +253,32 @@ function run_release_phase() {
 # Main
 
 """
+
+RELEASE_PHASE_SCRIPT_SSM_DOCUMENT_CONTENT = {
+                "schemaVersion": "2.2",
+                "description": "Paco ECS Release Phase Docker Exec",
+                "parameters": {
+                    "TaskId": {
+                        "type": "String",
+                        "description": "ECS Docker Task Id"
+                    },
+                    "Command": {
+                        "type": "String",
+                        "description": "Command to execute in the task container"
+                    }
+                },
+                "mainSteps": [
+                    {
+                        "action": "aws:runShellScript",
+                        "name": "ECSTaskDockerExec",
+                        "inputs": {
+                            "runCommand": [
+                                '/usr/bin/docker exec {{TaskId}} {{Command}}',
+                            ]
+                        }
+                    }
+                ]
+            }
 
 class DeploymentPipelineResourceEngine(ResourceEngine):
 
@@ -850,32 +876,7 @@ run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PH
         if 'paco_ecs_docker_exec' not in ssm_documents:
             ssm_doc = SSMDocument('paco_ecs_docker_exec', ssm_documents)
             ssm_doc.add_location(self.account_ctx.paco_ref, self.aws_region)
-            content = {
-                "schemaVersion": "2.2",
-                "description": "Paco ECS Release Phase Docker Exec",
-                "parameters": {
-                    "TaskId": {
-                        "type": "String",
-                        "description": "ECS Docker Task Id"
-                    },
-                    "Command": {
-                        "type": "String",
-                        "description": "Command to execute in the task container"
-                    }
-                },
-                "mainSteps": [
-                    {
-                        "action": "aws:runShellScript",
-                        "name": "ECSTaskDockerExec",
-                        "inputs": {
-                            "runCommand": [
-                                '/usr/bin/docker exec {{TaskId}} {{Command}}',
-                            ]
-                        }
-                    }
-                ]
-            }
-            ssm_doc.content = json.dumps(content)
+            ssm_doc.content = json.dumps(RELEASE_PHASE_SCRIPT_SSM_DOCUMENT_CONTENT)
             ssm_doc.document_type = 'Command'
             ssm_doc.enabled = True
             ssm_documents['paco_ecs_docker_exec'] = ssm_doc

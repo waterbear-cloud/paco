@@ -4,13 +4,14 @@ import troposphere
 import troposphere.autoscaling
 import troposphere.policies
 from io import StringIO
+from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action, Condition, StringEquals, StringLike
 from enum import Enum
 from paco import utils
 from paco.models import references, schemas
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.core.exception import UnsupportedCloudFormationParameterType
 from paco.models.locations import get_parent_by_interface
-from paco.models.references import Reference
+from paco.models.references import Reference, get_model_obj_from_ref
 
 
 class ASG(StackTemplate):
@@ -25,7 +26,7 @@ class ASG(StackTemplate):
         self.asg_config = asg_config = stack.resource
         asg_config_ref = asg_config.paco_ref_parts
         self.ec2_manager_cache_id = ec2_manager_cache_id
-        super().__init__(stack, paco_ctx)
+        super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_NAMED_IAM"])
         self.set_aws_name('ASG', self.resource_group_name, self.resource_name)
 
         # Troposphere
@@ -316,6 +317,164 @@ class ASG(StackTemplate):
                 True
             )
             asg_dict['Tags'].append(asg_tag)
+
+        # ECS Release Phase Configuration
+        policy_statements = []
+        if asg_config.release_phase and len(asg_config.release_phase.ecs) > 0:
+            idx = 0
+            for command in asg_config.release_phase.ecs:
+                service_obj = get_model_obj_from_ref(command.service, self.paco_ctx.project)
+                ecs_services_obj = get_parent_by_interface(service_obj, schemas.IECSServices)
+                ecs_release_phase_cluster_arn_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name=f'ECSReleasePhaseClusterArn{idx}',
+                    description=f'ECS Release Phase Cluster Arn {idx}',
+                    value=ecs_services_obj.cluster + '.arn'
+                )
+                ecs_release_phase_cluster_name_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name=f'ECSReleasePhaseClusterName{idx}',
+                    description=f'ECS Release Phase Cluster Name {idx}',
+                    value=ecs_services_obj.cluster + '.name'
+                )
+                ecs_release_phase_service_name_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name=f'ECSReleasePhaseServiceName{idx}',
+                    description=f'ECS Release Phase Cluster Name {idx}',
+                    value=command.service + '.name'
+                )
+                ecs_cluster_asg_tag = troposphere.autoscaling.Tag(
+                    f'PACO_CB_RP_ECS_CLUSTER_ID_{idx}',
+                    troposphere.Ref(ecs_release_phase_cluster_name_param),
+                    True
+                )
+                ecs_service_asg_tag = troposphere.autoscaling.Tag(
+                    f'PACO_CB_RP_ECS_SERVICE_ID_{idx}',
+                    troposphere.Ref(ecs_release_phase_service_name_param),
+                    True
+                )
+                asg_dict['Tags'].append(ecs_cluster_asg_tag)
+                asg_dict['Tags'].append(ecs_service_asg_tag)
+
+                policy_statements.append(
+                    Statement(
+                        Sid=f'ECSReleasePhaseSSMSendCommand{idx}',
+                        Effect=Allow,
+                        Action=[
+                            Action('ssm', 'SendCommand'),
+                        ],
+                        Resource=[ 'arn:aws:ec2:*:*:instance/*' ],
+                        Condition=Condition(
+                            StringLike({
+                                'ssm:resourceTag/Paco-ECSCluster-Name': troposphere.Ref(ecs_release_phase_cluster_name_param)
+                            })
+                        )
+                    )
+                )
+
+                policy_statements.append(
+                    Statement(
+                        Sid=f'ECSRelasePhaseClusterAccess{idx}',
+                        Effect=Allow,
+                        Action=[
+                            Action('ecs', 'DescribeServices'),
+                            Action('ecs', 'RunTask'),
+                            Action('ecs', 'StopTask'),
+                            Action('ecs', 'DescribeContainerInstances'),
+                            Action('ecs', 'ListTasks'),
+                            Action('ecs', 'DescribeTasks'),
+                        ],
+                        Resource=[ '*' ],
+                        Condition=Condition(
+                            StringEquals({
+                                'ecs:cluster': troposphere.Ref(ecs_release_phase_cluster_arn_param)
+                            })
+                        )
+                    )
+                )
+
+                idx += 1
+
+            policy_statements.append(
+                Statement(
+                    Sid='ECSReleasePhaseSSMAutomationExecution',
+                    Effect=Allow,
+                    Action=[
+                        Action('ssm', 'StartAutomationExecution'),
+                        Action('ssm', 'StopAutomationExecution'),
+                        Action('ssm', 'GetAutomationExecution'),
+                    ],
+                    Resource=[ 'arn:aws:ssm:::automation-definition/' ]
+                )
+            )
+            # ECS Policies
+            policy_statements.append(
+                Statement(
+                    Sid='ECSRelasePhaseECS',
+                    Effect=Allow,
+                    Action=[
+                        Action('ecs', 'DescribeTaskDefinition'),
+                        Action('ecs', 'DeregisterTaskDefinition'),
+                        Action('ecs', 'RegisterTaskDefinition'),
+                        Action('ecs', 'ListTagsForResource'),
+                        Action('ecr', 'DescribeImages')
+                    ],
+                    Resource=[ '*' ]
+                )
+            )
+
+            policy_statements.append(
+                Statement(
+                    Sid=f'ECSReleasePhaseSSMSendCommandDocument',
+                    Effect=Allow,
+                    Action=[
+                        Action('ssm', 'SendCommand'),
+                    ],
+                    Resource=[ f'arn:aws:ssm:{self.aws_region}:{self.account_ctx.get_id()}:document/paco_ecs_docker_exec' ]
+                )
+            )
+            policy_statements.append(
+                Statement(
+                    Sid='ECSReleasePhaseSSMCore',
+                    Effect=Allow,
+                    Action=[
+                        Action('ssm', 'ListDocuments'),
+                        Action('ssm', 'ListDocumentVersions'),
+                        Action('ssm', 'DescribeDocument'),
+                        Action('ssm', 'GetDocument'),
+                        Action('ssm', 'DescribeInstanceInformation'),
+                        Action('ssm', 'DescribeDocumentParameters'),
+                        Action('ssm', 'CancelCommand'),
+                        Action('ssm', 'ListCommands'),
+                        Action('ssm', 'ListCommandInvocations'),
+                        Action('ssm', 'DescribeAutomationExecutions'),
+                        Action('ssm', 'DescribeInstanceProperties'),
+                        Action('ssm', 'GetCommandInvocation'),
+                        Action('ec2', 'DescribeInstanceStatus'),
+                    ],
+                    Resource=[ '*' ]
+                )
+            )
+            policy_statements.append(
+                Statement(
+                    Sid='IAMPassRole',
+                    Effect=Allow,
+                    Action=[
+                        Action('iam', 'passrole')
+                    ],
+                    Resource=[ '*' ]
+                )
+            )
+            role_name = self.paco_ctx.get_ref(asg_config.paco_ref + '.instance_iam_role.name')
+            ecs_release_phase_project_policy_res = troposphere.iam.ManagedPolicy(
+                title='ECSReleasePhase',
+                PolicyDocument=PolicyDocument(
+                    Version="2012-10-17",
+                    Statement=policy_statements
+                ),
+                Roles=[role_name]
+            )
+            template.add_resource(ecs_release_phase_project_policy_res)
 
         asg_res = troposphere.autoscaling.AutoScalingGroup.from_dict(
             'ASG',

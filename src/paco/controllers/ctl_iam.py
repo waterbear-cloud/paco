@@ -728,6 +728,10 @@ class IAMController(Controller):
         role_ref = role_ref.replace('paco.ref ', '')
         return self.role_context[role_ref].role_profile_arn
 
+    def role_name(self, role_ref):
+        role_ref = role_ref.replace('paco.ref ', '')
+        return self.role_context[role_ref].role_name
+
     def validate(self):
         self.iam_user_stack_groups['master'].validate()
         for account_name in self.iam_user_stack_groups.keys():
