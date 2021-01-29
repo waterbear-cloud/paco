@@ -1,7 +1,7 @@
 Changelog for Paco
 ==================
 
-9.2.4 (unreleased)
+9.2.4 (2021-01-29)
 ------------------
 
 - Add `script_manager` to `ASG` for ECR Deployments.
