@@ -1,10 +1,10 @@
 Changelog for Paco
 ==================
 
-9.2.5 (unreleased)
+9.2.5 (2021-02-03)
 ------------------
 
-- Nothing changed yet.
+- Added logging for external CW Log Groups.
 
 
 9.2.4 (2021-01-29)
