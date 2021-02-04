@@ -220,18 +220,6 @@ def display_project_as_json(project):
         for sns in sns.topics.values():
             sns_dict = recursive_resource_export(sns)
             json_docs['sns'].append(sns_dict)
-    # legacy 'snstopics' which are exported as if they were 'sns' for simplicity
-    if 'snstopics' in project['resource']:
-        snstopics = project['resource']['snstopics']
-        regions = snstopics.regions
-        if snstopics.regions == ['ALL']:
-            regions = project.active_regions
-        for region in regions:
-            for snstopic in project['resource']['snstopics'][region].values():
-                sns_dict = recursive_resource_export(snstopic)
-                sns_dict['ref'] = f"resource.sns.topics.{snstopic.name}"
-                sns_dict['locations'] = [{'account': snstopics.account, 'regions': regions}]
-                json_docs['sns'].append(sns_dict)
     if 'iam' in project['resource']:
         for user in project['resource']['iam'].users.values():
             user_dict = recursive_resource_export(user)

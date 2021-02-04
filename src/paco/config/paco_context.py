@@ -399,7 +399,6 @@ This directory contains several sub-directories that Paco uses:
         self.get_controller('Route53')
         self.get_controller('CodeCommit')
         self.get_controller('S3')
-        self.get_controller('SNSTopics')
         self.get_controller('SNS')
 
         # Load the Service plug-ins
@@ -467,7 +466,7 @@ This directory contains several sub-directories that Paco uses:
         """Detect misconfigured alarm notification situations.
         This happens after both MonitorConfig and NetworkEnvironments have loaded.
         """
-        if 'snstopics' in self.project['resource']:
+        if 'sns' in self.project['resource']:
             for app in self.project.get_all_applications():
                 if app.is_enabled():
                     for alarm_info in app.list_alarm_info():
@@ -479,9 +478,11 @@ This directory contains several sub-directories that Paco uses:
                                 app.name
                             ))
                         # alarms with groups that do not exist
+                        alarm_parent = get_parent_by_interface(alarm, schemas.IResource)
+                        alarm_account = alarm_parent.get_account()
                         region = self.project.active_regions[0] # regions are all the same, just choose the first
                         for groupname in alarm.notification_groups:
-                            if groupname not in self.project['resource']['snstopics'][region]:
+                            if groupname not in self.project['resource']['sns'].computed[alarm_account.name][region]:
                                 raise InvalidPacoProjectFile(
                                     "Alarm {} for app {} notifies to group '{}' which does belong in Notification service group names.".format(
                                         alarm.name,

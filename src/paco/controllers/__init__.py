@@ -24,7 +24,6 @@ klass = {
     'project': ProjectController,
     'ec2': EC2Controller,
     'cloudwatch': CloudWatchController,
-    'snstopics': SNTopicsGroupsController,
     'sns': SNSController,
     'cloudtrail': CloudTrailController,
     'ssm': SSMController,

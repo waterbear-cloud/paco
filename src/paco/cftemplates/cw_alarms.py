@@ -21,13 +21,15 @@ class CFBaseAlarm(StackTemplate):
     def create_notification_params(self, alarm):
         "Create a Parameter for each SNS Topic an alarm should notify. Return a list of Refs to those Params."
         notification_paco_refs = []
+        alarm_parent = get_parent_by_interface(alarm, schemas.IResource)
+        alarm_account = alarm_parent.get_account()
         for group in alarm.notification_groups:
             if not self.notification_region:
                 region = alarm.region_name
             else:
                 region = self.notification_region
             notification_paco_refs.append(
-                self.paco_ctx.project['resource']['snstopics'][region][group].paco_ref + '.arn'
+                self.paco_ctx.project['resource']['sns'].computed[alarm_account.name][region][group].paco_ref + '.arn'
             )
 
         notification_cfn_refs = []
@@ -51,7 +53,9 @@ class CFBaseAlarm(StackTemplate):
     def set_alarm_actions_to_cfn_export(self, alarm, cfn_export_dict):
         "Sets the AlarmActions, OKActions and InsufficientDataActions for a Troposphere dict"
         alarm_action_list = []
-        notification_groups = self.paco_ctx.project['resource']['snstopics'][alarm.region_name]
+        alarm_parent = get_parent_by_interface(alarm, schemas.IResource)
+        alarm_account = alarm_parent.get_account()
+        notification_groups = self.paco_ctx.project['resource']['sns'].computed[alarm_account.name][alarm.region_name]
         for alarm_action in alarm.get_alarm_actions_paco_refs(notification_groups):
             # Create parameter
             param_name = 'AlarmAction{}'.format(utils.md5sum(str_data=alarm_action))
