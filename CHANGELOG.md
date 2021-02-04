@@ -1,6 +1,12 @@
 Changelog for Paco
 ==================
 
+9.2.6 (unreleased)
+------------------
+
+- Nothing changed yet.
+
+
 9.2.5 (2021-02-03)
 ------------------
 
