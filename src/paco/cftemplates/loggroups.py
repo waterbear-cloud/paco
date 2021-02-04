@@ -26,10 +26,17 @@ class LogGroups(StackTemplate):
         # CloudWatch Agent logging
         cw_logging = get_parent_by_interface(stack.resource, schemas.IProject)['cw_logging']
         default_retention = cw_logging.expire_events_after_days
-        for log_group in stack.resource.monitoring.log_sets.get_all_log_groups():
+        if schemas.IRDSAurora.providedBy(stack.resource):
+            monitoring = stack.resource.default_instance.monitoring
+        else:
+            monitoring = stack.resource.monitoring
+        for log_group in monitoring.log_sets.get_all_log_groups():
             cfn_export_dict = {}
             log_group_name = log_group.get_full_log_group_name()
-            prefixed_log_group_name = prefixed_name(stack.resource, log_group_name, self.paco_ctx.legacy_flag)
+            if log_group.external_resource == False:
+                prefixed_log_group_name = prefixed_name(stack.resource, log_group_name, self.paco_ctx.legacy_flag)
+            else:
+                prefixed_log_group_name = log_group_name
             loggroup_logical_id = self.create_cfn_logical_id('LogGroup' + log_group_name)
 
             # provide prefixed LogGroup name as a CFN Parameter
@@ -56,11 +63,13 @@ class LogGroups(StackTemplate):
             if retention != 'Never':
                 cfn_export_dict["RetentionInDays"] = retention
 
-            log_group_resource = troposphere.logs.LogGroup.from_dict(
-                loggroup_logical_id,
-                cfn_export_dict
-            )
-            template.add_resource(log_group_resource)
+            # Avoid creating loggroup if it already exists as an external resource
+            if log_group.external_resource == False:
+                log_group_resource = troposphere.logs.LogGroup.from_dict(
+                    loggroup_logical_id,
+                    cfn_export_dict
+                )
+                template.add_resource(log_group_resource)
 
             # Metric Filters
             for metric_filter in log_group.metric_filters.values():
@@ -80,7 +89,7 @@ class LogGroups(StackTemplate):
                         'MetricNamespace': namespace,
                         'MetricValue': transf.metric_value
                     }
-                    if type(transf.default_value) == type(float):
+                    if isinstance(transf.default_value, float):
                         mts_dict['DefaultValue'] = transf.default_value
                     mt_list.append(mts_dict)
                 mf_dict['MetricTransformations'] = mt_list
@@ -88,7 +97,8 @@ class LogGroups(StackTemplate):
                     self.create_cfn_logical_id('MetricFilter' + metric_filter.name),
                     mf_dict,
                 )
-                metric_filter_resource.DependsOn = log_group_resource
+                if log_group.external_resource == False:
+                    metric_filter_resource.DependsOn = log_group_resource
                 template.add_resource(metric_filter_resource)
 
         # SSM Agent logging

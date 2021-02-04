@@ -38,18 +38,22 @@ class Route53HostedZone(StackTemplate):
                 )
             self.template.add_resource(hosted_zone_res)
             hosted_zone_id_output_value = troposphere.Ref(hosted_zone_res)
-            nameservers_output_value = troposphere.Join(',', troposphere.GetAtt(hosted_zone_res, 'NameServers'))
+            # NameServers attribute is not supported for private hosted zones
+            if zone_config.private_hosted_zone == False:
+                nameservers_output_value = troposphere.Join(',', troposphere.GetAtt(hosted_zone_res, 'NameServers'))
 
         self.create_output(
             title='HostedZoneId',
             value=hosted_zone_id_output_value,
             ref=config_ref+'.id'
         )
-        self.create_output(
-            title='HostedZoneNameServers',
-            value=nameservers_output_value,
-            ref=config_ref+'.name_servers'
-        )
+        # NameServers attribute is not supported for private hosted zones (except external resources)
+        if zone_config.private_hosted_zone == False or (zone_config.external_resource != None and zone_config.external_resource.is_enabled()):
+            self.create_output(
+                title='HostedZoneNameServers',
+                value=nameservers_output_value,
+                ref=config_ref+'.name_servers'
+            )
 
         if len(zone_config.record_sets) > 0:
             record_set_list = []

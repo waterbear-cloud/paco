@@ -278,9 +278,14 @@ HINT: Ensure that the monitoring.log_sets for the resource is enabled and that t
 
 """.format(alarm.log_set_name, alarm.log_group_name, resource.name, resource.type, resource.paco_ref)
                         )
-                    alarm_export_dict['Namespace'] = "Paco/" + prefixed_name(
-                        resource, log_group.get_full_log_group_name(), self.paco_ctx.legacy_flag
-                    )
+
+                    if log_group.external_resource == False:
+                        prefixed_log_group_name = prefixed_name(
+                            resource, log_group.get_full_log_group_name(), self.paco_ctx.legacy_flag
+                        )
+                    else:
+                        prefixed_log_group_name = log_group.get_full_log_group_name()
+                    alarm_export_dict['Namespace'] = "Paco/" + prefixed_log_group_name
                 else:
                     # if not supplied default to the Namespace for the Resource type
                     alarm_export_dict['Namespace'] = vocabulary.cloudwatch[resource.type]['namespace']

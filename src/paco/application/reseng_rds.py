@@ -55,3 +55,13 @@ class RDSPostgresqlAuroraResourceEngine(ResourceEngine):
             paco.cftemplates.RDSAurora,
             stack_tags=self.stack_tags,
         )
+
+        #if self.resource.default_instance != None and self.resource.default_instance.monitoring != None:
+        self.stack_group.add_new_stack(
+            self.aws_region,
+            self.resource,
+            paco.cftemplates.LogGroups,
+            stack_tags=self.stack_tags,
+            support_resource_ref_ext='log_groups',
+        )
+

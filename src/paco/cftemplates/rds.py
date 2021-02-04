@@ -181,6 +181,15 @@ class RDSAurora(StackTemplate):
         if db_snapshot_id_enabled == True:
             db_cluster_dict['SnapshotIdentifier'] = rds_aurora.db_snapshot_identifier
 
+        # CloudWatch Export Logs
+        if len(rds_aurora.cloudwatch_logs_exports) > 0:
+            logs_export_list = []
+            if 'postgresql' in rds_aurora.cloudwatch_logs_exports:
+                logs_export_list.append('postgresql')
+            #if 'upgrade' in rds_aurora.cloudwatch_logs_exports:
+            #    logs_export_list.append('upgrade')
+            db_cluster_dict['EnableCloudwatchLogsExports'] = logs_export_list
+
         # KMS-CMK key encryption
         if rds_aurora.enable_kms_encryption == True and db_snapshot_id_enabled == False:
             key_policy = Policy(
@@ -300,6 +309,17 @@ class RDSAurora(StackTemplate):
         # DB Instance(s)
         for db_instance in rds_aurora.db_instances.values():
             logical_name = self.create_cfn_logical_id(db_instance.name)
+            if db_instance.external_resource == True:
+                # Setup event notifications
+                self.set_db_instance_event_notifications(logical_name, db_instance)
+                # External instance only needs to output its name
+                self.create_output(
+                    title=f'DBInstanceName{logical_name}',
+                    description=f'DB Instance Name for {logical_name}',
+                    value=db_instance.external_instance_name,
+                    ref=db_instance.paco_ref_parts + ".name",
+                )
+                continue
             db_instance_dict = {
                 'DBClusterIdentifier': troposphere.Ref(db_cluster_res),
                 'DBInstanceClass': db_instance.get_value_or_default('db_instance_type'),
@@ -354,18 +374,7 @@ class RDSAurora(StackTemplate):
             self.template.add_resource(db_instance_resource)
 
             # DB Event Notifications
-            event_notifications = db_instance.get_value_or_default('event_notifications')
-            if event_notifications != None:
-                for group in event_notifications.groups:
-                    notif_param = self.create_notification_param(group)
-                    event_subscription_resource = troposphere.rds.EventSubscription(
-                        title=self.create_cfn_logical_id(f"DBEventSubscription{logical_name}{group}"),
-                        template=self.template,
-                        EventCategories=event_notifications.event_categories,
-                        SourceIds=[troposphere.Ref(db_instance_resource)],
-                        SnsTopicArn=troposphere.Ref(notif_param),
-                        SourceType='db-instance',
-                    )
+            self.set_db_instance_event_notifications(logical_name, db_instance, db_instance_resource)
 
             # DB Instance Outputs
             self.create_output(
@@ -445,6 +454,25 @@ class RDSAurora(StackTemplate):
             )
             self.notification_groups[param_name] = notification_param
         return self.notification_groups[param_name]
+
+    def set_db_instance_event_notifications(self, logical_name, db_instance, db_instance_resource=None):
+        event_notifications = db_instance.get_value_or_default('event_notifications')
+        if event_notifications == None:
+            return
+        if db_instance.external_resource == True:
+            source_ids = [db_instance.external_instance_name]
+        else:
+            source_ids = [troposphere.Ref(db_instance_resource)]
+        for group in event_notifications.groups:
+            notif_param = self.create_notification_param(group)
+            event_subscription_resource = troposphere.rds.EventSubscription(
+                title=self.create_cfn_logical_id(f"DBEventSubscription{logical_name}{group}"),
+                template=self.template,
+                EventCategories=event_notifications.event_categories,
+                SourceIds=source_ids,
+                SnsTopicArn=troposphere.Ref(notif_param),
+                SourceType='db-instance',
+            )
 
 class RDS(StackTemplate):
     """

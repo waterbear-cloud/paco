@@ -188,8 +188,8 @@ ssm_agent = {
     },
     "ubuntu_20": {
         "path": "/debian_amd64",
-        "object": "amazon-ssm-agent.deb",
-        "install": "dpkg -i"
+        "object": "amazon-ssm-agent",
+        "install": "snap install --classic"
     },
     "ubuntu": {
         "path": "/debian_amd64",

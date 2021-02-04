@@ -1580,21 +1580,25 @@ function disable_launch_bundle() {{
         download_url = ''
         agent_install = ''
         agent_object = ''
+        download_command = 'wget -nv'
         if resource.instance_ami_type_family == 'redhat':
             installed_command = 'rpm -q amazon-ssm-agent'
         elif resource.instance_ami_type_family == 'debian':
             installed_command = 'dpkg --status amazon-ssm-agent'
-        if resource.instance_ami_type_generic != 'amazon' and resource.instance_ami_type not in ('ubuntu_16_snap', 'ubuntu_18', 'ubuntu_20'):
+        if resource.instance_ami_type_generic != 'amazon':
             agent_config = ec2lm_commands.ssm_agent[resource.instance_ami_type]
             agent_install = agent_config["install"]
             agent_object = agent_config["object"]
-            # use regional URL for faster download
-            if self.aws_region in ec2lm_commands.ssm_regions:
-                download_url = f'https://s3.{self.aws_region}.amazonaws.com/amazon-ssm-{self.aws_region}/latest'
+            if resource.instance_ami_type not in ('ubuntu_16_snap', 'ubuntu_18', 'ubuntu_20'):            # use regional URL for faster download
+                if self.aws_region in ec2lm_commands.ssm_regions:
+                    download_url = f'https://s3.{self.aws_region}.amazonaws.com/amazon-ssm-{self.aws_region}/latest'
+                else:
+                    download_url = f'https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest'
+                download_url += f'{agent_config["path"]}/{agent_config["object"]}'
             else:
-                download_url = f'https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest'
-            download_url += f'{agent_config["path"]}/{agent_config["object"]}'
-
+                installed_command = 'snap list amazon-ssm-agent'
+                download_command = ""
+                download_url = ""
 
         launch_script = f"""#!/bin/bash
 
@@ -1622,7 +1626,7 @@ function run_launch_bundle() {{
         ec2lm_install_wget
 
         echo "EC2LM: SSM: Downloading agent"
-        wget -nv {download_url}
+        {download_command} {download_url}
 
         # Install the agent
         echo "EC2LM: SSM: Installing agent: {agent_install} {agent_object}"
@@ -1934,6 +1938,10 @@ statement:
         """Creates a launch bundle to install and configure the CodeDeploy agent"""
         # Create the Launch Bundle
         codedeploy_lb = LaunchBundle(resource, self, bundle_name)
+        if resource.instance_ami_type_generic in ['amazon', 'centos']:
+            uninstall_command='yum erase codedeploy-agent -y'
+        else:
+            uninstall_command='dpkg --purge codedeploy-agent -y'
         launch_script = f"""#!/bin/bash
 
 function stop_agent() {{
@@ -1994,7 +2002,7 @@ function run_launch_bundle() {{
 
 function disable_launch_bundle() {{
     stop_agent
-    yum erase codedeploy-agent -y
+    {uninstall_command}
 }}
 """
         codedeploy_lb.set_launch_script(launch_script, resource.launch_options.codedeploy_agent)
