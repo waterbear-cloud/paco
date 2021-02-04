@@ -1,10 +1,12 @@
 Changelog for Paco
 ==================
 
-9.2.6 (unreleased)
+9.3.0 (2021-02-04)
 ------------------
 
-- Nothing changed yet.
+### Changed
+
+- Deprecated `resource.snstopics` has been removed. CloudWatch Alarms now alert to `resource.sns`.
 
 
 9.2.5 (2021-02-03)
