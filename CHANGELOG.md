@@ -1,11 +1,16 @@
 Changelog for Paco
 ==================
 
-9.3.1 (unreleased)
+9.3.1 (2021-02-05)
 ------------------
 
-- Nothing changed yet.
+### Added
 
+- New EC2LM convienence functions for running commands asynchronously: `ec2lm_async_run` and `ec2lm_async_run_wait`.
+
+### Changed
+
+ - ECS Release Phase commands run asynchronously.
 
 9.3.0 (2021-02-04)
 ------------------
