@@ -552,6 +552,76 @@ function ec2lm_install_package() {{
         if resource.secrets != None and len(resource.secrets) > 0:
             self.ec2lm_functions_script[ec2lm_bucket_name] += self.add_secrets_function_policy(resource)
 
+        # Async run commands for bash
+        self.ec2lm_functions_script[ec2lm_bucket_name] += """
+
+# ------------------------------------
+# Asynchronous Run Commands
+declare -a EC2LM_ASYNC_RUN_PID
+declare -a EC2LM_ASYNC_RUN_COMMAND
+declare -a EC2LM_ASYNC_RUN_LOG
+EC2LM_ASYNC_RUN_IDX=0
+
+function ec2lm_async_run() {
+    DESCRIPTION=$1
+    COMMAND=$2
+    if [ "${DESCRIPTION}" == "" ] ; then
+            DESCRIPTION="${COMMAND}"
+    fi
+    echo "async run: ${DESCRIPTION}"
+    EC2LM_ASYNC_RUN_LOG[$EC2LM_ASYNC_RUN_IDX]=$(mktemp)
+    #echo -n "Async Run: command = '${COMMAND}'"
+    eval $COMMAND >${EC2LM_ASYNC_RUN_LOG[$EC2LM_ASYNC_RUN_IDX]} 2>&1 &
+    EC2LM_ASYNC_RUN_PID[$EC2LM_ASYNC_RUN_IDX]=$!
+    EC2LM_ASYNC_RUN_COMMAND[$EC2LM_ASYNC_RUN_IDX]=$COMMAND
+    #echo ": pid = ${EC2LM_ASYNC_RUN_PID[$EC2LM_ASYNC_RUN_IDX]}"
+
+    EC2LM_ASYNC_RUN_IDX=$(($EC2LM_ASYNC_RUN_IDX+1))
+}
+
+function ec2lm_async_run_wait() {
+    echo "async wait: start"
+    while :
+    do
+        WAIT_DONE=true
+        for ((IDX=0;$IDX<$EC2LM_ASYNC_RUN_IDX;IDX++))
+        do
+            if [ ${EC2LM_ASYNC_RUN_PID[$IDX]} -eq 0 ] ; then
+                # PID changes to 0 when the command has finished
+                continue
+            fi
+            kill -0 ${EC2LM_ASYNC_RUN_PID[$IDX]} >/dev/null 2>&1
+            RET=$?
+            if [ $RET -ne 0 ] ; then
+                # Get exit code
+                wait ${EC2LM_ASYNC_RUN_PID[$IDX]}
+                COMMAND_RET=$?
+                if [ $COMMAND_RET -ne 0 ] ; then
+                    echo "async wait: error: exit code = ${RET}: ${EC2LM_ASYNC_RUN_COMMAND[$IDX]}"
+                    echo "---------------------------------------"
+                    cat ${EC2LM_ASYNC_RUN_LOG[$IDX]}
+                    echo "---------------------------------------"
+                else
+                    echo "async wait: success: ${EC2LM_ASYNC_RUN_COMMAND[$IDX]}"
+                fi
+                if [ $COMMAND_RET -ne 0 ] ; then
+                    exit 255
+                fi
+                EC2LM_ASYNC_RUN_PID[$IDX]=0
+                continue
+            fi
+            WAIT_DONE="false"
+        done
+        if [ "$WAIT_DONE" == "true" ] ; then
+            break
+        fi
+        sleep 1
+    done
+    echo "async wait: done"
+    return 0
+}
+
+"""
         # Add a base IAM Managed Policy to allow access to EC2 Tags
         iam_policy_name = '-'.join([resource.name, 'ec2lm'])
         policy_config_yaml = f"""
@@ -1748,7 +1818,7 @@ statement:
                     # Genreate script
                     release_phase_script = RELEASE_PHASE_SCRIPT
                     idx = 0
-                    release_phase_script += ". /opt/aim/EC2Manager/ec2lm_functions.bash\n\n"
+                    release_phase_script += f". {self.paco_base_path}/EC2Manager/ec2lm_functions.bash\n\n"
                     for command in ecr_deploy.release_phase.ecs:
                         release_phase_name = command.service.split(' ')[1]
                         release_phase_script += f"""

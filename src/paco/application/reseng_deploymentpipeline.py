@@ -46,20 +46,21 @@ ECR_DEPLOY_SCRIPT_CONFIG = """
 
 
 ECR_DEPLOY_SCRIPT_BODY = """
-
 function run_command()
 {
     DESCRIPTION=$1
     COMMAND=$2
-    OUTPUT=$(eval $COMMAND 2>&1)
-    EXIT_CODE=$?
     if [ "${DESCRIPTION}" == "" ] ; then
 	    DESCRIPTION="${COMMAND}"
     fi
+    echo -n "${DESCRIPTION}: "
+    OUTPUT=$(eval $COMMAND 2>&1)
+    EXIT_CODE=$?
+
     if [ ${EXIT_CODE} -eq 0 ] ; then
-	    echo "${DESCRIPTION}: success"
+	    echo "success"
     else
-        echo "ERROR: ${DESCRIPTION}: failed"
+        echo "ERROR: failed"
         echo "${COMMAND}"
         echo "${OUTPUT}"
         exit ${EXIT_CODE}
@@ -69,7 +70,7 @@ function run_command()
 
 echo "--------------------------------------------------------------------------"
 echo "Pulling from Source"
-
+ENABLE_RELEASE_PHASE=false
 REPO_LOGIN=[]
 for (( I=0; I<${#ECR_DEPLOY_LIST[@]}; I++ ))
 do
@@ -105,23 +106,53 @@ do
             DEST_REPO_AUTH_DONE="${DEST_REPO_AUTH_DONE} ${!DEST_REPO_DOMAIN}"
         fi
 
-        run_command "" "docker pull ${!SOURCE_REPO_URI}${!SOURCE_REPO_NAME[$I]}:${!SOURCE_DEPLOY_TAG}"
+        ec2lm_async_run "" "docker pull ${!SOURCE_REPO_URI}${!SOURCE_REPO_NAME[$I]}:${!SOURCE_DEPLOY_TAG}"
+    done
+
+    ec2lm_async_run_wait
+
+    for (( J=0; J<${!ECR_DEPLOY_LEN}; J++ ))
+    do
+
+        SOURCE_REPO_NAME=${ECR_DEPLOY_LIST[$I]}_SOURCE_REPO_NAME_$J
+        SOURCE_REPO_DOMAIN=${ECR_DEPLOY_LIST[$I]}_SOURCE_REPO_DOMAIN_$J
+        SOURCE_REPO_URI=${ECR_DEPLOY_LIST[$I]}_SOURCE_REPO_URI_$J
+        SOURCE_DEPLOY_TAG=${ECR_DEPLOY_LIST[$I]}_SOURCE_TAG_$J
+        if [ "${OVERRIDE_SOURCE_DEPLOY_TAG}" != "" ] ; then
+            SOURCE_DEPLOY_TAG="OVERRIDE_SOURCE_DEPLOY_TAG"
+        fi
+
+        DEST_REPO_NAME=${ECR_DEPLOY_LIST[$I]}_DEST_REPO_NAME_$J
+        DEST_REPO_DOMAIN=${ECR_DEPLOY_LIST[$I]}_DEST_REPO_DOMAIN_$J
+        DEST_DEPLOY_TAG=${ECR_DEPLOY_LIST[$I]}_DEST_TAG_$J
+        DEST_REPO_URI=${ECR_DEPLOY_LIST[$I]}_DEST_REPO_URI_$J
+
+        RELEASE_PHASE=${ECR_DEPLOY_LIST[$I]}_RELEASE_PHASE_$J
 
         if [ "${!RELEASE_PHASE}" == 'true' ] ; then
-            #run_command "docker tag ${!SOURCE_REPO_NAME}:${!SOURCE_DEPLOY_TAG} ${!DEST_REPO_NAME}:${DEPLOY_TAG}" "docker tag ${!SOURCE_REPO_URI}${!SOURCE_REPO_NAME}:${!SOURCE_DEPLOY_TAG} ${!DEST_REPO_URI}${!DEST_REPO_NAME}:${RELEASE_PHASE_TAG}"
+            ENABLE_RELEASE_PHASE=true
+            #run_command "docker tag ${!SOURCE_REPO_NAME}:${!SOURCE_DEPLOY_TAG} ${!DEST_REPO_NAME}:${DEPLOY_TAG}" "docker tag ${!SOURCE_REPO_URI}${!SOURCE_REPO_NAME}:${!SOURCE_DEPLOY_TAG} ${!DEST_REPO_URI}\
+${!DEST_REPO_NAME}:${RELEASE_PHASE_TAG}"
             run_command "" "docker tag ${!SOURCE_REPO_URI}${!SOURCE_REPO_NAME}:${!SOURCE_DEPLOY_TAG} ${!DEST_REPO_URI}${!DEST_REPO_NAME}:${RELEASE_PHASE_TAG}"
-            run_command "" "docker push ${!DEST_REPO_URI}${!DEST_REPO_NAME}:${RELEASE_PHASE_TAG}"
+            #run_command "" "docker push ${!DEST_REPO_URI}${!DEST_REPO_NAME}:${RELEASE_PHASE_TAG}"
+            ec2lm_async_run "" "docker push ${!DEST_REPO_URI}${!DEST_REPO_NAME}:${RELEASE_PHASE_TAG}"
         fi
     done
 
-    echo "--------------------------------------------------------------------------"
-    echo "Release Phase"
+    ec2lm_async_run_wait
 
-    /usr/local/bin/paco-ecs-release-phase-${ECR_DEPLOY_LIST[$I]} ${RELEASE_PHASE_TAG}
-    RET=$?
-    if [ $RET -ne 0 ] ; then
-        echo "ERROR: Release Phase failed. Aborting deployment."
-        exit $RET
+    echo "--------------------------------------------------------------------------"
+    if [ "${ENABLE_RELEASE_PHASE}" == 'true' ] ; then
+        echo "Release Phase: start"
+        /usr/local/bin/paco-ecs-release-phase-${ECR_DEPLOY_LIST[$I]} ${RELEASE_PHASE_TAG}
+        RET=$?
+        if [ $RET -ne 0 ] ; then
+            echo "ERROR: Release Phase failed. Aborting deployment."
+            exit $RET
+        fi
+        echo "Release Phase: done"
+    else
+        echo "Relase Phase: disabled"
     fi
 
     echo "--------------------------------------------------------------------------"
@@ -151,11 +182,10 @@ do
         DEST_DEPLOY_TAG=${ECR_DEPLOY_LIST[$I]}_DEST_TAG_$J
         DEST_REPO_URI=${ECR_DEPLOY_LIST[$I]}_DEST_REPO_URI_$J
 
-        #run_command "docker tag ${!SOURCE_REPO_NAME}:${!SOURCE_DEPLOY_TAG} ${!DEST_REPO_NAME}:${!DEST_DEPLOY_TAG}" "docker tag ${!SOURCE_REPO_URI}${!SOURCE_REPO_NAME}:${!SOURCE_DEPLOY_TAG} ${!DEST_REPO_URI}${!DEST_REPO_NAME}:${!DEST_DEPLOY_TAG}"
         run_command "" "docker tag ${!SOURCE_REPO_URI}${!SOURCE_REPO_NAME}:${!SOURCE_DEPLOY_TAG} ${!DEST_REPO_URI}${!DEST_REPO_NAME}:${!DEST_DEPLOY_TAG}"
-        #run_command "deploy: docker push ${!DEST_REPO_NAME}:${!DEST_DEPLOY_TAG}" "docker push ${!DEST_REPO_URI}${!DEST_REPO_NAME}:${!DEST_DEPLOY_TAG}"
-        run_command "" "docker push ${!DEST_REPO_URI}${!DEST_REPO_NAME}:${!DEST_DEPLOY_TAG}"
+        ec2lm_async_run "" "docker push ${!DEST_REPO_URI}${!DEST_REPO_NAME}:${!DEST_DEPLOY_TAG}"
     done
+    ec2lm_async_run_wait
 done
 """
 

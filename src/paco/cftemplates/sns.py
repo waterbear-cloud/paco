@@ -140,7 +140,7 @@ SNS Topics and Subscriptions
                             Effect = Allow,
                             Principal = Principal("AWS", "*"),
                             Action = [ awacs.sns.Publish ],
-                            Resource = topics_ref_cross_list,
+                            Resource =  [troposphere.Ref(topic_resource) ],
                             Condition = Condition(
                                 StringEquals({
                                     'AWS:SourceOwner': account_id_list,
