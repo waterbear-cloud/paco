@@ -136,7 +136,9 @@ class S3Context():
         return 'arn:aws:s3:::' + self.bucket_context['config'].get_bucket_name()
 
     def get_bucket_url(self):
-        return self.bucket_context['config'].get_bucket_name() + '.s3.amazonaws.com'
+        bucket_name = self.bucket_context['config'].get_bucket_name()
+        bucket_region = self.bucket_context['stack'].aws_region
+        return f'{bucket_name}.s3.{bucket_region}.amazonaws.com'
 
     def get_region(self):
         return self.region

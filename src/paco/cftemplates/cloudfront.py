@@ -106,22 +106,27 @@ class CloudFront(StackTemplate):
 
         # DefaultcacheBehavior
         # Forward Values
-        forwarded_values_config = cloudfront_config.default_cache_behavior.forwarded_values
-        forwarded_values_dict = {
-            'Cookies': {
-                'Forward': 'none',
-            },
-            'QueryString': str(forwarded_values_config.query_string)
-        }
-        # Cookies
-        if cloudfront_config.s3_origin_exists() == False:
-            forwarded_values_dict['Cookies']['Forward'] = forwarded_values_config.cookies.forward
-        if len(forwarded_values_config.cookies.whitelisted_names) > 0:
-            forwarded_values_dict['Cookies']['WhitelistedNames'] = forwarded_values_config.cookies.whitelisted_names
-        # Headers
-        if cloudfront_config.s3_origin_exists() == False:
-            forwarded_values_dict['Headers'] = cloudfront_config.default_cache_behavior.forwarded_values.headers
-        distribution_config_dict['DefaultCacheBehavior']['ForwardedValues'] = forwarded_values_dict
+        if cloudfront_config.default_cache_behavior.origin_request_policy_id != None:
+            distribution_config_dict['DefaultCacheBehavior']['OriginRequestPolicyId'] = cloudfront_config.default_cache_behavior.origin_request_policy_id
+        if cloudfront_config.default_cache_behavior.cache_policy_id != None:
+            distribution_config_dict['DefaultCacheBehavior']['CachePolicyId'] = cloudfront_config.default_cache_behavior.cache_policy_id
+        else:
+            forwarded_values_config = cloudfront_config.default_cache_behavior.forwarded_values
+            forwarded_values_dict = {
+                'Cookies': {
+                    'Forward': 'none',
+                },
+                'QueryString': str(forwarded_values_config.query_string)
+            }
+            # Cookies
+            if cloudfront_config.s3_origin_exists() == False:
+                forwarded_values_dict['Cookies']['Forward'] = forwarded_values_config.cookies.forward
+            if len(forwarded_values_config.cookies.whitelisted_names) > 0:
+                forwarded_values_dict['Cookies']['WhitelistedNames'] = forwarded_values_config.cookies.whitelisted_names
+            # Headers
+            if cloudfront_config.s3_origin_exists() == False:
+                forwarded_values_dict['Headers'] = cloudfront_config.default_cache_behavior.forwarded_values.headers
+            distribution_config_dict['DefaultCacheBehavior']['ForwardedValues'] = forwarded_values_dict
 
         # Cache Behaviors
         if len(cloudfront_config.cache_behaviors) > 0:
@@ -158,22 +163,28 @@ class CloudFront(StackTemplate):
                         })
                     cache_behavior_dict['LambdaFunctionAssociations'] = lambda_associations
 
-                cb_forwarded_values_config = cache_behavior.forwarded_values
-                cb_forwarded_values_dict = {
-                    'QueryString': str(cb_forwarded_values_config.query_string)
-                }
+                # CachePolicyId or ForwardedValues, not both
+                if cache_behavior.origin_request_policy_id != None:
+                    cache_behavior_dict['OriginRequestPolicyId'] = cache_behavior.origin_request_policy_id
+                if cache_behavior.cache_policy_id != None:
+                    cache_behavior_dict['CachePolicyId'] = cache_behavior.cache_policy_id
+                else:
+                    cb_forwarded_values_config = cache_behavior.forwarded_values
+                    cb_forwarded_values_dict = {
+                        'QueryString': str(cb_forwarded_values_config.query_string)
+                    }
 
-                # Cookies
-                if cb_forwarded_values_config.cookies != None:
-                    cb_forwarded_values_dict['Cookies'] = {'Forward': 'none'}
-                    cb_forwarded_values_dict['Cookies']['Forward'] = cb_forwarded_values_config.cookies.forward
-                    if len(cb_forwarded_values_config.cookies.whitelisted_names) > 0:
-                        cb_forwarded_values_dict['Cookies']['WhitelistedNames'] = cb_forwarded_values_config.cookies.whitelisted_names
+                    # Cookies
+                    if cb_forwarded_values_config.cookies != None:
+                        cb_forwarded_values_dict['Cookies'] = {'Forward': 'none'}
+                        cb_forwarded_values_dict['Cookies']['Forward'] = cb_forwarded_values_config.cookies.forward
+                        if len(cb_forwarded_values_config.cookies.whitelisted_names) > 0:
+                            cb_forwarded_values_dict['Cookies']['WhitelistedNames'] = cb_forwarded_values_config.cookies.whitelisted_names
 
-                # Headers
-                if cloudfront_config.s3_origin_exists() == False:
-                    cb_forwarded_values_dict['Headers'] = cache_behavior.forwarded_values.headers
-                cache_behavior_dict['ForwardedValues'] = cb_forwarded_values_dict
+                    # Headers
+                    if cloudfront_config.s3_origin_exists() == False:
+                        cb_forwarded_values_dict['Headers'] = cache_behavior.forwarded_values.headers
+                    cache_behavior_dict['ForwardedValues'] = cb_forwarded_values_dict
                 cache_behaviors_list.append(cache_behavior_dict)
 
             distribution_config_dict['CacheBehaviors'] = cache_behaviors_list
@@ -327,7 +338,7 @@ class CloudFront(StackTemplate):
                         dns=alias,
                         record_set_type='Alias',
                         alias_dns_name = 'paco.ref ' + self.stack.stack_ref + '.domain_name',
-                        alias_hosted_zone_id = 'Z2FDTNDATAQYW2',
+                        alias_hosted_zone_id = 'Z2FDTNDATAQYW2', # This is always the hosted zone ID when you create an alias record that routes traffic to a CloudFront distribution
                         stack_group=self.stack.stack_group,
                         async_stack_provision=True,
                         config_ref=config_ref+'.record_set'
