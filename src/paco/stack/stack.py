@@ -896,6 +896,8 @@ your cache may be out of sync. Try running again the with the --nocache option.
             self.log_action_header()
         if action == "Init":
             col_2_size=19
+        if action == "Validate":
+            col_2_size=12
         else:
             col_2_size=9
         log_message = self.paco_ctx.log_action_col(
@@ -1534,21 +1536,22 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
         "Validate Stack in AWS"
         applied_file_path, new_file_path = self.init_template_store_paths()
         short_yaml_path = str(new_file_path).replace(str(self.paco_ctx.home), '')
+        col_2_size=12
         if short_yaml_path[0] == '/':
             short_yaml_path = short_yaml_path[1:]
         if self.enabled == False:
             if self.paco_ctx.quiet_changes_only == False:
-                self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name() + '.' + self.aws_region, "Disabled", short_yaml_path)
+                self.paco_ctx.log_action_col("Validate",  "Disabled", self.account_ctx.get_name() + '.' + self.aws_region, short_yaml_path, col_2_size=col_2_size)
             return
         elif self.change_protected:
             if self.paco_ctx.quiet_changes_only == False:
-                self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name() + '.' + self.aws_region, "Protected", short_yaml_path)
+                self.paco_ctx.log_action_col("Validate", "Protected", self.account_ctx.get_name() + '.' + self.aws_region, short_yaml_path, col_2_size=col_2_size)
             return
         self.generate_template()
         new_str = ''
         if applied_file_path.exists() == False:
             new_str = ':new'
-        self.paco_ctx.log_action_col("Validate", self.account_ctx.get_name() + '.' + self.aws_region, "Template"+new_str, short_yaml_path)
+        self.paco_ctx.log_action_col("Validate", "Template"+new_str, self.account_ctx.get_name() + '.' + self.aws_region, short_yaml_path, col_2_size=col_2_size)
         try:
             template_url = self.sync_template_to_s3bucket()
             self.cfn_client.validate_template(TemplateURL=template_url)
