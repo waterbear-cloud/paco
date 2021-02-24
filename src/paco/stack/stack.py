@@ -105,8 +105,6 @@ class StackOutputParam():
         for entry in self.entry_list:
             for output_key in entry['output_keys']:
                 output_value = entry['stack'].get_outputs_value(output_key)
-                if comma == None or output_value == None:
-                    breakpoint()
                 param_value += comma + output_value
                 comma = ','
 

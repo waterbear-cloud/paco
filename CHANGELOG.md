@@ -1,10 +1,19 @@
 Changelog for Paco
 ==================
 
-9.3.2 (unreleased)
+9.3.3 (unreleased)
 ------------------
 
 - Nothing changed yet.
+
+
+9.3.2 (2021-02-24)
+------------------
+
+### Added
+
+- CloudFront supports `OriginRequestPolicyId` and `CachePolicyId` which can be set in the CloudFront resource
+  with new `cache_policy_id` and `origin_request_policy_id` fields for the CloudFront `cache_behaviors` field.
 
 
 9.3.1 (2021-02-05)
@@ -17,6 +26,7 @@ Changelog for Paco
 ### Changed
 
  - ECS Release Phase commands run asynchronously.
+
 
 9.3.0 (2021-02-04)
 ------------------
