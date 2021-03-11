@@ -9,7 +9,8 @@ class CloudFrontResourceEngine(ResourceEngine):
         for factory_name, factory_config in self.resource.factory.items():
             support_resource_ref_ext = 'factory.' + factory_name
             self.resource.domain_aliases = factory_config.domain_aliases
-            self.resource.viewer_certificate.certificate = factory_config.viewer_certificate.certificate
+            if factory_config.viewer_certificate != None:
+                self.resource.viewer_certificate.certificate = factory_config.viewer_certificate.certificate
 
             # set resolve_ref_obj for look-ups
             self.resource.viewer_certificate.resolve_ref_obj = self.app_engine

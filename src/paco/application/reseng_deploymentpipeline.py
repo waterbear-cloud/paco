@@ -264,13 +264,35 @@ function run_task() {
     local RELEASE_PHASE_NAME=$2
 
     echo "${ECHO_PREFIX}: run_task: ${RELEASE_PHASE_NAME}"
+    echo "aws ecs run-task --cluster ${CLUSTER_ID} --task-definition ${REGISTERED_TASK_DEFINITION_ARN} --tags \"key=PACO-RELEASE-PHASE,value=${RELEASE_PHASE_NAME}\" --query 'tasks[0].[taskArn,containerInstanceArn]' --output text"
     RESPONSE=$(aws ecs run-task --cluster ${CLUSTER_ID} --task-definition ${REGISTERED_TASK_DEFINITION_ARN} --tags "key=PACO-RELEASE-PHASE,value=${RELEASE_PHASE_NAME}" --query 'tasks[0].[taskArn,containerInstanceArn]' --output text)
+    echo "RESPONSE: ${RESPONSE}"
     TASK_ARN=$(echo $RESPONSE | awk '{print $1}')
     CONTAINER_INSTANCE_ARN=$(echo $RESPONSE | awk '{print $2}')
     TASK_ID=$(echo $TASK_ARN |awk -F '/' '{print $3}')
+    while :
+    do
+        if [ "${CONTAINER_INSTANCE_ARN}" != "" ]; then
+            break
+        fi
+        RESPONSE=$(aws ecs describe-tasks --cluster ${CLUSTER_ID} --tasks ${TASK_ID} --query 'tasks[0].[taskArn,containerInstanceArn]' --output text)
+        TASK_ARN=$(echo $RESPONSE | awk '{print $1}')
+        CONTAINER_INSTANCE_ARN=$(echo $RESPONSE | awk '{print $2}')
+    done
+
     ECS_INSTANCE_ID="$(aws ecs describe-container-instances --cluster ${CLUSTER_ID} --container-instances ${CONTAINER_INSTANCE_ARN} --query 'containerInstances[0].ec2InstanceId' --output text)"
     echo "${ECHO_PREFIX}: run-task: pending: ${TASK_ARN}"
+    set +e
     aws ecs wait tasks-running --cluster ${CLUSTER_ID} --task ${TASK_ARN}
+    RET=$?
+    if [ $RET -ne 0 ] ; then
+        LAST_STATUS=$(aws ecs describe-tasks --cluster ${CLUSTER_ID} --tasks ${TASK_ID} --query 'tasks[0].[lastStatus]' --output text)
+        if [ "$LAST_STATUS" == "STOPPED" ] ; then
+            aws ecs describe-tasks --cluster ${CLUSTER_ID} --tasks ${TASK_ID} --query 'tasks[0].[stoppedReason]' --output text
+        fi
+        exit $RET
+    fi
+    set -e
     echo "${ECHO_PREFIX}: run-task: running: ${TASK_ARN}"
 }
 
@@ -468,7 +490,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         self.codecommit_role_name = 'codecommit_role'
         self.github_role_name = 'github_role'
         self.source_stage = None
-        self.codebuild_ecs_release_phase_cache_id = ""
+        self.codebuild_ecs_release_phase_cache_id = RELEASE_PHASE_SCRIPT
 
     def init_stage(self, stage_config):
         "Initialize an Action in a Stage: for source/build/deploy-style"
@@ -1031,7 +1053,6 @@ run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PH
         build_folder = os.path.join(self.paco_ctx.build_path, 'ReleasePhase', unqiue_folder_name)
         file_path = os.path.join(build_folder, release_phase_script_name)
         utils.write_to_file(build_folder, release_phase_script_name, release_phase_script)
-        self.codebuild_ecs_release_phase_cache_id = utils.md5sum(str_data=release_phase_script)
 
         s3_ctl = self.paco_ctx.get_controller('S3')
         pipeline_config = get_parent_by_interface(config, schemas.IDeploymentPipeline)
