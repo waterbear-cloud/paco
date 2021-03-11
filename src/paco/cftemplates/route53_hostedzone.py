@@ -58,12 +58,26 @@ class Route53HostedZone(StackTemplate):
         if len(zone_config.record_sets) > 0:
             record_set_list = []
             for record_set_config in zone_config.record_sets:
-                record_set_res = troposphere.route53.RecordSet(
-                    Name=record_set_config.record_name,
-                    Type=record_set_config.type,
-                    TTL=record_set_config.ttl,
-                    ResourceRecords=record_set_config.resource_records
-                )
+                record_set_dict = {
+                    'Name': record_set_config.record_name,
+                }
+                if record_set_config.type == 'Alias':
+                    record_set_dict['Type'] = 'A'
+                    if record_set_config.resource_records[0].find('cloudfront.net') != -1:
+                        hosted_zone_id = 'Z2FDTNDATAQYW2'
+                    elif record_set_config.resource_records[0].find('elb.amazonaws.com') != -1:
+                        elb_region = record_set_config.resource_records[0].split('.')[1]
+                        hosted_zone_id = self.lb_hosted_zone_id('alb', elb_region)
+                    record_set_dict['AliasTarget'] = troposphere.route53.AliasTarget(
+                            HostedZoneId=hosted_zone_id,
+                            DNSName=record_set_config.resource_records[0]
+                        )
+                else:
+                    record_set_dict['Type'] = record_set_config.type
+                    record_set_dict['ResourceRecords'] = record_set_config.resource_records
+                    record_set_dict['TTL'] = record_set_config.ttl
+
+                record_set_res = troposphere.route53.RecordSet(**record_set_dict)
                 record_set_list.append(record_set_res)
 
             group_res = troposphere.route53.RecordSetGroup(
