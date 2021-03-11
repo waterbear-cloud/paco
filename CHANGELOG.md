@@ -1,10 +1,20 @@
 Changelog for Paco
 ==================
 
-9.3.3 (unreleased)
+9.3.3 (2021-03-11)
 ------------------
 
-- Nothing changed yet.
+### Added
+
+- Route 53 has A Alias support.
+
+### Fixed
+
+- ECS Capacity Provider provisioning to ensure the cluster attaches to the correct providers.
+
+- CloudFront viewer_certificate handles correctly when the factory is None.
+
+- EC2 Launch Bundles: fix a race condition where the instance tries to use it's IAM Role before it's attached.
 
 
 9.3.2 (2021-02-24)
