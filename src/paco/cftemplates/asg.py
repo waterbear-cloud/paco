@@ -317,6 +317,10 @@ class ASG(StackTemplate):
                 True
             )
             asg_dict['Tags'].append(asg_tag)
+            # ECS Cluster Capacity Manager requries NewInstancesProtectedFromScaleIn to be eneabled if it is going to manage instance protection
+            if asg_config.ecs.capacity_provider != None and asg_config.ecs.capacity_provider.is_enabled():
+                if asg_config.ecs.capacity_provider.managed_instance_protection == True:
+                    asg_dict['NewInstancesProtectedFromScaleIn'] = True
 
         # ECS Release Phase Configuration
         policy_statements = []
@@ -372,7 +376,7 @@ class ASG(StackTemplate):
                             Resource=push_repos
                         )
                     )
-
+                    iam_cluster_cache = []
                     for command in ecr_deploy.release_phase.ecs:
                         service_obj = get_model_obj_from_ref(command.service, self.paco_ctx.project)
                         ecs_services_obj = get_parent_by_interface(service_obj, schemas.IECSServices)
@@ -407,42 +411,45 @@ class ASG(StackTemplate):
                         asg_dict['Tags'].append(ecs_cluster_asg_tag)
                         asg_dict['Tags'].append(ecs_service_asg_tag)
 
-                        policy_statements.append(
-                            Statement(
-                                Sid=f'ECSReleasePhaseSSMSendCommand{idx}',
-                                Effect=Allow,
-                                Action=[
-                                    Action('ssm', 'SendCommand'),
-                                ],
-                                Resource=[ 'arn:aws:ec2:*:*:instance/*' ],
-                                Condition=Condition(
-                                    StringLike({
-                                        'ssm:resourceTag/Paco-ECSCluster-Name': troposphere.Ref(ecs_release_phase_cluster_name_param)
-                                    })
-                                )
-                            )
-                        )
 
-                        policy_statements.append(
-                            Statement(
-                                Sid=f'ECSRelasePhaseClusterAccess{idx}',
-                                Effect=Allow,
-                                Action=[
-                                    Action('ecs', 'DescribeServices'),
-                                    Action('ecs', 'RunTask'),
-                                    Action('ecs', 'StopTask'),
-                                    Action('ecs', 'DescribeContainerInstances'),
-                                    Action('ecs', 'ListTasks'),
-                                    Action('ecs', 'DescribeTasks'),
-                                ],
-                                Resource=[ '*' ],
-                                Condition=Condition(
-                                    StringEquals({
-                                        'ecs:cluster': troposphere.Ref(ecs_release_phase_cluster_arn_param)
-                                    })
+                        if ecs_services_obj.cluster not in iam_cluster_cache:
+                            policy_statements.append(
+                                Statement(
+                                    Sid=f'ECSReleasePhaseSSMSendCommand{idx}',
+                                    Effect=Allow,
+                                    Action=[
+                                        Action('ssm', 'SendCommand'),
+                                    ],
+                                    Resource=[ 'arn:aws:ec2:*:*:instance/*' ],
+                                    Condition=Condition(
+                                        StringLike({
+                                            'ssm:resourceTag/Paco-ECSCluster-Name': troposphere.Ref(ecs_release_phase_cluster_name_param)
+                                        })
+                                    )
                                 )
                             )
-                        )
+
+                            policy_statements.append(
+                                Statement(
+                                    Sid=f'ECSRelasePhaseClusterAccess{idx}',
+                                    Effect=Allow,
+                                    Action=[
+                                        Action('ecs', 'DescribeServices'),
+                                        Action('ecs', 'RunTask'),
+                                        Action('ecs', 'StopTask'),
+                                        Action('ecs', 'DescribeContainerInstances'),
+                                        Action('ecs', 'ListTasks'),
+                                        Action('ecs', 'DescribeTasks'),
+                                    ],
+                                    Resource=[ '*' ],
+                                    Condition=Condition(
+                                        StringEquals({
+                                            'ecs:cluster': troposphere.Ref(ecs_release_phase_cluster_arn_param)
+                                        })
+                                    )
+                                )
+                            )
+                            iam_cluster_cache.append(ecs_services_obj.cluster)
 
                         idx += 1
 

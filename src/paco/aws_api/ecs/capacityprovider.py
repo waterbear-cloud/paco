@@ -31,25 +31,36 @@ class ECSCapacityProviderClient():
         "Provision ECS Capacity Provider resource"
         # get aws info
         response = self.ecs_client.describe_capacity_providers(
-            capacityProviders=[self.capacity_provider.aws_name],
+            #capacityProviders=[self.capacity_provider.aws_name],
         )
-        cap_info = response['capacityProviders']
+        provider_exists = False
+        for cap_info in response['capacityProviders']:
+            # Filter out providers that do not belong to the associated ASG
+            if 'autoScalingGroupProvider' in cap_info and 'autoScalingGroupArn' in cap_info['autoScalingGroupProvider']:
+                if cap_info['autoScalingGroupProvider']['autoScalingGroupArn'] != self.asg_arn:
+                    continue
+            # Keep built-in capacity providers
+            if cap_info['name'] in ['FARGATE', 'FARGATE_SPOT']:
+                continue
+            # Delete if the capacity provider does not exist in Paco config
+            if cap_info['name'] != self.capacity_provider.aws_name:
+                self.delete(cp_name_to_delete=cap_info['name'])
+                continue
+            else:
+                # delete if exists but is disabled
+                if self.capacity_provider.is_enabled() == False:
+                    self.delete()
+                    continue
+                elif cap_info['status'] == 'INACTIVE':
+                    self.create()
+                elif self.is_changed(cap_info):
+                    # update if it's cache is different
+                    self.update(cap_info)
+                provider_exists = True
 
-        # delete if exists but is disabled
-        if not self.capacity_provider.is_enabled():
-            if len(cap_info) > 0:
-                return self.delete()
-            return
-
-        # create if does not yet exist
-        if len(cap_info) == 0:
+        # Create if the provider does not exist
+        if self.capacity_provider.is_enabled() == True and provider_exists == False:
             return self.create()
-        elif cap_info[0]['status'] == 'INACTIVE':
-            return self.create()
-
-        # update if it's cache is different
-        if self.is_changed(cap_info[0]):
-            self.update(cap_info[0])
 
     def is_changed(self, capacity_provider_info):
         local_md5 = md5sum(str_data=f"{self.asg.paco_ref}-{self.capacity_provider.target_capacity}-{self.capacity_provider.minimum_scaling_step_size}-{self.capacity_provider.maximum_scaling_step_size}")
@@ -73,8 +84,17 @@ class ECSCapacityProviderClient():
         for cp in response['capacityProviders']:
             # check if capacity provider is already associated
             # ToDo: a better way to check this?
-            if cp['status'] == 'ACTIVE':
-                capacity_providers.append(cp['name'])
+            if cp['status'] != 'ACTIVE':
+                continue
+            # Only include providers assocated with the right ASG
+            if 'autoScalingGroupProvider' not in cp:
+                continue
+            if 'autoScalingGroupArn' not in cp['autoScalingGroupProvider']:
+                continue
+            if cp['autoScalingGroupProvider']['autoScalingGroupArn'] != self.asg_arn:
+                continue
+
+            capacity_providers.append(cp['name'])
         return capacity_providers
 
     def create(self):
@@ -105,12 +125,17 @@ class ECSCapacityProviderClient():
             defaultCapacityProviderStrategy=[],
         )
 
-    def delete(self):
+    def delete(self, cp_name_to_delete=None):
         "Delete ECS Capacity Provider resource"
         # before you can delete, you must disassociate the CP from the ASG
         # to do that you need to list ALL other CPs to remain associated
+        if cp_name_to_delete == None:
+            cp_name_to_delete = self.capacity_provider.aws_name
         existing_cps = self.get_existing_capacity_providers()
-        new_cps = [cp_name for cp_name in existing_cps if cp_name != self.capacity_provider.aws_name]
+        new_cps = [cp_name for cp_name in existing_cps if cp_name != cp_name_to_delete]
+        # default_provider = []
+        # if len(new_cps) == 0:
+        #     default_provider=[{'capacityProvider': 'FARGATE', 'weight': 1, 'base': 1}
         cluster_name = self.get_cluster_name()
         try:
             response = self.ecs_client.put_cluster_capacity_providers(
@@ -122,7 +147,7 @@ class ECSCapacityProviderClient():
             if error.response['Error']['Code'] == 'ResourceInUseException':
                 # capacity provider is in-use, do not attempt to delete
                 return
-        response = self.ecs_client.delete_capacity_provider(capacityProvider=self.capacity_provider.aws_name)
+        response = self.ecs_client.delete_capacity_provider(capacityProvider=cp_name_to_delete)
 
     def update(self, capacity_info):
         "Update an ECS Capacity Provider resource"
