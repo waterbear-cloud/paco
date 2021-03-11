@@ -401,8 +401,10 @@ function ec2lm_launch_bundles() {{
     CACHE_ID=$1
 
     export EC2LM_IGNORE_CACHE=false
+    export EC2LM_ON_LAUNCH=false
     if [ "$CACHE_ID" == "on_launch" ] ; then
         export EC2LM_IGNORE_CACHE=true
+        export EC2LM_ON_LAUNCH=true
     fi
 
     # Compare new EC2LM contents cache id with existing
@@ -423,7 +425,7 @@ function ec2lm_launch_bundles() {{
     exec 100>$EC2LM_LOCK_FILE
     echo "EC2LM: LaunchBundles: Obtaining lock."
     flock -n 100
-    if [ $? -ne 0 ]  ; then
+    if [ $? -ne 0 ] ; then
         echo “[ERROR] EC2LM LaunchBundles: Unable to obtain EC2LM lock.”
         return 1
     fi
@@ -704,6 +706,18 @@ function ec2lm_pip() {{
 EC2LM_FOLDER='{self.paco_base_path}/EC2Manager/'
 EC2LM_FUNCTIONS=ec2lm_functions.bash
 mkdir -p $EC2LM_FOLDER/
+set +e
+while :
+do
+    aws sts get-caller-identity
+    if [ $? -ne 0 ] ; then
+        echo "EC2LM: ERROR: Unable to get AWS credentials: Missing IAM role or race condition?"
+        sleep 1
+        continue
+    fi
+    break
+done
+set -e
 aws s3 sync s3://{ec2lm_bucket_name}/ --region={resource.region_name} $EC2LM_FOLDER
 
 . $EC2LM_FOLDER/$EC2LM_FUNCTIONS
@@ -1566,7 +1580,15 @@ function disable_launch_bundle() {{
         "ECS Launch Bundle"
         ecs_lb = LaunchBundle(resource, self, bundle_name)
         ecs = resource.ecs
-        launch_script = ""
+        launch_script = f"""#!/bin/bash
+
+. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
+
+function disable_launch_bundle() {{
+    rm -f /etc/ecs/ecs.config
+}}
+"""
+
 
         # is the ECS bundle enabled?
         ecs_enabled = False
@@ -1614,25 +1636,28 @@ statement:
                 extra_ref_names=['ec2lm','ecs'],
             )
 
-            launch_script = f"""#!/bin/bash
-echo "EC2LM: ECS: Begin"
-. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
-
+            launch_script += f"""
 function run_launch_bundle() {{
+    echo "EC2LM: ECS: Begin"
     mkdir -p /etc/ecs/
     CLUSTER_NAME=$(ec2lm_instance_tag_value 'Paco-ECSCluster-Name')
     echo ECS_CLUSTER=$CLUSTER_NAME > /etc/ecs/ecs.config
     echo ECS_LOGLEVEL={ecs.log_level} >> /etc/ecs/ecs.config
 
+    # Upgrade the agent
+    if [ "$EC2LM_ON_LAUNCH" == "true" ] ; then
+        echo "EC2LM: ECS: Upgrade ECS agent if a newer version exists"
+        yum update -y ecs-init
+        systemctl restart docker
+    fi
+
     # restart the ecs service to reload the new config
     # do not do this on initial launch or ecs just hangs
-    if [ "$EC2LM_IGNORE_CACHE" != "true" ] ; then
+    if [ "$EC2LM_ON_LAUNCH" == "false" ] ; then
+        echo "EC2LM: ECS: Restarting ECS agent"
         systemctl restart ecs.service
     fi
-}}
-
-function disable_launch_bundle() {{
-    rm -f /etc/ecs/ecs.config
+    echo "EC2LM: ECS: End"
 }}
 """
         ecs_lb.set_launch_script(launch_script, ecs_enabled)
