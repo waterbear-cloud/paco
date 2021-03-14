@@ -2,6 +2,7 @@
 CloudFormation template for CloudWatch Log Groups
 """
 
+from botocore.exceptions import ClientError
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.models import references, schemas
 from paco.models.locations import get_parent_by_interface
@@ -125,3 +126,38 @@ class LogGroups(StackTemplate):
                     cfn_export_dict
                 )
                 template.add_resource(log_group_resource)
+
+        # Sneak in setting the template so that we can add a stack hook
+        # from a template
+        stack.template = self
+        stack.hooks.add(
+            name='DeleteLogGroups.' + self.resource.name,
+            stack_action=['delete'],
+            stack_timing='post',
+            hook_method=self.stack_hook_delete_log_groups,
+            cache_method=None,
+            hook_arg=monitoring
+        )
+
+    #def stack_hook_delete_log_groups_cache(self, hook, config):
+    #    "Cache method for LogGroups"
+    #    cp = asg.ecs.capacity_provider
+    #    return md5sum(str_data=f"{cp.managed_instance_protection}-{asg.paco_ref}-{cp.is_enabled()}-{cp.target_capacity}-{cp.minimum_scaling_step_size}-{cp.maximum_scaling_step_size}")
+
+    def stack_hook_delete_log_groups(self, hook, monitoring_config):
+        logs_client = self.account_ctx.get_aws_client('logs', self.aws_region)
+        for log_group in monitoring_config.log_sets.get_all_log_groups():
+            root_log_group_name = log_group.get_full_log_group_name()
+            log_group_name = root_log_group_name
+            if log_group.external_resource == False:
+                log_group_name = prefixed_name(self.stack.resource, root_log_group_name, self.paco_ctx.legacy_flag)
+            try:
+                logs_client.delete_log_group(
+                    logGroupName=log_group_name
+                )
+            except ClientError as error:
+                # Ignore gorups that do not exist
+                if error.response['Error']['Code'] != 'ResourceNotFoundException':
+                    print(f'ERROR: Unable to delete LogGroup: {log_group_name}: {error.response["Error"]["Code"]}')
+
+
