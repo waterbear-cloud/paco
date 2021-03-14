@@ -408,7 +408,10 @@ function ec2lm_launch_bundles() {{
     fi
 
     # Compare new EC2LM contents cache id with existing
-    OLD_CACHE_ID=$(<$EC2LM_FOLDER/ec2lm_cache_id.md5)
+    OLD_CACHE_ID="none"
+    if [ -e "$EC2LM_FOLDER/ec2lm_cache_id.md5" ] ; then
+        OLD_CACHE_ID=$(<$EC2LM_FOLDER/ec2lm_cache_id.md5)
+    fi
 
     if [ "$EC2LM_IGNORE_CACHE" == "false" ] ; then
         if [ "$CACHE_ID" == "$OLD_CACHE_ID" ] ; then

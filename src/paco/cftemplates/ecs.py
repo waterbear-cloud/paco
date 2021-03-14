@@ -260,11 +260,14 @@ class ECSServices(StackTemplate):
                     description='The minimum number of tasks for the Service.',
                     value=service.minimum_tasks,
                 )
+                maximum_tasks = service.maximum_tasks
+                if maximum_tasks == 0 and service.desired_count > 0:
+                    maximum_tasks = service.desired_count
                 maximum_tasks_param = self.create_cfn_parameter(
                     param_type='String',
                     name=f'{cfn_service_name}MaximumTasks',
                     description='The maximum number of tasks for the Service.',
-                    value=service.maximum_tasks,
+                    value=maximum_tasks,
                 )
 
             # awsvpc NetworkConfiguration

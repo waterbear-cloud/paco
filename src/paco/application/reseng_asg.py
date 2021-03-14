@@ -119,7 +119,7 @@ role_name: %s""" % ("ASGInstance")
         if self.resource.ecs != None and self.resource.is_enabled() == True:
             self.stack.hooks.add(
                 name='ProvisionECSCapacityProvider.' + self.resource.name,
-                stack_action='update',
+                stack_action=['create', 'update'],
                 stack_timing='post',
                 hook_method=self.provision_ecs_capacity_provider,
                 cache_method=self.provision_ecs_capacity_provider_cache,
