@@ -1,11 +1,18 @@
 Changelog for Paco
 ==================
 
-9.3.4 (unreleased)
+9.3.4 (2021-03-15)
 ------------------
 
-- Nothing changed yet.
+### Added
 
+- import_from functionality for environments and resource groups.
+
+- LogGroup stacks will delete groups using stack hook on stack deletion.
+
+### Fixed
+
+- Capacity Provider state manager now handles ASG creation
 
 9.3.3 (2021-03-11)
 ------------------
