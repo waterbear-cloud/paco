@@ -332,7 +332,6 @@ class ASG(StackTemplate):
                     continue
 
                 if ecr_deploy and len(ecr_deploy.release_phase.ecs) > 0:
-                    idx = 0
                     pull_repos = []
                     push_repos = []
                     for repository in ecr_deploy.repositories:
@@ -377,6 +376,7 @@ class ASG(StackTemplate):
                         )
                     )
                     iam_cluster_cache = []
+                    idx = 0
                     for command in ecr_deploy.release_phase.ecs:
                         service_obj = get_model_obj_from_ref(command.service, self.paco_ctx.project)
                         ecs_services_obj = get_parent_by_interface(service_obj, schemas.IECSServices)
@@ -457,7 +457,7 @@ class ASG(StackTemplate):
                         Statement(
                             Sid='ECSReleasePhaseSSMAutomationExecution',
                             Effect=Allow,
-                            Action=[
+                              Action=[
                                 Action('ssm', 'StartAutomationExecution'),
                                 Action('ssm', 'StopAutomationExecution'),
                                 Action('ssm', 'GetAutomationExecution'),
