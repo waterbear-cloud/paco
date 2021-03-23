@@ -710,18 +710,25 @@ EC2LM_FOLDER='{self.paco_base_path}/EC2Manager/'
 EC2LM_FUNCTIONS=ec2lm_functions.bash
 mkdir -p $EC2LM_FOLDER/
 set +e
+TIMEOUT=60
+COUNT=0
 while :
 do
-    aws sts get-caller-identity
-    if [ $? -ne 0 ] ; then
-        echo "EC2LM: ERROR: Unable to get AWS credentials: Missing IAM role or race condition?"
+    aws s3 sync s3://{ec2lm_bucket_name}/ --region={resource.region_name} $EC2LM_FOLDER
+    RET=$?
+    if [ $RET -ne 0 ] ; then
+        if [ $COUNT -eq $TIMEOUT ]; then
+            "EC2LM: ERROR: Timeout while waiting for EC2LM bucket sync."
+            exit $RET
+        fi
+        COUNT=$(($COUNT+1))
+        echo "EC2LM: ERROR: Unable to download EC2LM bucket: Missing IAM role or race condition?"
         sleep 1
         continue
     fi
     break
 done
 set -e
-aws s3 sync s3://{ec2lm_bucket_name}/ --region={resource.region_name} $EC2LM_FOLDER
 
 . $EC2LM_FOLDER/$EC2LM_FUNCTIONS
 
@@ -830,7 +837,9 @@ function run_launch_bundle() {{
         {install_cfn_init_command}
         echo "{config_sets_str}" >> ./initialized-configsets.txt
         run_launch_configuration
+        set +e
         {cfn_base_path}/bin/cfn-signal -e $? --stack $EC2LM_STACK_NAME --resource=LaunchConfiguration --region=$REGION
+        set -e
     fi
 }}
 
