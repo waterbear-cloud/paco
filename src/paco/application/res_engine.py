@@ -49,8 +49,7 @@ class ResourceEngine():
                     monitoring = getattr(self.resource.default_instance, 'monitoring', None)
                     db_instance.monitoring = monitoring
                 if monitoring != None and monitoring.enabled and \
-                    getattr(monitoring, 'alarm_sets', None) != None and \
-                    len(monitoring.alarm_sets.values()) > 0:
+                    getattr(monitoring, 'alarm_sets', None) != None:
                     self.stack_group.add_new_stack(
                         self.aws_region,
                         db_instance,
@@ -74,8 +73,7 @@ class ResourceEngine():
                 )
         elif getattr(self.resource, 'monitoring', None) != None and \
             self.resource.monitoring.enabled and \
-            getattr(self.resource.monitoring, 'alarm_sets', None) != None and \
-            len(self.resource.monitoring.alarm_sets.values()) > 0:
+            getattr(self.resource.monitoring, 'alarm_sets', None) != None:
             self.stack_group.add_new_stack(
                 self.aws_region,
                 self.resource,
