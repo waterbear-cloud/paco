@@ -33,6 +33,7 @@ from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
 from paco.application.reseng_deploymentpipeline import RELEASE_PHASE_SCRIPT, RELEASE_PHASE_SCRIPT_SSM_DOCUMENT_CONTENT, \
         ECR_DEPLOY_SCRIPT_HEAD, ECR_DEPLOY_SCRIPT_BODY, ECR_DEPLOY_SCRIPT_CONFIG
+from paco.cftemplates.ecs import ECS_SCRIPT_HEAD, ECS_SCRIPT_BODY, ECS_SCRIPT_CONFIG
 
 class LaunchBundle():
     """
@@ -1807,6 +1808,108 @@ statement:
                 extra_ref_names=['ec2lm','ssmagent'],
             )
 
+    def lb_scriptmanager_ecr_deploy(self, resource, scripts):
+        ecr_deploy_script = ECR_DEPLOY_SCRIPT_HEAD.format(
+            paco_base_path=self.paco_base_path,
+            ecr_deploy_list=' '.join(resource.script_manager.ecr_deploy.keys())
+        )
+        ecr_deploy_idx = 0
+        for ecr_deploy_name in resource.script_manager.ecr_deploy.keys():
+            ecr_deploy = resource.script_manager.ecr_deploy[ecr_deploy_name]
+            repo_idx = 0
+            for repository in ecr_deploy.repositories:
+                # ECR Deploy Script
+                # ECS Relase Phase Script
+                source_ecr_obj = get_model_obj_from_ref(repository.source_repo, self.paco_ctx.project)
+                source_env = get_parent_by_interface(source_ecr_obj, schemas.IEnvironmentRegion)
+                source_account_id = self.paco_ctx.get_ref(source_env.network.aws_account+".id")
+
+                dest_ecr_obj = get_model_obj_from_ref(repository.dest_repo, self.paco_ctx.project)
+                dest_env = get_parent_by_interface(dest_ecr_obj, schemas.IEnvironmentRegion)
+                dest_account_id = self.paco_ctx.get_ref(dest_env.network.aws_account+".id")
+
+                dest_ecr_obj = get_model_obj_from_ref(repository.dest_repo, self.paco_ctx.project)
+                ecr_deploy_script += ECR_DEPLOY_SCRIPT_CONFIG.format(
+                    ecr_deploy_name=ecr_deploy_name,
+                    source_repo_name=source_ecr_obj.repository_name,
+                    source_repo_domain=f'{source_account_id}.dkr.ecr.{source_env.region}.amazonaws.com',
+                    idx=repo_idx,
+                    source_tag=repository.source_tag,
+                    dest_repo_name=dest_ecr_obj.repository_name,
+                    dest_repo_domain=f'{dest_account_id}.dkr.ecr.{dest_env.region}.amazonaws.com',
+                    dest_tag=repository.dest_tag,
+                    release_phase=repository.release_phase
+                )
+                repo_idx += 1
+
+            if repo_idx > 0:
+                ecr_deploy_script += f'\n{ecr_deploy_name}_ECR_DEPLOY_LEN={repo_idx}\n'
+
+            if ecr_deploy.release_phase and len(ecr_deploy.release_phase.ecs) > 0:
+                # Genreate script
+                release_phase_script = RELEASE_PHASE_SCRIPT
+                idx = 0
+                release_phase_script += f". {self.paco_base_path}/EC2Manager/ec2lm_functions.bash\n\n"
+                for command in ecr_deploy.release_phase.ecs:
+                    release_phase_name = command.service.split(' ')[1]
+                    release_phase_script += f"""
+CLUSTER_ID_{idx}=$(ec2lm_instance_tag_value PACO_CB_RP_ECS_CLUSTER_ID_{idx})
+SERVICE_ID_{idx}=$(ec2lm_instance_tag_value PACO_CB_RP_ECS_SERVICE_ID_{idx})
+RELEASE_PHASE_NAME_{idx}={release_phase_name}
+RELEASE_PHASE_COMMAND_{idx}="{command.command}"
+run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PHASE_NAME_{idx}}}" "${{RELEASE_PHASE_COMMAND_{idx}}}"
+"""
+                    idx += 1
+                scripts[f'ecr_deploy_{ecr_deploy_name}_release_phase'] = {
+                    'path': f'/usr/local/bin/paco-ecr-deploy-{ecr_deploy_name}-release-phase',
+                    'mode': '0755',
+                    'data': base64.b64encode(release_phase_script.encode('ascii')).decode('ascii')
+                }
+
+                # Create the SSM Document if it does not exist
+                ssm_documents = self.paco_ctx.project['resource']['ssm'].ssm_documents
+                if 'paco_ecs_docker_exec' not in ssm_documents:
+                    ssm_doc = SSMDocument('paco_ecs_docker_exec', ssm_documents)
+                    ssm_doc.add_location(self.account_ctx.paco_ref, self.aws_region)
+                    ssm_doc.content = json.dumps(RELEASE_PHASE_SCRIPT_SSM_DOCUMENT_CONTENT)
+                    ssm_doc.document_type = 'Command'
+                    ssm_doc.enabled = True
+                    ssm_documents['paco_ecs_docker_exec'] = ssm_doc
+                else:
+                    ssm_documents['paco_ecs_docker_exec'].add_location(
+                        self.account_ctx.paco_ref,
+                        self.aws_region,
+                    )
+            ecr_deploy_idx += 1
+
+            ecr_deploy_script += ECR_DEPLOY_SCRIPT_BODY
+            scripts[f'ecr_deploy_{ecr_deploy_name}'] = {
+                'path': f'/usr/local/bin/paco-ecr-deploy-{ecr_deploy_name}',
+                'mode': '0755',
+                'data': base64.b64encode(ecr_deploy_script.encode('ascii')).decode('ascii')
+            }
+
+        return scripts
+
+    def lb_scriptmanager_ecs(self, resource, scripts):
+        ecs_script = ECS_SCRIPT_HEAD.format(
+            paco_base_path=self.paco_base_path,
+            ecs_list=' '.join(resource.script_manager.ecs.keys())
+        )
+
+        for ecs_name in resource.script_manager.ecs.keys():
+            ecs = resource.script_manager.ecs[ecs_name]
+            ecs_script += ECS_SCRIPT_CONFIG.format(ecs_name=ecs_name)
+
+        ecs_script += ECS_SCRIPT_BODY
+        scripts[f'ecs'] = {
+            'path': f'/usr/local/bin/paco-ecs',
+            'mode': '0755',
+            'data': base64.b64encode(ecs_script.encode('ascii')).decode('ascii')
+        }
+
+        return scripts
+
     def lb_add_scriptmanager(self, bundle_name, resource):
         "EC2 Script Manager Launch Bundle"
         script_lb = LaunchBundle(resource, self, bundle_name)
@@ -1814,86 +1917,12 @@ statement:
         scripts = {}
         script_manager_enabled = False
         # ECS Release Phase Script
-        if resource.script_manager and resource.script_manager.ecr_deploy and len(resource.script_manager.ecr_deploy) > 0:
-            ecr_deploy_script = ECR_DEPLOY_SCRIPT_HEAD.format(
-                paco_base_path=self.paco_base_path,
-                ecr_deploy_list=' '.join(resource.script_manager.ecr_deploy.keys())
-            )
-            ecr_deploy_idx = 0
-            for ecr_deploy_name in resource.script_manager.ecr_deploy.keys():
-                ecr_deploy = resource.script_manager.ecr_deploy[ecr_deploy_name]
-                repo_idx = 0
-                for repository in ecr_deploy.repositories:
-                    # ECR Deploy Script
-                    # ECS Relase Phase Script
-                    source_ecr_obj = get_model_obj_from_ref(repository.source_repo, self.paco_ctx.project)
-                    source_env = get_parent_by_interface(source_ecr_obj, schemas.IEnvironmentRegion)
-                    source_account_id = self.paco_ctx.get_ref(source_env.network.aws_account+".id")
+        if resource.script_manager:
+            if resource.script_manager.ecr_deploy and len(resource.script_manager.ecr_deploy) > 0:
+                scripts = self.lb_scriptmanager_ecr_deploy(resource, scripts)
+            if resource.script_manager.ecs and len(resource.script_manager.ecs) > 0:
+                scripts = self.lb_scriptmanager_ecs(resource, scripts)
 
-                    dest_ecr_obj = get_model_obj_from_ref(repository.dest_repo, self.paco_ctx.project)
-                    dest_env = get_parent_by_interface(dest_ecr_obj, schemas.IEnvironmentRegion)
-                    dest_account_id = self.paco_ctx.get_ref(dest_env.network.aws_account+".id")
-
-                    dest_ecr_obj = get_model_obj_from_ref(repository.dest_repo, self.paco_ctx.project)
-                    ecr_deploy_script += ECR_DEPLOY_SCRIPT_CONFIG.format(
-                        ecr_deploy_name=ecr_deploy_name,
-                        source_repo_name=source_ecr_obj.repository_name,
-                        source_repo_domain=f'{source_account_id}.dkr.ecr.{source_env.region}.amazonaws.com',
-                        idx=repo_idx,
-                        source_tag=repository.source_tag,
-                        dest_repo_name=dest_ecr_obj.repository_name,
-                        dest_repo_domain=f'{dest_account_id}.dkr.ecr.{dest_env.region}.amazonaws.com',
-                        dest_tag=repository.dest_tag,
-                        release_phase=repository.release_phase
-                    )
-                    repo_idx += 1
-
-                if repo_idx > 0:
-                    ecr_deploy_script += f'\n{ecr_deploy_name}_ECR_DEPLOY_LEN={repo_idx}\n'
-
-                if ecr_deploy.release_phase and len(ecr_deploy.release_phase.ecs) > 0:
-                    # Genreate script
-                    release_phase_script = RELEASE_PHASE_SCRIPT
-                    idx = 0
-                    release_phase_script += f". {self.paco_base_path}/EC2Manager/ec2lm_functions.bash\n\n"
-                    for command in ecr_deploy.release_phase.ecs:
-                        release_phase_name = command.service.split(' ')[1]
-                        release_phase_script += f"""
-CLUSTER_ID_{idx}=$(ec2lm_instance_tag_value PACO_CB_RP_ECS_CLUSTER_ID_{idx})
-SERVICE_ID_{idx}=$(ec2lm_instance_tag_value PACO_CB_RP_ECS_SERVICE_ID_{idx})
-RELEASE_PHASE_NAME_{idx}={release_phase_name}
-RELEASE_PHASE_COMMAND_{idx}="{command.command}"
-run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PHASE_NAME_{idx}}}" "${{RELEASE_PHASE_COMMAND_{idx}}}"
-"""
-                        idx += 1
-                    scripts['release_phase'] = {
-                        'path': f'/usr/local/bin/paco-ecs-release-phase-{ecr_deploy_name}',
-                        'mode': '0755',
-                        'data': base64.b64encode(release_phase_script.encode('ascii')).decode('ascii')
-                    }
-
-                    # Create the SSM Document if it does not exist
-                    ssm_documents = self.paco_ctx.project['resource']['ssm'].ssm_documents
-                    if 'paco_ecs_docker_exec' not in ssm_documents:
-                        ssm_doc = SSMDocument('paco_ecs_docker_exec', ssm_documents)
-                        ssm_doc.add_location(self.account_ctx.paco_ref, self.aws_region)
-                        ssm_doc.content = json.dumps(RELEASE_PHASE_SCRIPT_SSM_DOCUMENT_CONTENT)
-                        ssm_doc.document_type = 'Command'
-                        ssm_doc.enabled = True
-                        ssm_documents['paco_ecs_docker_exec'] = ssm_doc
-                    else:
-                        ssm_documents['paco_ecs_docker_exec'].add_location(
-                            self.account_ctx.paco_ref,
-                            self.aws_region,
-                        )
-                ecr_deploy_idx += 1
-
-                ecr_deploy_script += ECR_DEPLOY_SCRIPT_BODY
-                scripts['ecr_deploy'] = {
-                    'path': f'/usr/local/bin/paco-ecr-deploy-{ecr_deploy_name}',
-                    'mode': '0755',
-                    'data': base64.b64encode(ecr_deploy_script.encode('ascii')).decode('ascii')
-                }
 
 
         # Script Manager
@@ -1902,11 +1931,11 @@ echo "EC2LM: Script Manager: Begin"
 
 . {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
 
-declare -a SCRIPTS
 """
         idx = 0
         for script_name in scripts.keys():
             launch_script += f"""
+declare -a SCRIPTS
 SCRIPTS[{idx}]="{script_name}"
 {script_name}_DATA="{scripts[script_name]['data']}"
 {script_name}_PATH="{scripts[script_name]['path']}"

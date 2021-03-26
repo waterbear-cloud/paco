@@ -11,6 +11,235 @@ import troposphere.applicationautoscaling
 import troposphere.ecs
 import troposphere.servicediscovery
 
+ECS_SCRIPT_HEAD = """#!/bin/bash
+. {paco_base_path}/EC2Manager/ec2lm_functions.bash
+
+declare -a ECS_LIST=({ecs_list})
+
+function usage() {{
+    echo "$0 <cluster name> <command> [args]"
+    echo "    ECS Cluster Names:"
+    for ECS_NAME in $ECS_LIST
+    do
+        echo "        $ECS_NAME"
+    done
+    echo
+    echo "    Commands:"
+    echo "        list-services"
+    echo "        list-tasks"
+    echo "        ssh [service name]"
+    exit 0
+}}
+
+if [ $# -lt 2 ] ; then
+    usage
+fi
+
+ECS_NAME=$1
+shift
+COMMAND=$1
+
+case $ECS_NAME in
+"""
+
+ECS_SCRIPT_CONFIG = """
+    {ecs_name})
+        CLUSTER_ARN=$(ec2lm_instance_tag_value 'paco:script_manager:ecs:{ecs_name}:cluster:arn')
+        ;;
+    *)
+        usage
+        ;;
+"""
+
+ECS_SCRIPT_BODY = """
+esac
+
+CLUSTER=$(echo $CLUSTER_ARN | awk -F '/' '{print $2}')
+ARN_PREFIX=$(echo ${CLUSTER_ARN} | awk -F ':' '{print "arn:aws:ecs:"$4":"$5}')
+
+SERVICE_LIST_CACHE=$(mktemp)
+
+function list_services() {
+    LIST_TYPE="$1"
+    LIST_CACHE=${SERVICE_LIST_CACHE}".data"
+    if [ ! -e ${LIST_CACHE} ] ; then
+	aws ecs list-services --cluster ${CLUSTER_ARN} --query 'serviceArns[]' --output text >${LIST_CACHE}
+    fi
+    for SERVICE_ARN in $(cat ${LIST_CACHE})
+    do
+        if [ "$LIST_TYPE" == ""  ] ; then
+            SERVICE=$(echo "$SERVICE_ARN" | awk -F '/' '{print $3}' | awk -F '-' '{print $10}' | awk -F 'Service' '{print $2}' | tr '[:upper:]' '[:lower:]')
+        elif [ "$LIST_TYPE" == "full" ] ; then
+            SERVICE=$(echo "$SERVICE_ARN" | awk -F '/' '{print $3}')
+        elif [ "$LIST_TYPE" == "arns" ] ; then
+            SERVICE="${SERVICE_ARN}"
+	elif [ "$LIST_TYPE" == "lookup" ] ; then
+	    SERVICE=$(echo "$SERVICE_ARN" | awk -F '/' '{print $3}' | awk -F '-' '{print $10}' | awk -F 'Service' '{print $2}' | tr '[:upper:]' '[:lower:]')
+	    if [ "$SERVICE" == "$2" ] ; then
+		echo "$SERVICE_ARN" | awk -F '/' '{print $3}'
+		return
+	    fi
+        else
+            echo "error: unknown list type: ${LIST_TYPE}"
+            exit 1
+        fi
+        echo "${SERVICE}"
+    done
+}
+
+function list_tasks() {
+    SERVICE_NAME_ARG=$(echo $1 | tr '[:upper:]' '[:lower:]')
+    LIST_TYPE="$2"
+
+    for SERVICE in $(list_services full)
+    do
+        #echo "aws ecs list-tasks --cluster ${CLUSTER_ARN} --service-name ${SERVICE} --query 'taskArns[]' --output text"
+        for TASK_ARN in $(aws ecs list-tasks --cluster ${CLUSTER_ARN} --service-name ${SERVICE} --query 'taskArns[]' --output text)
+        do
+            if [ "$LIST_TYPE" == "arns" ] ; then
+                echo "$TASK_ARN"
+            else
+                TASK=$(echo $TASK_ARN | awk -F'/' '{print $3}')
+                CONTAINER_INSTANCE_ARN=$(aws ecs describe-tasks --cluster ${CLUSTER_ARN} --tasks ${TASK} --query 'tasks[0].containerInstanceArn' --output text)
+                INSTANCE_ID=$(aws ecs describe-container-instances --cluster ${CLUSTER} --container-instances ${CONTAINER_INSTANCE_ARN} --query 'containerInstances[0].ec2InstanceId' --output text)
+                IP_ADDRESS=$(aws ec2 describe-instances --instance-ids ${INSTANCE_ID} --query 'Reservations[0].Instances[0].PrivateIpAddress' --output text)
+                DOCKER_TASK=$(aws ecs describe-tasks --cluster ${CLUSTER} --tasks ${TASK} --query 'tasks[0].containers[0].runtimeId' --output text)
+                SHORT_SERVICE_NAME=$(echo $SERVICE | awk -F '-' '{print $10}' | awk -F 'Service' '{print $2}' | tr '[:upper:]' '[:lower:]')
+                echo -e "${SHORT_SERVICE_NAME}	${IP_ADDRESS}	${DOCKER_TASK}"
+            fi
+        done
+    done
+
+}
+
+function restart_service() {
+    SERVICE=$1
+    aws ecs update-service --cluster ${CLUSTER} --force-new-deployment --service ${SERVICE}
+    # TODO: Add waiter to detect restart completion
+}
+
+function restart_services() {
+    SERVICE=$1
+    if [ "$SERVICE" == "all" ] ; then
+	for SERVICE in $(list_services full)
+	do
+	    restart_service $SERVICE
+	done
+    else
+        restart_service $(list_services lookup $SERVICE)
+    fi
+}
+
+#function usage() {
+#    echo "$0 <service_name> [task_id]"
+#    echo
+#    echo "Service names:"
+#    list_services
+#    echo
+#    exit 1
+#}
+
+COMMAND=$1
+shift
+
+
+case ${COMMAND} in
+    list-services)
+	    list_services $1
+	    exit 0
+	    ;;
+    restart-services)
+        restart_services $1
+        exit 0
+        ;;
+    list-tasks)
+        list_tasks $1
+        exit 0
+        ;;
+    ssh)
+        ;;
+    *)
+        usage
+        ;;
+esac
+
+TASK_ARG="NULL"
+if [ $# -eq 2 ] ; then
+    TASK_ARG=$2
+fi
+
+SERVICE_NAME_ARG=$(echo $1 | tr '[:upper:]' '[:lower:]')
+
+SERVICE_OPTION=""
+SERVICE=""
+for SERVICE_ARN in $(list_services arns)
+do
+    SERVICE=$(echo "$SERVICE_ARN" |  awk -F '/' '{print $3}')
+    SERVICE_OPTION=$(echo "$SERVICE" | awk -F '-' '{print $10}' | awk -F 'Service' '{print $2}' | tr '[:upper:]' '[:lower:]')
+    if [ "$SERVICE_OPTION" == "$SERVICE_NAME_ARG" ] ; then
+        break
+    fi
+    SERVICE_OPTION=""
+done
+
+if [ "$SERVICE_OPTION" == "" ] ; then
+    echo "error: '${SERVICE_NAME_ARG}' was not found."
+    echo
+    usage
+fi
+
+SERVICE_ARN="${ARN_PREFIX}:service/${CLUSTER}/${SERVICE}"
+
+TASK_IDX=0
+NUM_TASKS=$(aws ecs list-tasks --cluster ${CLUSTER_ARN} --service-name ${SERVICE} --query 'length(taskArns)')
+if [ $NUM_TASKS -gt 1 ] ; then
+    if [ "$TASK_ARG" == "NULL" ] ; then
+        echo "More than one task is running for '${SERVICE_NAME_ARG}'. Please specify a Task Id."
+        echo "       Task Id                         ""     Start Time"
+    fi
+    IDX=0
+    for TASK_ARN in $(list-tasks ${SERVICE} arns) #$(aws ecs list-tasks --cluster ${CLUSTER_ARN} --service-name ${SERVICE} --query 'taskArns[]' --output text)
+    do
+        IDX=$(($IDX+1))
+        TASK=$(echo $TASK_ARN | awk -F'/' '{print $3}')
+        if [ "$TASK_ARG" == "$TASK" ] ; then
+            break
+        fi
+        if [ "$TASK_ARG" == "NULL" ] ; then
+            TASK_STARTED_AT=$(aws ecs describe-tasks --cluster ${CLUSTER} --tasks ${TASK} --query 'tasks[0].startedAt' --output text)
+            echo "    ${IDX}) ${TASK}     "$(date -d @${TASK_STARTED_AT})
+        fi
+    done
+    while :
+    do
+        if [ "$TASK_ARG" == "$TASK" ] ; then
+            # break if the users Task argument was found
+            break
+        elif [ "$TASK_ARG" != "NULL" ] ; then
+            # Unable to find the users Task
+            echo "error: '${TASK_ARG}' task is not running"
+            exit 1
+        fi
+        read -p "Select a task: [1-$IDX]: " TASK_IDX
+        if [ $TASK_IDX -ge 1 -a $TASK_IDX -le $NUM_TASKS ] ; then
+            # Array is 0 based so decrement by 1
+            TASK_IDX=$(($TASK_IDX-1))
+            break
+        fi
+        echo "error: '$TASK_IDX' must be an integer between 1 and $NUM_TASKS"
+        echo
+    done
+fi
+
+TASK=$(aws ecs list-tasks --cluster ${CLUSTER_ARN} --service-name ${SERVICE} --query "taskArns[$TASK_IDX]" --output text | awk -F'/' '{print $3}')
+CONTAINER_INSTANCE_ARN=$(aws ecs describe-tasks --cluster ${CLUSTER_ARN} --tasks ${TASK} --query 'tasks[0].containerInstanceArn' --output text)
+INSTANCE_ID=$(aws ecs describe-container-instances --cluster ${CLUSTER} --container-instances ${CONTAINER_INSTANCE_ARN} --query 'containerInstances[0].ec2InstanceId' --output text)
+IP_ADDRESS=$(aws ec2 describe-instances --instance-ids ${INSTANCE_ID} --query 'Reservations[0].Instances[0].PrivateIpAddress' --output text)
+DOCKER_TASK=$(aws ecs describe-tasks --cluster ${CLUSTER} --tasks ${TASK} --query 'tasks[0].containers[0].runtimeId' --output text)
+echo
+echo "ecs-ssh: ${SERVICE_NAME_ARG}: SSH to ${IP_ADDRESS} for docker task id ${DOCKER_TASK}"
+ssh ${IP_ADDRESS}
+"""
 
 class ECSCluster(StackTemplate):
     def __init__(self, stack, paco_ctx):

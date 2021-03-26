@@ -324,217 +324,11 @@ class ASG(StackTemplate):
 
         # ECS Release Phase Configuration
         policy_statements = []
-        if asg_config.script_manager and asg_config.script_manager.ecr_deploy:
-            ecr_deploy = asg_config.script_manager.ecr_deploy
-            for ecr_deploy_name in ecr_deploy.keys():
-                ecr_deploy = asg_config.script_manager.ecr_deploy[ecr_deploy_name]
-                if ecr_deploy == None:
-                    continue
-
-                if ecr_deploy and len(ecr_deploy.release_phase.ecs) > 0:
-                    pull_repos = []
-                    push_repos = []
-                    for repository in ecr_deploy.repositories:
-                        source_ecr_obj = get_model_obj_from_ref(repository.source_repo, self.paco_ctx.project)
-                        source_env = get_parent_by_interface(source_ecr_obj, schemas.IEnvironmentRegion)
-                        source_account_id = self.paco_ctx.get_ref(source_env.network.aws_account+".id")
-
-                        dest_ecr_obj = get_model_obj_from_ref(repository.dest_repo, self.paco_ctx.project)
-                        dest_env = get_parent_by_interface(dest_ecr_obj, schemas.IEnvironmentRegion)
-                        dest_account_id = self.paco_ctx.get_ref(dest_env.network.aws_account+".id")
-
-                        pull_repo_arn = f'arn:aws:ecr:{source_env.region}:{source_account_id}:repository/{source_ecr_obj.repository_name}'
-                        push_repo_arn = f'arn:aws:ecr:{dest_env.region}:{dest_account_id}:repository/{dest_ecr_obj.repository_name}'
-                        pull_repos.append(pull_repo_arn)
-                        push_repos.append(push_repo_arn)
-
-                    policy_statements.append(
-                        Statement(
-                            Sid=f'ScriptManagerECRDeployPull',
-                            Effect=Allow,
-                            Action=[
-                                Action('ecr', 'GetDownloadUrlForLayer'),
-                                Action('ecr', 'BatchGetImage'),
-                            ],
-                            Resource=pull_repos
-                        )
-                    )
-
-                    policy_statements.append(
-                        Statement(
-                            Sid=f'ScriptManagerECRDeployPush',
-                            Effect=Allow,
-                            Action=[
-                                Action('ecr', 'GetDownloadUrlForLayer'),
-                                Action('ecr', 'BatchCheckLayerAvailability'),
-                                Action('ecr', 'PutImage'),
-                                Action('ecr', 'InitiateLayerUpload'),
-                                Action('ecr', 'UploadLayerPart'),
-                                Action('ecr', 'CompleteLayerUpload'),
-                            ],
-                            Resource=push_repos
-                        )
-                    )
-                    iam_cluster_cache = []
-                    idx = 0
-                    for command in ecr_deploy.release_phase.ecs:
-                        service_obj = get_model_obj_from_ref(command.service, self.paco_ctx.project)
-                        ecs_services_obj = get_parent_by_interface(service_obj, schemas.IECSServices)
-                        ecs_release_phase_cluster_arn_param = self.create_cfn_parameter(
-                            param_type='String',
-                            name=f'ECSReleasePhaseClusterArn{idx}',
-                            description=f'ECS Release Phase Cluster Arn {idx}',
-                            value=ecs_services_obj.cluster + '.arn'
-                        )
-                        ecs_release_phase_cluster_name_param = self.create_cfn_parameter(
-                            param_type='String',
-                            name=f'ECSReleasePhaseClusterName{idx}',
-                            description=f'ECS Release Phase Cluster Name {idx}',
-                            value=ecs_services_obj.cluster + '.name'
-                        )
-                        ecs_release_phase_service_name_param = self.create_cfn_parameter(
-                            param_type='String',
-                            name=f'ECSReleasePhaseServiceName{idx}',
-                            description=f'ECS Release Phase Cluster Name {idx}',
-                            value=command.service + '.name'
-                        )
-                        ecs_cluster_asg_tag = troposphere.autoscaling.Tag(
-                            f'PACO_CB_RP_ECS_CLUSTER_ID_{idx}',
-                            troposphere.Ref(ecs_release_phase_cluster_name_param),
-                            True
-                        )
-                        ecs_service_asg_tag = troposphere.autoscaling.Tag(
-                            f'PACO_CB_RP_ECS_SERVICE_ID_{idx}',
-                            troposphere.Ref(ecs_release_phase_service_name_param),
-                            True
-                        )
-                        asg_dict['Tags'].append(ecs_cluster_asg_tag)
-                        asg_dict['Tags'].append(ecs_service_asg_tag)
-
-
-                        if ecs_services_obj.cluster not in iam_cluster_cache:
-                            policy_statements.append(
-                                Statement(
-                                    Sid=f'ECSReleasePhaseSSMSendCommand{idx}',
-                                    Effect=Allow,
-                                    Action=[
-                                        Action('ssm', 'SendCommand'),
-                                    ],
-                                    Resource=[ 'arn:aws:ec2:*:*:instance/*' ],
-                                    Condition=Condition(
-                                        StringLike({
-                                            'ssm:resourceTag/Paco-ECSCluster-Name': troposphere.Ref(ecs_release_phase_cluster_name_param)
-                                        })
-                                    )
-                                )
-                            )
-
-                            policy_statements.append(
-                                Statement(
-                                    Sid=f'ECSRelasePhaseClusterAccess{idx}',
-                                    Effect=Allow,
-                                    Action=[
-                                        Action('ecs', 'DescribeServices'),
-                                        Action('ecs', 'RunTask'),
-                                        Action('ecs', 'StopTask'),
-                                        Action('ecs', 'DescribeContainerInstances'),
-                                        Action('ecs', 'ListTasks'),
-                                        Action('ecs', 'DescribeTasks'),
-                                    ],
-                                    Resource=[ '*' ],
-                                    Condition=Condition(
-                                        StringEquals({
-                                            'ecs:cluster': troposphere.Ref(ecs_release_phase_cluster_arn_param)
-                                        })
-                                    )
-                                )
-                            )
-                            iam_cluster_cache.append(ecs_services_obj.cluster)
-
-                        idx += 1
-
-                    policy_statements.append(
-                        Statement(
-                            Sid='ECSReleasePhaseSSMAutomationExecution',
-                            Effect=Allow,
-                              Action=[
-                                Action('ssm', 'StartAutomationExecution'),
-                                Action('ssm', 'StopAutomationExecution'),
-                                Action('ssm', 'GetAutomationExecution'),
-                            ],
-                            Resource=[ 'arn:aws:ssm:::automation-definition/' ]
-                        )
-                    )
-                    # ECS Policies
-                    policy_statements.append(
-                        Statement(
-                            Sid='ECSRelasePhaseECS',
-                            Effect=Allow,
-                            Action=[
-                                Action('ecs', 'DescribeTaskDefinition'),
-                                Action('ecs', 'DeregisterTaskDefinition'),
-                                Action('ecs', 'RegisterTaskDefinition'),
-                                Action('ecs', 'ListTagsForResource'),
-                                Action('ecr', 'DescribeImages')
-                            ],
-                            Resource=[ '*' ]
-                        )
-                    )
-
-                    policy_statements.append(
-                        Statement(
-                            Sid=f'ECSReleasePhaseSSMSendCommandDocument',
-                            Effect=Allow,
-                            Action=[
-                                Action('ssm', 'SendCommand'),
-                            ],
-                            Resource=[ f'arn:aws:ssm:{self.aws_region}:{self.account_ctx.get_id()}:document/paco_ecs_docker_exec' ]
-                        )
-                    )
-                    policy_statements.append(
-                        Statement(
-                            Sid='ECSReleasePhaseSSMCore',
-                            Effect=Allow,
-                            Action=[
-                                Action('ssm', 'ListDocuments'),
-                                Action('ssm', 'ListDocumentVersions'),
-                                Action('ssm', 'DescribeDocument'),
-                                Action('ssm', 'GetDocument'),
-                                Action('ssm', 'DescribeInstanceInformation'),
-                                Action('ssm', 'DescribeDocumentParameters'),
-                                Action('ssm', 'CancelCommand'),
-                                Action('ssm', 'ListCommands'),
-                                Action('ssm', 'ListCommandInvocations'),
-                                Action('ssm', 'DescribeAutomationExecutions'),
-                                Action('ssm', 'DescribeInstanceProperties'),
-                                Action('ssm', 'GetCommandInvocation'),
-                                Action('ec2', 'DescribeInstanceStatus'),
-                                Action('ecr', 'GetAuthorizationToken')
-                            ],
-                            Resource=[ '*' ]
-                        )
-                    )
-
-                    policy_statements.append(
-                        Statement(
-                            Sid='IAMPassRole',
-                            Effect=Allow,
-                            Action=[
-                                Action('iam', 'passrole')
-                            ],
-                            Resource=[ '*' ]
-                        )
-                    )
-                    role_name = self.paco_ctx.get_ref(asg_config.paco_ref + '.instance_iam_role.name')
-                    ecs_release_phase_project_policy_res = troposphere.iam.ManagedPolicy(
-                        title='ECSReleasePhase',
-                        PolicyDocument=PolicyDocument(
-                            Version="2012-10-17",
-                            Statement=policy_statements
-                        ),
-                        Roles=[role_name]
-                    )
-                    template.add_resource(ecs_release_phase_project_policy_res)
+        if asg_config.script_manager:
+            if asg_config.script_manager.ecr_deploy:
+                self.script_manager_ecr_deploy(asg_config.script_manager.ecr_deploy, asg_dict, asg_config, template)
+            if asg_config.script_manager.ecs:
+                self.script_manager_ecs(asg_config.script_manager.ecs, asg_dict, asg_config, template)
 
         asg_res = troposphere.autoscaling.AutoScalingGroup.from_dict(
             'ASG',
@@ -671,3 +465,283 @@ class ASG(StackTemplate):
                     RoleARN=lifecycle_hook.role_arn,
                     NotificationTargetARN=lifecycle_hook.notification_target_arn
                 )
+
+    def script_manager_ecs(self, ecs_group, asg_dict, asg_config, template):
+        idx=0
+        policy_statements = []
+        for ecs_name in ecs_group.keys():
+            ecs = ecs_group[ecs_name]
+            if ecs == None:
+                continue
+
+            ecs_script_manager_cluster_arn_param = self.create_cfn_parameter(
+                param_type='String',
+                name=f'ECSScriptManagerClusterArn{idx}',
+                description=f'ECS Script Manager Cluster Arn {idx}',
+                value=ecs.cluster + '.arn'
+            )
+            ecs_cluster_tag = troposphere.autoscaling.Tag(
+                f'paco:script_manager:ecs:{ecs_name}:cluster:arn',
+                troposphere.Ref(ecs_script_manager_cluster_arn_param),
+                True
+            )
+            asg_dict['Tags'].append(ecs_cluster_tag)
+
+            policy_statements.append(
+                Statement(
+                    Sid=f'ECSScriptManagerClusterAccess{idx}',
+                    Effect=Allow,
+                    Action=[
+                        Action('ecs', 'UpdateService'),
+                        Action('ecs', 'DescribeServices'),
+                        Action('ecs', 'ListServices'),
+                        Action('ecs', 'RunTask'),
+                        Action('ecs', 'StopTask'),
+                        Action('ecs', 'DescribeContainerInstances'),
+                        Action('ecs', 'ListTasks'),
+                        Action('ecs', 'DescribeTasks'),
+                        Action('ec2', 'DescribeInstances'),
+                    ],
+                    Resource=[ '*' ],
+                    Condition=Condition(
+                        StringEquals({
+                            'ecs:cluster': troposphere.Ref(ecs_script_manager_cluster_arn_param)
+                        })
+                    )
+                )
+            )
+            policy_statements.append(
+                Statement(
+                    Sid=f'ECSScriptManagerClusterEC2Access{idx}',
+                    Effect=Allow,
+                    Action=[
+                        Action('ec2', 'DescribeInstances'),
+                    ],
+                    Resource=[ '*' ]
+                )
+            )
+
+            idx += 1
+
+        role_name = self.paco_ctx.get_ref(asg_config.paco_ref + '.instance_iam_role.name')
+        script_manager_ecs_policy_res = troposphere.iam.ManagedPolicy(
+            title='ScriptManagerECS',
+            PolicyDocument=PolicyDocument(
+                Version="2012-10-17",
+                Statement=policy_statements
+            ),
+            Roles=[role_name]
+        )
+        template.add_resource(script_manager_ecs_policy_res)
+
+    def script_manager_ecr_deploy(self, ecr_deploy_group, asg_dict, asg_config, template):
+        policy_statements = []
+        for ecr_deploy_name in ecr_deploy_group.keys():
+            ecr_deploy = ecr_deploy_group[ecr_deploy_name]
+            if ecr_deploy == None:
+                continue
+
+            if ecr_deploy and len(ecr_deploy.release_phase.ecs) > 0:
+                pull_repos = []
+                push_repos = []
+                for repository in ecr_deploy.repositories:
+                    source_ecr_obj = get_model_obj_from_ref(repository.source_repo, self.paco_ctx.project)
+                    source_env = get_parent_by_interface(source_ecr_obj, schemas.IEnvironmentRegion)
+                    source_account_id = self.paco_ctx.get_ref(source_env.network.aws_account+".id")
+
+                    dest_ecr_obj = get_model_obj_from_ref(repository.dest_repo, self.paco_ctx.project)
+                    dest_env = get_parent_by_interface(dest_ecr_obj, schemas.IEnvironmentRegion)
+                    dest_account_id = self.paco_ctx.get_ref(dest_env.network.aws_account+".id")
+
+                    pull_repo_arn = f'arn:aws:ecr:{source_env.region}:{source_account_id}:repository/{source_ecr_obj.repository_name}'
+                    push_repo_arn = f'arn:aws:ecr:{dest_env.region}:{dest_account_id}:repository/{dest_ecr_obj.repository_name}'
+                    pull_repos.append(pull_repo_arn)
+                    push_repos.append(push_repo_arn)
+
+                policy_statements.append(
+                    Statement(
+                        Sid=f'ScriptManagerECRDeployPull',
+                        Effect=Allow,
+                        Action=[
+                            Action('ecr', 'GetDownloadUrlForLayer'),
+                            Action('ecr', 'BatchGetImage'),
+                        ],
+                        Resource=pull_repos
+                    )
+                )
+
+                policy_statements.append(
+                    Statement(
+                        Sid=f'ScriptManagerECRDeployPush',
+                        Effect=Allow,
+                        Action=[
+                            Action('ecr', 'GetDownloadUrlForLayer'),
+                            Action('ecr', 'BatchCheckLayerAvailability'),
+                            Action('ecr', 'PutImage'),
+                            Action('ecr', 'InitiateLayerUpload'),
+                            Action('ecr', 'UploadLayerPart'),
+                            Action('ecr', 'CompleteLayerUpload'),
+                        ],
+                        Resource=push_repos
+                    )
+                )
+                iam_cluster_cache = []
+                idx = 0
+                for command in ecr_deploy.release_phase.ecs:
+                    service_obj = get_model_obj_from_ref(command.service, self.paco_ctx.project)
+                    ecs_services_obj = get_parent_by_interface(service_obj, schemas.IECSServices)
+                    ecs_release_phase_cluster_arn_param = self.create_cfn_parameter(
+                        param_type='String',
+                        name=f'ECSReleasePhaseClusterArn{idx}',
+                        description=f'ECS Release Phase Cluster Arn {idx}',
+                        value=ecs_services_obj.cluster + '.arn'
+                    )
+                    ecs_release_phase_cluster_name_param = self.create_cfn_parameter(
+                        param_type='String',
+                        name=f'ECSReleasePhaseClusterName{idx}',
+                        description=f'ECS Release Phase Cluster Name {idx}',
+                        value=ecs_services_obj.cluster + '.name'
+                    )
+                    ecs_release_phase_service_name_param = self.create_cfn_parameter(
+                        param_type='String',
+                        name=f'ECSReleasePhaseServiceName{idx}',
+                        description=f'ECS Release Phase Cluster Name {idx}',
+                        value=command.service + '.name'
+                    )
+                    ecs_cluster_asg_tag = troposphere.autoscaling.Tag(
+                        f'PACO_CB_RP_ECS_CLUSTER_ID_{idx}',
+                        troposphere.Ref(ecs_release_phase_cluster_name_param),
+                        True
+                    )
+                    ecs_service_asg_tag = troposphere.autoscaling.Tag(
+                        f'PACO_CB_RP_ECS_SERVICE_ID_{idx}',
+                        troposphere.Ref(ecs_release_phase_service_name_param),
+                        True
+                    )
+                    asg_dict['Tags'].append(ecs_cluster_asg_tag)
+                    asg_dict['Tags'].append(ecs_service_asg_tag)
+
+
+                    if ecs_services_obj.cluster not in iam_cluster_cache:
+                        policy_statements.append(
+                            Statement(
+                                Sid=f'ECSReleasePhaseSSMSendCommand{idx}',
+                                Effect=Allow,
+                                Action=[
+                                    Action('ssm', 'SendCommand'),
+                                ],
+                                Resource=[ 'arn:aws:ec2:*:*:instance/*' ],
+                                Condition=Condition(
+                                    StringLike({
+                                        'ssm:resourceTag/Paco-ECSCluster-Name': troposphere.Ref(ecs_release_phase_cluster_name_param)
+                                    })
+                                )
+                            )
+                        )
+
+                        policy_statements.append(
+                            Statement(
+                                Sid=f'ECSRelasePhaseClusterAccess{idx}',
+                                Effect=Allow,
+                                Action=[
+                                    Action('ecs', 'DescribeServices'),
+                                    Action('ecs', 'RunTask'),
+                                    Action('ecs', 'StopTask'),
+                                    Action('ecs', 'DescribeContainerInstances'),
+                                    Action('ecs', 'ListTasks'),
+                                    Action('ecs', 'DescribeTasks'),
+                                ],
+                                Resource=[ '*' ],
+                                Condition=Condition(
+                                    StringEquals({
+                                        'ecs:cluster': troposphere.Ref(ecs_release_phase_cluster_arn_param)
+                                    })
+                                )
+                            )
+                        )
+                        iam_cluster_cache.append(ecs_services_obj.cluster)
+
+                    idx += 1
+
+                policy_statements.append(
+                    Statement(
+                        Sid='ECSReleasePhaseSSMAutomationExecution',
+                        Effect=Allow,
+                            Action=[
+                            Action('ssm', 'StartAutomationExecution'),
+                            Action('ssm', 'StopAutomationExecution'),
+                            Action('ssm', 'GetAutomationExecution'),
+                        ],
+                        Resource=[ 'arn:aws:ssm:::automation-definition/' ]
+                    )
+                )
+                # ECS Policies
+                policy_statements.append(
+                    Statement(
+                        Sid='ECSRelasePhaseECS',
+                        Effect=Allow,
+                        Action=[
+                            Action('ecs', 'DescribeTaskDefinition'),
+                            Action('ecs', 'DeregisterTaskDefinition'),
+                            Action('ecs', 'RegisterTaskDefinition'),
+                            Action('ecs', 'ListTagsForResource'),
+                            Action('ecr', 'DescribeImages')
+                        ],
+                        Resource=[ '*' ]
+                    )
+                )
+
+                policy_statements.append(
+                    Statement(
+                        Sid=f'ECSReleasePhaseSSMSendCommandDocument',
+                        Effect=Allow,
+                        Action=[
+                            Action('ssm', 'SendCommand'),
+                        ],
+                        Resource=[ f'arn:aws:ssm:{self.aws_region}:{self.account_ctx.get_id()}:document/paco_ecs_docker_exec' ]
+                    )
+                )
+                policy_statements.append(
+                    Statement(
+                        Sid='ECSReleasePhaseSSMCore',
+                        Effect=Allow,
+                        Action=[
+                            Action('ssm', 'ListDocuments'),
+                            Action('ssm', 'ListDocumentVersions'),
+                            Action('ssm', 'DescribeDocument'),
+                            Action('ssm', 'GetDocument'),
+                            Action('ssm', 'DescribeInstanceInformation'),
+                            Action('ssm', 'DescribeDocumentParameters'),
+                            Action('ssm', 'CancelCommand'),
+                            Action('ssm', 'ListCommands'),
+                            Action('ssm', 'ListCommandInvocations'),
+                            Action('ssm', 'DescribeAutomationExecutions'),
+                            Action('ssm', 'DescribeInstanceProperties'),
+                            Action('ssm', 'GetCommandInvocation'),
+                            Action('ec2', 'DescribeInstanceStatus'),
+                            Action('ecr', 'GetAuthorizationToken')
+                        ],
+                        Resource=[ '*' ]
+                    )
+                )
+
+                policy_statements.append(
+                    Statement(
+                        Sid='IAMPassRole',
+                        Effect=Allow,
+                        Action=[
+                            Action('iam', 'passrole')
+                        ],
+                        Resource=[ '*' ]
+                    )
+                )
+                role_name = self.paco_ctx.get_ref(asg_config.paco_ref + '.instance_iam_role.name')
+                ecs_release_phase_project_policy_res = troposphere.iam.ManagedPolicy(
+                    title='ECSReleasePhase',
+                    PolicyDocument=PolicyDocument(
+                        Version="2012-10-17",
+                        Statement=policy_statements
+                    ),
+                    Roles=[role_name]
+                )
+                template.add_resource(ecs_release_phase_project_policy_res)
