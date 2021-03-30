@@ -11,6 +11,14 @@ class IoTPolicyBotoStack(BotoStack):
 
     def get_outputs(self):
         "Get all Outputs of a Resource"
+        if getattr(self, 'policy_arn', None) == None:
+            iotpolicyclient = IoTPolicyClient(
+                self.paco_ctx.project,
+                self.account_ctx,
+                self.aws_region,
+                self.resource
+            )
+            self.policy_arn = iotpolicyclient.policy_exists()
         return {'IoTPolicyArn': self.policy_arn}
 
     def provision(self):
