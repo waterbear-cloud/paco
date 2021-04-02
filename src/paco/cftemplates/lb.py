@@ -252,6 +252,7 @@ class LBBase(StackTemplate):
 
             # Listener - SSL Certificates
             ssl_cert_param_obj_list = []
+            unique_listener_cert_name = ""
             if len(listener.ssl_certificates) > 0 and self.lb_config.is_enabled():
                 if listener.ssl_policy != '':
                     cfn_export_dict['SslPolicy'] = listener.ssl_policy
@@ -268,6 +269,7 @@ class LBBase(StackTemplate):
                             'CertificateArn': troposphere.Ref(ssl_cert_param)
                         } ]
                     else:
+                        unique_listener_cert_name = f'{unique_listener_cert_name}{listener.ssl_certificates[ssl_cert_idx]}'
                         ssl_cert_param_obj_list.append(
                             troposphere.elasticloadbalancingv2.Certificate(
                                 CertificateArn=troposphere.Ref(ssl_cert_param)
@@ -282,8 +284,9 @@ class LBBase(StackTemplate):
 
             # ListenerCertificates
             if len(ssl_cert_param_obj_list) > 0:
+                logical_listener_cert_name = self.create_cfn_logical_id_join([logical_listener_name, 'Certificate', unique_listener_cert_name])
                 troposphere.elasticloadbalancingv2.ListenerCertificate(
-                    title=logical_listener_name+'Certificate',
+                    title=logical_listener_cert_name,
                     template=self.template,
                     Certificates=ssl_cert_param_obj_list,
                     ListenerArn=troposphere.Ref(listener_resource)
