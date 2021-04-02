@@ -40,6 +40,9 @@ class ResourceEngine():
     def init_monitoring(self):
         "Add an Alarms template with Alarms specific to the Resource"
         # If alarm_sets exist init alarms for them
+        if schemas.IDeploymentPipeline.providedBy(self.resource):
+            # Ignore DeploymentPipeline Alarms: TBD
+            return
         if schemas.IRDSAurora.providedBy(self.resource):
             # RDS Aurora can have alarms for each individual DB Instance
             for db_instance in self.resource.db_instances.values():

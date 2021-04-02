@@ -288,8 +288,10 @@ function run_task() {
     if [ $RET -ne 0 ] ; then
         LAST_STATUS=$(aws ecs describe-tasks --cluster ${CLUSTER_ID} --tasks ${TASK_ID} --query 'tasks[0].[lastStatus]' --output text)
         if [ "$LAST_STATUS" == "STOPPED" ] ; then
-            aws ecs describe-tasks --cluster ${CLUSTER_ID} --tasks ${TASK_ID} --query 'tasks[0].[stoppedReason]' --output text
+            STOPPED_REASON=$(aws ecs describe-tasks --cluster ${CLUSTER_ID} --tasks ${TASK_ID} --query 'tasks[0].[stoppedReason]' --output text)
+            echo "Stopped Reason: $STOPPED_REASON"
         fi
+        aws ecs describe-tasks --cluster ${CLUSTER_ID} --tasks ${TASK_ID} --query 'tasks[0]'
         exit $RET
     fi
     set -e
@@ -611,6 +613,21 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             for action in self.pipeline.source.values():
                 if action.type == 'ECR.Source':
                     self.add_ecr_source_hooks(action)
+
+
+        # Pipeline Execution Notification Rules
+        # Create Notifications Rules CFTemplate
+        # Get the SNS topic to attach
+        env_name = '.'.join(self.app_engine.app.paco_ref_parts.split('.')[0:2])
+        notification_rules_stack = self.stack_group.add_new_stack(
+            self.aws_region,
+            self.resource,
+            cftemplates.NotificationRules,
+            account_ctx=self.pipeline_account_ctx,
+            stack_tags=self.stack_tags,
+            support_resource_ref_ext='notification_rules',
+            extra_context={'env_name': env_name, 'app_name': self.app.name}
+        )
 
         # Add CodeBuild Role ARN to KMS Key principal now that the role is created
         kms_config_dict['crypto_principal']['aws'] = self.kms_crypto_principle_list

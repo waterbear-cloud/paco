@@ -113,3 +113,6 @@ class UnexpectedAwsResponse(PacoBaseException):
 
 class LambdaInvocationError(PacoBaseException):
     title = "AWS Lambda could not be invoked"
+
+class InvalidCloudFrontCertificateRegion(PacoBaseException):
+    title = "The CloudFront certificate must be in us-east-1"

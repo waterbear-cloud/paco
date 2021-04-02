@@ -56,6 +56,25 @@ def override_cw_alarm_actions(hook):
         raise LoaderRegistrationError(f"Only one Service can override CloudWatch Alarm Actions.")
     paco.models.registry.CW_ALARM_ACTIONS_HOOK = hook
 
+def override_codestar_notification_rule(hook):
+    """
+    Add a hook to change CodeStar Notification Rule's to your own custom list of SNS Topics.
+    This can be used to send notifications to notify your own custom Lambda function instead of
+    sending directly to the SNS Topics that Alarms are subscribed too.
+
+    .. code-block:: python
+
+        def override_codestar_notification_rule(snstopics, alarm):
+            "Override normal alarm actions with the SNS Topic ARN for the custom Notification Lambda"
+            return ["paco.ref service.notify...snstopic.arn"]
+
+        paco.extend.add_codestart_notification_rule_hook(override_codestar_notification_rule)
+
+    """
+    if paco.models.registry.CODESTAR_NOTIFICATION_RULE_HOOK != None:
+        raise LoaderRegistrationError(f"Only one Service can override CodeStar Notification Rules.")
+    paco.models.registry.CODESTAR_NOTIFICATION_RULE_HOOK = hook
+
 def add_extend_model_hook(extend_hook):
     """
     Add a hook can extend the core Paco schemas and models.
