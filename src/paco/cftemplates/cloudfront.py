@@ -1,5 +1,6 @@
 from paco import utils
 from paco.cftemplates.cftemplates import StackTemplate
+from paco.core.exception import InvalidCloudFrontCertificateRegion
 from paco.models.references import is_ref, get_model_obj_from_ref
 import troposphere
 import troposphere.cloudfront
@@ -39,7 +40,8 @@ class CloudFront(StackTemplate):
         if cloudfront_config.is_enabled() == True:
             # force the certificate to be in us-east-1, as that's the only CloudFront region
             certificate = get_model_obj_from_ref(cloudfront_config.viewer_certificate.certificate, self.paco_ctx.project)
-            certificate.region = 'us-east-1'
+            if certificate.region != 'us-east-1':
+                raise InvalidCloudFrontCertificateRegion(f'Certficate region is: {certificate.region}')
             viewer_certificate_param = self.create_cfn_parameter(
                 name='ViewerCertificateArn',
                 description="ACM Viewer Certificate ARN",
