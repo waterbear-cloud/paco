@@ -41,7 +41,7 @@ class CloudFront(StackTemplate):
             # force the certificate to be in us-east-1, as that's the only CloudFront region
             certificate = get_model_obj_from_ref(cloudfront_config.viewer_certificate.certificate, self.paco_ctx.project)
             if certificate.region != 'us-east-1':
-                raise InvalidCloudFrontCertificateRegion(f'Certficate region is: {certificate.region}')
+                raise InvalidCloudFrontCertificateRegion(f'Certficate region is: {certificate.region}: {certificate.paco_ref}')
             viewer_certificate_param = self.create_cfn_parameter(
                 name='ViewerCertificateArn',
                 description="ACM Viewer Certificate ARN",

@@ -1,5 +1,4 @@
 from awacs.aws import Action, Allow, Statement, Policy
-from troposphere import awslambda
 from paco.aws_api.awslambda.code import init_lambda_code
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.cftemplates.eventsrule import create_event_rule_name
@@ -287,16 +286,6 @@ class Lambda(StackTemplate):
                 SourceArn=troposphere.Ref(param_name),
             )
 
-            # SNS Topic subscription
-            sns_topic = get_model_obj_from_ref(sns_topic_ref, self.paco_ctx.project)
-            troposphere.sns.SubscriptionResource(
-                title=param_name + 'Subscription',
-                template=self.template,
-                Endpoint=troposphere.GetAtt(self.awslambda_resource, 'Arn'),
-                Protocol='lambda',
-                TopicArn=troposphere.Ref(param_name),
-                Region=sns_topic.region_name
-            )
             idx += 1
 
         # Lambda permissions for connected Paco resources
@@ -577,4 +566,58 @@ class Lambda(StackTemplate):
         )
         self.template.add_output(loggroup_output)
         return loggroup_resource
+
+
+class LambdaSNSSubscriptions(StackTemplate):
+    def __init__(
+        self,
+        stack,
+        paco_ctx,
+        sns_topic_ref_list
+    ):
+        super().__init__(
+            stack,
+            paco_ctx,
+            iam_capabilities=["CAPABILITY_NAMED_IAM"],
+        )
+        account_ctx = stack.account_ctx
+        aws_region = stack.aws_region
+        self.set_aws_name('LambdaSNSSubs', self.resource_group_name, self.resource_name)
+        awslambda = self.awslambda = self.stack.resource
+        self.init_template('Lambda SNS Subscriptions')
+
+        # if not enabled finish with only empty placeholder
+        if not self.awslambda.is_enabled(): return
+
+        # Permissions
+        # SNS Topic Lambda permissions and subscription
+
+        lambda_arn_param = self.create_cfn_parameter(
+            name='LambdaFunctionArn',
+            param_type='String',
+            description='An SNS Topic ARN to grant permission to.',
+            value=self.awslambda.paco_ref + '.arn'
+        )
+        idx = 1
+        for sns_topic_ref in sns_topic_ref_list:
+            # SNS Topic Arn parameters
+            param_name = 'SNSTopicArn%d' % idx
+            self.create_cfn_parameter(
+                name=param_name,
+                param_type='String',
+                description='An SNS Topic ARN to grant permission to.',
+                value=sns_topic_ref + '.arn'
+            )
+
+            # SNS Topic subscription
+            sns_topic = get_model_obj_from_ref(sns_topic_ref, self.paco_ctx.project)
+            troposphere.sns.SubscriptionResource(
+                title=param_name + 'Subscription',
+                template=self.template,
+                Endpoint=troposphere.Ref(lambda_arn_param),
+                Protocol='lambda',
+                TopicArn=troposphere.Ref(param_name),
+                Region=sns_topic.region_name
+            )
+            idx += 1
 

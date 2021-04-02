@@ -1,6 +1,8 @@
 from paco import models
 from paco.application.res_engine import ResourceEngine
+from paco.core import exception
 from paco.core.yaml import YAML
+from paco.models import vocabulary
 import paco.cftemplates
 
 
@@ -78,9 +80,31 @@ statement:
             stack_group=self.stack_group,
             stack_tags=self.stack_tags
         )
+
         self.stack = self.stack_group.add_new_stack(
             self.aws_region,
             self.resource,
             paco.cftemplates.Lambda,
             stack_tags=self.stack_tags
         )
+
+        # Provision Lambda subscriptions in the same region as the SNS Topics
+        # This is required for cross account + cross region lambda/sns
+        region_topic_list = {}
+        for topic in self.resource.sns_topics:
+            region_name = topic.split('.')[4]
+            if region_name not in vocabulary.aws_regions.keys():
+                raise exception.InvalidAWSRegion(f'Invalid SNS Topic region in reference: {region_name}: {topic}')
+            if region_name not in region_topic_list.keys():
+                region_topic_list[region_name] = []
+            region_topic_list[region_name].append(topic)
+
+        for region_name in region_topic_list.keys():
+            topic_list = region_topic_list[region_name]
+            self.stack = self.stack_group.add_new_stack(
+                region_name,
+                self.resource,
+                paco.cftemplates.LambdaSNSSubscriptions,
+                stack_tags=self.stack_tags,
+                extra_context={'sns_topic_ref_list': topic_list}
+            )

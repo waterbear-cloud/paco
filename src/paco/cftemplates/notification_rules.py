@@ -68,7 +68,7 @@ class NotificationRules(StackTemplate):
     def create_notification_param(self, group):
         "Create a CFN Parameter for a Notification Group"
         if registry.CODESTAR_NOTIFICATION_RULE_HOOK != None:
-            notification_ref = registry.CODESTAR_NOTIFICATION_RULE_HOOK(self.resource, self.aws_region)
+            notification_ref = registry.CODESTAR_NOTIFICATION_RULE_HOOK(self.resource, self.account_ctx.name, self.aws_region)
         else:
             notification_ref = self.paco_ctx.project['resource']['sns'].computed[self.account_ctx.name][self.stack.aws_region][group].paco_ref + '.arn'
 

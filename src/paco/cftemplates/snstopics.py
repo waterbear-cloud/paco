@@ -118,25 +118,29 @@ class SNSTopics(StackTemplate):
             account_id_list = [
                 account.account_id for account in self.paco_ctx.project.accounts.values()
             ]
+            statement_list = []
+            for account_id in account_id_list:
+                statement = Statement(
+                    Effect = Allow,
+                    Sid = self.create_cfn_logical_id(account_id),
+                    Principal = Principal("AWS", f'arn:aws:iam::{account_id}:root'),
+                    Action = [ awacs.sns.Publish, awacs.sns.Subscribe ],
+                    Resource = topics_ref_cross_list,
+                    #Condition = Condition(
+                    #    StringEquals({
+                    #        'AWS:SourceOwner': account_id_list,
+                    #    })
+                    #)
+                )
+                statement_list.append(statement)
+
             topic_policy_resource = troposphere.sns.TopicPolicy(
                 'TopicPolicyCrossAccountPacoProject',
                 Topics = topics_ref_cross_list,
                 PolicyDocument = Policy(
                     Version = '2012-10-17',
                     Id = "CrossAccountPublish",
-                    Statement=[
-                        Statement(
-                            Effect = Allow,
-                            Principal = Principal("AWS", "*"),
-                            Action = [ awacs.sns.Publish ],
-                            Resource = topics_ref_cross_list,
-                            Condition = Condition(
-                                StringEquals({
-                                    'AWS:SourceOwner': account_id_list,
-                                })
-                            )
-                        )
-                    ]
+                    Statement=statement_list
                 )
             )
             template.add_resource(topic_policy_resource)

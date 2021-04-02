@@ -116,3 +116,6 @@ class LambdaInvocationError(PacoBaseException):
 
 class InvalidCloudFrontCertificateRegion(PacoBaseException):
     title = "The CloudFront certificate must be in us-east-1"
+
+class InvalidAWSRegion(PacoBaseException):
+    title = "The region supplied is not a valid AWS region"

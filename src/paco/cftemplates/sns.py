@@ -139,7 +139,7 @@ SNS Topics and Subscriptions
                         Statement(
                             Effect = Allow,
                             Principal = Principal("AWS", "*"),
-                            Action = [ awacs.sns.Publish ],
+                            Action = [ awacs.sns.Publish, awacs.sns.Subscribe ],
                             Resource =  [troposphere.Ref(topic_resource) ],
                             Condition = Condition(
                                 StringEquals({
