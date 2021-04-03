@@ -1,10 +1,27 @@
 Changelog for Paco
 ==================
 
-9.3.6 (unreleased)
+9.3.6 (2021-04-02)
 ------------------
 
-- Nothing changed yet.
+### Added
+
+- Added support for cross account + cross region SNS Lambda Subscriptions
+
+- Added Notification Rules to DeploymentPipelines.
+
+- Added an ECS utility to the script manager for ASGs
+
+
+### Fixed
+
+- Fixed CF handling of LBv2 Certifictes.
+
+- Removed cloudfront forcing us-east-1 on certificates. Raise exception instead.
+
+- iotpolicy.get_outputs() will now obtain the policy arn if it does not exist when called.
+
+- Fixed EC2LM credential missing race condition code.
 
 
 9.3.5 (2021-03-15)
