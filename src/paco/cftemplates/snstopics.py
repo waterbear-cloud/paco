@@ -60,6 +60,7 @@ class SNSTopics(StackTemplate):
         for topic in topics:
             if not topic.is_enabled():
                 continue
+            statement_list = []
             topic_logical_id = self.create_cfn_logical_id(topic.name)
 
             # Do not specify a TopicName, as then updates cannot be performed that require
@@ -92,10 +93,45 @@ class SNSTopics(StackTemplate):
                 'Topic' + topic_logical_id,
                 cfn_export_dict
             )
-            if topic.cross_account_access:
-                topics_ref_cross_list.append(troposphere.Ref(topic_resource))
+
             topic.topic_resource = topic_resource
             template.add_resource(topic_resource)
+
+            if topic.codestar_notification_access:
+                statement = Statement(
+                    Effect = Allow,
+                    Sid = 'CodeStarNotificationAccess',
+                    Principal = Principal("Service", 'codestar-notifications.amazonaws.com'),
+                    Action = [ awacs.sns.Publish ],
+                    Resource = [troposphere.Ref(topic_resource)],
+                )
+                statement_list.append(statement)
+
+            if topic.cross_account_access:
+                account_id_list = [
+                    account.account_id for account in self.paco_ctx.project.accounts.values()
+                ]
+                for account_id in account_id_list:
+                    statement = Statement(
+                        Effect = Allow,
+                        Sid = self.create_cfn_logical_id(account_id),
+                        Principal = Principal("AWS", f'arn:aws:iam::{account_id}:root'),
+                        Action = [ awacs.sns.Publish, awacs.sns.Subscribe ],
+                        Resource = [ troposphere.Ref(topic_resource) ],
+                    )
+                    statement_list.append(statement)
+
+            if len(statement_list) > 0:
+                topic_policy_resource = troposphere.sns.TopicPolicy(
+                    f'Paco{topic_logical_id}TopicPolicy',
+                    Topics = [troposphere.Ref(topic_resource)],
+                    PolicyDocument = Policy(
+                        Version = '2012-10-17',
+                        Id = "PacoSNSTopicPolicy",
+                        Statement=statement_list
+                    )
+                )
+                template.add_resource(topic_policy_resource)
 
             # Topic Outputs
             if grp_id == None:
@@ -112,35 +148,3 @@ class SNSTopics(StackTemplate):
                 value=troposphere.GetAtt(topic_resource, "TopicName"),
                 ref=output_ref + '.name',
             )
-
-        # Cross-account access policy
-        if len(topics_ref_cross_list) > 0:
-            account_id_list = [
-                account.account_id for account in self.paco_ctx.project.accounts.values()
-            ]
-            statement_list = []
-            for account_id in account_id_list:
-                statement = Statement(
-                    Effect = Allow,
-                    Sid = self.create_cfn_logical_id(account_id),
-                    Principal = Principal("AWS", f'arn:aws:iam::{account_id}:root'),
-                    Action = [ awacs.sns.Publish, awacs.sns.Subscribe ],
-                    Resource = topics_ref_cross_list,
-                    #Condition = Condition(
-                    #    StringEquals({
-                    #        'AWS:SourceOwner': account_id_list,
-                    #    })
-                    #)
-                )
-                statement_list.append(statement)
-
-            topic_policy_resource = troposphere.sns.TopicPolicy(
-                'TopicPolicyCrossAccountPacoProject',
-                Topics = topics_ref_cross_list,
-                PolicyDocument = Policy(
-                    Version = '2012-10-17',
-                    Id = "CrossAccountPublish",
-                    Statement=statement_list
-                )
-            )
-            template.add_resource(topic_policy_resource)

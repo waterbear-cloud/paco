@@ -6,7 +6,7 @@ import troposphere.codestarnotifications
 
 
 class NotificationRules(StackTemplate):
-    def __init__(self, stack, paco_ctx, app_name, env_name):
+    def __init__(self, stack, paco_ctx, app_name, env_name, rules_arn_ref_list):
         super().__init__(stack, paco_ctx)
         self.set_aws_name('NotificationRules', self.resource_group_name, self.resource.name)
         self.app_name = app_name
@@ -18,20 +18,23 @@ class NotificationRules(StackTemplate):
         self.notification_groups = {}
         rule_target_list = []
         if self.resource.monitoring != None and self.resource.monitoring.notifications != None:
+            notify_param_cache = []
             for notify_group_name in self.resource.monitoring.notifications.keys():
                 for sns_group_name in self.resource.monitoring.notifications[notify_group_name].groups:
                     notify_param = self.create_notification_param(sns_group_name)
-                    rule_target_list.append(
-                        {
-                            'TargetAddress': troposphere.Ref(notify_param),
-                            'TargetType': 'SNS'
-                        }
-                    )
+                    # Only append if the are unique
+                    if notify_param not in notify_param_cache:
+                        rule_target_list.append(
+                            {
+                                'TargetAddress': troposphere.Ref(notify_param),
+                                'TargetType': 'SNS'
+                            }
+                        )
+                        notify_param_cache.append(notify_param)
 
             event_id_list = []
             for event_id in self.resource.notification_events:
                 event_id_list.append(f'codepipeline-pipeline-pipeline-execution-{event_id}')
-
 
             codepipeline_arn_param = self.create_cfn_parameter(
                 param_type='String',
@@ -56,13 +59,15 @@ class NotificationRules(StackTemplate):
 
             self.template.add_resource( rule_res )
 
-        # # Outputs
-        # self.create_output(
-        #     title='ExampleResourceId',
-        #     description="Example resource Id.",
-        #     value=troposphere.Ref(example_res),
-        #     ref=self.resource.paco_ref_parts + ".id"
-        # )
+            # Outputs
+            rule_arn_ref = self.resource.paco_ref_parts + ".notification_rule.arn"
+            self.create_output(
+                title='NotificationRuleArn',
+                description="CodeStar Notification Rule Arn",
+                value=troposphere.Ref(rule_res),
+                ref=rule_arn_ref
+            )
+            rules_arn_ref_list.append('paco.ref '+rule_arn_ref)
 
 
     def create_notification_param(self, group):

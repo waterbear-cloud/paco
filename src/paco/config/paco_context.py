@@ -1,3 +1,4 @@
+from paco import utils
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode, MissingAccountId, InvalidAccountName
 from paco.models import vocabulary
@@ -7,6 +8,7 @@ from paco.models import references
 from paco.models import load_project_from_yaml
 from paco.models.references import get_model_obj_from_ref
 from paco.core.yaml import read_yaml_file
+from paco.core.yaml import YAML
 from paco.config.interfaces import IAccountContext
 from paco.config.paco_buckets import PacoBuckets
 from shutil import copyfile
@@ -676,3 +678,26 @@ This directory contains several sub-directories that Paco uses:
         if return_it == True:
             return message+'\n'
         print(message)
+
+    def store_resource_state(self, resource, config):
+        yaml=YAML()
+        yaml.default_flow_sytle = False
+
+        file_contents = yaml.dump(data=config)
+        work_path = pathlib.Path(self.build_path)
+        work_path = work_path / 'ResourceState' / resource.type
+        pathlib.Path(work_path).mkdir(parents=True, exist_ok=True)
+
+        file_name = resource.paco_ref_parts + '.state'
+        utils.write_to_file(work_path, file_name, file_contents)
+
+        file_location = work_path / file_name
+
+        # Upload to S3
+        paco_bucket_account_ctx = self.get_account_context(self.project.shared_state.paco_work_bucket.account)
+        self.paco_buckets.upload_file(
+            file_location=str(file_location),
+            s3_key=f'Paco/ResourceState/{resource.type}/{resource.paco_ref_parts}',
+            account_ctx=paco_bucket_account_ctx,
+            region=self.project.shared_state.paco_work_bucket.region
+        )

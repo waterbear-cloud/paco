@@ -3,7 +3,7 @@ from paco.application.res_engine import ResourceEngine
 from paco.core.yaml import YAML
 from paco.core.exception import InvalidAWSConfiguration
 from paco.models.locations import get_parent_by_interface
-from paco.models.references import get_model_obj_from_ref
+from paco.models.references import get_model_obj_from_ref, Reference, resolve_ref_outputs
 from paco.models.resources import SSMDocument
 from paco.models import schemas
 from paco.stack import StackHooks
@@ -618,6 +618,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         # Pipeline Execution Notification Rules
         # Create Notifications Rules CFTemplate
         # Get the SNS topic to attach
+        rules_arn_ref_list = []
         env_name = '.'.join(self.app_engine.app.paco_ref_parts.split('.')[0:2])
         notification_rules_stack = self.stack_group.add_new_stack(
             self.aws_region,
@@ -626,8 +627,13 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             account_ctx=self.pipeline_account_ctx,
             stack_tags=self.stack_tags,
             support_resource_ref_ext='notification_rules',
-            extra_context={'env_name': env_name, 'app_name': self.app.name}
+            extra_context={'env_name': env_name, 'app_name': self.app.name, 'rules_arn_ref_list': rules_arn_ref_list}
         )
+
+        # Stack hook to upload DeploymentPipeline configuration
+        # to the Paco S3 work bucket for use by external services
+        # notification rule arn associated with SNS topics and Slack Channels
+        self.add_notification_rules_stack_hooks(notification_rules_stack, rules_arn_ref_list)
 
         # Add CodeBuild Role ARN to KMS Key principal now that the role is created
         kms_config_dict['crypto_principal']['aws'] = self.kms_crypto_principle_list
@@ -943,6 +949,41 @@ policies:
             },
         )
 
+    def store_notification_rules_config_cache(self, hook, config):
+        "Create a cache id for the notification rules configuration"
+        cache = ""
+        for rule_arn_ref in config['rules_arn_ref_list']:
+            cache += rule_arn_ref
+        return cache
+
+    def store_notification_rules_config(self, hook, config):
+        "Create an imageDefinitions file"
+        pipeline = config['pipeline']
+        monitoring = pipeline.monitoring
+
+        monitor_config = {
+            'groups': [],
+            'slack_channels': []
+        }
+        if monitoring != None and monitoring.is_enabled() and monitoring.notifications != None:
+            for notification_name in monitoring.notifications.keys():
+                notification = monitoring.notifications[notification_name]
+                monitor_config['groups'].extend(notification.groups)
+                monitor_config['slack_channels'].extend(notification.slack_channels)
+
+        rules_config = {
+            'rules': [],
+            'monitor_config': monitor_config
+        }
+
+        for rule_arn_ref in config['rules_arn_ref_list']:
+            rule_arn = resolve_ref_outputs(Reference(rule_arn_ref), self.paco_ctx.project['home'])
+            rules_config['rules'].append(rule_arn)
+
+
+        self.paco_ctx.store_resource_state(self.pipeline, rules_config)
+
+
     def init_stage_action_ecr_source(self, action_config):
         "Initialize an ECR Source action"
         if not action_config.is_enabled():
@@ -978,6 +1019,25 @@ ArtifactsBucket: {s3_bucket.paco_ref}
             hook_method=self.create_image_definitions_artifact,
             cache_method=self.create_image_definitions_artifact_cache,
             hook_arg=self.pipeline,
+        )
+
+    def add_notification_rules_stack_hooks(self, notification_rules_stack, rules_arn_ref_list):
+        # Hook to create and upload imageDefinitions.json S3 source artifact
+        notification_rules_stack.hooks.add(
+            name='StoreNotificationRulesConfig.' + self.resource.name,
+            stack_action='update',
+            stack_timing='post',
+            hook_method=self.store_notification_rules_config,
+            cache_method=self.store_notification_rules_config_cache,
+            hook_arg={'pipeline': self.pipeline, 'rules_arn_ref_list': rules_arn_ref_list}
+        )
+        notification_rules_stack.hooks.add(
+            name='StoreNotificationRulesConfig.' + self.resource.name,
+            stack_action='create',
+            stack_timing='post',
+            hook_method=self.store_notification_rules_config,
+            cache_method=self.store_notification_rules_config_cache,
+            hook_arg={'pipeline': self.pipeline, 'rules_arn_ref_list': rules_arn_ref_list}
         )
 
     def init_stage_action_ecs_deploy(self, action_config):
@@ -1173,6 +1233,8 @@ run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PH
                 return ref.resource._stack.template.get_codepipeline_role_arn()
             elif ref.resource_ref == 'arn':
                 return ref.resource._stack.template.pipeline_arn
+            elif ref.resource_ref == 'notification_rule.arn':
+                return ref.resource._stack
 
         elif schemas.IDeploymentPipelineSourceCodeCommit.providedBy(ref.resource):
             # CodeCommit
