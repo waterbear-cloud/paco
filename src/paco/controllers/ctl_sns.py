@@ -2,10 +2,11 @@ from paco import utils
 from paco.controllers.controllers import Controller
 from paco.core.exception import StackException
 from paco.stack import StackGroup, Stack, StackTags
-from paco.models.references import get_model_obj_from_ref
+from paco.models.references import get_model_obj_from_ref, resolve_ref_outputs, Reference
 from paco.models import deepcopy_except_parent
 from paco.models.metrics import SNSTopics
 from paco.models.base import RegionContainer, AccountContainer
+import json
 import paco.cftemplates
 import os
 import pathlib
@@ -34,10 +35,48 @@ class SNSTopicsStackGroup(StackGroup):
             extra_context={'grp_id': account_ctx.name, 'topics': topics},
             set_resource_stack=True,
         )
+        hook_arg = {'resource': resource, 'account_ctx': account_ctx}
+        # Hook to create and upload imageDefinitions.json S3 source artifact
+        stack.hooks.add(
+            name='StoreResourceSNSState.' + resource.name,
+            stack_action='update',
+            stack_timing='post',
+            hook_method=self.store_resource_sns_state,
+            cache_method=self.store_resource_sns_state_cache,
+            hook_arg=hook_arg
+        )
+        stack.hooks.add(
+            name='StoreResourceSNSState.' + resource.name,
+            stack_action='create',
+            stack_timing='post',
+            hook_method=self.store_resource_sns_state,
+            cache_method=self.store_resource_sns_state_cache,
+            hook_arg=hook_arg
+        )
         self.paco_ctx.log_finish('Init', resource)
 
     def get_aws_name(self):
         return 'SNS'
+
+    def build_sns_state(self, resource):
+        state = {}
+        for group_name in resource.keys():
+            group = resource[group_name]
+            state[group_name] = resolve_ref_outputs(Reference(group.paco_ref+'.arn'), self.paco_ctx.project['home'])
+
+        return state
+
+    def store_resource_sns_state_cache(self, hook, config):
+        "Create a cache id for resource.sns state"
+        return json.dumps(self.build_sns_state(config['resource']))
+
+    def store_resource_sns_state(self, hook, config):
+        "Store resource.sns state in the Paco work bucket"
+        resource = config['resource']
+        account_ctx = config['account_ctx']
+        state = self.build_sns_state(resource)
+
+        self.paco_ctx.store_resource_state(resource, 'SNS', account_ctx.id, state)
 
 class SNSController(Controller):
     def __init__(self, paco_ctx):
