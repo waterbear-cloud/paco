@@ -951,13 +951,11 @@ policies:
 
     def store_notification_rules_config_cache(self, hook, config):
         "Create a cache id for the notification rules configuration"
-        cache = ""
-        for rule_arn_ref in config['rules_arn_ref_list']:
-            cache += rule_arn_ref
-        return cache
+        return json.dumps(config['rules_arn_ref_list'])
+
 
     def store_notification_rules_config(self, hook, config):
-        "Create an imageDefinitions file"
+        "Store Notification Rules state in the Paco work bucket"
         pipeline = config['pipeline']
         monitoring = pipeline.monitoring
 
@@ -973,6 +971,7 @@ policies:
 
         rules_config = {
             'rules': [],
+            'pipeline_name': resolve_ref_outputs(Reference(pipeline.paco_ref+'.name'), self.paco_ctx.project['home']),
             'monitor_config': monitor_config
         }
 
@@ -981,7 +980,7 @@ policies:
             rules_config['rules'].append(rule_arn)
 
 
-        self.paco_ctx.store_resource_state(self.pipeline, rules_config)
+        self.paco_ctx.store_resource_state(self.pipeline, self.pipeline.type, self.pipeline_account_ctx.id, rules_config)
 
 
     def init_stage_action_ecr_source(self, action_config):

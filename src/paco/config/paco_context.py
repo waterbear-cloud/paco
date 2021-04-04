@@ -14,6 +14,7 @@ from paco.config.paco_buckets import PacoBuckets
 from shutil import copyfile
 from deepdiff import DeepDiff
 from zope.interface import implementer
+import json
 import paco.config.aws_credentials
 import paco.core.log
 import paco.controllers
@@ -679,13 +680,10 @@ This directory contains several sub-directories that Paco uses:
             return message+'\n'
         print(message)
 
-    def store_resource_state(self, resource, config):
-        yaml=YAML()
-        yaml.default_flow_sytle = False
-
-        file_contents = yaml.dump(data=config)
+    def store_resource_state(self, resource, resource_type, account_id, config):
+        file_contents = json.dumps(config)
         work_path = pathlib.Path(self.build_path)
-        work_path = work_path / 'ResourceState' / resource.type
+        work_path = work_path / 'ResourceState' / account_id / resource_type
         pathlib.Path(work_path).mkdir(parents=True, exist_ok=True)
 
         file_name = resource.paco_ref_parts + '.state'
@@ -697,7 +695,7 @@ This directory contains several sub-directories that Paco uses:
         paco_bucket_account_ctx = self.get_account_context(self.project.shared_state.paco_work_bucket.account)
         self.paco_buckets.upload_file(
             file_location=str(file_location),
-            s3_key=f'Paco/ResourceState/{resource.type}/{resource.paco_ref_parts}',
+            s3_key=f'Paco/ResourceState/{account_id}/{resource_type}/{resource.paco_ref_parts}',
             account_ctx=paco_bucket_account_ctx,
             region=self.project.shared_state.paco_work_bucket.region
         )
