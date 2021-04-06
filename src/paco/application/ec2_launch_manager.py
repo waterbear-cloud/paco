@@ -2076,8 +2076,10 @@ statement:
         codedeploy_lb = LaunchBundle(resource, self, bundle_name)
         if resource.instance_ami_type_generic in ['amazon', 'centos']:
             uninstall_command='yum erase codedeploy-agent -y'
+            package_exists_command='yum list installed codedeploy-agent >/dev/null 2>&1'
         else:
             uninstall_command='dpkg --purge codedeploy-agent -y'
+            package_exists_command='dpkg -l codedeploy-agent >/dev/null 2>&1'
         launch_script = f"""#!/bin/bash
 
 function stop_agent() {{
@@ -2137,8 +2139,14 @@ function run_launch_bundle() {{
 }}
 
 function disable_launch_bundle() {{
-    stop_agent
-    {uninstall_command}
+    set +e
+    {package_exists_command}
+    RES=$?
+    set -e
+    if [ $RES -eq 0 ] ; then
+        stop_agent
+        {uninstall_command}
+    fi
 }}
 """
         codedeploy_lb.set_launch_script(launch_script, resource.launch_options.codedeploy_agent)
