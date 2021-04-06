@@ -1,10 +1,16 @@
 Changelog for Paco
 ==================
 
-9.3.7 (unreleased)
+9.3.7 (2021-04-06)
 ------------------
 
-- Nothing changed yet.
+### Added
+
+- Added support for resource state in the paco worker bucket.
+
+### Fixed
+
+- Fixed SNS Topics cross account + cross region policy
 
 
 9.3.6 (2021-04-02)
