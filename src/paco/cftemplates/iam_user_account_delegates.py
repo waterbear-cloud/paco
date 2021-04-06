@@ -263,7 +263,7 @@ class IAMUserAccountDelegates(StackTemplate):
                         codebuild_arn = self.paco_ctx.get_ref(action.paco_ref+'.project.arn')
                         readonly_arn_list.append(codebuild_arn)
         if len(readonly_arn_list) > 0:
-            self.set_codebuild_permissions(readonly_arn_list, assume_role_res)
+            self.set_codebuild_permissions(readonly_arn_list, assume_role_res, 'DeploymentPipeline')
 
     def init_codebuild_permission(self, permission_config, assume_role_res):
         """CodeBuild Web Console Permissions"""
@@ -287,9 +287,9 @@ class IAMUserAccountDelegates(StackTemplate):
                 if codebuild_arn not in readonly_codebuild_arns:
                     readonly_codebuild_arns.append(codebuild_arn)
 
-        self.set_codebuild_permissions(readonly_codebuild_arns, assume_role_res)
+        self.set_codebuild_permissions(readonly_codebuild_arns, assume_role_res, 'CodeBuild')
 
-    def set_codebuild_permissions(self, readonly_codebuild_arns, assume_role_res):
+    def set_codebuild_permissions(self, readonly_codebuild_arns, assume_role_res, policy_id):
         statement_list = []
         readonly_codebuild_actions = [
             Action('codebuild', 'BatchGet*'),
@@ -312,7 +312,7 @@ class IAMUserAccountDelegates(StackTemplate):
             )
 
         managed_policy_res = troposphere.iam.ManagedPolicy(
-            title=self.create_cfn_logical_id("CodeBuildPolicy"),
+            title=self.create_cfn_logical_id_join([policy_id, "CodeBuildPolicy"]),
             PolicyDocument=PolicyDocument(
                 Version="2012-10-17",
                 Statement=statement_list

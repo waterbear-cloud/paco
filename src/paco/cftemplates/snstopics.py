@@ -57,6 +57,7 @@ class SNSTopics(StackTemplate):
 
         # Topic Resources and Outputs
         topics_ref_cross_list = []
+        topic_policy_cache = []
         for topic in topics:
             if not topic.is_enabled():
                 continue
@@ -112,9 +113,12 @@ class SNSTopics(StackTemplate):
                     account.account_id for account in self.paco_ctx.project.accounts.values()
                 ]
                 for account_id in account_id_list:
+                    if account_id in topic_policy_cache:
+                        continue
+                    topic_policy_cache.append(account_id)
                     statement = Statement(
                         Effect = Allow,
-                        Sid = self.create_cfn_logical_id(account_id),
+                        Sid = self.create_cfn_logical_id_join(account_id),
                         Principal = Principal("AWS", f'arn:aws:iam::{account_id}:root'),
                         Action = [ awacs.sns.Publish, awacs.sns.Subscribe ],
                         Resource = [ troposphere.Ref(topic_resource) ],
