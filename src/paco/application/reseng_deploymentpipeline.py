@@ -144,7 +144,7 @@ ${!DEST_REPO_NAME}:${RELEASE_PHASE_TAG}"
     echo "--------------------------------------------------------------------------"
     if [ "${ENABLE_RELEASE_PHASE}" == 'true' ] ; then
         echo "Release Phase: start"
-        /usr/local/bin/paco-ecs-release-phase-${ECR_DEPLOY_LIST[$I]} ${RELEASE_PHASE_TAG}
+        /usr/local/bin/paco-ecr-deploy-${ECR_DEPLOY_LIST[$I]}-release-phase ${RELEASE_PHASE_TAG}
         RET=$?
         if [ $RET -ne 0 ] ; then
             echo "ERROR: Release Phase failed. Aborting deployment."
