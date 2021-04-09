@@ -119,3 +119,6 @@ class InvalidCloudFrontCertificateRegion(PacoBaseException):
 
 class InvalidAWSRegion(PacoBaseException):
     title = "The region supplied is not a valid AWS region"
+
+class MissingSNSTopics(PacoBaseException):
+    title = "The account or region does not have the necessary SNS topics provisioned"

@@ -75,8 +75,7 @@ class SNSTopicsStackGroup(StackGroup):
         resource = config['resource']
         account_ctx = config['account_ctx']
         state = self.build_sns_state(resource)
-
-        self.paco_ctx.store_resource_state(resource, 'SNS', account_ctx.id, state)
+        self.paco_ctx.store_resource_state('SNS', 'resource', account_ctx.id, resource.stack.aws_region, state)
 
 class SNSController(Controller):
     def __init__(self, paco_ctx):

@@ -680,13 +680,15 @@ This directory contains several sub-directories that Paco uses:
             return message+'\n'
         print(message)
 
-    def store_resource_state(self, resource, resource_type, account_id, config):
-        file_contents = json.dumps(config)
+    def store_resource_state(self, resource_type, resource_key, account_id, region, state):
+        state_key = f'{resource_key}-{account_id}-{region}'
+
+        file_contents = json.dumps(state)
         work_path = pathlib.Path(self.build_path)
-        work_path = work_path / 'ResourceState' / account_id / resource_type
+        work_path = work_path / 'ResourceState' / resource_type / state_key
         pathlib.Path(work_path).mkdir(parents=True, exist_ok=True)
 
-        file_name = resource.paco_ref_parts + '.state'
+        file_name = f'{state_key}.state'
         utils.write_to_file(work_path, file_name, file_contents)
 
         file_location = work_path / file_name
@@ -695,7 +697,7 @@ This directory contains several sub-directories that Paco uses:
         paco_bucket_account_ctx = self.get_account_context(self.project.shared_state.paco_work_bucket.account)
         self.paco_buckets.upload_file(
             file_location=str(file_location),
-            s3_key=f'Paco/ResourceState/{account_id}/{resource_type}/{resource.paco_ref_parts}',
+            s3_key=f'Paco/ResourceState/{resource_type}/{state_key}',
             account_ctx=paco_bucket_account_ctx,
             region=self.project.shared_state.paco_work_bucket.region
         )

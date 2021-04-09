@@ -108,6 +108,16 @@ class SNSTopics(StackTemplate):
                 )
                 statement_list.append(statement)
 
+            # Add CloudWatch service
+            statement = Statement(
+                Effect = Allow,
+                Sid = 'CloudWatchService',
+                Principal = Principal("Service", 'cloudwatch.amazonaws.com'),
+                Action = [ awacs.sns.Publish ],
+                Resource = [troposphere.Ref(topic_resource)],
+            )
+            statement_list.append(statement)
+
             if topic.cross_account_access:
                 account_id_list = [
                     account.account_id for account in self.paco_ctx.project.accounts.values()

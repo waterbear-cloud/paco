@@ -9,7 +9,7 @@ from paco.cftemplates.cftemplates import StackTemplate
 from paco.models.locations import get_parent_by_interface
 from paco.models.registry import CW_ALARM_HOOKS
 from paco.utils import prefixed_name
-from paco.core.exception import InvalidLogSetConfiguration, InvalidAlarmConfiguration
+from paco.core.exception import InvalidLogSetConfiguration, InvalidAlarmConfiguration, MissingSNSTopics
 import troposphere
 
 
@@ -55,6 +55,9 @@ class CFBaseAlarm(StackTemplate):
         alarm_action_list = []
         alarm_parent = get_parent_by_interface(alarm, schemas.IResource)
         alarm_account = alarm_parent.get_account()
+        if alarm_account.name not in self.paco_ctx.project['resource']['sns'].computed.keys() or \
+            alarm.region_name not in self.paco_ctx.project['resource']['sns'].computed[alarm_account.name].keys():
+                raise MissingSNSTopcis(f'Could not find SNS topics for account "{alarm_account.name}" in region "{alarm.region_name}"')
         notification_groups = self.paco_ctx.project['resource']['sns'].computed[alarm_account.name][alarm.region_name]
         for alarm_action in alarm.get_alarm_actions_paco_refs(notification_groups):
             # Create parameter
