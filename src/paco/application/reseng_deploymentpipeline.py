@@ -951,37 +951,24 @@ policies:
 
     def store_notification_rules_config_cache(self, hook, config):
         "Create a cache id for the notification rules configuration"
-        return json.dumps(config['rules_arn_ref_list'])
+        #pipline_monitoring_config = config['pipeline'].monitoring
+        cache_id = json.dumps(config['rules_config'])
+        return f'{cache_id}'
 
 
     def store_notification_rules_config(self, hook, config):
         "Store Notification Rules state in the Paco work bucket"
         pipeline = config['pipeline']
-        monitoring = pipeline.monitoring
+        account_ctx = config['account_ctx']
+        pipeline_name = config['rules_config']['pipeline_name']
+        rules_config = config['rules_config']
 
-        monitor_config = {
-            'groups': [],
-            'slack_channels': []
-        }
-        if monitoring != None and monitoring.is_enabled() and monitoring.notifications != None:
-            for notification_name in monitoring.notifications.keys():
-                notification = monitoring.notifications[notification_name]
-                monitor_config['groups'].extend(notification.groups)
-                monitor_config['slack_channels'].extend(notification.slack_channels)
-
-        rules_config = {
-            'rules': [],
-            'pipeline_name': resolve_ref_outputs(Reference(pipeline.paco_ref+'.name'), self.paco_ctx.project['home']),
-            'monitor_config': monitor_config
-        }
-
-        for rule_arn_ref in config['rules_arn_ref_list']:
-            rule_arn = resolve_ref_outputs(Reference(rule_arn_ref), self.paco_ctx.project['home'])
-            rules_config['rules'].append(rule_arn)
-
-
-        self.paco_ctx.store_resource_state(self.pipeline, self.pipeline.type, self.pipeline_account_ctx.id, rules_config)
-
+        self.paco_ctx.store_resource_state(
+            pipeline.type,
+            pipeline_name,
+            account_ctx.id,
+            pipeline._stack.aws_region,
+            rules_config)
 
     def init_stage_action_ecr_source(self, action_config):
         "Initialize an ECR Source action"
@@ -1022,22 +1009,51 @@ ArtifactsBucket: {s3_bucket.paco_ref}
 
     def add_notification_rules_stack_hooks(self, notification_rules_stack, rules_arn_ref_list):
         # Hook to create and upload imageDefinitions.json S3 source artifact
-        notification_rules_stack.hooks.add(
-            name='StoreNotificationRulesConfig.' + self.resource.name,
-            stack_action='update',
-            stack_timing='post',
-            hook_method=self.store_notification_rules_config,
-            cache_method=self.store_notification_rules_config_cache,
-            hook_arg={'pipeline': self.pipeline, 'rules_arn_ref_list': rules_arn_ref_list}
-        )
-        notification_rules_stack.hooks.add(
-            name='StoreNotificationRulesConfig.' + self.resource.name,
-            stack_action='create',
-            stack_timing='post',
-            hook_method=self.store_notification_rules_config,
-            cache_method=self.store_notification_rules_config_cache,
-            hook_arg={'pipeline': self.pipeline, 'rules_arn_ref_list': rules_arn_ref_list}
-        )
+        pipeline_name = resolve_ref_outputs(Reference(self.pipeline.paco_ref+'.name'), self.paco_ctx.project['home'])
+        monitoring = self.pipeline.monitoring
+
+        monitor_config = {
+            'groups': [],
+            'slack_channels': []
+        }
+
+        if monitoring != None and monitoring.is_enabled() and \
+           monitoring.notifications != None and len(monitoring.notifications.keys()) > 0:
+            for notification_name in monitoring.notifications.keys():
+                notification = monitoring.notifications[notification_name]
+                monitor_config['groups'].extend(notification.groups)
+                monitor_config['slack_channels'].extend(notification.slack_channels)
+        else:
+            # Load the Application's notifications if the DeploymentPipeline does
+            # not have one configured
+            pipeline_app = get_parent_by_interface(self.pipeline, schemas.IApplication)
+            if pipeline_app != None and pipeline_app.notifications:
+                for group_name in pipeline_app.notifications.keys():
+                    notification = pipeline_app.notifications[group_name]
+                    if notification.groups and len(notification.groups) > 0:
+                        monitor_config['groups'].extend(notification.groups)
+                    if notification.slack_channels and len(notification.slack_channels) > 0:
+                        monitor_config['slack_channels'].extend(notification.slack_channels)
+        rules_config = {
+            'rules': [],
+            'monitor_config': monitor_config,
+            'pipeline_name': pipeline_name
+        }
+
+        for rule_arn_ref in rules_arn_ref_list:
+            rule_arn = resolve_ref_outputs(Reference(rule_arn_ref), self.paco_ctx.project['home'])
+            rules_config['rules'].append(rule_arn)
+
+        hook_arg = {'pipeline': self.pipeline, 'account_ctx': self.pipeline_account_ctx, 'rules_config': rules_config}
+        for stack_action in ('update', 'create'):
+            notification_rules_stack.hooks.add(
+                name='StoreNotificationRulesConfig.' + self.resource.name,
+                stack_action=stack_action,
+                stack_timing='post',
+                hook_method=self.store_notification_rules_config,
+                cache_method=self.store_notification_rules_config_cache,
+                hook_arg=hook_arg
+            )
 
     def init_stage_action_ecs_deploy(self, action_config):
         "Initialize an ECS stack for the action"

@@ -1,6 +1,7 @@
 from paco import utils
 from paco.cftemplates.cftemplates import StackTemplate
-from paco.models import registry
+from paco.models import registry, schemas
+from paco.models.locations import get_parent_by_interface
 import troposphere
 import troposphere.codestarnotifications
 
@@ -17,10 +18,19 @@ class NotificationRules(StackTemplate):
 
         self.notification_groups = {}
         rule_target_list = []
-        if self.resource.monitoring != None and self.resource.monitoring.notifications != None:
+
+        notifications = None
+        monitoring = self.resource.monitoring
+        if monitoring != None and monitoring.notifications != None and len(monitoring.notifications.keys()) > 0:
+            notifications = monitoring.notifications
+        else:
+            app_config = get_parent_by_interface(self.resource, schemas.IApplication)
+            notifications = app_config.notifications
+
+        if notifications != None and len(notifications.keys()) > 0:
             notify_param_cache = []
-            for notify_group_name in self.resource.monitoring.notifications.keys():
-                for sns_group_name in self.resource.monitoring.notifications[notify_group_name].groups:
+            for notify_group_name in notifications.keys():
+                for sns_group_name in notifications[notify_group_name].groups:
                     notify_param = self.create_notification_param(sns_group_name)
                     # Only append if the are unique
                     if notify_param not in notify_param_cache:
