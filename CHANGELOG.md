@@ -1,11 +1,32 @@
 Changelog for Paco
 ==================
 
-9.3.8 (unreleased)
+9.3.8 (2021-04-09)
 ------------------
 
-- Nothing changed yet.
+### Fixed
 
+- Fixed release phase script name in the ECR deploy script.
+
+- Fixed codedeploy EC2 Launch Bundle on ubuntu.
+
+- Fixed unique key to CodeBuild IAM permissions policies
+
+- Fixed SNS topic policy duplicates by adding a cache
+
+### Added
+
+- Added IAM policy statement for cloudwatch service to SNS topics listening for CloudWatch Alarms notifications.
+
+- Added paco registry override for Alarm Descriptions.
+
+- Made notification rules for DeploymentPipeline inherit application notification configurations if the resource config is missing.
+
+### Changed
+
+- Improved error handling when processing alarm actions
+
+- Reformatted the resource state s3 bucket key
 
 9.3.7 (2021-04-06)
 ------------------
