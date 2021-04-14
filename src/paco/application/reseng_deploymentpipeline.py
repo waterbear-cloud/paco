@@ -34,6 +34,7 @@ ECR_DEPLOY_SCRIPT_CONFIG = """
 {ecr_deploy_name}_SOURCE_REPO_NAME_{idx}='{source_repo_name}'
 {ecr_deploy_name}_SOURCE_REPO_DOMAIN_{idx}='{source_repo_domain}'
 {ecr_deploy_name}_SOURCE_REPO_URI_{idx}="${{{ecr_deploy_name}_SOURCE_REPO_DOMAIN_{idx}}}/"
+{ecr_deploy_name}_SOURCE_REPO_ACCOUNT_{idx}="{source_repo_account_id}"
 {ecr_deploy_name}_SOURCE_TAG_{idx}='{source_tag}'
 {ecr_deploy_name}_DEST_REPO_NAME_{idx}='{dest_repo_name}'
 {ecr_deploy_name}_DEST_REPO_DOMAIN_{idx}='{dest_repo_domain}'
@@ -172,6 +173,7 @@ ${!DEST_REPO_NAME}:${RELEASE_PHASE_TAG}"
         SOURCE_REPO_NAME=${ECR_DEPLOY_LIST[$I]}_SOURCE_REPO_NAME_$J
         SOURCE_REPO_DOMAIN=${ECR_DEPLOY_LIST[$I]}_SOURCE_REPO_DOMAIN_$J
         SOURCE_REPO_URI=${ECR_DEPLOY_LIST[$I]}_SOURCE_REPO_URI_$J
+        SOURCE_REPO_ACCOUNT=${ECR_DEPLOY_LIST[$I]}_SOURCE_REPO_ACCOUNT_$J
         SOURCE_DEPLOY_TAG=${ECR_DEPLOY_LIST[$I]}_SOURCE_TAG_$J
         if [ "${OVERRIDE_SOURCE_DEPLOY_TAG}" != "" ] ; then
             SOURCE_DEPLOY_TAG="OVERRIDE_SOURCE_DEPLOY_TAG"
@@ -182,6 +184,16 @@ ${!DEST_REPO_NAME}:${RELEASE_PHASE_TAG}"
         DEST_DEPLOY_TAG=${ECR_DEPLOY_LIST[$I]}_DEST_TAG_$J
         DEST_REPO_URI=${ECR_DEPLOY_LIST[$I]}_DEST_REPO_URI_$J
 
+        JQ_QUERY=".imageDetails[] | select(.imageTags != null) | select(.imageTags | contains([\\\"${!SOURCE_DEPLOY_TAG}\\\"])) | .imageTags | join(\\\" \\\")"
+        SOURCE_REPO_TAGS=$(aws ecr describe-images --registry-id ${!SOURCE_REPO_ACCOUNT} --repository-name ${!SOURCE_REPO_NAME} | jq -c "${JQ_QUERY}" | tr -d '"')
+        for SOURCE_TAG in $(echo $SOURCE_REPO_TAGS)
+        do
+            if [ "$SOURCE_TAG" == "${!DEST_DEPLOY_TAG}" ] ; then
+               continue
+            fi
+            run_command "" "docker tag ${!SOURCE_REPO_URI}${!SOURCE_REPO_NAME}:${!SOURCE_DEPLOY_TAG} ${!DEST_REPO_URI}${!DEST_REPO_NAME}:${SOURCE_TAG}"
+            ec2lm_async_run "" "docker push ${!DEST_REPO_URI}${!DEST_REPO_NAME}:${SOURCE_TAG}"
+        done
         run_command "" "docker tag ${!SOURCE_REPO_URI}${!SOURCE_REPO_NAME}:${!SOURCE_DEPLOY_TAG} ${!DEST_REPO_URI}${!DEST_REPO_NAME}:${!DEST_DEPLOY_TAG}"
         ec2lm_async_run "" "docker push ${!DEST_REPO_URI}${!DEST_REPO_NAME}:${!DEST_DEPLOY_TAG}"
     done

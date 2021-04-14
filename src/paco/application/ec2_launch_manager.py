@@ -1833,6 +1833,7 @@ statement:
                     ecr_deploy_name=ecr_deploy_name,
                     source_repo_name=source_ecr_obj.repository_name,
                     source_repo_domain=f'{source_account_id}.dkr.ecr.{source_env.region}.amazonaws.com',
+                    source_repo_account_id=source_account_id,
                     idx=repo_idx,
                     source_tag=repository.source_tag,
                     dest_repo_name=dest_ecr_obj.repository_name,
