@@ -1520,7 +1520,7 @@ statement:
                             "runCommand": [
                                 '#!/bin/bash',
                                 f'. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash',
-                                'ec2lm_launch_bundles ' + '{{CacheId}}',
+                                'ec2lm_launch_bundles ' + '{{CacheId}}' + '>>/var/log/paco/ec2lm.log',
                             ]
                         }
                     }
@@ -1946,6 +1946,7 @@ SCRIPTS[{idx}]="{script_name}"
 
         launch_script += f"""
 function run_launch_bundle() {{
+    echo "EC2LM: ScriptManager: Installing scripts"
     ec2lm_install_package jq
     for NAME in ${{SCRIPTS[@]}}
     do
@@ -1957,9 +1958,9 @@ function run_launch_bundle() {{
         SCRIPT_DATA=${{!SCRIPT_DATA_VAR}}
         SCRIPT_MODE=${{!SCRIPT_MODE_VAR}}
         if [ -e "${{SCRIPT_PATH}}" ] ; then
-            echo "Updating script: ${{SCRIPT_PATH}}"
+            echo "EC2LM: ScriptManager: Updating script: ${{SCRIPT_PATH}}"
         else
-            echo "Creating script: ${{SCRIPT_PATH}}"
+            echo "EC2LM: ScriptManager: Creating script: ${{SCRIPT_PATH}}"
         fi
         echo ${{SCRIPT_DATA}} | base64 -d >${{SCRIPT_PATH}}
         chmod ${{SCRIPT_MODE}} ${{SCRIPT_PATH}}

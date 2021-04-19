@@ -4,3 +4,12 @@ active_regions:
   - us-west-2
   - eu-central-1
   - ca-central-1
+
+shared_state:
+  cloudformation_region: ca-central-1
+  paco_work_bucket:
+    enabled: true
+    account: paco.ref accounts.tools
+    region: ca-central-1
+
+s3bucket_hash: randomhere

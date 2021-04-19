@@ -68,16 +68,16 @@ function list_services() {
     for SERVICE_ARN in $(cat ${LIST_CACHE})
     do
         if [ "$LIST_TYPE" == ""  ] ; then
-            SERVICE=$(echo "$SERVICE_ARN" | awk -F '/' '{print $3}' | awk -F '-' '{print $10}' | awk -F 'Service' '{print $2}' | tr '[:upper:]' '[:lower:]')
+            SERVICE=$(echo "$SERVICE_ARN" | awk -F '/' '{print $3}' | awk -F '-' '{print $11}' | awk -F 'Service' '{print $2}' | tr '[:upper:]' '[:lower:]')
         elif [ "$LIST_TYPE" == "full" ] ; then
             SERVICE=$(echo "$SERVICE_ARN" | awk -F '/' '{print $3}')
         elif [ "$LIST_TYPE" == "arns" ] ; then
             SERVICE="${SERVICE_ARN}"
 	elif [ "$LIST_TYPE" == "lookup" ] ; then
-	    SERVICE=$(echo "$SERVICE_ARN" | awk -F '/' '{print $3}' | awk -F '-' '{print $10}' | awk -F 'Service' '{print $2}' | tr '[:upper:]' '[:lower:]')
+	    SERVICE=$(echo "$SERVICE_ARN" | awk -F '/' '{print $3}' | awk -F '-' '{print $11}' | awk -F 'Service' '{print $2}' | tr '[:upper:]' '[:lower:]')
 	    if [ "$SERVICE" == "$2" ] ; then
-		echo "$SERVICE_ARN" | awk -F '/' '{print $3}'
-		return
+		    echo "$SERVICE_ARN" | awk -F '/' '{print $3}'
+		    return
 	    fi
         else
             echo "error: unknown list type: ${LIST_TYPE}"
@@ -93,6 +93,10 @@ function list_tasks() {
 
     for SERVICE in $(list_services full)
     do
+        SHORT_SERVICE_NAME=$(echo $SERVICE | awk -F '-' '{print $11}' | awk -F 'Service' '{print $2}' | tr '[:upper:]' '[:lower:]')
+        if [ "${SHORT_SERVICE_NAME}" != "${SERVICE_NAME_ARG}" ] ; then
+            continue
+        fi
         #echo "aws ecs list-tasks --cluster ${CLUSTER_ARN} --service-name ${SERVICE} --query 'taskArns[]' --output text"
         for TASK_ARN in $(aws ecs list-tasks --cluster ${CLUSTER_ARN} --service-name ${SERVICE} --query 'taskArns[]' --output text)
         do
@@ -104,7 +108,6 @@ function list_tasks() {
                 INSTANCE_ID=$(aws ecs describe-container-instances --cluster ${CLUSTER} --container-instances ${CONTAINER_INSTANCE_ARN} --query 'containerInstances[0].ec2InstanceId' --output text)
                 IP_ADDRESS=$(aws ec2 describe-instances --instance-ids ${INSTANCE_ID} --query 'Reservations[0].Instances[0].PrivateIpAddress' --output text)
                 DOCKER_TASK=$(aws ecs describe-tasks --cluster ${CLUSTER} --tasks ${TASK} --query 'tasks[0].containers[0].runtimeId' --output text)
-                SHORT_SERVICE_NAME=$(echo $SERVICE | awk -F '-' '{print $10}' | awk -F 'Service' '{print $2}' | tr '[:upper:]' '[:lower:]')
                 echo -e "${SHORT_SERVICE_NAME}	${IP_ADDRESS}	${DOCKER_TASK}"
             fi
         done
@@ -130,6 +133,118 @@ function restart_services() {
     fi
 }
 
+SSH_IP="NULL"
+SSH_DOCKER_TASK="NULL"
+function ssh_get_ip() {
+    SERVICE_NAME_ARG=$(echo $1 | tr '[:upper:]' '[:lower:]')
+    TASK_ARG="NULL"
+    if [ $# -eq 2 ] ; then
+        TASK_ARG=$2
+    fi
+
+    SERVICE_OPTION=""
+    SERVICE=""
+    for SERVICE_ARN in $(list_services arns)
+    do
+        SERVICE=$(echo "$SERVICE_ARN" |  awk -F '/' '{print $3}')
+        SERVICE_OPTION=$(echo "$SERVICE" | awk -F '-' '{print $11}' | awk -F 'Service' '{print $2}' | tr '[:upper:]' '[:lower:]')
+        if [ "$SERVICE_OPTION" == "$SERVICE_NAME_ARG" ] ; then
+            break
+        fi
+        SERVICE_OPTION=""
+    done
+
+    if [ "$SERVICE_OPTION" == "" ] ; then
+        echo "error: '${SERVICE_NAME_ARG}' was not found."
+        echo
+        usage
+    fi
+
+    SERVICE_ARN="${ARN_PREFIX}:service/${CLUSTER}/${SERVICE}"
+
+    TASK_IDX=0
+    NUM_TASKS=$(aws ecs list-tasks --cluster ${CLUSTER_ARN} --service-name ${SERVICE} --query 'length(taskArns)')
+    if [ $NUM_TASKS -gt 1 ] ; then
+        if [ "$TASK_ARG" == "NULL" ] ; then
+            echo "More than one task is running for '${SERVICE_NAME_ARG}'. Please specify a Task Id."
+            echo "       Task Id                         ""     Start Time"
+        fi
+        IDX=0
+        for TASK_ARN in $(list-tasks ${SERVICE} arns) #$(aws ecs list-tasks --cluster ${CLUSTER_ARN} --service-name ${SERVICE} --query 'taskArns[]' --output text)
+        do
+            IDX=$(($IDX+1))
+            TASK=$(echo $TASK_ARN | awk -F'/' '{print $3}')
+            if [ "$TASK_ARG" == "$TASK" ] ; then
+                break
+            fi
+            if [ "$TASK_ARG" == "NULL" ] ; then
+                TASK_STARTED_AT=$(aws ecs describe-tasks --cluster ${CLUSTER} --tasks ${TASK} --query 'tasks[0].startedAt' --output text)
+                echo "    ${IDX}) ${TASK}     "$(date -d @${TASK_STARTED_AT})
+            fi
+        done
+        while :
+        do
+            if [ "$TASK_ARG" == "$TASK" ] ; then
+                # break if the users Task argument was found
+                break
+            elif [ "$TASK_ARG" != "NULL" ] ; then
+                # Unable to find the users Task
+                echo "error: '${TASK_ARG}' task is not running"
+                exit 1
+            fi
+            read -p "Select a task: [1-$IDX]: " TASK_IDX
+            if [ $TASK_IDX -ge 1 -a $TASK_IDX -le $NUM_TASKS ] ; then
+                # Array is 0 based so decrement by 1
+                TASK_IDX=$(($TASK_IDX-1))
+                break
+            fi
+            echo "error: '$TASK_IDX' must be an integer between 1 and $NUM_TASKS"
+            echo
+        done
+    fi
+
+    TASK=$(aws ecs list-tasks --cluster ${CLUSTER_ARN} --service-name ${SERVICE} --query "taskArns[$TASK_IDX]" --output text | awk -F'/' '{print $3}')
+    CONTAINER_INSTANCE_ARN=$(aws ecs describe-tasks --cluster ${CLUSTER_ARN} --tasks ${TASK} --query 'tasks[0].containerInstanceArn' --output text)
+    INSTANCE_ID=$(aws ecs describe-container-instances --cluster ${CLUSTER} --container-instances ${CONTAINER_INSTANCE_ARN} --query 'containerInstances[0].ec2InstanceId' --output text)
+    IP_ADDRESS=$(aws ec2 describe-instances --instance-ids ${INSTANCE_ID} --query 'Reservations[0].Instances[0].PrivateIpAddress' --output text)
+    DOCKER_TASK=$(aws ecs describe-tasks --cluster ${CLUSTER} --tasks ${TASK} --query 'tasks[0].containers[0].runtimeId' --output text)
+    export SSH_DOCKER_TASK=${DOCKER_TASK}
+    export SSH_IP=${IP_ADDRESS}
+}
+
+function ssh_service() {
+    SERVICE_NAME_ARG=$(echo $1 | tr '[:upper:]' '[:lower:]')
+    TASK_ARG="NULL"
+    if [ $# -eq 2 ] ; then
+        TASK_ARG=$2
+    fi
+
+
+    ssh_get_ip $SERVICE_NAME_ARG $TASK_ARG
+
+    echo
+    echo "ecs-ssh: ${SERVICE_NAME_ARG}: SSH to ${IP_ADDRESS} for docker task id ${DOCKER_TASK}"
+
+    ssh ${SSH_IP}
+}
+
+function docker_exec()
+{
+    SERVICE_NAME_ARG=$(echo $1 | tr '[:upper:]' '[:lower:]')
+    DOCKER_COMMAND="$2"
+    TASK_ARG="NULL"
+    if [ $# -eq 3 ] ; then
+        TASK_ARG=$3
+    fi
+
+    ssh_get_ip $SERVICE_NAME_ARG $TASK_ARG
+
+    SSH_COMMAND="docker exec -it ${SSH_DOCKER_TASK} ${DOCKER_COMMAND}"
+
+    echo "connecting: ssh -t $SSH_IP '${SSH_COMMAND}'"
+    ssh -t ${SSH_IP} "${SSH_COMMAND}"
+}
+
 #function usage() {
 #    echo "$0 <service_name> [task_id]"
 #    echo
@@ -138,6 +253,8 @@ function restart_services() {
 #    echo
 #    exit 1
 #}
+
+
 
 COMMAND=$1
 shift
@@ -157,88 +274,16 @@ case ${COMMAND} in
         exit 0
         ;;
     ssh)
+        ssh_service $*
+        ;;
+    docker-exec)
+        docker_exec $*
         ;;
     *)
         usage
         ;;
 esac
 
-TASK_ARG="NULL"
-if [ $# -eq 2 ] ; then
-    TASK_ARG=$2
-fi
-
-SERVICE_NAME_ARG=$(echo $1 | tr '[:upper:]' '[:lower:]')
-
-SERVICE_OPTION=""
-SERVICE=""
-for SERVICE_ARN in $(list_services arns)
-do
-    SERVICE=$(echo "$SERVICE_ARN" |  awk -F '/' '{print $3}')
-    SERVICE_OPTION=$(echo "$SERVICE" | awk -F '-' '{print $10}' | awk -F 'Service' '{print $2}' | tr '[:upper:]' '[:lower:]')
-    if [ "$SERVICE_OPTION" == "$SERVICE_NAME_ARG" ] ; then
-        break
-    fi
-    SERVICE_OPTION=""
-done
-
-if [ "$SERVICE_OPTION" == "" ] ; then
-    echo "error: '${SERVICE_NAME_ARG}' was not found."
-    echo
-    usage
-fi
-
-SERVICE_ARN="${ARN_PREFIX}:service/${CLUSTER}/${SERVICE}"
-
-TASK_IDX=0
-NUM_TASKS=$(aws ecs list-tasks --cluster ${CLUSTER_ARN} --service-name ${SERVICE} --query 'length(taskArns)')
-if [ $NUM_TASKS -gt 1 ] ; then
-    if [ "$TASK_ARG" == "NULL" ] ; then
-        echo "More than one task is running for '${SERVICE_NAME_ARG}'. Please specify a Task Id."
-        echo "       Task Id                         ""     Start Time"
-    fi
-    IDX=0
-    for TASK_ARN in $(list-tasks ${SERVICE} arns) #$(aws ecs list-tasks --cluster ${CLUSTER_ARN} --service-name ${SERVICE} --query 'taskArns[]' --output text)
-    do
-        IDX=$(($IDX+1))
-        TASK=$(echo $TASK_ARN | awk -F'/' '{print $3}')
-        if [ "$TASK_ARG" == "$TASK" ] ; then
-            break
-        fi
-        if [ "$TASK_ARG" == "NULL" ] ; then
-            TASK_STARTED_AT=$(aws ecs describe-tasks --cluster ${CLUSTER} --tasks ${TASK} --query 'tasks[0].startedAt' --output text)
-            echo "    ${IDX}) ${TASK}     "$(date -d @${TASK_STARTED_AT})
-        fi
-    done
-    while :
-    do
-        if [ "$TASK_ARG" == "$TASK" ] ; then
-            # break if the users Task argument was found
-            break
-        elif [ "$TASK_ARG" != "NULL" ] ; then
-            # Unable to find the users Task
-            echo "error: '${TASK_ARG}' task is not running"
-            exit 1
-        fi
-        read -p "Select a task: [1-$IDX]: " TASK_IDX
-        if [ $TASK_IDX -ge 1 -a $TASK_IDX -le $NUM_TASKS ] ; then
-            # Array is 0 based so decrement by 1
-            TASK_IDX=$(($TASK_IDX-1))
-            break
-        fi
-        echo "error: '$TASK_IDX' must be an integer between 1 and $NUM_TASKS"
-        echo
-    done
-fi
-
-TASK=$(aws ecs list-tasks --cluster ${CLUSTER_ARN} --service-name ${SERVICE} --query "taskArns[$TASK_IDX]" --output text | awk -F'/' '{print $3}')
-CONTAINER_INSTANCE_ARN=$(aws ecs describe-tasks --cluster ${CLUSTER_ARN} --tasks ${TASK} --query 'tasks[0].containerInstanceArn' --output text)
-INSTANCE_ID=$(aws ecs describe-container-instances --cluster ${CLUSTER} --container-instances ${CONTAINER_INSTANCE_ARN} --query 'containerInstances[0].ec2InstanceId' --output text)
-IP_ADDRESS=$(aws ec2 describe-instances --instance-ids ${INSTANCE_ID} --query 'Reservations[0].Instances[0].PrivateIpAddress' --output text)
-DOCKER_TASK=$(aws ecs describe-tasks --cluster ${CLUSTER} --tasks ${TASK} --query 'tasks[0].containers[0].runtimeId' --output text)
-echo
-echo "ecs-ssh: ${SERVICE_NAME_ARG}: SSH to ${IP_ADDRESS} for docker task id ${DOCKER_TASK}"
-ssh ${IP_ADDRESS}
 """
 
 class ECSCluster(StackTemplate):

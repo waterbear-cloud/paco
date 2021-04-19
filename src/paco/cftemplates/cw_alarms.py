@@ -57,7 +57,8 @@ class CFBaseAlarm(StackTemplate):
         alarm_account = alarm_parent.get_account()
         if alarm_account.name not in self.paco_ctx.project['resource']['sns'].computed.keys() or \
             alarm.region_name not in self.paco_ctx.project['resource']['sns'].computed[alarm_account.name].keys():
-                raise MissingSNSTopcis(f'Could not find SNS topics for account "{alarm_account.name}" in region "{alarm.region_name}"')
+                message = f'Could not find SNS topics for account "{alarm_account.name}" in region "{alarm.region_name}"'
+                raise MissingSNSTopcis(message)
         notification_groups = self.paco_ctx.project['resource']['sns'].computed[alarm_account.name][alarm.region_name]
         for alarm_action in alarm.get_alarm_actions_paco_refs(notification_groups):
             # Create parameter
