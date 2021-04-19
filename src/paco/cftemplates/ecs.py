@@ -26,8 +26,10 @@ function usage() {{
     echo
     echo "    Commands:"
     echo "        list-services"
-    echo "        list-tasks"
-    echo "        ssh [service name]"
+    echo "        list-tasks <service name>"
+    echo "        ssh <service name> [task id]"
+    echo "        docker-exec <service name> <command> [task id]"
+    echo "        restart-services <service name | all >"
     exit 0
 }}
 
@@ -38,7 +40,7 @@ fi
 ECS_NAME=$1
 shift
 COMMAND=$1
-
+shift
 case $ECS_NAME in
 """
 
@@ -59,26 +61,36 @@ ARN_PREFIX=$(echo ${CLUSTER_ARN} | awk -F ':' '{print "arn:aws:ecs:"$4":"$5}')
 
 SERVICE_LIST_CACHE=$(mktemp)
 
+function get_service_short_name() {
+    SERVICE=$1
+    echo $SERVICE | awk -F 'ECS-Services-Service' '{print $2}' | awk -F '-' '{print $1}' | tr '[:upper:]' '[:lower:]'
+}
+
 function list_services() {
     LIST_TYPE="$1"
+    if [ $# -eq 2 ] ; then
+        SERVICE_LOOKUP=$2
+    fi
     LIST_CACHE=${SERVICE_LIST_CACHE}".data"
     if [ ! -e ${LIST_CACHE} ] ; then
-	aws ecs list-services --cluster ${CLUSTER_ARN} --query 'serviceArns[]' --output text >${LIST_CACHE}
+        aws ecs list-services --cluster ${CLUSTER_ARN} --query 'serviceArns[]' --output text >${LIST_CACHE}
     fi
     for SERVICE_ARN in $(cat ${LIST_CACHE})
     do
-        if [ "$LIST_TYPE" == ""  ] ; then
-            SERVICE=$(echo "$SERVICE_ARN" | awk -F '/' '{print $3}' | awk -F '-' '{print $11}' | awk -F 'Service' '{print $2}' | tr '[:upper:]' '[:lower:]')
+        SERVICE_FULL=$(echo "$SERVICE_ARN" | awk -F '/' '{print $3}')
+        SERVICE=$(get_service_short_name $SERVICE_FULL)
+        if [ "$LIST_TYPE" == "" ] ; then
+            :
         elif [ "$LIST_TYPE" == "full" ] ; then
             SERVICE=$(echo "$SERVICE_ARN" | awk -F '/' '{print $3}')
         elif [ "$LIST_TYPE" == "arns" ] ; then
             SERVICE="${SERVICE_ARN}"
-	elif [ "$LIST_TYPE" == "lookup" ] ; then
-	    SERVICE=$(echo "$SERVICE_ARN" | awk -F '/' '{print $3}' | awk -F '-' '{print $11}' | awk -F 'Service' '{print $2}' | tr '[:upper:]' '[:lower:]')
-	    if [ "$SERVICE" == "$2" ] ; then
-		    echo "$SERVICE_ARN" | awk -F '/' '{print $3}'
-		    return
-	    fi
+        elif [ "$LIST_TYPE" == "lookup" ] ; then
+            if [ "$SERVICE" == "$SERVICE_LOOKUP" ] ; then
+                echo "$SERVICE_ARN" | awk -F '/' '{print $3}'
+                return 0
+            fi
+            continue
         else
             echo "error: unknown list type: ${LIST_TYPE}"
             exit 1
@@ -93,7 +105,7 @@ function list_tasks() {
 
     for SERVICE in $(list_services full)
     do
-        SHORT_SERVICE_NAME=$(echo $SERVICE | awk -F '-' '{print $11}' | awk -F 'Service' '{print $2}' | tr '[:upper:]' '[:lower:]')
+        SHORT_SERVICE_NAME=$(get_service_short_name $SERVICE)
         if [ "${SHORT_SERVICE_NAME}" != "${SERVICE_NAME_ARG}" ] ; then
             continue
         fi
@@ -103,12 +115,12 @@ function list_tasks() {
             if [ "$LIST_TYPE" == "arns" ] ; then
                 echo "$TASK_ARN"
             else
-                TASK=$(echo $TASK_ARN | awk -F'/' '{print $3}')
+                TASK=$(echo $TASK_ARN | awk -F '/' '{print $3}')
                 CONTAINER_INSTANCE_ARN=$(aws ecs describe-tasks --cluster ${CLUSTER_ARN} --tasks ${TASK} --query 'tasks[0].containerInstanceArn' --output text)
                 INSTANCE_ID=$(aws ecs describe-container-instances --cluster ${CLUSTER} --container-instances ${CONTAINER_INSTANCE_ARN} --query 'containerInstances[0].ec2InstanceId' --output text)
                 IP_ADDRESS=$(aws ec2 describe-instances --instance-ids ${INSTANCE_ID} --query 'Reservations[0].Instances[0].PrivateIpAddress' --output text)
                 DOCKER_TASK=$(aws ecs describe-tasks --cluster ${CLUSTER} --tasks ${TASK} --query 'tasks[0].containers[0].runtimeId' --output text)
-                echo -e "${SHORT_SERVICE_NAME}	${IP_ADDRESS}	${DOCKER_TASK}"
+                echo -e "${SHORT_SERVICE_NAME}\t${IP_ADDRESS}\t${TASK}"
             fi
         done
     done
@@ -117,19 +129,43 @@ function list_tasks() {
 
 function restart_service() {
     SERVICE=$1
-    aws ecs update-service --cluster ${CLUSTER} --force-new-deployment --service ${SERVICE}
-    # TODO: Add waiter to detect restart completion
+    SERVICE_SHORT_NAME=$(get_service_short_name $SERVICE)
+    echo "Restarting service: ${SERVICE_SHORT_NAME}"
+    OUTPUT=$(aws ecs update-service --cluster ${CLUSTER} --force-new-deployment --service ${SERVICE})
+}
+
+function restart_service_wait() {
+    SERVICE=$1
+    SERVICE_SHORT_NAME=$(get_service_short_name $SERVICE)
+    echo -n "Waiting for service to restart: $SERVICE_SHORT_NAME: "
+    aws ecs wait services-stable --cluster ${CLUSTER_ARN} --services ${SERVICE}
+    if [ $? -eq 0 ] ; then
+        echo "Success"
+    else
+        echo "Failed"
+    fi
 }
 
 function restart_services() {
+    if [ $# -ne 1 ] ; then
+        usage
+    fi
     SERVICE=$1
     if [ "$SERVICE" == "all" ] ; then
-	for SERVICE in $(list_services full)
-	do
-	    restart_service $SERVICE
-	done
+        # Restart
+        for SERVICE_FULL in $(list_services full)
+        do
+            restart_service $SERVICE_FULL
+        done
+        # Wait
+        for SERVICE_FULL in $(list_services full)
+        do
+            restart_service_wait $SERVICE_FULL
+        done
     else
-        restart_service $(list_services lookup $SERVICE)
+        SERVICE_FULL=$(list_services lookup $SERVICE)
+        restart_service $SERVICE_FULL
+        restart_service_wait $SERVICE_FULL
     fi
 }
 
@@ -147,7 +183,7 @@ function ssh_get_ip() {
     for SERVICE_ARN in $(list_services arns)
     do
         SERVICE=$(echo "$SERVICE_ARN" |  awk -F '/' '{print $3}')
-        SERVICE_OPTION=$(echo "$SERVICE" | awk -F '-' '{print $11}' | awk -F 'Service' '{print $2}' | tr '[:upper:]' '[:lower:]')
+        SERVICE_OPTION=$(get_service_short_name $SERVICE)
         if [ "$SERVICE_OPTION" == "$SERVICE_NAME_ARG" ] ; then
             break
         fi
@@ -170,7 +206,7 @@ function ssh_get_ip() {
             echo "       Task Id                         ""     Start Time"
         fi
         IDX=0
-        for TASK_ARN in $(list-tasks ${SERVICE} arns) #$(aws ecs list-tasks --cluster ${CLUSTER_ARN} --service-name ${SERVICE} --query 'taskArns[]' --output text)
+        for TASK_ARN in $(list_tasks ${SERVICE_NAME_ARG} arns) #$(aws ecs list-tasks --cluster ${CLUSTER_ARN} --service-name ${SERVICE} --query 'taskArns[]' --output text)
         do
             IDX=$(($IDX+1))
             TASK=$(echo $TASK_ARN | awk -F'/' '{print $3}')
@@ -213,23 +249,26 @@ function ssh_get_ip() {
 }
 
 function ssh_service() {
+    if [ $# -lt 1 -o $# -gt 2 ] ; then
+        usage
+    fi
     SERVICE_NAME_ARG=$(echo $1 | tr '[:upper:]' '[:lower:]')
     TASK_ARG="NULL"
     if [ $# -eq 2 ] ; then
         TASK_ARG=$2
     fi
 
-
     ssh_get_ip $SERVICE_NAME_ARG $TASK_ARG
 
-    echo
     echo "ecs-ssh: ${SERVICE_NAME_ARG}: SSH to ${IP_ADDRESS} for docker task id ${DOCKER_TASK}"
-
     ssh ${SSH_IP}
 }
 
 function docker_exec()
 {
+    if [ $# -lt 2 -o $# -gt 3 ] ; then
+        usage
+    fi
     SERVICE_NAME_ARG=$(echo $1 | tr '[:upper:]' '[:lower:]')
     DOCKER_COMMAND="$2"
     TASK_ARG="NULL"
@@ -245,33 +284,18 @@ function docker_exec()
     ssh -t ${SSH_IP} "${SSH_COMMAND}"
 }
 
-#function usage() {
-#    echo "$0 <service_name> [task_id]"
-#    echo
-#    echo "Service names:"
-#    list_services
-#    echo
-#    exit 1
-#}
-
-
-
-COMMAND=$1
-shift
-
-
 case ${COMMAND} in
     list-services)
 	    list_services $1
-	    exit 0
 	    ;;
     restart-services)
         restart_services $1
-        exit 0
         ;;
     list-tasks)
+        if [ $# -lt 1 ] ; then
+            usage
+        fi
         list_tasks $1
-        exit 0
         ;;
     ssh)
         ssh_service $*
