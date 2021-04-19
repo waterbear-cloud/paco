@@ -1,11 +1,17 @@
 Changelog for Paco
 ==================
 
-9.3.9 (unreleased)
+9.3.9 (2021-04-19)
 ------------------
 
-- Nothing changed yet.
+### Added
 
+- Added logging to SSM instance EC2LM update run commands.
+- Added docker-exec command to ECS ScriptManager script.
+
+### Changed
+
+- Improved ECR Deploy Script to tag the destination image with the same tags as the source.
 
 9.3.8 (2021-04-09)
 ------------------
