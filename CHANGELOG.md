@@ -1,11 +1,12 @@
 Changelog for Paco
 ==================
 
-9.3.10 (unreleased)
+9.3.10 (2021-04-19)
 -------------------
 
-- Nothing changed yet.
+### Added
 
+- Added restart-services functionality to ecs script.
 
 9.3.9 (2021-04-19)
 ------------------
