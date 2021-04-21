@@ -27,7 +27,7 @@ class NotificationRules(StackTemplate):
             app_config = get_parent_by_interface(self.resource, schemas.IApplication)
             notifications = app_config.notifications
 
-        if notifications != None and len(notifications.keys()) > 0:
+        if len(self.resource.notification_events) > 0 and notifications != None and len(notifications.keys()) > 0:
             notify_param_cache = []
             for notify_group_name in notifications.keys():
                 for sns_group_name in notifications[notify_group_name].groups:
@@ -53,7 +53,10 @@ class NotificationRules(StackTemplate):
                 value=f'{self.resource.paco_ref}.arn'
             )
 
-            rule_name = self.create_resource_name(f'{self.env_name}-{self.app_name}-{self.resource_group_name}-{self.resource.name}-{self.aws_region}')
+            rule_name = self.create_resource_name(
+                f'{self.env_name}-{self.app_name}-{self.resource_group_name}-{self.resource.name}-{self.aws_region}',
+                hash_long_names=True,
+                filter_id='CodeStar.NotificationRuleName')
             rule_dict = {
                 'DetailType': 'FULL',
                 'EventTypeIds': event_id_list,

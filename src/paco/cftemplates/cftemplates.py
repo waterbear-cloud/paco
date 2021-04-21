@@ -332,6 +332,10 @@ class StackTemplate():
                 message = "ReplicationGroupId must be 40 characters or less"
         elif filter_id == 'SecurityGroup.GroupName':
             pass
+        elif filter_id == 'CodeStar.NotificationRuleName':
+            if len(name) > 64:
+                max_name_len = 64
+                message = "CodeStar NotificationRule name must be 64 characters or less"
         else:
             message = 'Unknown filter_id'
 
@@ -357,27 +361,31 @@ class StackTemplate():
         # Universal check
         if ch.isalnum() == True:
             return ch
+        valid_ch_list = ''
         # SecurityGroup Group Name
         # Constraints for EC2-VPC: a-z, A-Z, 0-9, spaces, and ._-:/()#,@[]+=&;{}!$*
         if filter_id == 'SecurityGroup.GroupName':
-            if ch in ' ._-:/()#,@[]+=&;{}!$*':
-                return ch
+            valid_ch_list = ' ._-:/()#,@[]+=&;{}!$*'
         elif filter_id in [
             'IAM.Role.RoleName',
             'IAM.ManagedPolicy.ManagedPolicyName',
             'IAM.Policy.PolicyName']:
-            if ch in '_+=,.@-.':
-                return ch
+            valid_ch_list = '_+=,.@-.'
         elif filter_id == 'ElastiCache.ReplicationGroup.ReplicationGroupId':
-            if ch in '-':
-                return ch
+            valid_ch_list = '-'
         elif filter_id in [
             'EC2.ElasticLoadBalancingV2.LoadBalancer.Name',
             'EC2.ElasticLoadBalancingV2.TargetGroup.Name']:
             # Only alphanum and dases are allowed
             pass
+        elif filter_id in [
+            'CodeStar.NotificationRuleName']:
+            valid_ch_list = '-_ '
         else:
             raise StackException(PacoErrorCode.Unknown, message="Invalid filter Id: "+filter_id)
+
+        if ch in valid_ch_list:
+            return ch
 
         if remove_invalids == True:
             return ''

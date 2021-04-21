@@ -1,6 +1,7 @@
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.cftemplates.cftemplates import StackOutputParam
 from paco.models.references import get_model_obj_from_ref
+from paco import utils
 import troposphere
 import troposphere.elasticloadbalancingv2
 
@@ -284,6 +285,7 @@ class LBBase(StackTemplate):
 
             # ListenerCertificates
             if len(ssl_cert_param_obj_list) > 0:
+                unique_listener_cert_name = utils.md5sum(str_data=unique_listener_cert_name)
                 logical_listener_cert_name = self.create_cfn_logical_id_join([logical_listener_name, 'Certificate', unique_listener_cert_name])
                 troposphere.elasticloadbalancingv2.ListenerCertificate(
                     title=logical_listener_cert_name,
