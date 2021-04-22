@@ -512,8 +512,6 @@ your cache may be out of sync. Try running again the with the --nocache option.
     def is_stack_cached(self):
         "Return True if the stack cache id is the same as a previously applied cache id"
         if self.paco_ctx.nocache or self.do_not_cache:
-            #return False
-            # XXX: Make this work
             if self.dependency_group == True:
                 self.get_status()
                 if self.status == StackStatus.DOES_NOT_EXIST:

@@ -46,6 +46,8 @@ class ACMBotoStack(BotoStack):
         cert_arn = acm_client.get_certificate_arn()
         if cert_arn == None:
             action = 'Create'
+        elif self.paco_ctx.nocache == True:
+            action = 'Update'
         else:
             action = 'Cache'
         self.paco_ctx.log_action_col(

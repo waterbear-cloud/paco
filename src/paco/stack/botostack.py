@@ -71,7 +71,10 @@ class BotoStack(BaseStack):
 
     def get_name(self):
         "Name of the Stack in AWS"
-        name = '-'.join([ self.grp_ctx.get_aws_name(), self.resource.name ])
+        ref_parts = self.resource.paco_ref_parts.split('.')
+        if ref_parts[-2] == 'resources':
+            group_name = ref_parts[-3]
+        name = '-'.join([ self.grp_ctx.get_aws_name(), group_name, self.resource.name ])
         if self.stack_suffix != None:
             name = name + '-' + self.stack_suffix
         new_name = self.create_stack_name(name)
