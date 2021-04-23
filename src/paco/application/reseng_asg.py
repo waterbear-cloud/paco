@@ -1,3 +1,4 @@
+from paco import models
 from paco.application.res_engine import ResourceEngine
 from paco.core.yaml import YAML
 from paco.models.references import get_model_obj_from_ref
@@ -125,6 +126,8 @@ role_name: %s""" % ("ASGInstance")
                 cache_method=self.provision_ecs_capacity_provider_cache,
                 hook_arg=self.resource
             )
+            if self.resource.ecs.capacity_provider and self.resource.ecs.capacity_provider.is_enabled():
+                self.resource.ecs.capacity_provider.resolve_ref_obj = self
 
     def get_ec2lm_cache_id(self, hook, hook_arg):
         "EC2LM cache id"
@@ -152,3 +155,9 @@ role_name: %s""" % ("ASGInstance")
             asg,
         )
         capacity_provider_client.provision()
+
+    def resolve_ref(self, ref):
+        if isinstance(ref.resource, models.applications.ECSCapacityProvider):
+            if ref.resource_ref == 'name':
+                return ref.resource.get_aws_name()
+        return None

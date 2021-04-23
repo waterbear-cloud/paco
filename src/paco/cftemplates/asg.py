@@ -175,7 +175,7 @@ class ASG(StackTemplate):
             )
             asg_dict['LoadBalancerNames'] = troposphere.Ref(load_balancer_names_param)
 
-        if asg_config.is_enabled():
+        if asg_config.is_enabled() and asg_config.disable_target_groups == False:
             if asg_config.target_groups != None and len(asg_config.target_groups) > 0:
                 asg_dict['TargetGroupARNs'] = []
                 for target_group_arn in asg_config.target_groups:

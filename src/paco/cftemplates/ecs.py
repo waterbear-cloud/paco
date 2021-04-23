@@ -272,7 +272,7 @@ function docker_exec()
     SERVICE_NAME_ARG=$(echo $1 | tr '[:upper:]' '[:lower:]')
     DOCKER_COMMAND="$2"
     TASK_ARG="NULL"
-    if [ $# -eq 3 ] ; then
+    if [ $# -eq 3 -a "$3" != "" ] ; then
         TASK_ARG=$3
     fi
 
@@ -301,7 +301,7 @@ case ${COMMAND} in
         ssh_service $*
         ;;
     docker-exec)
-        docker_exec $*
+        docker_exec $1 "$2" $3
         ;;
     *)
         usage
@@ -540,27 +540,36 @@ class ECSServices(StackTemplate):
                     uses_scaling = True
                     uses_target_tracking_scaling = True
                     continue
-
+            if ecs_config.disable_services == True or service.disable_service == True:
+                desired_tasks = 0
+            else:
+                desired_tasks = service.desired_count
             desired_tasks_param = self.create_cfn_parameter(
                 param_type='String',
                 name=f'{cfn_service_name}DesiredTasks',
                 description='The desired number of tasks for the Service.',
-                value=service.desired_count,
-                ignore_changes=uses_scaling,
+                value=desired_tasks,
+                #ignore_changes=uses_scaling,
             )
             service_dict['DesiredCount'] = troposphere.Ref(desired_tasks_param)
             minimum_tasks_param = None
             maximum_tasks_param = None
             if uses_scaling:
+                if ecs_config.disable_services == True or service.disable_service == True:
+                    minimum_tasks = 0
+                else:
+                    minimum_tasks = service.minimum_tasks
                 minimum_tasks_param = self.create_cfn_parameter(
                     param_type='String',
                     name=f'{cfn_service_name}MinimumTasks',
                     description='The minimum number of tasks for the Service.',
-                    value=service.minimum_tasks,
+                    value=minimum_tasks,
                 )
-                maximum_tasks = service.maximum_tasks
-                if maximum_tasks == 0 and service.desired_count > 0:
+
+                if service.maximum_tasks == 0 and service.desired_count > 0:
                     maximum_tasks = service.desired_count
+                else:
+                    maximum_tasks = service.maximum_tasks
                 maximum_tasks_param = self.create_cfn_parameter(
                     param_type='String',
                     name=f'{cfn_service_name}MaximumTasks',
@@ -708,10 +717,14 @@ class ECSServices(StackTemplate):
                 # CloudFormation will automatically generate this service-linked Role if it doesn't already exist
                 scalable_target_dict['RoleARN'] = f'arn:aws:iam::{self.account_ctx.id}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService'
                 scalable_target_dict['ScalableDimension'] = 'ecs:service:DesiredCount'
+                if ecs_config.disable_services == True or service.disable_service == True:
+                    suspend_scaling = True
+                else:
+                    suspend_scaling = service.suspend_scaling
                 scalable_target_dict['SuspendedState'] = {
-                    "DynamicScalingInSuspended" : service.suspend_scaling,
-                    "DynamicScalingOutSuspended" : service.suspend_scaling,
-                    "ScheduledScalingSuspended" : service.suspend_scaling,
+                    "DynamicScalingInSuspended" : suspend_scaling,
+                    "DynamicScalingOutSuspended" : suspend_scaling,
+                    "ScheduledScalingSuspended" : suspend_scaling,
                 }
                 scalable_target_res = troposphere.applicationautoscaling.ScalableTarget.from_dict(
                     cfn_service_name + 'ScalableTarget',
