@@ -1,11 +1,24 @@
 Changelog for Paco
 ==================
 
-9.3.11 (unreleased)
+9.3.11 (2021-04-23)
 -------------------
 
-- Nothing changed yet.
+### Added
 
+- Added support to disable ECS services
+
+- Added resource group name to ACM botostack names.
+
+### Fixed
+
+- Fixed ECS docker_exec script
+
+- Fixed CodeStart NotifciationRule Name filter for resource name generation
+
+- Fixed unique listener SSL certificate name in ALB
+
+- Fixed DeploymentPipeline notification rules if a rule does not have any event ids.
 
 9.3.10 (2021-04-19)
 -------------------
