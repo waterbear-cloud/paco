@@ -1,11 +1,12 @@
 Changelog for Paco
 ==================
 
-9.3.13 (unreleased)
+9.3.13 (2021-05-04)
 -------------------
 
-- Nothing changed yet.
+### Added
 
+- Added paco.models 7.8.10 dependency
 
 9.3.12 (2021-05-04)
 -------------------
