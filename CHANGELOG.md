@@ -1,11 +1,12 @@
 Changelog for Paco
 ==================
 
-9.3.12 (unreleased)
+9.3.12 (2021-05-04)
 -------------------
 
-- Nothing changed yet.
+### Added
 
+- Added region field to DeploymentPipeline configuration
 
 9.3.11 (2021-04-23)
 -------------------
