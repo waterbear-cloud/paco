@@ -146,6 +146,8 @@ policies:
             return account_ctx.get_id()
         elif ref.last_part == 'account':
             return repo_config.account
+        elif ref.last_part == 'region':
+            return repo_config.region
         else:
             if ref.ref == 'resource.codecommit.{}.{}'.format(group_id, repo_id):
                 return repo_config

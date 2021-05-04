@@ -30,6 +30,7 @@ function usage() {{
     echo "        ssh <service name> [task id]"
     echo "        docker-exec <service name> <command> [task id]"
     echo "        restart-services <service name | all >"
+    echo "        list-ecr-containers <repo name>"
     exit 0
 }}
 
@@ -284,6 +285,50 @@ function docker_exec()
     ssh -t ${SSH_IP} "${SSH_COMMAND}"
 }
 
+function list_ecr_image_tags()
+{
+    REPOSITORY_NAME="$1"
+
+    OUTPUT=$(aws ecr describe-images --repository-name ${REPOSITORY_NAME} --query 'reverse(sort_by(imageDetails,& imagePushedAt))[:10].{tags: imageTags, date:imagePushedAt}' 2>/tmp/paco-ecs-list-images.stderr)
+    RET=$?
+    if [ $RET -ne 0 ] ; then
+        STDERR_OUTPUT="$(cat /tmp/paco-ecs-list-images.stderr)"
+        if [[] "$STDERR_OUTPUT" == *"does not exist in the registry"* ]]; then
+            echo "ERROR: The repository '${REPOSITORY_NAME}' does not exist."
+            echo
+        fi
+        echo $STDERR_OUTPUT
+        exit $RET
+    fi
+    IMAGE_TAGS=$(echo "$OUTPUT" | jq '.[].tags[0]' --raw-output | tr '\n' ' ' )
+    PUSHED_AT=$(echo "$OUTPUT" |  jq '.[].date' --raw-output | tr '\n' ' ')
+    declare -a IMAGE_TAGS_LIST=(${IMAGE_TAGS})
+    IMAGE_TAGS_LIST_LEN=${#IMAGE_TAGS_LIST[@]}
+    declare -a PUSHED_AT_LIST=(${PUSHED_AT})
+    echo "Last ${IMAGE_TAGS_LIST_LEN} stored container images for ${REPOSITORY_NAME}"
+    IDX=0
+    for (( IDX=0; IDX<${IMAGE_TAGS_LIST_LEN}; IDX++ ))
+    do
+        JQ_STR=".[$IDX].tags"
+        TAGS_VALUE=$(echo $OUTPUT | jq "$JQ_STR" --raw-output)
+        CURRENT_DEPLOY=""
+        if [ "$TAGS_VALUE" != "null" ] ; then
+            JQ_STR=".[$IDX].tags[]"
+            ALL_TAGS=$(echo $OUTPUT | jq "$JQ_STR" --raw-output)
+            echo "${ALL_TAGS}" | grep 'ecs-deploy' >/dev/null 2>&1
+            if [ $? -eq 0 ] ; then
+                CURRENT_DEPLOY="< currently deployed"
+            fi
+            IMAGE_TAG=${IMAGE_TAGS_LIST[$IDX]}
+        else
+            IMAGE_TAG="null"
+        fi
+
+        FORMATTED_DATE=$(date -d "${PUSHED_AT_LIST[$IDX]}" +"%d %b %Y %T")
+        echo -e "${IMAGE_TAG}\t\t${FORMATTED_DATE} ${CURRENT_DEPLOY}"
+    done
+}
+
 case ${COMMAND} in
     list-services)
 	    list_services $1
@@ -302,6 +347,9 @@ case ${COMMAND} in
         ;;
     docker-exec)
         docker_exec $1 "$2" $3
+        ;;
+    list-ecr-containers)
+        list_ecr_image_tags $1
         ;;
     *)
         usage

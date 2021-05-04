@@ -14,9 +14,13 @@ class S3BucketResourceEngine(ResourceEngine):
             account_ctx = self.account_ctx
         else:
             account_ctx = self.paco_ctx.get_account_context(account_ref=self.resource.account)
+        if self.resource.region:
+            bucket_region = self.resource.region
+        else:
+            bucket_region = self.aws_region
         s3_ctl.init_context(
             account_ctx,
-            self.aws_region,
+            bucket_region,
             self.resource.paco_ref_parts,
             self.stack_group,
             self.stack_tags,

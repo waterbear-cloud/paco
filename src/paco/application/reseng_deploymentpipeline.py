@@ -505,6 +505,8 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         self.github_role_name = 'github_role'
         self.source_stage = None
         self.codebuild_ecs_release_phase_cache_id = RELEASE_PHASE_SCRIPT
+        if resource.configuration.region != None:
+            self.aws_region = resource.configuration.region
 
     def init_stage(self, stage_config):
         "Initialize an Action in a Stage: for source/build/deploy-style"
@@ -744,9 +746,10 @@ policies:
         }]
         codecommit_account_ref = self.paco_ctx.get_ref(action_config.codecommit_repository + '.account')
         codecommit_account_ctx = self.paco_ctx.get_account_context(codecommit_account_ref)
+        repo_region = self.paco_ctx.get_ref(action_config.codecommit_repository+'.region')
         iam_ctl.add_role(
             account_ctx=codecommit_account_ctx,
-            region=self.aws_region,
+            region=repo_region,
             resource=self.resource,
             role=codecommit_iam_role_config,
             iam_role_id=codecommit_iam_role_id,
