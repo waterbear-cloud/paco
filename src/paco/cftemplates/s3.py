@@ -155,6 +155,11 @@ class S3(StackTemplate):
                 value=troposphere.Ref(s3_resource),
                 ref=bucket.paco_ref_parts + '.name'
             )
+            self.create_output(
+                title=s3_logical_id + 'Arn',
+                value=troposphere.GetAtt(s3_resource, 'Arn'),
+                ref=bucket.paco_ref_parts + '.arn'
+            )
 
         # Bucket Policy
         policy_statements = []
