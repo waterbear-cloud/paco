@@ -197,10 +197,11 @@ class NetEnvController(Controller, LambdaDeploy):
         # Initialize Globals
         self.env = None
         self.env_region = None
-        self.sub_envs = {}
         netenv_arg = model_obj.paco_ref_parts
         netenv_parts = netenv_arg.split('.', 4)
         self.netenv = self.paco_ctx.project['netenv'][netenv_parts[1]]
+        if self.netenv.name not in self.sub_envs.keys():
+            self.sub_env[self.netenv.name] = {}
         self.env = self.netenv[netenv_parts[2]]
         if len(netenv_parts) > 3:
             self.env_region = self.env[netenv_parts[3]]
@@ -217,14 +218,17 @@ class NetEnvController(Controller, LambdaDeploy):
 
     def init_env_region(self, env, region):
         "Initialize an EnvironmentRegion or return an EnvironmentRegionContext if already initialized"
-        if env.name in self.sub_envs.keys():
-            if region in self.sub_envs[env.name]:
-                return self.sub_envs[env.name][region]
+
+        # SubEnv Cache
+        netenv_name = self.netenv.name
+        if env.name in self.sub_envs[netenv_name].keys():
+            if region in self.sub_envs[netenv_name][env.name].keys():
+                return self.sub_envs[netenv_name][env.name][region]
         env_region = self.netenv[env.name][region]
         env_ctx = EnvironmentRegionContext(self.paco_ctx, self, self.netenv, self.env, env_region)
-        if env.name not in self.sub_envs:
-            self.sub_envs[env.name] = {}
-        self.sub_envs[env.name][region] = env_ctx
+        if env.name not in self.sub_envs[netenv_name]:
+            self.sub_envs[netenv_name][env.name] = {}
+        self.sub_envs[netenv_name][env.name][region] = env_ctx
         env_ctx.init()
 
     def add_vpc_stack_hooks(self, stack_hooks):
