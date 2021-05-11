@@ -57,21 +57,23 @@ class ASG(StackTemplate):
             value=asg_config.security_groups,
             ref_attribute='id',
         )
-        instance_key_pair_param = self.create_cfn_parameter(
-            param_type='String',
-            name='InstanceKeyPair',
-            description='The EC2 SSH KeyPair to assign each ASG instance.',
-            value=asg_config.instance_key_pair+'.keypair_name',
-        )
         launch_config_dict = {
             'AssociatePublicIpAddress': asg_config.associate_public_ip_address,
             'EbsOptimized': asg_config.ebs_optimized,
             'ImageId': troposphere.Ref(instance_ami_param),
             'InstanceMonitoring': asg_config.instance_monitoring,
             'InstanceType': asg_config.instance_type,
-            'KeyName': troposphere.Ref(instance_key_pair_param),
             'SecurityGroups': troposphere.Ref(security_group_list_param),
         }
+
+        if asg_config.instance_key_pair != None:
+            instance_key_pair_param = self.create_cfn_parameter(
+                param_type='String',
+                name='InstanceKeyPair',
+                description='The EC2 SSH KeyPair to assign each ASG instance.',
+                value=asg_config.instance_key_pair+'.keypair_name',
+            )
+            launch_config_dict['KeyName'] = troposphere.Ref(instance_key_pair_param)
 
         # BlockDeviceMappings
         if len(asg_config.block_device_mappings) > 0:

@@ -744,6 +744,18 @@ class ECSServices(StackTemplate):
                         provider_cfn.append(provide_dict)
                     service_dict['CapacityProviderStrategy'] = provider_cfn
 
+            # Placement Strategy
+            # service_dict['PlacementStrategy'] = [ troposphere.ecs.PlacementStrategy(
+            #         Type = 'binpack',
+            #         Field = 'memory'
+            #     )
+            # ]
+            service_dict['PlacementStrategies'] = [
+                {
+                    'Type': 'binpack',
+                    'Field': 'memory'
+                }
+            ]
             # ECS Service Resource
             service_res = troposphere.ecs.Service.from_dict(
                 cfn_service_name,
