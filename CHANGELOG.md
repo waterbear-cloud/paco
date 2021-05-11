@@ -1,11 +1,24 @@
 Changelog for Paco
 ==================
 
-9.3.14 (unreleased)
+9.3.14 (2021-05-11)
 -------------------
 
-- Nothing changed yet.
+### Changed
 
+- Made ASG instance key pair optional
+
+### Added
+
+- Added a default PlacementStrategy to ECS servies of binpack.memory
+
+- Added sub environment caching to the Network Environment Controller.
+
+- Added Arn Ourput to S3 cloudformation templates.
+
+### Fixed
+
+- Fixed paco init cookiecutter AlarmSets missing classification field
 
 9.3.13 (2021-05-04)
 -------------------
