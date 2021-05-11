@@ -201,7 +201,7 @@ class NetEnvController(Controller, LambdaDeploy):
         netenv_parts = netenv_arg.split('.', 4)
         self.netenv = self.paco_ctx.project['netenv'][netenv_parts[1]]
         if self.netenv.name not in self.sub_envs.keys():
-            self.sub_env[self.netenv.name] = {}
+            self.sub_envs[self.netenv.name] = {}
         self.env = self.netenv[netenv_parts[2]]
         if len(netenv_parts) > 3:
             self.env_region = self.env[netenv_parts[3]]
@@ -233,9 +233,9 @@ class NetEnvController(Controller, LambdaDeploy):
 
     def add_vpc_stack_hooks(self, stack_hooks):
         "Adds StackHooks to every VPC in the NetEnv"
-        for env_name in self.sub_envs.keys():
-            for region in self.sub_envs[env_name].keys():
-                vpc_stack = self.sub_envs[env_name][region].get_vpc_stack()
+        for env_name in self.sub_envs[self.netenv.name].keys():
+            for region in self.sub_envs[self.netenv.name][env_name].keys():
+                vpc_stack = self.sub_envs[self.netenv.name][env_name][region].get_vpc_stack()
                 vpc_stack.add_hooks(stack_hooks)
 
     def secrets_manager(self, secret_name, account_ctx, region):
@@ -263,26 +263,26 @@ class NetEnvController(Controller, LambdaDeploy):
 
     def validate(self):
         self.paco_ctx.log_start("Validate", self.netenv)
-        for env_name in self.sub_envs.keys():
-            for region in self.sub_envs[env_name].keys():
+        for env_name in self.sub_envs[self.netenv.name].keys():
+            for region in self.sub_envs[self.netenv.name][env_name].keys():
                 self.paco_ctx.log_start('Validate', self.netenv[env_name][region])
-                self.sub_envs[env_name][region].validate()
+                self.sub_envs[self.netenv.name][env_name][region].validate()
                 self.paco_ctx.log_finish('Validate', self.netenv[env_name][region])
         self.paco_ctx.log_finish("Validate", self.netenv)
 
     def provision(self):
         self.confirm_yaml_changes(self.netenv)
         self.paco_ctx.log_start("Provision", self.netenv)
-        for env_name in self.sub_envs.keys():
-            for region in self.sub_envs[env_name].keys():
-                self.sub_envs[env_name][region].provision()
+        for env_name in self.sub_envs[self.netenv.name].keys():
+            for region in self.sub_envs[self.netenv.name][env_name].keys():
+                self.sub_envs[self.netenv.name][env_name][region].provision()
         self.apply_model_obj()
         self.paco_ctx.log_finish("Provision", self.netenv)
 
     def delete(self):
-        for env_name in self.sub_envs.keys():
-            for region in self.sub_envs[env_name].keys():
-                self.sub_envs[env_name][region].delete()
+        for env_name in self.sub_envs[self.netenv.name].keys():
+            for region in self.sub_envs[self.netenv.name][env_name].keys():
+                self.sub_envs[self.netenv.name][env_name][region].delete()
 
     def get_aws_name(self):
         return '-'.join([super().get_aws_name(), self.netenv.name])
