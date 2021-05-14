@@ -136,7 +136,7 @@ role_name: %s""" % ("ASGInstance")
     def provision_ecs_capacity_provider_cache(self, hook, asg):
         "Cache method for ECS ASG"
         cp = asg.ecs.capacity_provider
-        return md5sum(str_data=f"{cp.managed_instance_protection}-{asg.paco_ref}-{cp.is_enabled()}-{cp.target_capacity}-{cp.minimum_scaling_step_size}-{cp.maximum_scaling_step_size}")
+        return cp.obj_hash()
 
     def provision_ecs_capacity_provider(self, hook, asg):
         "Hook to add an ECS Capacity Provider to the ECS Cluster the ASG belongs to"
