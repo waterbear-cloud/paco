@@ -3,7 +3,7 @@ import troposphere
 
 
 class Example(StackTemplate):
-    def __init__(self, stack, paco_ctx)
+    def __init__(self, stack, paco_ctx):
         super().__init__(stack, paco_ctx)
         self.set_aws_name('Example', self.resource_group_name, self.resource.name)
 

@@ -88,15 +88,19 @@ role_name: %s""" % ("ASGInstance")
         )
         role_profile_arn = iam_ctl.role_profile_arn(instance_iam_role_ref)
 
-        # EC2 Launch Manger Bundles
-        bucket = self.app_engine.ec2_launch_manager.process_bundles(self.resource, instance_iam_role_ref)
+        self.ec2lm_cache_id = ""
+        ec2_manager_user_data_script = None
+        if self.resource.instance_ami_type.startswith("windows") == False:
+            # EC2 Launch Manger Bundles
+            bucket = self.app_engine.ec2_launch_manager.process_bundles(self.resource, instance_iam_role_ref)
 
-        # Create ASG stack
-        ec2_manager_user_data_script = self.app_engine.ec2_launch_manager.user_data_script(
-            self.resource,
-            self.stack_name
-        )
-        self.ec2lm_cache_id = self.app_engine.ec2_launch_manager.get_cache_id(self.resource)
+            # Create ASG stack
+            ec2_manager_user_data_script = self.app_engine.ec2_launch_manager.user_data_script(
+                self.resource,
+                self.stack_name
+            )
+            self.ec2lm_cache_id = self.app_engine.ec2_launch_manager.get_cache_id(self.resource)
+
         self.stack = self.stack_group.add_new_stack(
             self.aws_region,
             self.resource,
@@ -108,14 +112,15 @@ role_name: %s""" % ("ASGInstance")
                 'ec2_manager_cache_id': self.ec2lm_cache_id,
             },
         )
-        self.stack.hooks.add(
-            name='UpdateExistingInstances.' + self.resource.name,
-            stack_action='update',
-            stack_timing='pre',
-            hook_method=self.app_engine.ec2_launch_manager.ec2lm_update_instances_hook,
-            cache_method=self.app_engine.ec2_launch_manager.ec2lm_update_instances_cache,
-            hook_arg=(bucket.paco_ref_parts, self.resource)
-        )
+        if self.resource.instance_ami_type.startswith("windows") == False:
+            self.stack.hooks.add(
+                name='UpdateExistingInstances.' + self.resource.name,
+                stack_action='update',
+                stack_timing='pre',
+                hook_method=self.app_engine.ec2_launch_manager.ec2lm_update_instances_hook,
+                cache_method=self.app_engine.ec2_launch_manager.ec2lm_update_instances_cache,
+                hook_arg=(bucket.paco_ref_parts, self.resource)
+            )
         # For ECS ASGs add an ECS Hook
         if self.resource.ecs != None and self.resource.is_enabled() == True:
             self.stack.hooks.add(

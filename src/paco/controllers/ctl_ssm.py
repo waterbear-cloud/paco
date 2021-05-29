@@ -18,9 +18,11 @@ class SSMController(Controller):
             scope_parts = scope.split('.')
             if scope.startswith('resource.ssm.ssm_documents.') and len(scope_parts) == 6:
                 name, account_name, aws_region = scope_parts[3:]
-                account_ctx = self.paco_ctx.get_account_context(account_name=account_name)
-                ssm_doc = self.paco_ctx.project['resource']['ssm'].ssm_documents[name]
-                self.provision_ssm_document(ssm_doc, account_ctx, aws_region)
+                # TODO: EC2LM and Windows: name can == paco_ec2lm_update_instance
+                if name in self.paco_ctx.project['resource']['ssm'].ssm_documents.keys():
+                    account_ctx = self.paco_ctx.get_account_context(account_name=account_name)
+                    ssm_doc = self.paco_ctx.project['resource']['ssm'].ssm_documents[name]
+                    self.provision_ssm_document(ssm_doc, account_ctx, aws_region)
         else:
             # ToDo: provisions everything in resource/ssm.yaml - add scopes
             for ssm_doc in self.paco_ctx.project['resource']['ssm'].ssm_documents.values():

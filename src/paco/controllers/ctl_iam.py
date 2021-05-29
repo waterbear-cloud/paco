@@ -601,6 +601,16 @@ class IAMController(Controller):
                     }
                 )
 
+        # Print out the SwitchRole URLs for each user
+        for user in self.iam.users.values():
+            print(f'{user.description} Switch Role URLs')
+            for account_name in self.paco_ctx.project['accounts'].keys():
+                if account_name not in user.account_whitelist and 'all' not in user.account_whitelist:
+                    continue
+                account_id = self.paco_ctx.get_account_context(account_name=account_name).id
+                print(f'{account_name.capitalize()}:\nhttps://signin.aws.amazon.com/switchrole?account={account_id}&roleName=IAM-User-Account-Delegate-Role-{user.name}')
+            print()
+
     def init(self, command=None, model_obj=None):
         "Initialize Controller's StackGroup for resource.iam scope"
         if model_obj == None:

@@ -159,6 +159,17 @@ class NetworkStackGroup(StackGroup):
         for nat_stack in self.nat_list:
             self.add_stack_order(nat_stack, [StackOrder.WAIT])
 
+        # VPC Endpoints
+        vpc_endpoints_stack = self.add_new_stack(
+            self.region,
+            vpc_config,
+            paco.cftemplates.VPCEndpoints,
+            stack_tags=StackTags(self.stack_tags),
+            stack_orders=[StackOrder.PROVISION]
+        )
+        self.add_stack_order(vpc_endpoints_stack, [StackOrder.WAIT])
+
+
     def get_vpc_stack(self):
         return self.vpc_stack
 

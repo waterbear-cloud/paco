@@ -54,3 +54,4 @@ from paco.cftemplates.pinpointapplication import PinpointApplication
 from paco.cftemplates.cognito import CognitoUserPool, CognitoIdentityPool
 from paco.cftemplates.dynamodb import DynamoDB
 from paco.cftemplates.notification_rules import NotificationRules
+from paco.cftemplates.vpcendpoints import VPCEndpoints
