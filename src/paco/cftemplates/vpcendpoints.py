@@ -85,13 +85,14 @@ class VPCEndpoints(StackTemplate):
                 'PrivateDnsEnabled': True,
                 'VpcId': troposphere.Ref(vpc_id_param),
                 'VpcEndpointType': 'Interface'
-
             }
+
             endpoint_res = troposphere.ec2.VPCEndpoint.from_dict(
                 self.create_cfn_logical_id(endpoint_name),
                 endpoint_dict
             )
             self.template.add_resource( endpoint_res )
+
 
         # Outputs
         # self.create_output(

@@ -10,7 +10,7 @@ from paco.application.reseng_eventsrule import EventsRuleResourceEngine
 from paco.application.reseng_lambda import LambdaResourceEngine
 from paco.application.reseng_lb import LBApplicationResourceEngine, LBNetworkResourceEngine
 from paco.application.reseng_rds import RDSMysqlResourceEngine, RDSMysqlAuroraResourceEngine, RDSPostgresqlResourceEngine, \
-    RDSPostgresqlAuroraResourceEngine, DBParameterGroupResourceEngine, DBClusterParameterGroupResourceEngine
+    RDSPostgresqlAuroraResourceEngine, DBParameterGroupResourceEngine, DBClusterParameterGroupResourceEngine, RDSSQLServerExpressResourceEngine
 from paco.application.reseng_snstopic import SNSTopicResourceEngine
 from paco.application.reseng_s3bucket import S3BucketResourceEngine
 from paco.application.reseng_eip import EIPResourceEngine

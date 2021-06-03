@@ -38,6 +38,15 @@ class RDSMysqlResourceEngine(ResourceEngine):
             stack_tags=self.stack_tags,
         )
 
+class RDSSQLServerExpressResourceEngine(ResourceEngine):
+    def init_resource(self):
+        self.stack_group.add_new_stack(
+            self.aws_region,
+            self.resource,
+            paco.cftemplates.RDS,
+            stack_tags=self.stack_tags,
+        )
+
 class RDSMysqlAuroraResourceEngine(ResourceEngine):
     def init_resource(self):
         self.stack_group.add_new_stack(

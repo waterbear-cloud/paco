@@ -301,29 +301,28 @@ class LBBase(StackTemplate):
                       continue
                     logical_rule_name = self.create_cfn_logical_id(rule_name)
                     cfn_export_dict = {}
-                    field = None
-                    rule_values = None
+                    rule_conditions = []
                     if rule.rule_type == "forward":
                         logical_target_group_id = self.create_cfn_logical_id('TargetGroup' + rule.target_group)
                         cfn_export_dict['Actions'] = [
                             {'Type': 'forward', 'TargetGroupArn': troposphere.Ref(logical_target_group_id) }
                         ]
                         if rule.host != None:
-                            field = 'host-header'
-                            rule_values = [rule.host]
-                        elif len(rule.path_pattern) > 0:
-                            field = 'path-pattern'
-                            rule_values = rule.path_pattern
+                            rule_conditions.append({'Field': 'host-header', 'Values': [rule.host]})
+                        if len(rule.path_pattern) > 0:
+                            rule_conditions.append({'Field': 'path-pattern', 'Values': rule.path_pattern})
                     elif rule.rule_type == "redirect":
+                        redirect_config = {'Type': 'redirect', 'RedirectConfig': {'Host': rule.redirect_host, 'StatusCode': 'HTTP_301'} }
+                        if rule.redirect_path != None:
+                            redirect_config['RedirectConfig']['Path'] = rule.redirect_path
                         cfn_export_dict['Actions'] = [
-                            {'Type': 'redirect', 'RedirectConfig': {'Host': rule.redirect_host, 'StatusCode': 'HTTP_301'} }
+                            redirect_config
                         ]
-                        field = 'host-header'
-                        rule_values = [rule.host]
+                        rule_conditions.append({'Field': 'host-header', 'Values': [rule.host]})
+                        if len(rule.path_pattern) > 0:
+                            rule_conditions.append({'Field': 'path-pattern', 'Values': rule.path_pattern})
 
-                    cfn_export_dict['Conditions'] = [
-                        {'Field': field, 'Values': rule_values }
-                    ]
+                    cfn_export_dict['Conditions'] = rule_conditions
 
                     cfn_export_dict['ListenerArn'] = troposphere.Ref(logical_listener_name)
                     cfn_export_dict['Priority'] = rule.priority

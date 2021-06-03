@@ -3,7 +3,7 @@ from paco.application.res_engine import ResourceEngine
 from paco.core.yaml import YAML
 from paco.models.references import get_model_obj_from_ref
 from paco.stack import StackHooks
-from paco.utils import md5sum
+from paco.utils import md5sum, prefixed_name
 from paco.aws_api.ecs.capacityprovider import ECSCapacityProviderClient
 import paco.cftemplates
 import paco.models
@@ -114,13 +114,24 @@ role_name: %s""" % ("ASGInstance")
         )
         if self.resource.instance_ami_type.startswith("windows") == False:
             self.stack.hooks.add(
-                name='UpdateExistingInstances.' + self.resource.name,
+                name='EC2LMUpdateInstances.' + self.resource.name,
                 stack_action='update',
                 stack_timing='pre',
                 hook_method=self.app_engine.ec2_launch_manager.ec2lm_update_instances_hook,
                 cache_method=self.app_engine.ec2_launch_manager.ec2lm_update_instances_cache,
                 hook_arg=(bucket.paco_ref_parts, self.resource)
             )
+        else:
+            # TODO: Make this work with Linux too
+            self.stack.hooks.add(
+                name='UpdateSSMAgent.' + self.resource.name,
+                stack_action=['create', 'update'],
+                stack_timing='post',
+                hook_method=self.asg_hook_update_ssm_agent,
+                cache_method=None,
+                hook_arg=self.resource
+            )
+
         # For ECS ASGs add an ECS Hook
         if self.resource.ecs != None and self.resource.is_enabled() == True:
             self.stack.hooks.add(
@@ -137,6 +148,21 @@ role_name: %s""" % ("ASGInstance")
     def get_ec2lm_cache_id(self, hook, hook_arg):
         "EC2LM cache id"
         return self.ec2lm_cache_id
+
+    def asg_hook_update_ssm_agent(self, hook, asg):
+        ssm_client = self.account_ctx.get_aws_client('ssm', aws_region=self.aws_region)
+        ssm_log_group_name = prefixed_name(asg, 'paco_ssm', self.paco_ctx.legacy_flag)
+        response = ssm_client.send_command(
+            Targets=[{
+                'Key': 'tag:aws:cloudformation:stack-name',
+                'Values': [asg.stack.get_name()]
+            },],
+            CloudWatchOutputConfig={
+                'CloudWatchLogGroupName': ssm_log_group_name,
+                'CloudWatchOutputEnabled': True,
+            },
+            DocumentName='AWS-UpdateSSMAgent',
+        )
 
     def provision_ecs_capacity_provider_cache(self, hook, asg):
         "Cache method for ECS ASG"
