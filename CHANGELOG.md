@@ -1,11 +1,21 @@
 Changelog for Paco
 ==================
 
-9.3.15 (unreleased)
+9.3.15 (2021-06-08)
 -------------------
 
-- Nothing changed yet.
+### Added
 
+- Implemented SQLServerExpress RDS
+- Implemented SSM Agent Update using SSM Document for Windows
+- Added redirect_path to IListenerRules
+- Implemented VPC Endpoints in network.vpc for ssm, ssmmessages, and ec2messages.
+- Automated ALB access logs bucket policies
+- Added VPCEndpoints CFTemplate
+
+### Changed
+
+- IAM controll now prints SwitchRole URLs for users on resource.iam operations
 
 9.3.14 (2021-05-11)
 -------------------
