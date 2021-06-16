@@ -228,20 +228,27 @@ class EC2LaunchManager():
             Key="ec2lm_cache_id.md5"
         )
         # send SSM command to update existing instances
-        ssm_client = self.account_ctx.get_aws_client('ssm', aws_region=self.aws_region)
-        ssm_log_group_name = prefixed_name(resource, 'paco_ssm', self.paco_ctx.legacy_flag)
-        ssm_client.send_command(
-            Targets=[{
-                'Key': 'tag:aws:cloudformation:stack-name',
-                'Values': [resource.stack.get_name()]
-            },],
-            DocumentName='paco_ec2lm_update_instance',
-            Parameters={ 'CacheId': [cache_id] },
-            CloudWatchOutputConfig={
-                'CloudWatchLogGroupName': ssm_log_group_name,
-                'CloudWatchOutputEnabled': True,
-            },
+        ssm_ctl = self.paco_ctx.get_controller('SSM')
+        ssm_ctl.paco_ec2lm_update_instance(
+            resource=resource,
+            account_ctx=self.accout_ctx,
+            region=self.aws_region,
+            cache_id=cache_id
         )
+        # ssm_client = self.account_ctx.get_aws_client('ssm', aws_region=self.aws_region)
+        # ssm_log_group_name = prefixed_name(resource, 'paco_ssm', self.paco_ctx.legacy_flag)
+        # ssm_client.send_command(
+        #     Targets=[{
+        #         'Key': 'tag:aws:cloudformation:stack-name',
+        #         'Values': [resource.stack.get_name()]
+        #     },],
+        #     DocumentName='paco_ec2lm_update_instance',
+        #     Parameters={ 'CacheId': [cache_id] },
+        #     CloudWatchOutputConfig={
+        #         'CloudWatchLogGroupName': ssm_log_group_name,
+        #         'CloudWatchOutputEnabled': True,
+        #     },
+        # )
 
     def ec2lm_update_instances_cache(self, hook, bucket_resource):
         "Cache method for EC2LM resource"

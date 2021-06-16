@@ -1,6 +1,32 @@
+import json
+from paco.aws_api.ssm.document import SSMDocumentClient
 from paco.core.exception import StackException
 from paco.controllers.controllers import Controller
-from paco.aws_api.ssm.document import SSMDocumentClient
+from paco.models.resources import SSMDocument
+from paco.utils import md5sum, prefixed_name
+
+
+SSM_DOCUMENT_UPDATE_WINDOWS_CLOUDWATCH_AGENT = {
+    "schemaVersion": "2.2",
+    "description": "Windows CloudWatch Agent Configuration and Start",
+    "parameters": {
+        "ConfigParamStoreName": {
+            "type": "String",
+            "description": "CloudWatch Configuration Parameter Store Name"
+        },
+    },
+    "mainSteps": [
+        {
+            "action": "aws:runPowerShellScript",
+            "name": "WindowsCloudWatchConfigAndStart",
+            "inputs": {
+                "runCommand": [
+                    '& "C:\Program Files\Amazon\AmazonCloudWatchAgent\\amazon-cloudwatch-agent-ctl.ps1" -a fetch-config -m ec2 -s -c ssm:{{ConfigParamStoreName}}',
+                ]
+            }
+        }
+    ]
+}
 
 class SSMController(Controller):
     def __init__(self, paco_ctx):
@@ -9,6 +35,103 @@ class SSMController(Controller):
     def init(self, command=None, model_obj=None):
         self.command = command
         self.model_obj = model_obj
+
+    def paco_ec2lm_update_instance(self, resource, account_ctx, region, cache_id):
+        ssm_client = account_ctx.get_aws_client('ssm', aws_region=region)
+        ssm_log_group_name = prefixed_name(resource, 'paco_ssm', self.paco_ctx.legacy_flag)
+        ssm_client.send_command(
+            Targets=[{
+                'Key': 'tag:aws:cloudformation:stack-name',
+                'Values': [resource.stack.get_name()]
+            },],
+            DocumentName='paco_ec2lm_update_instance',
+            Parameters={ 'CacheId': [cache_id] },
+            CloudWatchOutputConfig={
+                'CloudWatchLogGroupName': ssm_log_group_name,
+                'CloudWatchOutputEnabled': True,
+            },
+        )
+
+    def command_update_ssm_agent(self, resource, account_ctx, region):
+        ssm_client = account_ctx.get_aws_client('ssm', aws_region=region)
+        ssm_log_group_name = prefixed_name(resource, 'paco_ssm', self.paco_ctx.legacy_flag)
+        response = ssm_client.send_command(
+            Targets=[{
+                'Key': 'tag:aws:cloudformation:stack-name',
+                'Values': [resource.stack.get_name()]
+            },],
+            CloudWatchOutputConfig={
+                'CloudWatchLogGroupName': ssm_log_group_name,
+                'CloudWatchOutputEnabled': True,
+            },
+            DocumentName='AWS-UpdateSSMAgent',
+        )
+
+    def command_update_cloudwatch_agent(self, resource, account_ctx, region, cloudwatch_config_json):
+        ssm_documents = self.paco_ctx.project['resource']['ssm'].ssm_documents
+        if 'paco_windows_cloudwatch_agent_update' not in ssm_documents:
+            ssm_doc = SSMDocument('paco_windows_cloudwatch_agent_update', ssm_documents)
+            ssm_doc.add_location(account_ctx.paco_ref, region)
+            ssm_doc.content = json.dumps(SSM_DOCUMENT_UPDATE_WINDOWS_CLOUDWATCH_AGENT)
+            ssm_doc.document_type = 'Command'
+            ssm_doc.enabled = True
+            ssm_documents['paco_windows_cloudwatch_agent_update'] = ssm_doc
+        else:
+            ssm_documents['paco_windows_cloudwatch_agent_update'].add_location(
+                account_ctx.paco_ref,
+                region
+            )
+
+        self.provision_ssm_document(ssm_doc, account_ctx, region)
+
+        ssm_client = account_ctx.get_aws_client('ssm', aws_region=region)
+        ssm_log_group_name = prefixed_name(resource, 'paco_ssm', self.paco_ctx.legacy_flag)
+
+        # Create Config Parameter Store
+        cloudwatch_config_param_store_name = f'Paco-CloudWatch-Config-{resource.stack.get_name()}'
+        response = ssm_client.put_parameter(
+            Name=cloudwatch_config_param_store_name,
+            Description='CloudWatch Configuration',
+            Value=cloudwatch_config_json,
+            Type='String',
+            Overwrite=True,
+            Tier='Advanced'
+        )
+
+
+        # Install the Agent
+        response = ssm_client.send_command(
+            Parameters={
+                'action': ['Install'],
+                'name': ["AmazonCloudWatchAgent"],
+                'version': ["latest"],
+            },
+            Targets=[{
+                'Key': 'tag:aws:cloudformation:stack-name',
+                'Values': [resource.stack.get_name()]
+            },],
+            CloudWatchOutputConfig={
+                'CloudWatchLogGroupName': ssm_log_group_name,
+                'CloudWatchOutputEnabled': True,
+            },
+            DocumentName='AWS-ConfigureAWSPackage',
+        )
+
+        # Configure and start the agent
+        response = ssm_client.send_command(
+            Parameters={
+                'ConfigParamStoreName': [cloudwatch_config_param_store_name],
+            },
+            Targets=[{
+                'Key': 'tag:aws:cloudformation:stack-name',
+                'Values': [resource.stack.get_name()]
+            },],
+            CloudWatchOutputConfig={
+                'CloudWatchLogGroupName': ssm_log_group_name,
+                'CloudWatchOutputEnabled': True,
+            },
+            DocumentName='paco_windows_cloudwatch_agent_update'
+        )
 
     def validate(self):
         pass

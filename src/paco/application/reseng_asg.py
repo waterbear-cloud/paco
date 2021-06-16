@@ -131,6 +131,15 @@ role_name: %s""" % ("ASGInstance")
                 cache_method=None,
                 hook_arg=self.resource
             )
+            # TODO: Make this work with Linux too
+            self.stack.hooks.add(
+                name='UpdateCloudWatchAgent.' + self.resource.name,
+                stack_action=['create', 'update'],
+                stack_timing='post',
+                hook_method=self.asg_hook_update_cloudwatch_agent,
+                cache_method=None,
+                hook_arg=self.resource
+            )
 
         # For ECS ASGs add an ECS Hook
         if self.resource.ecs != None and self.resource.is_enabled() == True:
@@ -150,19 +159,125 @@ role_name: %s""" % ("ASGInstance")
         return self.ec2lm_cache_id
 
     def asg_hook_update_ssm_agent(self, hook, asg):
-        ssm_client = self.account_ctx.get_aws_client('ssm', aws_region=self.aws_region)
-        ssm_log_group_name = prefixed_name(asg, 'paco_ssm', self.paco_ctx.legacy_flag)
-        response = ssm_client.send_command(
-            Targets=[{
-                'Key': 'tag:aws:cloudformation:stack-name',
-                'Values': [asg.stack.get_name()]
-            },],
-            CloudWatchOutputConfig={
-                'CloudWatchLogGroupName': ssm_log_group_name,
-                'CloudWatchOutputEnabled': True,
-            },
-            DocumentName='AWS-UpdateSSMAgent',
-        )
+        ssm_ctl = self.paco_ctx.get_controller('SSM')
+        ssm_ctl.command_update_ssm_agent(asg, self.account_ctx, self.aws_region)
+
+
+    def asg_hook_update_cloudwatch_agent(self, hook, asg):
+        ssm_ctl = self.paco_ctx.get_controller('SSM')
+        cloudwatch_config = """{
+        "logs": {
+                "logs_collected": {
+                        "windows_events": {
+                                "collect_list": [
+                                        {
+                                                "event_format": "xml",
+                                                "event_levels": [
+                                                        "VERBOSE",
+                                                        "INFORMATION",
+                                                        "WARNING",
+                                                        "ERROR",
+                                                        "CRITICAL"
+                                                ],
+                                                "event_name": "System",
+                                                "log_group_name": "Paco-Test-Windows-System",
+                                                "log_stream_name": "{instance_id}"
+                                        },
+                                        {
+                                                "event_format": "xml",
+                                                "event_levels": [
+                                                        "VERBOSE",
+                                                        "INFORMATION",
+                                                        "WARNING",
+                                                        "ERROR",
+                                                        "CRITICAL"
+                                                ],
+                                                "event_name": "Security",
+                                                "log_group_name": "Paco-Test-Windows-Security",
+                                                "log_stream_name": "{instance_id}"
+                                        }
+                                ]
+                        }
+                }
+        },
+        "metrics": {
+                "append_dimensions": {
+                        "AutoScalingGroupName": "${aws:AutoScalingGroupName}",
+                        "ImageId": "${aws:ImageId}",
+                        "InstanceId": "${aws:InstanceId}",
+                        "InstanceType": "${aws:InstanceType}"
+                },
+                "metrics_collected": {
+                        "LogicalDisk": {
+                                "measurement": [
+                                        "% Free Space"
+                                ],
+                                "metrics_collection_interval": 60,
+                                "resources": [
+                                        "*"
+                                ]
+                        },
+                        "Memory": {
+                                "measurement": [
+                                        "% Committed Bytes In Use"
+                                ],
+                                "metrics_collection_interval": 60
+                        },
+                        "Paging File": {
+                                "measurement": [
+                                        "% Usage"
+                                ],
+                                "metrics_collection_interval": 60,
+                                "resources": [
+                                        "*"
+                                ]
+                        },
+                        "PhysicalDisk": {
+                                "measurement": [
+                                        "% Disk Time",
+                                        "Disk Write Bytes/sec",
+                                        "Disk Read Bytes/sec",
+                                        "Disk Writes/sec",
+                                        "Disk Reads/sec"
+                                ],
+                                "metrics_collection_interval": 60,
+                                "resources": [
+                                        "*"
+                                ]
+                        },
+                        "Processor": {
+                                "measurement": [
+                                        "% User Time",
+                                        "% Idle Time",
+                                        "% Interrupt Time"
+                                ],
+                                "metrics_collection_interval": 60,
+                                "resources": [
+                                        "*"
+                                ]
+                        },
+                        "TCPv4": {
+                                "measurement": [
+                                        "Connections Established"
+                                ],
+                                "metrics_collection_interval": 60
+                        },
+                        "TCPv6": {
+                                "measurement": [
+                                        "Connections Established"
+                                ],
+                                "metrics_collection_interval": 60
+                        },
+                        "statsd": {
+                                "metrics_aggregation_interval": 60,
+                                "metrics_collection_interval": 60,
+                                "service_address": ":8125"
+                        }
+                }
+        }
+}"""
+        ssm_ctl.command_update_cloudwatch_agent(asg, self.account_ctx, self.aws_region, cloudwatch_config)
+
 
     def provision_ecs_capacity_provider_cache(self, hook, asg):
         "Cache method for ECS ASG"
