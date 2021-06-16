@@ -142,23 +142,6 @@ class IAMUserAccountDelegates(StackTemplate):
                     }
                 )
 
-
-            # Some actions in the pipeline might be in different account so we must
-            # iterate the pipeline stages and actions and add them too.
-            # for action in pipeline_config.source:
-            #     account_name = None
-            #     if action.type == 'CodeDeploy.Deploy':
-            #         asg_ref = Reference(action.auto_scaling_group)
-            #         asg_config = asg_ref.resolve()
-            #         account_name = self.paco_ctx.get_ref(asg_config.get_account().paco_ref + '.name')
-            #         self.init_codedeploy_permission(pipeline_ref, assume_role_res)
-
-            #for action in pipeline_config.build:
-            #    account_name = None
-            #    if action.type == 'CodeBuild.Build':
-            #        self.init_codebuild_permission(pipeline_ref, assume_role_res)
-
-
         self.deployment_pipeline_codepipeline_permissions(pipeline_list, assume_role_res)
         self.deployment_pipeline_codebuild_permissions(pipeline_list, assume_role_res)
 
@@ -224,6 +207,8 @@ class IAMUserAccountDelegates(StackTemplate):
                 )
             )
 
+
+
         managed_policy_res = troposphere.iam.ManagedPolicy(
             title=self.create_cfn_logical_id("CodePipelinePolicy"),
             PolicyDocument=PolicyDocument(
@@ -237,9 +222,6 @@ class IAMUserAccountDelegates(StackTemplate):
     def deployment_pipeline_codebuild_permissions(self, pipeline_list, assume_role_res):
         statement_list = []
 
-        list_pipelines_actions = [
-            Action('codepipeline', 'ListPipelines')
-        ]
         readonly_actions = [
             Action('codebuild', 'BatchGet*'),
             Action('codebuild', 'Get*'),

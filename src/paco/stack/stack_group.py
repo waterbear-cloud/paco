@@ -177,7 +177,7 @@ class StackGroup():
         if stack_ref == self.filter_config or stack_ref.startswith(self.filter_config + '.'):
             action_method()
         else:
-            stack.log_action(action_method.__func__.__name__.capitalize(), 'Filtered')
+            stack.log_action('Filtered', 'Filtered')
 
     # methods specific to CloudFormation Stacks
     def add_new_stack(
