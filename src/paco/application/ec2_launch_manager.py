@@ -231,7 +231,7 @@ class EC2LaunchManager():
         ssm_ctl = self.paco_ctx.get_controller('SSM')
         ssm_ctl.paco_ec2lm_update_instance(
             resource=resource,
-            account_ctx=self.accout_ctx,
+            account_ctx=self.account_ctx,
             region=self.aws_region,
             cache_id=cache_id
         )
