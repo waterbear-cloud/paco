@@ -105,12 +105,15 @@ class CWAlarms(CFBaseAlarm):
         # ECSServices can have Alarms for every Service
         if schemas.IECSServices.providedBy(resource):
             for service in resource.services.values():
+                if service.monitoring == None or service.monitoring.is_enabled() == False:
+                    continue
                 if getattr(service, 'monitoring', None) != None and getattr(service.monitoring, 'alarm_sets', None) != None:
                     alarm_sets = service.monitoring.alarm_sets
                     for alarm_set_name in alarm_sets.keys():
                         alarm_set = alarm_sets[alarm_set_name]
                         for alarm_name, alarm in alarm_set.items():
-                            cfn_resource_name = 'Alarm{}{}'.format(
+                            cfn_resource_name = 'Alarm{}{}{}'.format(
+                                self.create_cfn_logical_id(service.name),
                                 self.create_cfn_logical_id(alarm_set_name),
                                 self.create_cfn_logical_id(alarm_name)
                             )
