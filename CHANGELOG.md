@@ -1,11 +1,16 @@
 Changelog for Paco
 ==================
 
-9.3.16 (unreleased)
+9.3.16 (2021-06-25)
 -------------------
 
-- Nothing changed yet.
+### Fixed
 
+- Fixed ECSService alarms when more than one service is used.
+
+### Added
+
+- Added -h/--hooks-only flag for updaing EC2 configuration without affecting the stack.
 
 9.3.15 (2021-06-08)
 -------------------
