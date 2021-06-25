@@ -246,6 +246,7 @@ class PacoContext(object):
         self.yes = False
         self.warn = False
         self.quiet_changes_only = False
+        self.hooks_only = False
         self.paco_path = os.getcwd()
         self.aws_name = "Paco"
         self.controllers = {}

@@ -21,6 +21,7 @@ def validate_command(
     warn,
     disable_validation,
     quiet_changes_only,
+    hooks_only,
     config_scope,
     home='.'
 ):
@@ -35,6 +36,7 @@ def validate_command(
         warn,
         disable_validation,
         quiet_changes_only,
+        hooks_only,
         config_scope,
         home
     )

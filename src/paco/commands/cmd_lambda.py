@@ -32,6 +32,7 @@ def lambda_deploy(
     warn,
     disable_validation,
     quiet_changes_only,
+    hooks_only,
     config_scope,
     home='.',
 ):
@@ -49,6 +50,7 @@ def lambda_deploy(
         warn,
         disable_validation,
         quiet_changes_only,
+        hooks_only,
         config_scope,
         home
     )
@@ -80,6 +82,7 @@ def lambda_invoke(
     warn,
     disable_validation,
     quiet_changes_only,
+    hooks_only,
     config_scope,
     home='.',
     event='',
@@ -122,6 +125,7 @@ def lambda_invoke(
         warn,
         disable_validation,
         quiet_changes_only,
+        hooks_only,
         config_scope,
         home
     )

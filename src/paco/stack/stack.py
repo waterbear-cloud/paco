@@ -452,6 +452,9 @@ class BaseStack():
 
     def stack_success(self):
         "Actions to perform when a stack action has been successfully finished"
+        # If the --h/--hooks-only flag is set, avoid saving the cache
+        if self.action == "update" and self.paco_ctx.hooks_only == True:
+            return
         if self.action != "delete":
             # Create cache file
             new_cache_id = self.gen_cache_id()
@@ -1359,6 +1362,10 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
             return
         self.action = "update"
         self.hooks.run("update", "pre", self)
+        if self.paco_ctx.hooks_only == True:
+            self.log_action("Update", "Supressed")
+            return
+
         self.log_action("Provision", "Update")
         stack_parameters = self.generate_stack_parameters(action=self.action)
         self.confirm_stack_parameter_changes(stack_parameters)

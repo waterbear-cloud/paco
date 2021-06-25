@@ -64,6 +64,7 @@ def init_cloud_command(
     warn,
     disable_validation,
     quiet_changes_only,
+    hooks_only,
     config_scope,
     home
 ):
@@ -74,6 +75,7 @@ def init_cloud_command(
     paco_ctx.warn = warn
     paco_ctx.disable_validation = disable_validation
     paco_ctx.quiet_changes_only = quiet_changes_only
+    paco_ctx.hooks_only = hooks_only
     paco_ctx.command = command_name
     paco_ctx.config_scope = config_scope
     init_paco_home_option(paco_ctx, home)
@@ -279,6 +281,12 @@ def cloud_options(func):
         is_flag=True,
         default=False,
         help='Supresses Cache, Protected, and Disabled messages.'
+    )(func)
+    func = click.option(
+        '-h', '--hooks-only',
+        is_flag=True,
+        default=False,
+        help='When updating a stack, only run the hooks and skip the stack update.'
     )(func)
     return func
 

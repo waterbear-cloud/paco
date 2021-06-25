@@ -25,6 +25,7 @@ def provision_command(
     warn,
     disable_validation,
     quiet_changes_only,
+    hooks_only,
     config_scope,
     home='.',
     auto_publish_code=False,
@@ -41,6 +42,7 @@ def provision_command(
         warn,
         disable_validation,
         quiet_changes_only,
+        hooks_only,
         config_scope,
         home
     )
