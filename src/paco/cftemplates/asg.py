@@ -3,6 +3,7 @@ import os
 import troposphere
 import troposphere.autoscaling
 import troposphere.policies
+import troposphere.ssm
 from io import StringIO
 from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action, Condition, StringEquals, StringLike
 from enum import Enum
@@ -351,7 +352,7 @@ class ASG(StackTemplate):
             min_instances_in_service_param = self.create_cfn_parameter(
             param_type='String',
             name='MinInstancesInService',
-            description='Roling update minimum instances to remain in service during update.',
+            description='Rolling update minimum instances to remain in service during update.',
             value=update_policy.min_instances_in_service
             )
 
@@ -467,6 +468,27 @@ class ASG(StackTemplate):
                     RoleARN=lifecycle_hook.role_arn,
                     NotificationTargetARN=lifecycle_hook.notification_target_arn
                 )
+
+        if asg_config.patch_manager != None and asg_config.patch_manager.is_enabled():
+            patch_ssm_associate_dict = {
+                'AssociationName': f'OpusPatchBaseline{asg_config.patch_manager.operation}',
+                'Name': 'AWS-RunPatchBaseline',
+                'ScheduleExpression': asg_config.patch_manager.schedule_expression,
+                'Targets': [{
+                    'Key': 'tag:Name',
+                    'Values': [asg_config.get_aws_name()]
+                }],
+                'Parameters': {
+                    'Operation': [asg_config.patch_manager.operation]
+                },
+                'WaitForSuccessTimeoutSeconds': 900
+            }
+            patch_ssm_associate_res = troposphere.ssm.Association.from_dict(
+                'PatchAssociation',
+                patch_ssm_associate_dict
+            )
+            template.add_resource(patch_ssm_associate_res)
+
 
     def script_manager_ecs(self, ecs_group, asg_dict, asg_config, template):
         idx=0

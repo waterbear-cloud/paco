@@ -67,6 +67,52 @@ class SSMController(Controller):
             DocumentName='AWS-UpdateSSMAgent',
         )
 
+    def wait_for_command(self, ssm_client, account_ctx, region, resource, command_id):
+        ec2_client = account_ctx.get_aws_client('ec2', aws_region=region)
+        ec2_response = ec2_client.describe_instances(
+            Filters=[
+                {
+                    'Name': 'tag:Paco-Stack-Name',
+                    'Values': [resource.stack.get_name()]
+                }
+
+            ]
+        )
+        for instance in ec2_response['Reservations'][0]['Instances']:
+            instance_id = instance['InstanceId']
+            while True:
+                # TODO: NEeds a try for InvocationDoesNotExist Exception
+                command_response = ssm_client.get_command_invocation(
+                    CommandId=command_id,
+                    InstanceId=instance_id,
+                )
+                if command_response['Status'] not in ('Pending', 'InProgress', 'Delayed'):
+                    if command_response['Status'] == 'Success':
+                        print(f"ssm command: {command_id}: success on {instance_id}")
+                    else:
+                        print(f"Command status: {instance_id}: {command_response['Status']}: {command_response['StatusDetails']}")
+                        if 'StandardOutputContent' in command_response.keys():
+                            print(f"Command stdout: {instance_id}: {command_response['StandardOutputContent']}")
+                        if 'StandardErrorContent' in command_response.keys():
+                            print(f"Command stderr: {instance_id}: {command_response['StandardErrorContent']}")
+                    break
+
+# Install the Agent
+    def send_command(self, account_ctx, region, resource, parameters, targets, document_name):
+        ssm_client = account_ctx.get_aws_client('ssm', aws_region=region)
+        ssm_log_group_name = prefixed_name(resource, 'paco_ssm', self.paco_ctx.legacy_flag)
+        response = ssm_client.send_command(
+            Parameters=parameters,
+            Targets=targets,
+            CloudWatchOutputConfig={
+                'CloudWatchLogGroupName': ssm_log_group_name,
+                'CloudWatchOutputEnabled': True,
+            },
+            DocumentName=document_name
+        )
+
+        self.wait_for_command(ssm_client, account_ctx, region, resource, response['Command']['CommandId'])
+
     def command_update_cloudwatch_agent(self, resource, account_ctx, region, cloudwatch_config_json):
         ssm_documents = self.paco_ctx.project['resource']['ssm'].ssm_documents
         if 'paco_windows_cloudwatch_agent_update' not in ssm_documents:
@@ -83,9 +129,7 @@ class SSMController(Controller):
             )
 
         self.provision_ssm_document(ssm_doc, account_ctx, region)
-
         ssm_client = account_ctx.get_aws_client('ssm', aws_region=region)
-        ssm_log_group_name = prefixed_name(resource, 'paco_ssm', self.paco_ctx.legacy_flag)
 
         # Create Config Parameter Store
         cloudwatch_config_param_store_name = f'Paco-CloudWatch-Config-{resource.stack.get_name()}'
@@ -98,40 +142,30 @@ class SSMController(Controller):
             Tier='Advanced'
         )
 
+        # Configure Amazon CloudWatch Agent
+        parameters = {
+            'action': ['Install'],
+            'name': ["AmazonCloudWatchAgent"],
+            'version': ["latest"],
+        }
+        targets=[{
+            'Key': 'tag:aws:cloudformation:stack-name',
+            'Values': [resource.stack.get_name()]
+        }]
 
-        # Install the Agent
-        response = ssm_client.send_command(
-            Parameters={
-                'action': ['Install'],
-                'name': ["AmazonCloudWatchAgent"],
-                'version': ["latest"],
-            },
-            Targets=[{
-                'Key': 'tag:aws:cloudformation:stack-name',
-                'Values': [resource.stack.get_name()]
-            },],
-            CloudWatchOutputConfig={
-                'CloudWatchLogGroupName': ssm_log_group_name,
-                'CloudWatchOutputEnabled': True,
-            },
-            DocumentName='AWS-ConfigureAWSPackage',
-        )
+        self.send_command(account_ctx, region, resource, parameters, targets, 'AWS-ConfigureAWSPackage')
 
-        # Configure and start the agent
-        response = ssm_client.send_command(
-            Parameters={
-                'ConfigParamStoreName': [cloudwatch_config_param_store_name],
-            },
-            Targets=[{
-                'Key': 'tag:aws:cloudformation:stack-name',
-                'Values': [resource.stack.get_name()]
-            },],
-            CloudWatchOutputConfig={
-                'CloudWatchLogGroupName': ssm_log_group_name,
-                'CloudWatchOutputEnabled': True,
-            },
-            DocumentName='paco_windows_cloudwatch_agent_update'
-        )
+        # Update the Agent
+        parameters = {
+            'ConfigParamStoreName': [cloudwatch_config_param_store_name],
+        }
+        targets=[{
+            'Key': 'tag:aws:cloudformation:stack-name',
+            'Values': [resource.stack.get_name()]
+        }]
+        self.send_command(account_ctx, region, resource, parameters, targets, 'paco_windows_cloudwatch_agent_update')
+
+
 
     def validate(self):
         pass

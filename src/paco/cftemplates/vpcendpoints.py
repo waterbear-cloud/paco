@@ -87,6 +87,9 @@ class VPCEndpoints(StackTemplate):
                 'VpcEndpointType': 'Interface'
             }
 
+            if endpoint.service in ['s3', 'ec2']:
+                endpoint_dict['PrivateDnsEnabled'] = False
+
             endpoint_res = troposphere.ec2.VPCEndpoint.from_dict(
                 self.create_cfn_logical_id(endpoint_name),
                 endpoint_dict

@@ -46,6 +46,10 @@ class ASGResourceEngine(ResourceEngine):
     def init_resource(self):
         # Create instance role
         role_profile_arn = None
+        self.windows_log_groups = {
+            'Windows-System': '',
+            'Windows-Security': ''
+        }
 
         if self.resource.instance_iam_role.enabled == False:
             role_config_yaml = """
@@ -113,6 +117,7 @@ role_name: %s""" % ("ASGInstance")
             },
         )
         if self.resource.instance_ami_type.startswith("windows") == False:
+            # Linux uses EC2LM
             self.stack.hooks.add(
                 name='EC2LMUpdateInstances.' + self.resource.name,
                 stack_action='update',
@@ -122,24 +127,11 @@ role_name: %s""" % ("ASGInstance")
                 hook_arg=(bucket.paco_ref_parts, self.resource)
             )
         else:
-            # TODO: Make this work with Linux too
-            self.stack.hooks.add(
-                name='UpdateSSMAgent.' + self.resource.name,
-                stack_action=['create', 'update'],
-                stack_timing='post',
-                hook_method=self.asg_hook_update_ssm_agent,
-                cache_method=None,
-                hook_arg=self.resource
-            )
-            # TODO: Make this work with Linux too
-            self.stack.hooks.add(
-                name='UpdateCloudWatchAgent.' + self.resource.name,
-                stack_action=['create', 'update'],
-                stack_timing='post',
-                hook_method=self.asg_hook_update_cloudwatch_agent,
-                cache_method=None,
-                hook_arg=self.resource
-            )
+            # Windows uses SSM
+            self.update_windows_ssm_agent()
+            self.update_windows_cloudwatch_agent()
+            self.update_windows_patching()
+
 
         # For ECS ASGs add an ECS Hook
         if self.resource.ecs != None and self.resource.is_enabled() == True:
@@ -158,13 +150,188 @@ role_name: %s""" % ("ASGInstance")
         "EC2LM cache id"
         return self.ec2lm_cache_id
 
+    def update_windows_patching(self):
+        pass
+
     def asg_hook_update_ssm_agent(self, hook, asg):
         ssm_ctl = self.paco_ctx.get_controller('SSM')
         ssm_ctl.command_update_ssm_agent(asg, self.account_ctx, self.aws_region)
 
+    def update_windows_ssm_agent(self):
+        iam_policy_name = '-'.join([self.resource.name, 'ssmagent-policy'])
+        ssm_prefixed_name = prefixed_name(self.resource, 'paco_ssm', self.paco_ctx.legacy_flag)
+        # allows instance to create a LogGroup with any name - this is a requirement of the SSM Agent
+        # if you limit the resource to just the LogGroups names you want SSM to use, the agent will not work
+        ssm_log_group_arn = f"arn:aws:logs:{self.aws_region}:{self.account_ctx.id}:log-group:*"
+        ssm_log_stream_arn = f"arn:aws:logs:{self.aws_region}:{self.account_ctx.id}:log-group:{ssm_prefixed_name}:log-stream:*"
+        policy_config_yaml = f"""
+policy_name: '{iam_policy_name}'
+enabled: true
+statement:
+  - effect: Allow
+    action:
+      - ssmmessages:CreateControlChannel
+      - ssmmessages:CreateDataChannel
+      - ssmmessages:OpenControlChannel
+      - ssmmessages:OpenDataChannel
+      - ec2messages:AcknowledgeMessage
+      - ec2messages:DeleteMessage
+      - ec2messages:FailMessage
+      - ec2messages:GetEndpoint
+      - ec2messages:GetMessages
+      - ec2messages:SendReply
+      - ssm:UpdateInstanceInformation
+      - ssm:ListInstanceAssociations
+      - ssm:DescribeInstanceProperties
+      - ssm:DescribeDocumentParameters
+      - ssm:PutInventory
+      - ssm:GetDeployablePatchSnapshotForInstance
+      - ssm:PutInventory
+    resource:
+      - '*'
+  - effect: Allow
+    action:
+      - s3:GetEncryptionConfiguration
+      - ssm:GetManifest
+    resource:
+      - '*'
+  - effect: Allow
+    action:
+      - s3:GetObject
+    resource:
+      - 'arn:aws:s3:::aws-ssm-{self.aws_region}/*'
+      - 'arn:aws:s3:::aws-windows-downloads-{self.aws_region}/*'
+      - 'arn:aws:s3:::amazon-ssm-{self.aws_region}/*'
+      - 'arn:aws:s3:::amazon-ssm-packages-{self.aws_region}/*'
+      - 'arn:aws:s3:::{self.aws_region}-birdwatcher-prod/*'
+      - 'arn:aws:s3:::patch-baseline-snapshot-{self.aws_region}/*'
+  - effect: Allow
+    action:
+      - logs:CreateLogGroup
+      - logs:CreateLogStream
+      - logs:DescribeLogGroups
+      - logs:DescribeLogStreams
+    resource:
+      - {ssm_log_group_arn}
+  - effect: Allow
+    action:
+      - logs:PutLogEvents
+    resource:
+      - {ssm_log_stream_arn}
+"""
 
-    def asg_hook_update_cloudwatch_agent(self, hook, asg):
-        ssm_ctl = self.paco_ctx.get_controller('SSM')
+        iam_ctl = self.paco_ctx.get_controller('IAM')
+        iam_ctl.add_managed_policy(
+            role=self.resource.instance_iam_role,
+            resource=self.resource,
+            policy_name='policy',
+            policy_config_yaml=policy_config_yaml,
+            extra_ref_names=['ec2lm','ssmagent'],
+        )
+
+        # TODO: Make this work with Linux too
+        self.stack.hooks.add(
+            name='UpdateSSMAgent.' + self.resource.name,
+            stack_action=['create', 'update'],
+            stack_timing='post',
+            hook_method=self.asg_hook_update_ssm_agent,
+            cache_method=None,
+            hook_arg=self.resource
+        )
+
+    def update_windows_cloudwatch_agent(self):
+
+        iam_policy_name = '-'.join([self.resource.name, 'cloudwatchagent'])
+        policy_config_yaml = f"""
+policy_name: '{iam_policy_name}'
+enabled: true
+statement:
+  - effect: Allow
+    resource: "*"
+    action:
+      - "cloudwatch:PutMetricData"
+      - "autoscaling:Describe*"
+      - "ec2:DescribeTags"
+"""
+        policy_config_yaml += """      - "logs:CreateLogGroup"\n"""
+        log_group_resources = ""
+        log_stream_resources = ""
+        for log_group_name in self.windows_log_groups.keys():
+            lg_name = prefixed_name(self.resource, log_group_name, self.paco_ctx.legacy_flag)
+            self.windows_log_groups[log_group_name] = lg_name
+            log_group_resources += "      - arn:aws:logs:{}:{}:log-group:{}:*\n".format(
+                self.aws_region,
+                self.account_ctx.id,
+                lg_name,
+            )
+            log_stream_resources += "      - arn:aws:logs:{}:{}:log-group:{}:log-stream:*\n".format(
+                self.aws_region,
+                self.account_ctx.id,
+                lg_name,
+            )
+        policy_config_yaml += f"""
+  - effect: Allow
+    action:
+      - "logs:DescribeLogStreams"
+      - "logs:DescribeLogGroups"
+      - "logs:CreateLogStream"
+    resource:
+{log_group_resources}
+  - effect: Allow
+    action:
+      - "logs:PutLogEvents"
+    resource:
+{log_stream_resources}
+"""
+        policy_name = 'policy_ssm_cloudwatchagent'
+        iam_ctl = self.paco_ctx.get_controller('IAM')
+        iam_ctl.add_managed_policy(
+            role=self.resource.instance_iam_role,
+            resource=self.resource,
+            policy_name='policy',
+            policy_config_yaml=policy_config_yaml,
+            extra_ref_names=['ssm','cloudwatchagent'],
+        )
+
+        # TODO: Make this work with Linux too
+        self.stack.hooks.add(
+            name='UpdateCloudWatchAgent.' + self.resource.name,
+            stack_action=['create', 'update'],
+            stack_timing='post',
+            hook_method=self.asg_hook_update_cloudwatch_agent,
+            cache_method=self.asg_hook_update_cloudwatch_agent_cache,
+            hook_arg=self.resource
+        )
+
+    def gen_windows_cloudwatch_agent_config(self):
+        # """Unused Metrics
+
+        #                 "PhysicalDisk": {
+        #                         "measurement": [
+        #                                 "%% Disk Time",
+        #                                 "Disk Write Bytes/sec",
+        #                                 "Disk Read Bytes/sec",
+        #                                 "Disk Writes/sec",
+        #                                 "Disk Reads/sec"
+        #                         ],
+        #                         "metrics_collection_interval": 60,
+        #                         "resources": [
+        #                                 "*"
+        #                         ]
+        #                 },
+        #                 "Processor": {
+        #                         "measurement": [
+        #                                 "%% User Time",
+        #                                 "%% Idle Time",
+        #                                 "%% Interrupt Time"
+        #                         ],
+        #                         "metrics_collection_interval": 60,
+        #                         "resources": [
+        #                                 "*"
+        #                         ]
+        #                 },
+        # """
+
         cloudwatch_config = """{
         "logs": {
                 "logs_collected": {
@@ -180,7 +347,7 @@ role_name: %s""" % ("ASGInstance")
                                                         "CRITICAL"
                                                 ],
                                                 "event_name": "System",
-                                                "log_group_name": "Paco-Test-Windows-System",
+                                                "log_group_name": "%s",
                                                 "log_stream_name": "{instance_id}"
                                         },
                                         {
@@ -193,7 +360,7 @@ role_name: %s""" % ("ASGInstance")
                                                         "CRITICAL"
                                                 ],
                                                 "event_name": "Security",
-                                                "log_group_name": "Paco-Test-Windows-Security",
+                                                "log_group_name": "%s",
                                                 "log_stream_name": "{instance_id}"
                                         }
                                 ]
@@ -210,7 +377,7 @@ role_name: %s""" % ("ASGInstance")
                 "metrics_collected": {
                         "LogicalDisk": {
                                 "measurement": [
-                                        "% Free Space"
+                                        "%% Free Space"
                                 ],
                                 "metrics_collection_interval": 60,
                                 "resources": [
@@ -219,37 +386,13 @@ role_name: %s""" % ("ASGInstance")
                         },
                         "Memory": {
                                 "measurement": [
-                                        "% Committed Bytes In Use"
+                                        "%% Committed Bytes In Use"
                                 ],
                                 "metrics_collection_interval": 60
                         },
                         "Paging File": {
                                 "measurement": [
-                                        "% Usage"
-                                ],
-                                "metrics_collection_interval": 60,
-                                "resources": [
-                                        "*"
-                                ]
-                        },
-                        "PhysicalDisk": {
-                                "measurement": [
-                                        "% Disk Time",
-                                        "Disk Write Bytes/sec",
-                                        "Disk Read Bytes/sec",
-                                        "Disk Writes/sec",
-                                        "Disk Reads/sec"
-                                ],
-                                "metrics_collection_interval": 60,
-                                "resources": [
-                                        "*"
-                                ]
-                        },
-                        "Processor": {
-                                "measurement": [
-                                        "% User Time",
-                                        "% Idle Time",
-                                        "% Interrupt Time"
+                                        "%% Usage"
                                 ],
                                 "metrics_collection_interval": 60,
                                 "resources": [
@@ -275,7 +418,18 @@ role_name: %s""" % ("ASGInstance")
                         }
                 }
         }
-}"""
+}""" % (self.windows_log_groups['Windows-System'], self.windows_log_groups['Windows-Security'])
+        return cloudwatch_config
+
+    def asg_hook_update_cloudwatch_agent_cache(self, hook, asg):
+        "Cache method for ECS ASG"
+        cloudwatch_config = self.gen_windows_cloudwatch_agent_config()
+        return md5sum(str_data=cloudwatch_config)
+
+
+    def asg_hook_update_cloudwatch_agent(self, hook, asg):
+        ssm_ctl = self.paco_ctx.get_controller('SSM')
+        cloudwatch_config = self.gen_windows_cloudwatch_agent_config()
         ssm_ctl.command_update_cloudwatch_agent(asg, self.account_ctx, self.aws_region, cloudwatch_config)
 
 
