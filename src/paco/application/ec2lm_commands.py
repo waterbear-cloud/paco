@@ -191,6 +191,11 @@ ssm_agent = {
         "object": "amazon-ssm-agent",
         "install": "snap install --classic"
     },
+    "ubuntu_18": {
+        "path": "/debian_amd64",
+        "object": "amazon-ssm-agent",
+        "install": "snap install --classic"
+    },
     "ubuntu": {
         "path": "/debian_amd64",
         "object": "amazon-ssm-agent.deb",

@@ -11,6 +11,7 @@ import troposphere.codebuild
 import troposphere.events
 import troposphere.iam
 import troposphere.sns
+import troposphere.codestarconnections
 
 ACTION_MAP = {
     'CodeBuild.Build': {
@@ -834,7 +835,48 @@ class CodePipeline(StackTemplate):
                         Name='CodeCommitArtifact'
                     )
                 )
-
+            elif action.type == 'BitBucket.Source':
+                deploy_branch_name_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name='BitBucketDeploymentBranchName',
+                    description='The name of the branch where commits will trigger a build.',
+                    value=action.deployment_branch_name,
+                )
+                full_repository_id = f'{action.bitbucket_owner}/{action.bitbucket_repository}'
+                bitbucket_connection_dict = {}
+                bitbucket_connection_arn_res = troposphere.codestarconnections.Connection(
+                    title="BitbucketConnection",
+                    template=self.template,
+                    ConnectionName="BitbucketConnection",
+                    ProviderType="Bitbucket"
+                )
+                bitbucket_source_action = troposphere.codepipeline.Actions(
+                    Name='BitBucket',
+                    ActionTypeId = troposphere.codepipeline.ActionTypeId(
+                        Category = 'Source',
+                        Owner = 'AWS',
+                        Version = '1',
+                        Provider = 'BitBucket'
+                    ),
+                    Configuration = {
+                        'ConnectionArn': troposphere.Ref(bitbucket_connection_arn_res),
+                        'FullRepositoryId': full_repository_id,
+                        'BranchName': troposphere.Ref(deploy_branch_name_param)
+                    },
+                    OutputArtifacts = [
+                        troposphere.codepipeline.OutputArtifacts(
+                            Name = 'BitBucketArtifact'
+                        )
+                    ],
+                    RunOrder = action.run_order,
+                    #RoleArn = troposphere.Ref(self.codecommit_role_arn_param)
+                )
+                source_stage_actions.append(bitbucket_source_action)
+                self.build_input_artifacts.append(
+                    troposphere.codepipeline.InputArtifacts(
+                        Name='BitBucketArtifact'
+                    )
+                )
         source_stage = troposphere.codepipeline.Stages(
             Name="Source",
             Actions = source_stage_actions

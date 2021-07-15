@@ -34,6 +34,9 @@ class ASG(StackTemplate):
         self.init_template('AutoScalingGroup: ' + self.ec2_manager_cache_id)
         template = self.template
 
+        if self.asg_config.is_enabled() == False:
+            return
+
         # InstanceAMI Parameter is preserved in disabled templates so it can be smoothly disabled/enabled
         if self.asg_config.instance_ami_ignore_changes:
             ignore_changes = True

@@ -683,6 +683,11 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         if not action_config.is_enabled():
             return
 
+    def init_stage_action_bitbucket_source(self, action_config):
+        "Initialize a GitHub.Source action"
+        if not action_config.is_enabled():
+            return
+
     def init_stage_action_codecommit_source(self, action_config):
         "Initialize an IAM Role for the CodeCommit action"
         if not action_config.is_enabled():

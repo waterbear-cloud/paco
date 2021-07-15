@@ -21,15 +21,16 @@ class DBParameterGroup(StackTemplate):
         # Resources
         cfn_export_dict = {
             'Family': resource.family,
-            'Parameters': {}
         }
         if resource.description != None:
             cfn_export_dict['Description'] = resource.description
         else:
             cfn_export_dict['Description'] = troposphere.Ref('AWS::StackName')
 
-        for key, value in resource.parameters.items():
-            cfn_export_dict['Parameters'][key] = value
+        if resource.parameters and len(resource.parameters.keys()) > 0:
+            cfn_export_dict['Parameters'] = {}
+            for key, value in resource.parameters.items():
+                cfn_export_dict['Parameters'][key] = value
 
         dbparametergroup_resource = troposphere.rds.DBParameterGroup.from_dict(
             'DBParameterGroup',
@@ -56,15 +57,16 @@ class DBClusterParameterGroup(StackTemplate):
         # Resources
         cfn_export_dict = {
             'Family': resource.family,
-            'Parameters': {}
         }
         if resource.description != None:
             cfn_export_dict['Description'] = resource.description
         else:
             cfn_export_dict['Description'] = troposphere.Ref('AWS::StackName')
 
-        for key, value in resource.parameters.items():
-            cfn_export_dict['Parameters'][key] = value
+        if resource.parameters and len(resource.parameters.keys()) > 0:
+            cfn_export_dict['Parameters'] = {}
+            for key, value in resource.parameters.items():
+                cfn_export_dict['Parameters'][key] = value
 
         dbparametergroup_resource = troposphere.rds.DBClusterParameterGroup.from_dict(
             'DBClusterParameterGroup',
