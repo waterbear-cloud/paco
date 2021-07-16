@@ -669,6 +669,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         self.artifacts_bucket_policy_resource_arns.append(
             "paco.sub '${%s}'" % (self.pipeline.paco_ref + '.codepipeline_role.arn')
         )
+
         cpbd_s3_bucket_policy = {
             'aws': self.artifacts_bucket_policy_resource_arns,
             'action': [ 's3:*' ],
@@ -684,9 +685,13 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             return
 
     def init_stage_action_bitbucket_source(self, action_config):
-        "Initialize a GitHub.Source action"
+        "Initialize a BitBucket.Source action"
         if not action_config.is_enabled():
             return
+
+        self.artifacts_bucket_policy_resource_arns.append(
+            "paco.sub '${%s.%s.arn}'" % (action_config.paco_ref, "codestar.connection"))
+
 
     def init_stage_action_codecommit_source(self, action_config):
         "Initialize an IAM Role for the CodeCommit action"
@@ -1272,7 +1277,7 @@ run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PH
                 return ref.resource._stack
 
         elif schemas.IDeploymentPipelineSourceCodeCommit.providedBy(ref.resource):
-            # CodeCommit
+            # CodeCommit Source
             if ref.resource_ref == self.codecommit_role_name+'.arn':
                 iam_ctl = self.paco_ctx.get_controller("IAM")
                 return iam_ctl.role_arn(ref.raw[:-4])
@@ -1280,10 +1285,15 @@ run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PH
                 codecommit_ref = ref.resource.codecommit_repository
                 return self.paco_ctx.get_ref(codecommit_ref+".arn")
         elif schemas.IDeploymentPipelineSourceGitHub.providedBy(ref.resource):
-            # GitHub
+            # GitHub SOurce
             if ref.resource_ref == self.github_role_name + '.arn':
                 iam_ctl = self.paco_ctx.get_controller("IAM")
                 return iam_ctl.role_arn(ref.raw[:-4])
+        elif schemas.IDeploymentPipelineSourceBitBucket.providedBy(ref.resource):
+            # BitBucket Source
+            if ref.resource_ref == 'codestar.connection.arn':
+                return ref.resource._stack.template.get_bitbucket_codestar_connection_role_arn()
+
         elif schemas.IDeploymentPipelineBuildCodeBuild.providedBy(ref.resource):
             # CodeBuild
             if ref.resource_ref == 'project_role.arn':
