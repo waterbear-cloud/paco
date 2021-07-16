@@ -1227,9 +1227,11 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
     def set_termination_protection(self, protection_enabled):
         self.termination_protection = protection_enabled
 
-    def get_name(self):
+    def get_name(self, template=None):
         "Name of the stack in AWS. This can not be called until after the StackTemplate has been set."
-        name = '-'.join([ self.grp_ctx.get_aws_name(), self.template.aws_name ])
+        if template == None:
+            template = self.template
+        name = '-'.join([ self.grp_ctx.get_aws_name(), template.aws_name ])
         if self.stack_suffix != None:
             name = name + '-' + self.stack_suffix
         new_name = self.create_stack_name(name)

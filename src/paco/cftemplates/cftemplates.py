@@ -317,11 +317,15 @@ class StackTemplate():
             elif name[-1] == '-' or name[0] == '-':
                 message = "Name must not begin or end with a dash."
         elif filter_id in [
-            'IAM.Role.RoleName',
             'IAM.ManagedPolicy.ManagedPolicyName']:
             if len(name) > 255:
                 max_name_len = 255
                 message = "Name must not be longer than 255 characters."
+        elif filter_id in [
+            'IAM.Role.RoleName']:
+            if len(name) > 64:
+                max_name_len = 64
+                message = "Name must not be longer than 64 characters."
         elif filter_id == 'IAM.Policy.PolicyName':
             if len(name) > 128:
                 max_name_len = 128
@@ -336,6 +340,11 @@ class StackTemplate():
             if len(name) > 64:
                 max_name_len = 64
                 message = "CodeStar NotificationRule name must be 64 characters or less"
+        elif filter_id in [
+            'CodeStar.Connection']:
+            if len(name) > 32:
+                max_name_len = 32
+                message = "Name must not be longer than 64 characters."
         else:
             message = 'Unknown filter_id'
 
@@ -381,6 +390,9 @@ class StackTemplate():
         elif filter_id in [
             'CodeStar.NotificationRuleName']:
             valid_ch_list = '-_ '
+        elif filter_id in [
+            'CodeStar.Connection']:
+            valid_ch_list = '/-'
         else:
             raise StackException(PacoErrorCode.Unknown, message="Invalid filter Id: "+filter_id)
 

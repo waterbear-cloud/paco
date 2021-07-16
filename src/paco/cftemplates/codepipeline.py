@@ -1,4 +1,4 @@
-from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action
+from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action, Condition, StringEquals, StringLike
 from awacs.sts import AssumeRole
 from paco import utils
 from paco.cftemplates.cftemplates import StackTemplate
@@ -70,7 +70,8 @@ ACTION_MAP = {
 
 
 class CodePipeline(StackTemplate):
-    def __init__(self, stack, paco_ctx, base_aws_name, deploy_region, app_name, artifacts_bucket_name):
+    def __init__(self, stack, paco_ctx, base_aws_name,
+                 deploy_region, app_name, artifacts_bucket_name):
         self.pipeline = stack.resource
         super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_NAMED_IAM"])
         self.set_aws_name('CodePipeline', self.resource_group_name, self.resource.name)
@@ -87,6 +88,7 @@ class CodePipeline(StackTemplate):
         self.ecr_source_enabled = False
         self.s3_source_enabled = False
         self.github_source_enabled = False
+        self.bitbucket_source_enabled = False
         self.codebuild_access_enabled = False
         self.lambda_invoke_enabled = False
         self.s3_deploy_enabled = False
@@ -94,6 +96,7 @@ class CodePipeline(StackTemplate):
         self.s3_deploy_statements = []
         self.ecs_deploy_assume_role_statement = None
 
+        self.codestar_connection_role_res = None
         self.codedeploy_deploy_assume_role_statement = None
         self.s3_deploy_assume_role_statement = None
 
@@ -548,6 +551,19 @@ class CodePipeline(StackTemplate):
                 )
             )
 
+        if self.bitbucket_source_enabled:
+            # Add Statement to allow CodeStar Connections if BitBucket source is being used
+            pipeline_policy_statement_list.append(
+                Statement(
+                    Sid='CodeStarConnectionAssumeRole',
+                    Effect=Allow,
+                    Action=[
+                        Action('sts', 'AssumeRole'),
+                    ],
+                    Resource=[ troposphere.GetAtt(self.codestar_connection_role_res, 'Arn') ],
+                )
+            )
+
         if self.codedeploy_deploy_assume_role_statement != None:
             pipeline_policy_statement_list.append(self.codedeploy_deploy_assume_role_statement)
         if self.s3_deploy_assume_role_statement != None:
@@ -836,6 +852,8 @@ class CodePipeline(StackTemplate):
                     )
                 )
             elif action.type == 'BitBucket.Source':
+                self.bitbucket_source_enabled = True
+                print("BitBucket CodeStar connection update URL: https://console.aws.amazon.com/codesuite/settings/connections")
                 deploy_branch_name_param = self.create_cfn_parameter(
                     param_type='String',
                     name='BitBucketDeploymentBranchName',
@@ -847,16 +865,95 @@ class CodePipeline(StackTemplate):
                 bitbucket_connection_arn_res = troposphere.codestarconnections.Connection(
                     title="BitbucketConnection",
                     template=self.template,
-                    ConnectionName="BitbucketConnection",
+                    ConnectionName=self.create_resource_name(full_repository_id, filter_id='CodeStar.Connection', hash_long_names=True),
                     ProviderType="Bitbucket"
                 )
+                codestar_connection_role_name = self.get_bitbucket_codestar_connection_role_name()
+                self.codestar_connection_role_res = troposphere.iam.Role(
+                    title='CodeStarConnectionRole',
+                    template=self.template,
+                    RoleName=codestar_connection_role_name,
+                    AssumeRolePolicyDocument=Policy(
+                        Version='2012-10-17',
+                        Statement=[
+                            Statement(
+                                Effect=Allow,
+                                Action=[AssumeRole],
+                                Principal=Principal('AWS', self.account_ctx.id)
+                            )
+                        ],
+                    ),
+                    Policies=[
+                        troposphere.iam.Policy(
+                            PolicyName="CodeStarConnection",
+                            PolicyDocument=Policy(
+                                Version='2012-10-17',
+                                Statement=[
+                                    Statement(
+                                        Effect=Allow,
+                                        Action=[
+                                            Action('codestar-connections', 'UseConnection')
+                                        ],
+                                        Resource=[troposphere.Ref(bitbucket_connection_arn_res)],
+                                    )
+                                ]
+                            )
+                        ),
+                        troposphere.iam.Policy(
+                            PolicyName="ArtifactsBucket",
+                            PolicyDocument=Policy(
+                                Version='2012-10-17',
+                                Statement=[
+                                    Statement(
+                                        Sid='S3Access',
+                                        Effect=Allow,
+                                        Action=[
+                                            Action('s3', '*')
+                                        ],
+                                        Resource=[
+                                            troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}/*'),
+                                            troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}')
+                                        ]
+                                    ),
+                                    Statement(
+                                        Sid='KMSCMK',
+                                        Effect=Allow,
+                                        Action=[
+                                            Action('kms', '*'),
+                                        ],
+                                        Resource=[ troposphere.Ref(self.cmk_arn_param) ]
+                                    )
+                                    # Statement(
+                                    #     Effect=Allow,
+                                    #     Action=[
+                                    #         Action('s3', '*')
+                                    #     ],
+                                    #     Resource=[
+                                    #         self.artifacts_bucket_arn,
+                                    #         f'{self.artifacts_bucket_arn}/*'
+                                    #     ],
+                                    # ),
+                                ]
+                            )
+                        )
+                    ]
+                )
+
+                self.create_output(
+                    title='BitBucketCodeStarConnectionRoleArn',
+                    description="BitBucket CodeStar Connection Role ARN",
+                    value=troposphere.GetAtt(self.codestar_connection_role_res, 'Arn'),
+                    ref=action.paco_ref_parts + '.codestar.connection.arn'
+                )
+
+
                 bitbucket_source_action = troposphere.codepipeline.Actions(
                     Name='BitBucket',
                     ActionTypeId = troposphere.codepipeline.ActionTypeId(
                         Category = 'Source',
                         Owner = 'AWS',
                         Version = '1',
-                        Provider = 'BitBucket'
+                        Provider = 'CodeStarSourceConnection'
                     ),
                     Configuration = {
                         'ConnectionArn': troposphere.Ref(bitbucket_connection_arn_res),
@@ -869,7 +966,7 @@ class CodePipeline(StackTemplate):
                         )
                     ],
                     RunOrder = action.run_order,
-                    #RoleArn = troposphere.Ref(self.codecommit_role_arn_param)
+                    RoleArn = troposphere.GetAtt(self.codestar_connection_role_res, 'Arn')
                 )
                 source_stage_actions.append(bitbucket_source_action)
                 self.build_input_artifacts.append(
@@ -1226,3 +1323,11 @@ class CodePipeline(StackTemplate):
             self.account_ctx.get_id(),
             self.pipeline_service_role_name
         )
+
+    def get_bitbucket_codestar_connection_role_name(self):
+        codestar_connection_role_name = f'{self.stack.get_name(self)}-BitBucket-CodeStar-ConnectionRole'
+        return self.create_resource_name(codestar_connection_role_name, filter_id='IAM.Role.RoleName', hash_long_names=True)
+
+    def get_bitbucket_codestar_connection_role_arn(self):
+        codestar_connection_role_name = self.get_bitbucket_codestar_connection_role_name()
+        return f'arn:aws:iam::{self.account_ctx.get_id()}:role/{codestar_connection_role_name}'
