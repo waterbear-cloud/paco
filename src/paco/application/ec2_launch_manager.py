@@ -762,6 +762,17 @@ function ec2lm_replace_secret_in_file() {
 
     sed -i -e "s/$SED_PATTERN/$SECRET/" $REPLACE_FILE
 }
+
+# ec2lm_replace_secret_in_file_from_json <secret id> <file> <replace pattern> <secret name>
+function ec2lm_replace_secret_in_file_from_json() {
+    SECRET_ID=$1
+    SED_PATTERN=$2
+    REPLACE_FILE=$3
+    SECRET_KEY=$4
+    SECRET_JSON=$(ec2lm_get_secret $SECRET_ID)
+    SECRET=$(echo $SECRET_JSON | jq -r ".${SECRET_KEY}")
+    sed -i -e "s/$SED_PATTERN/$(sed_escape $SECRET)/" $REPLACE_FILE
+}
 """
         iam_policy_name = '-'.join([resource.name, 'secrets'])
         template_params = []
@@ -2127,12 +2138,14 @@ function run_launch_bundle() {{
     cd /tmp/
     ec2lm_install_wget
     ec2lm_install_package ruby
+    # Stopping the current agent
+    echo "EC2LM: CodeDeploy: Stopping the agent"
+    stop_agent
+
     echo "EC2LM: CodeDeploy: Downloading Agent"
     rm -f install
     wget https://aws-codedeploy-ca-central-1.s3.amazonaws.com/latest/install
     chmod u+x ./install
-    # Stopping the current agent
-    stop_agent
 
     echo "EC2LM: CodeDeploy: Installing Agent"
     ./install auto
@@ -2140,7 +2153,7 @@ function run_launch_bundle() {{
     grep -v max_revisions $CODEDEPLOY_AGENT_CONF >$CODEDEPLOY_AGENT_CONF.new
     echo ":max_revisions: 1" >>$CODEDEPLOY_AGENT_CONF.new
     mv $CODEDEPLOY_AGENT_CONF.new $CODEDEPLOY_AGENT_CONF
-    service codedeploy-agent start
+    service codedeploy-agent restart
     echo
     echo "EC2LM: CodeDeploy: Agent install complete."
 
