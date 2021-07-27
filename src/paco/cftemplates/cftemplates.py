@@ -1,7 +1,8 @@
+from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action, Condition, StringEquals, StringLike
 from paco import utils
 from paco.core.exception import StackException, PacoErrorCode, PacoException
 from paco.models import schemas
-from paco.models.references import Reference
+from paco.models.references import Reference, get_model_obj_from_ref
 from paco.models.locations import get_parent_by_interface
 from paco.stack import StackOutputParam, Stack
 from paco.utils import md5sum, big_join
@@ -351,8 +352,12 @@ class StackTemplate():
         if max_name_len != None and hash_long_names == True:
             message = None
             name_hash = md5sum(str_data=name)[:8].upper()
-            name = name_hash + '-' + name[((max_name_len-9)*-1):]
-
+            # Legacy logic. If this changes it will break IAM role names everywhere.
+            if filter_id in  ['IAM.Role.RoleName', 'IAM.Policy.PolicyName']:
+                name_hash_len = len(name_hash+'-')+1
+                name = name_hash + '-' + name[-(max_name_len-name_hash_len):]
+            else:
+                name = name_hash + '-' + name[((max_name_len-9)*-1):]
 
         if message != None:
             raise StackException(
@@ -587,21 +592,22 @@ class StackTemplate():
 
     # Role and Policy names must not be longer than 64 charcters
     def create_iam_resource_name(self, name_list, filter_id=None):
-        role_name = self.create_resource_name_join(
+        iam_name = self.create_resource_name_join(
             name_list=name_list,
             separator='-',
             camel_case=True,
+            hash_long_names=True,
             filter_id=filter_id
         )
-        if len(role_name) > 64:
-            name_hash = md5sum(str_data=role_name)[:8].upper()
-            # len('AABBCCDD-')
-            name_hash_len = len(name_hash+'-')+1
-            max_role_name_len = 64
+        # if len(role_name) > 64:
+        #     name_hash = md5sum(str_data=role_name)[:8].upper()
+        #     # len('AABBCCDD-')
+        #     name_hash_len = len(name_hash+'-')+1
+        #     max_role_name_len = 64
 
-            role_name = name_hash + '-' + role_name[-(max_role_name_len-name_hash_len):]
+        #     role_name = name_hash + '-' + role_name[-(max_role_name_len-name_hash_len):]
 
-        return role_name
+        return iam_name
 
     def set_aws_name(self, template_name, first_id=None, second_id=None, third_id=None, fourth_id=None):
         if isinstance(first_id, list):
@@ -626,3 +632,93 @@ class StackTemplate():
                 none_value_ok=True
             )
         self.aws_name.replace('_', '-')
+
+    def set_ecr_repositories_statements(self, ecr_repositories, template, policy_name_prefix, roles):
+        if ecr_repositories == None or len(ecr_repositories) == 0:
+            return
+        index = 0
+        pull_actions = [
+            Action('ecr', 'GetDownloadUrlForLayer'),
+            Action('ecr', 'BatchGetImage'),
+        ]
+        push_actions = [
+            Action('ecr', 'GetDownloadUrlForLayer'),
+            Action('ecr', 'BatchCheckLayerAvailability'),
+            Action('ecr', 'PutImage'),
+            Action('ecr', 'InitiateLayerUpload'),
+            Action('ecr', 'UploadLayerPart'),
+            Action('ecr', 'CompleteLayerUpload'),
+        ]
+        push_pull_actions = pull_actions + push_actions
+        ecr_params = {}
+        for ecr_permission in ecr_repositories:
+            ecr_repo = get_model_obj_from_ref(ecr_permission.repository, self.paco_ctx.project)
+            if ecr_repo.paco_ref not in ecr_params:
+                param_name = ecr_repo.create_cfn_logical_id()
+                ecr_repo_name_param = self.create_cfn_parameter(
+                    param_type='String',
+                    name=f'{param_name}ARN',
+                    description='The ARN of the ECR repository',
+                    value=ecr_repo.paco_ref + '.arn',
+                )
+                ecr_params[ecr_repo.paco_ref] = ecr_repo_name_param
+        for ecr_permission in ecr_repositories:
+            perm_name = f'PacoEcr{index}'
+            policy_name = self.create_resource_name_join(
+                name_list=[policy_name_prefix, perm_name],
+                separator='-',
+                filter_id='IAM.Policy.PolicyName',
+                hash_long_names=True,
+                camel_case=True
+            )
+            statement_list = [
+                Statement(
+                    Effect='Allow',
+                    Action=[
+                        Action('ecr', 'GetAuthorizationToken'),
+                    ],
+                    Resource=['*'],
+                ),
+            ]
+            ecr_repo = get_model_obj_from_ref(ecr_permission.repository, self.paco_ctx.project)
+            if ecr_permission.permission == 'Pull':
+                statement_list.append(
+                    Statement(
+                        Effect='Allow',
+                        Action=pull_actions,
+                        Resource=[
+                            troposphere.Ref(ecr_params[ecr_repo.paco_ref])
+                        ],
+                    )
+                )
+            elif ecr_permission.permission == 'Push':
+                statement_list.append(
+                    Statement(
+                        Effect='Allow',
+                        Action=push_actions,
+                        Resource=[
+                            troposphere.Ref(ecr_params[ecr_repo.paco_ref])
+                        ],
+                    )
+                )
+            elif ecr_permission.permission == 'PushAndPull':
+                statement_list.append(
+                    Statement(
+                        Effect='Allow',
+                        Action=push_pull_actions,
+                        Resource=[
+                            troposphere.Ref(ecr_params[ecr_repo.paco_ref])
+                        ],
+                    )
+                )
+
+            troposphere.iam.PolicyType(
+                title=self.create_cfn_logical_id('CodeBuildProjectPolicy' + perm_name, camel_case=True),
+                template=template,
+                PolicyName=policy_name,
+                PolicyDocument=PolicyDocument(
+                    Statement=statement_list,
+                ),
+                Roles=roles
+            )
+            index += 1

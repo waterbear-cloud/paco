@@ -29,6 +29,7 @@ class ASG(StackTemplate):
         self.ec2_manager_cache_id = ec2_manager_cache_id
         super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_NAMED_IAM"])
         self.set_aws_name('ASG', self.resource_group_name, self.resource_name)
+        self.instance_iam_role_name = self.paco_ctx.get_ref(asg_config.paco_ref + '.instance_iam_role.name')
 
         # Troposphere
         self.init_template('AutoScalingGroup: ' + self.ec2_manager_cache_id)
@@ -335,7 +336,13 @@ class ASG(StackTemplate):
                 self.script_manager_ecr_deploy(asg_config.script_manager.ecr_deploy, asg_dict, asg_config, template)
             if asg_config.script_manager.ecs:
                 self.script_manager_ecs(asg_config.script_manager.ecs, asg_dict, asg_config, template)
-
+        # ECR Repository access
+        self.set_ecr_repositories_statements(
+            asg_config.ecr,
+            template,
+            'ECRAccess',
+            [self.instance_iam_role_name]
+        )
         asg_res = troposphere.autoscaling.AutoScalingGroup.from_dict(
             'ASG',
             asg_dict
@@ -550,14 +557,13 @@ class ASG(StackTemplate):
 
             idx += 1
 
-        role_name = self.paco_ctx.get_ref(asg_config.paco_ref + '.instance_iam_role.name')
         script_manager_ecs_policy_res = troposphere.iam.ManagedPolicy(
             title='ScriptManagerECS',
             PolicyDocument=PolicyDocument(
                 Version="2012-10-17",
                 Statement=policy_statements
             ),
-            Roles=[role_name]
+            Roles=[self.instance_iam_role_name]
         )
         template.add_resource(script_manager_ecs_policy_res)
 
@@ -762,13 +768,12 @@ class ASG(StackTemplate):
                         Resource=[ '*' ]
                     )
                 )
-                role_name = self.paco_ctx.get_ref(asg_config.paco_ref + '.instance_iam_role.name')
                 ecs_release_phase_project_policy_res = troposphere.iam.ManagedPolicy(
                     title='ECSReleasePhase',
                     PolicyDocument=PolicyDocument(
                         Version="2012-10-17",
                         Statement=policy_statements
                     ),
-                    Roles=[role_name]
+                    Roles=[self.instance_iam_role_name]
                 )
                 template.add_resource(ecs_release_phase_project_policy_res)
