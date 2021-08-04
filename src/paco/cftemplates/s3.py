@@ -145,6 +145,14 @@ class S3(StackTemplate):
                         })
                     cfn_export_dict['NotificationConfiguration']["LambdaConfigurations"] = lambda_notifs
 
+            # Encryption on by default
+            cfn_export_dict['BucketEncryption'] = {
+                'ServerSideEncryptionConfiguration': [{
+                    'ServerSideEncryptionByDefault': {
+                        'SSEAlgorithm': 'AES256'
+                    }
+                }]
+            }
             s3_resource = troposphere.s3.Bucket.from_dict(s3_logical_id, cfn_export_dict)
             s3_resource.DeletionPolicy = 'Retain' # We always retain. Bucket cleanup is handled by Stack hooks.
             template.add_resource(s3_resource)

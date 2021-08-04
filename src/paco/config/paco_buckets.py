@@ -31,8 +31,8 @@ class PacoBuckets():
 
     def upload_file(self, file_location, s3_key, account_ctx, region):
         "Upload a file to a Paco Bucket"
-        if not self.is_bucket_created(account_ctx, region):
-            self.create_bucket(account_ctx, region)
+
+        self.create_bucket(account_ctx, region)
         bucket_name = self.get_bucket_name(account_ctx, region)
         s3_client = account_ctx.get_aws_client('s3', region)
         s3_client.upload_file(file_location, bucket_name, s3_key)
@@ -41,8 +41,7 @@ class PacoBuckets():
     def upload_fileobj(self, file_contents, s3_key, account_ctx, region):
         "Upload a file to a Paco Bucket"
         fileobj = io.BytesIO(file_contents.encode())
-        if not self.is_bucket_created(account_ctx, region):
-            self.create_bucket(account_ctx, region)
+        self.create_bucket(account_ctx, region)
         bucket_name = self.get_bucket_name(account_ctx, region)
         s3_client = account_ctx.get_aws_client('s3', region)
         s3_client.upload_fileobj(fileobj, bucket_name, s3_key)
@@ -66,8 +65,7 @@ class PacoBuckets():
 
     def put_object(self, s3_key, obj, account_ctx, region):
         """Put an S3 Object in a Paco Bucket"""
-        if not self.is_bucket_created(account_ctx, region):
-            self.create_bucket(account_ctx, region)
+        self.create_bucket(account_ctx, region)
         bucket_name = self.get_bucket_name(account_ctx, region)
         s3_client = account_ctx.get_aws_client('s3', region)
         if type(obj) != bytes:
@@ -81,23 +79,25 @@ class PacoBuckets():
         s3_client = account_ctx.get_aws_client('s3', region)
         # ToDo: check if bucket exists and handle that
         # us-east-1 is a "special default" region - the AWS API behaves differently
-        if region == 'us-east-1':
-            s3_client.create_bucket(
-                ACL='private',
-                Bucket=bucket_name,
-            )
-        else:
-            s3_client.create_bucket(
-                ACL='private',
-                Bucket=bucket_name,
-                CreateBucketConfiguration={
-                    'LocationConstraint': region,
-                },
-            )
+        if not self.is_bucket_created(account_ctx, region):
+            if region == 'us-east-1':
+                s3_client.create_bucket(
+                    ACL='private',
+                    Bucket=bucket_name,
+                )
+            else:
+                s3_client.create_bucket(
+                    ACL='private',
+                    Bucket=bucket_name,
+                    CreateBucketConfiguration={
+                        'LocationConstraint': region,
+                    },
+                )
         s3_client.put_bucket_versioning(
             Bucket=bucket_name,
             VersioningConfiguration={'Status':'Enabled'},
         )
+
         s3_client.put_public_access_block(
             Bucket=bucket_name,
             PublicAccessBlockConfiguration={
@@ -107,6 +107,19 @@ class PacoBuckets():
                 'RestrictPublicBuckets': True,
             }
         )
+        response = s3_client.put_bucket_encryption(
+            Bucket=bucket_name,
+            ServerSideEncryptionConfiguration={
+                'Rules': [
+                    {
+                        'ApplyServerSideEncryptionByDefault': {
+                            'SSEAlgorithm': 'AES256'
+                        }
+                    }
+                ]
+            }
+        )
+
 
     def is_bucket_created(self, account_ctx, region):
         "True if the S3 Bucket for the account and region exists"
