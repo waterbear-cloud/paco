@@ -1,9 +1,11 @@
 from awacs.aws import Allow, Action, Policy, PolicyDocument, Principal, Statement, Condition, StringEquals
 from paco import utils
 from paco.cftemplates.cftemplates import StackTemplate
-from paco.models import schemas
 from paco.models import gen_vocabulary
+from paco.models import references
+from paco.models import schemas
 import awacs.kms
+import awacs.s3
 import troposphere
 import troposphere.iam
 import troposphere.kms
@@ -484,7 +486,7 @@ class RDS(StackTemplate):
     def __init__(self, stack, paco_ctx,):
         rds_config = stack.resource
         config_ref = rds_config.paco_ref_parts
-        super().__init__(stack, paco_ctx)
+        super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_IAM"])
         self.set_aws_name('RDS', self.resource_group_name, self.resource.name)
         self.init_template('RDS')
         template = self.template
@@ -529,28 +531,105 @@ class RDS(StackTemplate):
 
         # Option Group
         option_group_res = None
-        if len(rds_config.option_configurations) > 0:
+        if len(rds_config.option_configurations) > 0 or rds_config.backup_restore_bucket != None:
             option_group_dict = {
                 'EngineName': rds_config.engine,
                 'MajorEngineVersion': engine_major_version,
                 'OptionGroupDescription': troposphere.Ref('AWS::StackName')
             }
+            option_config_list = []
             if len(rds_config.option_configurations) > 0:
-                option_config_list = []
                 for option_config in rds_config.option_configurations:
                     option_config_dict = {
                         'OptionName': option_config.option_name,
                     }
                     if len(option_config.option_settings) > 0:
                         option_config_dict['OptionSettings'] = []
+                        idx = 0
                         for option_setting in option_config.option_settings:
+                            option_value = option_setting.value
+                            if references.is_ref(option_setting.value):
+                                # Use an existing Parameter Group
+                                option_setting_value_param = self.create_cfn_parameter(
+                                    name=f'OptionsGroupValue{idx}',
+                                    param_type='String',
+                                    description=f'DB Option Settings Value {idx}',
+                                    value=option_setting.value
+                                )
+                                option_value = troposphere.Ref(option_setting_value_param)
+
                             option_setting_dict = {
                                 'Name': option_setting.name,
-                                'Value': option_setting.value
+                                'Value': option_value
                             }
                             option_config_dict['OptionSettings'].append(option_setting_dict)
                     option_config_list.append(option_config_dict)
-                option_group_dict['OptionConfigurations'] = option_config_list
+            if rds_config.backup_restore_bucket != None:
+                option_config_dict = {
+                    'OptionName': 'SQLSERVER_BACKUP_RESTORE',
+                    'OptionSettings': []
+                }
+                # S3 Bucket Arn Param
+                #breakpoint()
+                backup_restore_bucket_arn_param = self.create_cfn_parameter(
+                    name='SQLServerBackupRestoreBucketArn',
+                    param_type='String',
+                    description=f'DB Option Setting SQLServer Backup Restore Bucket ARN',
+                    value=f'{rds_config.backup_restore_bucket}.arn'
+                )
+                # Create Role for SQLServer Bucket
+                sqlserver_backup_restore_role = troposphere.iam.Role(
+                    title='SQLServerBackupRestoreRole',
+                    template=self.template,
+                    AssumeRolePolicyDocument=PolicyDocument(
+                        Statement=[
+                            Statement(
+                                Effect=Allow,
+                                Action=[Action("sts", "AssumeRole")],
+                                Principal=Principal("Service", "rds.amazonaws.com")
+                            )
+                        ]
+                    ),
+                    Policies=[
+                        troposphere.iam.Policy(
+                            PolicyName="S3BucketAccess",
+                            PolicyDocument=Policy(
+                                Version='2012-10-17',
+                                Statement=[
+                                    Statement(
+                                        Effect=Allow,
+                                        Action=[
+                                            awacs.s3.ListBucket,
+                                            awacs.s3.GetBucketLocation
+                                        ],
+                                        Resource=[troposphere.Ref(backup_restore_bucket_arn_param)],
+                                    ),
+                                    Statement(
+                                        Effect=Allow,
+                                        Action=[
+                                            Action('s3', 'GetObjectMetaData'),
+                                            awacs.s3.GetObject,
+                                            awacs.s3.PutObject,
+                                            awacs.s3.ListMultipartUploadParts,
+                                            awacs.s3.AbortMultipartUpload
+                                        ],
+                                        Resource=[troposphere.Sub("${SQLServerBackupRestoreBucketArn}/*")]
+                                    )
+                                ]
+                            )
+                        )
+                    ],
+                    Path="/",
+                )
+                option_value = troposphere.GetAtt(sqlserver_backup_restore_role, 'Arn')
+
+                option_setting_dict = {
+                    'Name': 'IAM_ROLE_ARN',
+                    'Value': option_value
+                }
+                option_config_dict['OptionSettings'].append(option_setting_dict)
+                option_config_list.append(option_config_dict)
+            option_group_dict['OptionConfigurations'] = option_config_list
 
             option_group_res = troposphere.rds.OptionGroup.from_dict(
                 'OptionGroup',

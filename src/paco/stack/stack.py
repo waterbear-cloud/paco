@@ -105,6 +105,11 @@ class StackOutputParam():
         for entry in self.entry_list:
             for output_key in entry['output_keys']:
                 output_value = entry['stack'].get_outputs_value(output_key)
+                if output_value == None:
+                    raise PacoException(
+                        PacoErrorCode.Unknown,
+                        message=f"Stack output not found: Output Key: {output_key}: stack: {entry['stack'].get_name()}"
+                    )
                 param_value += comma + output_value
                 comma = ','
 
