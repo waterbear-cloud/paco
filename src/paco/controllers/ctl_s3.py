@@ -140,6 +140,9 @@ class S3Context():
         bucket_region = self.bucket_context['stack'].aws_region
         return f'{bucket_name}.s3.{bucket_region}.amazonaws.com'
 
+    def get_bucket_account_id(self):
+        return self.account_ctx.id
+
     def get_region(self):
         return self.region
 
@@ -317,8 +320,10 @@ class S3Controller(Controller):
         return self.contexts[resource_ref].get_bucket_arn(*args, **kwargs)
 
     def get_bucket_name(self, resource_ref, *args, **kwargs):
-        self.contexts[resource_ref].bucket_context['config'].get_bucket_name()
         return self.contexts[resource_ref].bucket_context['config'].get_bucket_name()
+
+    def get_bucket_account_id(self, resource_ref, *args, **kwargs):
+        return self.contexts[resource_ref].get_bucket_account_id(*args, **kwargs)
 
     def empty_bucket(self, resource_ref, *args, **kwargs):
         return self.contexts[resource_ref].empty_bucket(*args, **kwargs)

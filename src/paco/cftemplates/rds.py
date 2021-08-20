@@ -531,7 +531,7 @@ class RDS(StackTemplate):
 
         # Option Group
         option_group_res = None
-        if len(rds_config.option_configurations) > 0 or rds_config.backup_restore_bucket != None:
+        if len(rds_config.option_configurations) > 0 or (hasattr(rds_config, 'backup_restore_bucket') and rds_config.backup_restore_bucket != None):
             option_group_dict = {
                 'EngineName': rds_config.engine,
                 'MajorEngineVersion': engine_major_version,
@@ -564,13 +564,12 @@ class RDS(StackTemplate):
                             }
                             option_config_dict['OptionSettings'].append(option_setting_dict)
                     option_config_list.append(option_config_dict)
-            if rds_config.backup_restore_bucket != None:
+            if hasattr(rds_config, 'backup_restore_bucket') and rds_config.backup_restore_bucket != None:
                 option_config_dict = {
                     'OptionName': 'SQLSERVER_BACKUP_RESTORE',
                     'OptionSettings': []
                 }
                 # S3 Bucket Arn Param
-                #breakpoint()
                 backup_restore_bucket_arn_param = self.create_cfn_parameter(
                     name='SQLServerBackupRestoreBucketArn',
                     param_type='String',

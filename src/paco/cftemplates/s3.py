@@ -7,6 +7,7 @@ from paco.core.exception import PacoErrorCode
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.models import schemas
 from awacs.aws import *
+from awacs.sts import AssumeRole
 
 def create_policy_statments(policies, s3bucket_arn_param=None, s3bucket_arn=None):
     policy_statements = []
@@ -111,6 +112,7 @@ class S3(StackTemplate):
         self.bucket_context = bucket_context
         s3_ctl = self.paco_ctx.get_controller('S3')
         bucket_name = s3_ctl.get_bucket_name(bucket.paco_ref_parts)
+        bucket_arn = s3_ctl.get_bucket_arn(bucket.paco_ref_parts)
 
         # Init Troposphere template
         self.init_template(bucket.title_or_name)
@@ -145,6 +147,48 @@ class S3(StackTemplate):
                         })
                     cfn_export_dict['NotificationConfiguration']["LambdaConfigurations"] = lambda_notifs
 
+            # Replication Configuration
+            s3_bucket_res_depends = []
+            if bucket.replication:
+                source_bucket_arn = bucket_arn
+                for rep_rule_name in bucket.replication.keys():
+                    rep_rule_config = bucket.replication[rep_rule_name]
+                    dest_bucket_arn = s3_ctl.get_bucket_arn(rep_rule_config.destination)
+                    dest_bucket_account_id = s3_ctl.get_bucket_account_id(rep_rule_config.destination)
+                    replication_role_res = self.gen_replication_role(rep_rule_name, rep_rule_config, source_bucket_arn, dest_bucket_arn)
+                    s3_bucket_res_depends.append(replication_role_res)
+                    cfn_export_dict['ReplicationConfiguration'] = {
+                        'Role': troposphere.GetAtt(replication_role_res, "Arn"),
+                        'Rules': []
+                    }
+
+                    rule_dest_dict = {
+                            'Account': f"{dest_bucket_account_id}",
+                            'Bucket': dest_bucket_arn,
+                            'StorageClass': rep_rule_config.storage_class,
+                    }
+                    if rep_rule_config.change_to_destination_owner:
+                        rule_dest_dict['AccessControlTranslation'] = {
+                                'Owner': "Destination"
+                            }
+                    # rule_resource_name = self.create_resource_name_join(['Destination', rep_rule_name], camel_case=True, separator='')
+                    # rule_dest_res = troposphere.s3.ReplicationConfigurationRulesDestination.from_dict(
+                    #     rule_resource_name, rule_dest_dict
+                    # )
+                    rule_status = 'Disabled'
+                    if rep_rule_config.is_enabled():
+                        rule_status = 'Enabled'
+                    rule_dict = {
+                        'Destination': rule_dest_dict,
+                        'Status': rule_status,
+                        'Prefix': ''
+                    }
+                    # rule_resource_name = self.create_resource_name_join(['ReplicationRule', rep_rule_name], camel_case=True, separator='')
+                    # rule_res = troposphere.s3.ReplicationConfigurationRules.from_dict(
+                    #     rule_resource_name, rule_dict
+                    # )
+                    cfn_export_dict['ReplicationConfiguration']['Rules'].append(rule_dict)
+
             # Encryption on by default
             cfn_export_dict['BucketEncryption'] = {
                 'ServerSideEncryptionConfiguration': [{
@@ -155,6 +199,8 @@ class S3(StackTemplate):
             }
             s3_resource = troposphere.s3.Bucket.from_dict(s3_logical_id, cfn_export_dict)
             s3_resource.DeletionPolicy = 'Retain' # We always retain. Bucket cleanup is handled by Stack hooks.
+            if len(s3_bucket_res_depends) > 0:
+                s3_resource.DependsOn = s3_bucket_res_depends
             template.add_resource(s3_resource)
 
             # Output
@@ -197,7 +243,6 @@ class S3(StackTemplate):
         if len(bucket.policy) > 0:
             # Bucket Policy
             # ToDo: allow mixing CloudFront Origin policies and other bucket policies together
-            bucket_arn = s3_ctl.get_bucket_arn(bucket.paco_ref_parts)
             bucket_policy_statements = create_policy_statments(
                 bucket.policy,
                 s3bucket_arn=bucket_arn,
@@ -228,6 +273,96 @@ class S3(StackTemplate):
         super().delete()
 
 
+    def gen_replication_role(self, rule_name, rule_config, source_bucket_arn, destination_bucket_arn):
+        "Create a IAM Role for S3 Replication"
+        role_name_list = [self.stack.get_name(template=self)]
+        role_name_list.append('Replication')
+        role_name_list.append(rule_name)
+        replication_role_name = self.create_iam_resource_name(
+            name_list=role_name_list,
+            filter_id='IAM.Policy.PolicyName'
+        )
+        rep_role_res_name = self.create_cfn_logical_id(
+            name=''.join(['ReplicationRole', rule_name]),
+            camel_case=True
+        )
+        replication_role_res = troposphere.iam.Role(
+            title=rep_role_res_name,
+            template = self.template,
+            RoleName=replication_role_name,
+            AssumeRolePolicyDocument=PolicyDocument(
+                Version="2012-10-17",
+                Statement=[
+                    Statement(
+                        Effect=Allow,
+                        Action=[ AssumeRole ],
+                        Principal=Principal("Service", ['s3.amazonaws.com']),
+                    )
+                ]
+            )
+        )
+        replication_rule_statement_list = [
+            Statement(
+                Sid='GetSourceBucketConfiguration',
+                Effect=Allow,
+                Action=[
+                    Action('s3', 'ListBucket'),
+                    Action('s3', 'GetReplicationConfiguration'),
+                    Action('s3', 'GetObjectVersionForReplication'),
+                    Action('s3', 'GetObjectVersionAcl'),
+                    Action('s3', 'GetObjectVersionTagging'),
+                    Action('s3', 'GetObjectRetention'),
+                    Action('s3', 'GetObjectLegalHold')
+                ],
+                Resource=[
+                    f'{source_bucket_arn}',
+                    f'{source_bucket_arn}/*'
+                ]
+            ),
+            Statement(
+                Sid='ReplicateToDestinationBuckets',
+                Effect=Allow,
+                Action=[
+                    Action('s3', 'List*'),
+                    Action('s3', '*Object'),
+                    Action('s3', 'ReplicateObject'),
+                    Action('s3', 'ReplicateDelete'),
+                    Action('s3', 'ReplicateTags')
+                ],
+                Resource=[
+                    f'{destination_bucket_arn}/*'
+                ]
+            ),
+        ]
+
+        if rule_config.change_to_destination_owner:
+            replication_rule_statement_list.append(
+                Statement(
+                    Sid='PermissionToOverrideBucketOwner',
+                    Effect=Allow,
+                    Action=[
+                        Action('s3', 'ObjectOwnerOverrideToBucketOwner')
+                    ],
+                    Resource=[
+                        f'{destination_bucket_arn}/*'
+                    ]
+                )
+            )
+
+        policy_name = self.create_iam_resource_name(
+            name_list=[rule_name, 'Replication-Policy'],
+            filter_id='IAM.Policy.PolicyName'
+        )
+        troposphere.iam.PolicyType(
+            title='ReplicationConfiguration',
+            template = self.template,
+            PolicyName=policy_name,
+            PolicyDocument=PolicyDocument(
+                Statement=replication_rule_statement_list,
+            ),
+            Roles=[troposphere.Ref(replication_role_res)]
+        )
+        return replication_role_res
 class S3BucketPolicy(StackTemplate):
     """
     S3 Bucket Policy

@@ -89,7 +89,7 @@ class SSMController(Controller):
                     )
                 except Exception as e:
                     # An instance may need more time if we get here, try again.
-                    breakpoint()
+                    # breakpoint()
                     print(f"{e}")
                     break
                 if command_response['Status'] not in ('Pending', 'InProgress', 'Delayed'):
