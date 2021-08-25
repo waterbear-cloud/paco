@@ -332,16 +332,16 @@ class CloudFront(StackTemplate):
                         if is_ref(alias.hosted_zone):
                             hosted_zone = get_model_obj_from_ref(alias.hosted_zone, self.paco_ctx.project)
                             account_ctx = self.paco_ctx.get_account_context(account_ref=hosted_zone.account)
-                    route53_ctl.add_record_set(
-                        account_ctx,
-                        self.aws_region,
-                        cloudfront_config,
-                        enabled=cloudfront_config.is_enabled(),
-                        dns=alias,
-                        record_set_type='Alias',
-                        alias_dns_name = 'paco.ref ' + self.stack.stack_ref + '.domain_name',
-                        alias_hosted_zone_id = 'Z2FDTNDATAQYW2', # This is always the hosted zone ID when you create an alias record that routes traffic to a CloudFront distribution
-                        stack_group=self.stack.stack_group,
-                        async_stack_provision=True,
-                        config_ref=config_ref+'.record_set'
-                    )
+                        route53_ctl.add_record_set(
+                            account_ctx,
+                            self.aws_region,
+                            cloudfront_config,
+                            enabled=cloudfront_config.is_enabled(),
+                            dns=alias,
+                            record_set_type='Alias',
+                            alias_dns_name = 'paco.ref ' + self.stack.stack_ref + '.domain_name',
+                            alias_hosted_zone_id = 'Z2FDTNDATAQYW2', # This is always the hosted zone ID when you create an alias record that routes traffic to a CloudFront distribution
+                            stack_group=self.stack.stack_group,
+                            async_stack_provision=True,
+                            config_ref=config_ref+'.record_set'
+                        )
