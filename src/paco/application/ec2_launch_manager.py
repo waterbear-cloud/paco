@@ -2195,6 +2195,7 @@ function disable_launch_bundle() {{
                 self.aws_region,
                 resource,
                 paco.cftemplates.LogGroups,
+                change_protected=False,
                 stack_tags=self.stack_tags,
                 support_resource_ref_ext='log_groups',
             )

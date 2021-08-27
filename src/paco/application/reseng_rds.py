@@ -66,11 +66,13 @@ class RDSPostgresqlAuroraResourceEngine(ResourceEngine):
         )
 
         #if self.resource.default_instance != None and self.resource.default_instance.monitoring != None:
+        # Force log group changes
         self.stack_group.add_new_stack(
             self.aws_region,
             self.resource,
             paco.cftemplates.LogGroups,
             stack_tags=self.stack_tags,
+            change_protected=False,
             support_resource_ref_ext='log_groups',
         )
 
