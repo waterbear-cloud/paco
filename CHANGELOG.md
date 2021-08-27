@@ -1,11 +1,42 @@
 Changelog for Paco
 ==================
 
-9.3.17 (unreleased)
+9.3.17 (2021-08-26)
 -------------------
 
-- Nothing changed yet.
+### Changed
 
+- LogGroups are now exempt from change_protected flags in RDS, ASG, and S3Buckets
+
+- Enabled s3 Bucket encryption by default
+
+### Added
+
+- Implemented S3 Bucket replication for cross-account buckets
+
+- Implemented bucket_owner_preferred for S3 Bucket resources
+
+- Added a backup_restore_bucket RDS Option field to RDSSQLServerExpress resource.
+
+- Added ECR Repository field to IASG for automated permissions.
+
+- added ec2lm_replace_secret_in_file_from_json() function to EC2LM
+
+- Added support for Ubuntu 18
+
+- Added BitBucket support to DeploymentPipeline sources
+
+- Added IASGPatchManager for automated Windows patching
+
+### Fixed
+
+- Prevent record set from being created if hosted_zone is undefined in cloudfront.
+
+- Fixed IAM Policy name generation to support 127 characters, was only 64 before.
+
+- Fixed codedeploy launch bundle.
+
+- Fixed RDS parameter group to allow empty parameters.
 
 9.3.16 (2021-06-25)
 -------------------
