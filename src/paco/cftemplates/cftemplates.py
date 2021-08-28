@@ -346,6 +346,11 @@ class StackTemplate():
             if len(name) > 32:
                 max_name_len = 32
                 message = "Name must not be longer than 64 characters."
+        elif filter_id in [
+            'WAFWebACL.RuleName']:
+            if len(name) > 128:
+                max_name_len = 128
+                message = "Name must not be longer than 128 characters."
         else:
             message = 'Unknown filter_id'
 
@@ -398,6 +403,9 @@ class StackTemplate():
         elif filter_id in [
             'CodeStar.Connection']:
             valid_ch_list = '/-'
+        elif filter_id in [
+            'WAFWebACL.RuleName']:
+            valid_ch_list = ' -'
         else:
             raise StackException(PacoErrorCode.Unknown, message="Invalid filter Id: "+filter_id)
 

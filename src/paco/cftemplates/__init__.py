@@ -55,3 +55,4 @@ from paco.cftemplates.cognito import CognitoUserPool, CognitoIdentityPool
 from paco.cftemplates.dynamodb import DynamoDB
 from paco.cftemplates.notification_rules import NotificationRules
 from paco.cftemplates.vpcendpoints import VPCEndpoints
+from paco.cftemplates.waf import WAFWebACL

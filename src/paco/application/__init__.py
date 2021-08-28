@@ -28,3 +28,4 @@ from paco.application.reseng_iamuser import IAMUserResourceEngine
 from paco.application.reseng_pinpointapplication import PinpointApplicationResourceEngine
 from paco.application.reseng_cognito import CognitoIdentityPoolResourceEngine, CognitoUserPoolResourceEngine
 from paco.application.reseng_dynamodb import DynamoDBResourceEngine
+from paco.application.reseng_wafwebacl import WAFWebACLResourceEngine
