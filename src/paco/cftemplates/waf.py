@@ -50,13 +50,15 @@ class WAFWebACL(StackTemplate):
             priority_index = 10
             for rule_name in webacl_config.rules.keys():
                 rule_config = webacl_config.rules[rule_name]
+                if rule_config.enabled == False:
+                    continue
                 if rule_config.statement == None:
                     continue
-                rule_name = self.create_resource_name(
-                    f'{webacl_config.paco_ref_parts}.rule_name',
+                rule_resoure_name = self.create_resource_name(
+                    f'{webacl_config.paco_ref_parts}.{rule_name}',
                     filter_id='WAFWebACL.RuleName', hash_long_names=True)
                 rule_config_dict = {
-                    'Name': rule_name,
+                    'Name': rule_resoure_name,
                     'Priority': priority_index,
                     'VisibilityConfig': {
                         'CloudWatchMetricsEnabled': rule_config.visibility_config.cloudwatch_metrics_enabled,
@@ -104,4 +106,10 @@ class WAFWebACL(StackTemplate):
             description="WebACL Id.",
             value=troposphere.GetAtt(webacl_res, 'Id'),
             ref=self.resource.paco_ref_parts + ".id"
+        )
+        self.create_output(
+            title='WebACLArn',
+            description="WebACL Arn.",
+            value=troposphere.GetAtt(webacl_res, 'Arn'),
+            ref=self.resource.paco_ref_parts + ".arn"
         )

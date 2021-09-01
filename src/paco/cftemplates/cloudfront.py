@@ -270,11 +270,11 @@ class CloudFront(StackTemplate):
         if cloudfront_config.webacl_id != None:
             webacl_id_value = cloudfront_config.webacl_id
             if is_ref(webacl_id_value):
-                webacl_id_value = cloudfront_config.webacl_id + '.id'
+                webacl_id_value = cloudfront_config.webacl_id + '.arn'
             webacl_id_param = self.create_cfn_parameter(
               param_type='String',
               name='WebAclId',
-              description='WAF Web Acl ID',
+              description='WAF Web Acl Arn',
               value=webacl_id_value
             )
             distribution_config_dict['WebACLId'] = troposphere.Ref(webacl_id_param)
