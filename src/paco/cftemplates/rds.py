@@ -697,18 +697,15 @@ class RDS(StackTemplate):
             # resource, in which case the DBInstanceIdentifier name CAN NOT be set
             # del db_instance_dict['DBInstanceIdentifier']
 
-        # Encryption
-        if rds_config.kms_key_id == '' or rds_config.kms_key_id == None:
-            encryption_enabled = False
-        else:
-            encryption_enabled = True
-        if db_snapshot_id_enabled == False:
-            db_instance_dict['StorageEncrypted'] = encryption_enabled
-            if encryption_enabled:
-                db_instance_dict['KmsKeyId'] = rds_config.kms_key_id
-
         # Username and Passsword
         if db_snapshot_id_enabled == False:
+            # Encryption
+            if rds_config.storage_encrypted == True:
+                db_instance_dict['StorageEncrypted'] = True
+            if rds_config.kms_key_id and rds_config.kms_key_id != '':
+                db_instance_dict['KmsKeyId'] = rds_config.kms_key_id
+
+            # Username & Password
             db_instance_dict['MasterUsername'] = rds_config.master_username
             if rds_config.secrets_password:
                 # Password from Secrets Manager

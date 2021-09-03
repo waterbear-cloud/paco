@@ -169,6 +169,8 @@ class LBBase(StackTemplate):
 
         # Target Groups
         for target_group_name, target_group in sorted(self.lb_config.target_groups.items()):
+            if target_group.is_enabled() == False:
+                continue
             target_group_id = self.create_cfn_logical_id(target_group_name)
             target_group_logical_id = 'TargetGroup' + target_group_id
             cfn_export_dict = {}
@@ -190,7 +192,10 @@ class LBBase(StackTemplate):
                 cfn_export_dict['HealthCheckPath'] = target_group.health_check_path
                 cfn_export_dict['Matcher'] = {'HttpCode': target_group.health_check_http_code }
 
-            cfn_export_dict['Port'] = target_group.port
+            if target_group.health_check_port != 'traffic-port':
+                cfn_export_dict['HealthCheckPort'] = target_group.health_check_port
+            if target_group.port != None:
+                cfn_export_dict['Port'] = target_group.port
             cfn_export_dict['Protocol'] = target_group.protocol
             cfn_export_dict['UnhealthyThresholdCount'] = target_group.unhealthy_threshold
             cfn_export_dict['TargetGroupAttributes'] = [
