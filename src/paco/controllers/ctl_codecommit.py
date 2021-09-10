@@ -66,7 +66,20 @@ class CodeCommitController(Controller):
                 if account_ctx.paco_ref not in self.stack_grps_dict:
                     self.stack_grps_dict[account_ctx.paco_ref] = {}
                 self.stack_grps_dict[account_ctx.paco_ref][repo_region] = codecommit_stack_grp
+
+                # TODO: Implement CodeCommit IAM User cleanup before it is deleted
+                # self.stack.hooks.add(
+                #     name='CodeCommitCleanup.' + self.resource.name,
+                #     stack_action='delete',
+                #     stack_timing='pre',
+                #     hook_method=self.codecommit_delete_hook,
+                #     hook_arg=self.resource
+                # )
+
                 codecommit_stack_grp.init()
+
+    def codecommit_delete_hook(self, hook, resource):
+        pass
 
     def gen_iam_roles_config_dict(self, repo_list):
 

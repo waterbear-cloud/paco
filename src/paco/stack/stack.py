@@ -84,6 +84,13 @@ class StackOutputParam():
         if stack !=None and stack_output_key !=None:
             self.add_stack_output( stack, stack_output_key)
 
+    def add_value(self, value):
+        entry = {
+            'output_keys': [],
+            'output_value': value
+        }
+        self.entry_list.append(entry)
+
     def add_stack_output(self, stack, stack_output_key):
         if stack_output_key == None:
             raise PacoException(PacoErrorCode.Unknown, message="Stack Output key is unset")
@@ -111,6 +118,9 @@ class StackOutputParam():
                         message=f"Stack output not found: Output Key: {output_key}: stack: {entry['stack'].get_name()}"
                     )
                 param_value += comma + output_value
+                comma = ','
+            if 'output_value' in entry.keys():
+                param_value += comma + entry['output_value']
                 comma = ','
 
         return param_value

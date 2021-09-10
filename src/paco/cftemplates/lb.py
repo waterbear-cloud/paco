@@ -1,6 +1,9 @@
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.cftemplates.cftemplates import StackOutputParam
+from paco.models.locations import get_parent_by_interface
 from paco.models.references import get_model_obj_from_ref
+from paco.models.registry import SECURITY_GROUPS_HOOKS
+from paco.models.schemas import IEnvironmentRegion
 from paco import utils
 import troposphere
 import troposphere.elasticloadbalancingv2
@@ -100,14 +103,25 @@ class LBBase(StackTemplate):
             description='A list of subnets where the LBs instances will be provisioned',
             value=subnet_list_ref,
         )
+
+        # Security Groups
         if self.lb_config.type == 'LBApplication':
+            sg_group_list = []
+            sg_group_list.extend(self.lb_config.security_groups)
+            for hook in SECURITY_GROUPS_HOOKS:
+                env_config = get_parent_by_interface(self.lb_config, IEnvironmentRegion)
+                vpc_id = self.paco_ctx.get_ref(f'{env_config.network.vpc.paco_ref}.id').get_outputs_value('VPC')
+                hook_sg_list = hook(self.lb_config, self.account_ctx, self.aws_region, vpc_id)
+                sg_group_list.extend(hook_sg_list)
+
             security_group_list_param = self.create_cfn_ref_list_param(
                 param_type='List<AWS::EC2::SecurityGroup::Id>',
                 name='SecurityGroupList',
                 description='A List of security groups to attach to the LB',
-                value=self.lb_config.security_groups,
+                value=sg_group_list,
                 ref_attribute='id'
             )
+
         idle_timeout_param = self.create_cfn_parameter(
             param_type='String',
             name='IdleTimeoutSecs',

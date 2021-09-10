@@ -39,20 +39,21 @@ class CloudFront(StackTemplate):
         }
         if cloudfront_config.is_enabled() == True:
             # force the certificate to be in us-east-1, as that's the only CloudFront region
-            certificate = get_model_obj_from_ref(cloudfront_config.viewer_certificate.certificate, self.paco_ctx.project)
-            if certificate.region != 'us-east-1':
-                raise InvalidCloudFrontCertificateRegion(f'Certficate region is: {certificate.region}: {certificate.paco_ref}')
-            viewer_certificate_param = self.create_cfn_parameter(
-                name='ViewerCertificateArn',
-                description="ACM Viewer Certificate ARN",
-                param_type='String',
-                value=cloudfront_config.viewer_certificate.certificate + '.arn',
-            )
-            distribution_config_dict['ViewerCertificate'] = {
-                'AcmCertificateArn': troposphere.Ref(viewer_certificate_param),
-                'SslSupportMethod': cloudfront_config.viewer_certificate.ssl_supported_method,
-                'MinimumProtocolVersion': cloudfront_config.viewer_certificate.minimum_protocol_version
-            }
+            if cloudfront_config.viewer_certificate.certificate != None:
+                certificate = get_model_obj_from_ref(cloudfront_config.viewer_certificate.certificate, self.paco_ctx.project)
+                if certificate.region != 'us-east-1':
+                    raise InvalidCloudFrontCertificateRegion(f'Certficate region is: {certificate.region}: {certificate.paco_ref}')
+                viewer_certificate_param = self.create_cfn_parameter(
+                    name='ViewerCertificateArn',
+                    description="ACM Viewer Certificate ARN",
+                    param_type='String',
+                    value=cloudfront_config.viewer_certificate.certificate + '.arn',
+                )
+                distribution_config_dict['ViewerCertificate'] = {
+                    'AcmCertificateArn': troposphere.Ref(viewer_certificate_param),
+                    'SslSupportMethod': cloudfront_config.viewer_certificate.ssl_supported_method,
+                    'MinimumProtocolVersion': cloudfront_config.viewer_certificate.minimum_protocol_version
+                }
         if cloudfront_config.default_cache_behavior.min_ttl != -1:
             distribution_config_dict['DefaultCacheBehavior']['MinTTL'] = cloudfront_config.default_cache_behavior.min_ttl
         if cloudfront_config.default_cache_behavior.max_ttl != -1:

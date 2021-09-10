@@ -4,7 +4,7 @@ from paco.cftemplates.cftemplates import StackTemplate
 from paco.cftemplates.eventsrule import create_event_rule_name
 from paco.models.locations import get_parent_by_interface
 from paco.models.loader import get_all_nodes
-from paco.models.references import get_model_obj_from_ref, Reference
+from paco.models.references import get_model_obj_from_ref, Reference, is_ref
 from paco.models import schemas
 from paco.stack import StackHooks
 from paco.utils import md5sum, prefixed_name
@@ -266,14 +266,18 @@ class Lambda(StackTemplate):
         # Permissions
         # SNS Topic Lambda permissions and subscription
         idx = 1
-        for sns_topic_ref in awslambda.sns_topics:
+        for sns_topic in awslambda.sns_topics:
+            if is_ref(sns_topic):
+                sns_topic_value = sns_topic + '.arn'
+            else:
+                sns_topic_value = sns_topic
             # SNS Topic Arn parameters
             param_name = 'SNSTopicArn%d' % idx
             self.create_cfn_parameter(
                 name=param_name,
                 param_type='String',
                 description='An SNS Topic ARN to grant permission to.',
-                value=sns_topic_ref + '.arn'
+                value=sns_topic_value
             )
 
             # Lambda permission
@@ -573,7 +577,7 @@ class LambdaSNSSubscriptions(StackTemplate):
         self,
         stack,
         paco_ctx,
-        sns_topic_ref_list
+        sns_topic_list
     ):
         super().__init__(
             stack,
@@ -599,25 +603,32 @@ class LambdaSNSSubscriptions(StackTemplate):
             value=self.awslambda.paco_ref + '.arn'
         )
         idx = 1
-        for sns_topic_ref in sns_topic_ref_list:
+        for sns_topic in sns_topic_list:
             # SNS Topic Arn parameters
+            if is_ref(sns_topic):
+                sns_topic_value = sns_topic + '.arn'
+                sns_topic_obj = get_model_obj_from_ref(sns_topic, self.paco_ctx.project)
+                region_name = sns_topic_obj.region_name
+            else:
+                sns_topic_value = sns_topic
+                region_name = sns_topic.split(':')[3]
+
             param_name = 'SNSTopicArn%d' % idx
             self.create_cfn_parameter(
                 name=param_name,
                 param_type='String',
                 description='An SNS Topic ARN to grant permission to.',
-                value=sns_topic_ref + '.arn'
+                value=sns_topic_value
             )
 
             # SNS Topic subscription
-            sns_topic = get_model_obj_from_ref(sns_topic_ref, self.paco_ctx.project)
             troposphere.sns.SubscriptionResource(
                 title=param_name + 'Subscription',
                 template=self.template,
                 Endpoint=troposphere.Ref(lambda_arn_param),
                 Protocol='lambda',
                 TopicArn=troposphere.Ref(param_name),
-                Region=sns_topic.region_name
+                Region=region_name
             )
             idx += 1
 

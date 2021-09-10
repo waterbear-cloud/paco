@@ -3,6 +3,7 @@ from paco.application.res_engine import ResourceEngine
 from paco.core import exception
 from paco.core.yaml import YAML
 from paco.models import vocabulary
+from paco.models.references import is_ref
 import paco.cftemplates
 
 
@@ -92,7 +93,10 @@ statement:
         # This is required for cross account + cross region lambda/sns
         region_topic_list = {}
         for topic in self.resource.sns_topics:
-            region_name = topic.split('.')[4]
+            if is_ref(topic):
+                region_name = topic.split('.')[4]
+            else:
+                region_name = topic.split(':')[3]
             if region_name not in vocabulary.aws_regions.keys():
                 raise exception.InvalidAWSRegion(f'Invalid SNS Topic region in reference: {region_name}: {topic}')
             if region_name not in region_topic_list.keys():
@@ -106,5 +110,5 @@ statement:
                 self.resource,
                 paco.cftemplates.LambdaSNSSubscriptions,
                 stack_tags=self.stack_tags,
-                extra_context={'sns_topic_ref_list': topic_list}
+                extra_context={'sns_topic_list': topic_list}
             )

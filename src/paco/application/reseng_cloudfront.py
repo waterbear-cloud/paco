@@ -14,7 +14,8 @@ class CloudFrontResourceEngine(ResourceEngine):
 
             # set resolve_ref_obj for look-ups
             self.resource.viewer_certificate.resolve_ref_obj = self.app_engine
-            factory_config.viewer_certificate.resolve_ref_obj = self.app_engine
+            if factory_config.viewer_certificate != None:
+                factory_config.viewer_certificate.resolve_ref_obj = self.app_engine
             factory_config.resolve_ref_obj = self.app_engine
 
             # CloudFront CloudFormation

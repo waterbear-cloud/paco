@@ -12,6 +12,24 @@ from paco.models.applications import Application
 import paco.models.registry
 from paco.models.schemas import get_parent_by_interface
 
+def add_security_groups_hook(hook):
+    """
+    Customize SecurityGroup lists with a hook that is called before security groups are set
+    on: LoadBalancers. TODO: EC2, etc
+
+    .. code-block:: python
+
+        import paco.extend
+
+        def my_service_security_groups_function():
+            security_group_list = []
+            ...
+            return security_group_list
+
+        paco.extend.add_security_groups_hook(my_service_security_groups_function)
+
+    """
+    paco.models.registry.SECURITY_GROUPS_HOOKS.append(hook)
 
 def add_cw_alarm_hook(hook):
     """

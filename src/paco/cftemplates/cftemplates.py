@@ -2,7 +2,7 @@ from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Actio
 from paco import utils
 from paco.core.exception import StackException, PacoErrorCode, PacoException
 from paco.models import schemas
-from paco.models.references import Reference, get_model_obj_from_ref
+from paco.models.references import Reference, get_model_obj_from_ref, is_ref
 from paco.models.locations import get_parent_by_interface
 from paco.stack import StackOutputParam, Stack
 from paco.utils import md5sum, big_join
@@ -546,14 +546,17 @@ class StackTemplate():
     ):
         "Create a CloudFormation Parameter from a list of refs"
         stack_output_param = StackOutputParam(name, param_template=self)
-        for item_ref in value:
-            if ref_attribute != None:
-                item_ref += '.' + ref_attribute
-            stack = self.paco_ctx.get_ref(item_ref)
-            if isinstance(stack, Stack) == False:
-                raise PacoException(PacoErrorCode.Unknown, message="Reference must resolve to a stack")
-            stack_output_key = self.stack.get_stack_outputs_key_from_ref(Reference(item_ref))
-            stack_output_param.add_stack_output(stack, stack_output_key)
+        for list_item in value:
+            if is_ref(list_item):
+                if ref_attribute != None:
+                    list_item += '.' + ref_attribute
+                stack = self.paco_ctx.get_ref(list_item)
+                if isinstance(stack, Stack) == False:
+                    raise PacoException(PacoErrorCode.Unknown, message="Reference must resolve to a stack")
+                stack_output_key = self.stack.get_stack_outputs_key_from_ref(Reference(list_item))
+                stack_output_param.add_stack_output(stack, stack_output_key)
+            else:
+                stack_output_param.add_value(list_item)
 
         return self.create_cfn_parameter(
             param_type,
