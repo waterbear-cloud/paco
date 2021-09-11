@@ -1,2 +1,4 @@
+source ~/.local/paco-venv/bin/activate
+source ../.wb_service_aws
 export PS1="(paco-dev) \h \W$ "
 export PATH=${buildout:bin-directory}:$PATH

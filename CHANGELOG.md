@@ -1,11 +1,24 @@
 Changelog for Paco
 ==================
 
-9.3.18 (unreleased)
+9.3.18 (2021-09-10)
 -------------------
 
-- Nothing changed yet.
+### Added
 
+- Added service hook for Security Groups in cftemplate.lb
+
+- Added TargetGroup enable/disable
+
+- Added HealthCheckPort to TargetGroups
+
+- Added WebACL paco.ref support to cloudfrom webacl_id field.
+
+- Added WAFv2 Resource
+
+### Fixed
+
+- Fixed storage_encrypted implementation in RDS cftemplate
 
 9.3.17 (2021-08-26)
 -------------------
