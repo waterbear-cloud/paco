@@ -233,7 +233,7 @@ Outputs:
               AWS:"""
                 for aws_item in role_config.assume_role_policy.aws:
                     principal_yaml += """
-                - """ + aws_item
+                - '""" + aws_item + "'"
         else:
             pass
         iam_role_table['assume_role_principal'] = principal_yaml

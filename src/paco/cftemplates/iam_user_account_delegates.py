@@ -149,7 +149,8 @@ class IAMUserAccountDelegates(StackTemplate):
         statement_list = []
 
         list_pipelines_actions = [
-            Action('codepipeline', 'ListPipelines')
+            Action('codepipeline', 'ListPipelines'),
+            Action('codepipeline', 'ListPipelineExecutions')
         ]
         readonly_actions = [
             Action('codepipeline', 'GetPipeline'),
@@ -160,7 +161,8 @@ class IAMUserAccountDelegates(StackTemplate):
             Action('codepipeline', 'ListActionTypes'),
             Action('codepipeline', 'ListTagsForResource'),
             Action('codepipeline', 'StartPipelineExecution'),
-            Action('codepipeline', 'StopPipelineExecution')
+            Action('codepipeline', 'StopPipelineExecution'),
+            Action('codebuild', 'ListProjects')
         ]
         retrystages_actions = [
             Action('codepipeline', 'RetryStageExecution')
@@ -197,6 +199,17 @@ class IAMUserAccountDelegates(StackTemplate):
                 )
             )
 
+        managed_policy_res = troposphere.iam.ManagedPolicy(
+            title=self.create_cfn_logical_id("CodePipelineReadPolicy"),
+            PolicyDocument=PolicyDocument(
+                Version="2012-10-17",
+                Statement=statement_list
+            ),
+            Roles=[ troposphere.Ref(assume_role_res) ]
+        )
+        self.template.add_resource(managed_policy_res)
+
+        statement_list = []
         if pipeline_ctx['permission'].find('RetryStages') != -1:
             statement_list.append(
                 Statement(
@@ -207,17 +220,15 @@ class IAMUserAccountDelegates(StackTemplate):
                 )
             )
 
-
-
-        managed_policy_res = troposphere.iam.ManagedPolicy(
-            title=self.create_cfn_logical_id("CodePipelinePolicy"),
-            PolicyDocument=PolicyDocument(
-                Version="2012-10-17",
-                Statement=statement_list
-            ),
-            Roles=[ troposphere.Ref(assume_role_res) ]
-        )
-        self.template.add_resource(managed_policy_res)
+            managed_policy_res = troposphere.iam.ManagedPolicy(
+                title=self.create_cfn_logical_id("CodePipelineRetryStagesPolicy"),
+                PolicyDocument=PolicyDocument(
+                    Version="2012-10-17",
+                    Statement=statement_list
+                ),
+                Roles=[ troposphere.Ref(assume_role_res) ]
+            )
+            self.template.add_resource(managed_policy_res)
 
     def deployment_pipeline_codebuild_permissions(self, pipeline_list, assume_role_res):
         statement_list = []
@@ -281,7 +292,6 @@ class IAMUserAccountDelegates(StackTemplate):
             Action('events', 'DescribeRule'),
             Action('events', 'ListTargetsByRule'),
             Action('events', 'ListRuleNamesByTarget'),
-            Action('logs', 'GetLogEvents')
         ]
         if len(readonly_codebuild_arns) > 0:
             statement_list.append(
@@ -290,6 +300,27 @@ class IAMUserAccountDelegates(StackTemplate):
                     Effect=Allow,
                     Action=readonly_codebuild_actions,
                     Resource=readonly_codebuild_arns
+                )
+            )
+            statement_list.append(
+                Statement(
+                    Sid='CodeBuildLogStreamsReadOnly',
+                    Effect=Allow,
+                    Action=[
+                        Action('logs', 'GetLogEvents'),
+                        Action('logs', 'DescribeLogStreams')
+                    ],
+                    Resource=[f'arn:aws:logs:{self.aws_region}:{self.account_id}:log-group:/aws/codebuild/*']
+                )
+            )
+            statement_list.append(
+                Statement(
+                    Sid='CodeBuildLogGroupsReadOnly',
+                    Effect=Allow,
+                    Action=[
+                        Action('logs', 'DescribeLogGroups')
+                    ],
+                    Resource=[f'*']
                 )
             )
 

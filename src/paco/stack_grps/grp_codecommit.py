@@ -115,6 +115,7 @@ class CodeCommitStackGroup(StackGroup):
             for repo_config in repo_group.values():
                 if self.paco_ctx.get_ref(repo_config.account+'.name') != self.account_ctx.get_name():
                     continue
+                print(f'repository clone: {repo_config.repository_name}: git clone ssh://git-codecommit.{repo_config.region}.amazonaws.com/v1/repos/{repo_config.repository_name}')
                 if repo_config.users != None:
                     for user_config in repo_config.users.values():
                         if user_config.public_ssh_key != None and user_config.username not in user_done.keys():
