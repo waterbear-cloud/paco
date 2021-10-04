@@ -1,11 +1,22 @@
 Changelog for Paco
 ==================
 
-9.3.19 (unreleased)
+9.3.19 (2021-10-04)
 -------------------
 
-- Nothing changed yet.
+### Added
 
+- Added RDS Aurora MySQL serverless support
+
+- Added non paco.ref support for EBS volume mounts
+
+- provision on CodeCommit will now display repository ssh clone URLs.
+
+### Fixed
+
+- Fixed AWS principle when account ids start with zero
+
+- Fixed DeploymentPipeline IAM Permissions
 
 9.3.18 (2021-09-10)
 -------------------
