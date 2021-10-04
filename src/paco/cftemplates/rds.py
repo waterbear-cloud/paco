@@ -291,6 +291,20 @@ class RDSAurora(StackTemplate):
         if len(sg_param_ref_list) > 0:
             db_cluster_dict['VpcSecurityGroupIds'] = sg_param_ref_list
 
+        # Backtracking
+        if rds_aurora.backtrack_window_in_seconds > 0:
+            db_cluster_dict['BacktrackWindow'] = rds_aurora.backtrack_window_in_seconds
+        if rds_aurora.engine_mode == 'serverless':
+            # Backtracking is not supported on serverless engine mode
+            # db_cluster_dict['BacktrackWindow'] = 0
+            db_cluster_dict['ScalingConfiguration'] = {
+                'AutoPause': True,
+                'MinCapacity': 1,
+                'MaxCapacity': 32,
+                'SecondsUntilAutoPause': 300
+            }
+            db_cluster_dict['Engine'] = 'aurora-mysql'
+
         db_cluster_res = troposphere.rds.DBCluster.from_dict(
             rds_cluster_logical_id,
             db_cluster_dict
@@ -407,12 +421,13 @@ class RDSAurora(StackTemplate):
             value=troposphere.GetAtt(db_cluster_res, 'Endpoint.Port'),
             ref=self.resource.paco_ref_parts + ".endpoint.port",
         )
-        self.create_output(
-            title='ClusterReadEndpointAddress',
-            description='Cluster ReadEndpoint Address',
-            value=troposphere.GetAtt(db_cluster_res, 'ReadEndpoint.Address'),
-            ref=self.resource.paco_ref_parts + ".readendpoint.address",
-        )
+        if rds_aurora.engine_mode != 'serverless':
+            self.create_output(
+                title='ClusterReadEndpointAddress',
+                description='Cluster ReadEndpoint Address',
+                value=troposphere.GetAtt(db_cluster_res, 'ReadEndpoint.Address'),
+                ref=self.resource.paco_ref_parts + ".readendpoint.address",
+            )
 
         # DNS - Route53 Record Set
         if rds_aurora.is_dns_enabled() == True:

@@ -68,6 +68,8 @@ class Route53HostedZone(StackTemplate):
                     elif record_set_config.resource_records[0].find('elb.amazonaws.com') != -1:
                         elb_region = record_set_config.resource_records[0].split('.')[1]
                         hosted_zone_id = self.lb_hosted_zone_id('alb', elb_region)
+                    elif record_set_config.resource_records[0].find('awsglobalaccelerator.com') != -1:
+                        hosted_zone_id = 'Z2BJ6XQ5FK7U4H'
                     record_set_dict['AliasTarget'] = troposphere.route53.AliasTarget(
                             HostedZoneId=hosted_zone_id,
                             DNSName=record_set_config.resource_records[0]

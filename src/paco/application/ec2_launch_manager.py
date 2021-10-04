@@ -763,7 +763,7 @@ function ec2lm_replace_secret_in_file() {
     sed -i -e "s/$SED_PATTERN/$SECRET/" $REPLACE_FILE
 }
 
-# ec2lm_replace_secret_in_file_from_json <secret id> <file> <replace pattern> <secret name>
+# ec2lm_replace_secret_in_file_from_json <secret id> <replace pattern> <file> <secret name>
 function ec2lm_replace_secret_in_file_from_json() {
     SECRET_ID=$1
     SED_PATTERN=$2
@@ -1009,11 +1009,16 @@ statement:
             if ebs_volume_mount.enabled == False:
                 continue
             ebs_enabled = True
-            ebs_stack = resolve_ref(ebs_volume_mount.volume, self.paco_ctx.project, self.account_ctx)
-            ebs_stack_name = ebs_stack.get_name()
+
+            ebs_volume_id = ebs_volume_mount.volume
+            if is_ref(ebs_volume_mount.volume) == True:
+                ebs_stack = resolve_ref(ebs_volume_mount.volume, self.paco_ctx.project, self.account_ctx)
+                ebs_stack_name = ebs_stack.get_name()
+                ebs_volume_id = ebs_stack_name
+
             process_mount_volumes += "process_volume_mount {} {} {} {}\n".format(
                 ebs_volume_mount.folder,
-                ebs_stack_name,
+                ebs_volume_id,
                 ebs_volume_mount.filesystem,
                 ebs_volume_mount.device
             )
@@ -1070,14 +1075,16 @@ function ec2lm_get_volume_uuid() {{
 function process_volume_mount()
 {{
     MOUNT_FOLDER=$1
-    EBS_STACK_NAME=$2
+    EBS_VOLUME_ID=$2
     FILESYSTEM=$3
     EBS_DEVICE=$4
 
     echo "EC2LM: EBS: Process Volume Mount: Begin"
 
     # Get EBS Volume Id
-    EBS_VOLUME_ID=$(aws ec2 describe-volumes --filters Name=tag:aws:cloudformation:stack-name,Values=$EBS_STACK_NAME --query "Volumes[*].VolumeId | [0]" --region $REGION | tr -d '"')
+    if [[ "$EBS_VOLUME_ID" != "vol-"* ]]; then
+        EBS_VOLUME_ID=$(aws ec2 describe-volumes --filters Name=tag:aws:cloudformation:stack-name,Values=$EBS_VOLUME_ID --query "Volumes[*].VolumeId | [0]" --region $REGION | tr -d '"')
+    fi
 
     # Setup the mount folder
     if [ -e $MOUNT_FOLDER ] ; then
