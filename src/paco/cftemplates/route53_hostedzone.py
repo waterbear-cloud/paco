@@ -82,10 +82,16 @@ class Route53HostedZone(StackTemplate):
                 record_set_res = troposphere.route53.RecordSet(**record_set_dict)
                 record_set_list.append(record_set_res)
 
+            if zone_config.external_resource != None and zone_config.external_resource.is_enabled():
+                hosted_zone_id = zone_config.external_resource.hosted_zone_id
+            else:
+                hosted_zone_id = troposphere.Ref(hosted_zone_res)
+
             group_res = troposphere.route53.RecordSetGroup(
                 title='RecordSetGroup',
                 template=self.template,
-                HostedZoneId=troposphere.Ref(hosted_zone_res),
+                HostedZoneId=hosted_zone_id,
                 RecordSets=record_set_list
             )
-            group_res.DependsOn = hosted_zone_res
+            if zone_config.external_resource == None or zone_config.external_resource.is_enabled() == False:
+                group_res.DependsOn = hosted_zone_res

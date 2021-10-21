@@ -36,15 +36,19 @@ ln -s /usr/bin/aws /usr/local/bin/aws
 apt-get -y install python-pip
 pip install awscli
 """,
+		'ubuntu_18': """apt-get update
+apt-get -y install python-pip
+pip install awscli
+""",
+		'ubuntu_18_cis': """apt-get update
+apt-get -y install python-pip
+pip install awscli
+chmod a+x /usr/local/bin/aws
+""",
 		'ubuntu_20': """apt-get update
 apt-get -y install python3-pip
 apt install awscli -y
 """,
-#		'ubuntu_20': """apt-get update
-#apt-get -y install python3-pip
-#pip3 install awscli
-#apt install awscli -y
-#""",
 		'centos': 'ec2lm_pip install awscli'
 	},
 	'install_wget': {
@@ -192,6 +196,11 @@ ssm_agent = {
         "install": "snap install --classic"
     },
     "ubuntu_18": {
+        "path": "/debian_amd64",
+        "object": "amazon-ssm-agent",
+        "install": "snap install --classic"
+    },
+    "ubuntu_18_cis": {
         "path": "/debian_amd64",
         "object": "amazon-ssm-agent",
         "install": "snap install --classic"

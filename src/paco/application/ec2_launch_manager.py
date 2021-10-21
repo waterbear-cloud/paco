@@ -561,6 +561,30 @@ function ec2lm_install_package() {{
     {ec2lm_commands.user_data_script['install_package'][resource.instance_ami_type_generic]} $1
 }}
 
+# Set EC2 DNS
+function ec2lm_set_dns() {{
+    INSTANCE_HOSTNAME="$(curl http://169.254.169.254/latest/meta-data/hostname)"
+    RECORD_SET_FILE=/tmp/internal_record_set.json
+    DOMAIN=$1
+    HOSTED_ZONE_ID=$2
+    cat << EOF >$RECORD_SET_FILE
+{{
+"Comment": "API Server",
+"Changes": [ {{
+    "Action": "UPSERT",
+    "ResourceRecordSet": {{
+        "Name": "$DOMAIN",
+        "Type": "CNAME",
+        "TTL": 60,
+        "ResourceRecords": [ {{
+            "Value": "$INSTANCE_HOSTNAME"
+        }} ]
+    }}
+}} ]
+}}
+EOF
+    aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch file://$RECORD_SET_FILE
+}}
 """
         if resource.secrets != None and len(resource.secrets) > 0:
             self.ec2lm_functions_script[ec2lm_bucket_name] += self.add_secrets_function_policy(resource)
@@ -689,7 +713,7 @@ statement:
                 print("'ec2lm_signal_asg_resource <SUCCESS|FAILURE>' was not detected in your user_data_script for this resource.")
 
         # Newer Ubuntu (>20) does not have Python 2
-        if resource.instance_ami_type in ('ubuntu_20', 'amazon_ecs'):
+        if resource.instance_ami_type in ('ubuntu_20', 'amazon_ecs', 'ubuntu_18', 'ubuntu_18_cis'):
             install_aws_cli = ec2lm_commands.user_data_script['install_aws_cli'][resource.instance_ami_type]
         else:
             install_aws_cli = ec2lm_commands.user_data_script['install_aws_cli'][resource.instance_ami_type_generic]
@@ -1722,7 +1746,7 @@ function run_launch_bundle() {{
             agent_config = ec2lm_commands.ssm_agent[resource.instance_ami_type]
             agent_install = agent_config["install"]
             agent_object = agent_config["object"]
-            if resource.instance_ami_type not in ('ubuntu_16_snap', 'ubuntu_18', 'ubuntu_20'):            # use regional URL for faster download
+            if resource.instance_ami_type not in ('ubuntu_16_snap', 'ubuntu_18', 'ubuntu_18_cis', 'ubuntu_20'):            # use regional URL for faster download
                 if self.aws_region in ec2lm_commands.ssm_regions:
                     download_url = f'https://s3.{self.aws_region}.amazonaws.com/amazon-ssm-{self.aws_region}/latest'
                 else:
@@ -2142,7 +2166,8 @@ function run_launch_bundle() {{
     # Load EC2 Launch Manager helper functions
     . {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
 
-    cd /tmp/
+    mkdir -p /root/tmp
+    cd /root/tmp/
     ec2lm_install_wget
     ec2lm_install_package ruby
     # Stopping the current agent
