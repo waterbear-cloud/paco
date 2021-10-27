@@ -585,6 +585,31 @@ function ec2lm_set_dns() {{
 EOF
     aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch file://$RECORD_SET_FILE
 }}
+
+# Set EC2 DNS
+function ec2lm_set_dns_cname() {{
+    RECORD_SET_FILE=/tmp/internal_record_set.json
+    DOMAIN=$1
+    CNAME_RECORD="$2"
+    HOSTED_ZONE_ID=$2
+    cat << EOF >$RECORD_SET_FILE
+{{
+"Comment": "API Server",
+"Changes": [ {{
+    "Action": "UPSERT",
+    "ResourceRecordSet": {{
+        "Name": "$DOMAIN",
+        "Type": "CNAME",
+        "TTL": 60,
+        "ResourceRecords": [ {{
+            "Value": "$CNAME_RECORD"
+        }} ]
+    }}
+}} ]
+}}
+EOF
+    aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch file://$RECORD_SET_FILE
+}}
 """
         if resource.secrets != None and len(resource.secrets) > 0:
             self.ec2lm_functions_script[ec2lm_bucket_name] += self.add_secrets_function_policy(resource)

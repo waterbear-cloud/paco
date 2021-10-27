@@ -340,7 +340,12 @@ function is_release_phase_task() {
     local TASK_ARN=$2
 
     TAG_QUERY="tags[?key==\`PACO-RELEASE-PHASE\`][value==\`${RELEASE_PHASE_NAME}\`]"
+    set +e
     aws ecs list-tags-for-resource --resource-arn ${TASK_ARN} --query ${TAG_QUERY} --output text
+    if [ $? -ne 0 ] ; then
+        echo "False"
+    fi
+    set -e
 }
 
 # -----------------------------
@@ -349,6 +354,7 @@ function stale_task_check() {
     # Check to make sure the task is not already running, if it is, stop it.
     local CLUSTER_ID=$1
     local RELEASE_PHASE_NAME=$2
+    echo "${ECHO_PREFIX}: stale_task_check: Checking for stale tasks: $RELEASE_PHASE_NAME"
     for TASK_ARN in $(aws ecs list-tasks --cluster ${CLUSTER_ID} --query 'taskArns[*]' --output text)
     do
         RELEASE_TASK_RUNNING=$(is_release_phase_task ${RELEASE_PHASE_NAME} ${TASK_ARN})
