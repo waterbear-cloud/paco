@@ -59,8 +59,7 @@ apt install awscli -y
 	'install_efs_utils': {
 		'amazon': 'yum install -y amazon-efs-utils cachefilesd',
 		'centos': 'yum install -y amazon-efs-utils cachefilesd',
-		'ubuntu': 'apt-get install cachefilesd -y',
-        'ubuntu_16': """
+		'ubuntu': """
     apt-get install cachefilesd git binutils make -y
     LB_DIR=$(pwd)
     cd /tmp
@@ -69,17 +68,7 @@ apt install awscli -y
     ./build-deb.sh
     apt-get -y install ./build/amazon-efs-utils*deb
     cd ${LB_DIR}
-""",
-        'ubuntu_20': """
-    apt-get install cachefilesd git binutils make -y
-    LB_DIR=$(pwd)
-    cd /tmp
-    git clone https://github.com/aws/efs-utils
-    cd efs-utils/
-    ./build-deb.sh
-    apt-get -y install ./build/amazon-efs-utils*deb
-    cd ${LB_DIR}
-""",
+"""
 	},
 	'install_cfn_init': {
 		'amazon': '',
@@ -118,9 +107,7 @@ systemctl enable cachefilesd
 """ },
 	'mount_efs': {
 		'amazon': 'mount -a -t efs',
-		'ubuntu': 'mount -a -t nfs',
-        'ubuntu_16': 'mount -a -t efs',
-        'ubuntu_20': 'mount -a -t efs',
+		'ubuntu': 'mount -a -t efs',
 		'centos': 'mount -a -t nfs'
 	}
 

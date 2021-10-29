@@ -952,9 +952,9 @@ fi
             raise AttributeError(f"OS type {resource.instance_ami_type} does not support EFS")
         install_efs_utils = ec2lm_commands.user_data_script['install_efs_utils'][resource.instance_ami_type_generic]
         mount_efs = ec2lm_commands.user_data_script['mount_efs'][resource.instance_ami_type_generic]
-        if resource.instance_ami_type in ['ubuntu_16', 'ubuntu_20']:
-            install_efs_utils = ec2lm_commands.user_data_script['install_efs_utils'][resource.instance_ami_type]
-            mount_efs = ec2lm_commands.user_data_script['mount_efs'][resource.instance_ami_type]
+        if resource.instance_ami_type_generic == 'ubuntu':
+            install_efs_utils = ec2lm_commands.user_data_script['install_efs_utils'][resource.instance_ami_type_generic]
+            mount_efs = ec2lm_commands.user_data_script['mount_efs'][resource.instance_ami_type_generic]
 
         launch_script = f"""#!/bin/bash
 
