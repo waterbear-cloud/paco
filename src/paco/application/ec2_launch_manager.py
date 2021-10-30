@@ -962,6 +962,9 @@ fi
 EFS_MOUNT_FOLDER_LIST=./efs_mount_folder_list
 EFS_ID_LIST=./efs_id_list
 
+mkdir -p /root/tmp
+TMP_DIR=/root/tmp
+
 function process_mount_target()
 {{
     MOUNT_FOLDER=$1
@@ -971,15 +974,26 @@ function process_mount_target()
     EFS_ID=$(aws efs describe-file-systems --region $REGION --no-paginate --query "FileSystems[].{{Tags: Tags[?Key=='Paco-Stack-Name'].Value, FileSystemId: FileSystemId}} | [].{{stack: Tags[0], fs: FileSystemId}} | [?stack=='$EFS_STACK_NAME'].fs | [0]" | tr -d '"')
 
     # Setup the mount folder
+    set +e
+    # Verify we are mounting the correct EFS IDs
     if [ -e $MOUNT_FOLDER ] ; then
-        mv $MOUNT_FOLDER ${{MOUNT_FOLDER%%/}}.old
+        if mountpoint -q -- $MOUNT_FOLDER; then
+            mount |grep " on $MOUNT_FOLDER" |grep "$EFS_ID"
+            if [ $? -ne 0 ] ; then
+                echo "EFS: A new EFS_ID detected: unmounting folder: $MOUNT_FOLDER"
+                umount $MOUNT_FOLDER
+            else
+                echo "EFS: Folder already mounted: $MOUNT_FOLDER -> $EFS_ID"
+            fi
+        fi
+    else
+        mkdir -p $MOUNT_FOLDER
     fi
-    mkdir -p $MOUNT_FOLDER
-
+    set -e
     # Setup fstab
-    grep -v -E "^$EFS_ID:/" /etc/fstab >/tmp/fstab.efs_new
-    echo "$EFS_ID:/ $MOUNT_FOLDER efs defaults,_netdev,fsc 0 0" >>/tmp/fstab.efs_new
-    mv /tmp/fstab.efs_new /etc/fstab
+    grep -v -E "^$EFS_ID:/" /etc/fstab >${{TMP_DIR}}/fstab.efs_new
+    echo "$EFS_ID:/ $MOUNT_FOLDER efs defaults,_netdev,fsc 0 0" >>${{TMP_DIR}}/fstab.efs_new
+    mv ${{TMP_DIR}}/fstab.efs_new /etc/fstab
     chmod 0664 /etc/fstab
     echo "$MOUNT_FOLDER" >>$EFS_MOUNT_FOLDER_LIST".new"
     echo "$EFS_ID" >>$EFS_ID_LIST".new"
@@ -1014,8 +1028,8 @@ function disable_launch_bundle() {{
     if [ -e "$EFS_ID_LSIT" ] ; then
         for EFS_ID in $(cat $EFS_ID_LIST)
         do
-            grep -v -E "^$EFS_ID:/" /etc/fstab >/tmp/fstab.efs_new
-            mv /tmp/fstab.efs_new /etc/fstab
+            grep -v -E "^$EFS_ID:/" /etc/fstab >${{TMP_DIR}}/fstab.efs_new
+            mv ${{TMP_DIR}}/fstab.efs_new /etc/fstab
             chmod 0664 /etc/fstab
         done
         rm $EFS_ID_LIST

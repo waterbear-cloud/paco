@@ -60,14 +60,20 @@ apt install awscli -y
 		'amazon': 'yum install -y amazon-efs-utils cachefilesd',
 		'centos': 'yum install -y amazon-efs-utils cachefilesd',
 		'ubuntu': """
-    apt-get install cachefilesd git binutils make -y
-    LB_DIR=$(pwd)
-    cd /tmp
-    git clone https://github.com/aws/efs-utils
-    cd efs-utils/
-    ./build-deb.sh
-    apt-get -y install ./build/amazon-efs-utils*deb
-    cd ${LB_DIR}
+    dpkg -l amazon-efs-utils 2>/dev/null 2>&1
+    if [ $? -ne 0 ] ; then
+        echo "EFS: amazon-efs-utils: Installing package"
+        apt-get install cachefilesd git binutils make -y
+        LB_DIR=$(pwd)
+        cd /tmp
+        git clone https://github.com/aws/efs-utils
+        cd efs-utils/
+        sh ./build-deb.sh
+        apt-get -y install ./build/amazon-efs-utils*deb
+        cd ${LB_DIR}
+    else
+        echo "EFS: amazon-efs-utils package is already installed."
+    fi
 """
 	},
 	'install_cfn_init': {
