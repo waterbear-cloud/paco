@@ -142,6 +142,7 @@ class IAMUserAccountDelegates(StackTemplate):
                     }
                 )
 
+        self.deployment_pipeline_manaul_approval_permissions(pipeline_list, assume_role_res)
         self.deployment_pipeline_codepipeline_permissions(pipeline_list, assume_role_res)
         self.deployment_pipeline_codebuild_permissions(pipeline_list, assume_role_res)
 
@@ -257,6 +258,44 @@ class IAMUserAccountDelegates(StackTemplate):
                         readonly_arn_list.append(codebuild_arn)
         if len(readonly_arn_list) > 0:
             self.set_codebuild_permissions(readonly_arn_list, assume_role_res, 'DeploymentPipeline')
+
+    def deployment_pipeline_manaul_approval_permissions(self, pipeline_list, assume_role_res):
+        manual_approval_resource_list = []
+        for pipeline_ctx in pipeline_list:
+            if pipeline_ctx == None:
+                continue
+            pipeline = pipeline_ctx['pipeline']
+            for stage in [pipeline.source, pipeline.build, pipeline.deploy]:
+                if stage == None:
+                    continue
+                for stage_name in stage.keys():
+                    if stage[stage_name].type == 'ManualApproval' and pipeline_ctx['permission'].find('ManualApproval') != -1:
+                        pipeline_name = pipeline._stack.template.get_codepipeline_name()
+                        stage_type = stage.name.capitalize()
+                        manual_approval_resource_list.append(f'arn:aws:codepipeline:{self.aws_region}:{self.account_id}:{pipeline_name}:/{stage_type}/Approval')
+                        print(f'arn:aws:codepipeline:{self.aws_region}:{self.account_id}:{pipeline_name}:/{stage_type}/Approval\n')
+
+
+        statement_list = []
+        statement_list.append(
+            Statement(
+                Sid='CodePipelineManualApproval',
+                Effect=Allow,
+                Action=[
+                    Action('codepipeline', 'PutApprovalResult'),
+                ],
+                Resource=manual_approval_resource_list
+            )
+        )
+        managed_policy_res = troposphere.iam.ManagedPolicy(
+            title=self.create_cfn_logical_id_join(["CodePipelineManualApproval"]),
+            PolicyDocument=PolicyDocument(
+                Version="2012-10-17",
+                Statement=statement_list
+            ),
+            Roles=[ troposphere.Ref(assume_role_res) ]
+        )
+        self.template.add_resource(managed_policy_res)
 
     def init_codebuild_permission(self, permission_config, assume_role_res):
         """CodeBuild Web Console Permissions"""

@@ -1331,3 +1331,6 @@ class CodePipeline(StackTemplate):
     def get_bitbucket_codestar_connection_role_arn(self):
         codestar_connection_role_name = self.get_bitbucket_codestar_connection_role_name()
         return f'arn:aws:iam::{self.account_ctx.get_id()}:role/{codestar_connection_role_name}'
+
+    def get_codepipeline_name(self):
+        return self.res_name_prefix

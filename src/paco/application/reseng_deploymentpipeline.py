@@ -1281,6 +1281,8 @@ run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PH
                 return ref.resource._stack.template.pipeline_arn
             elif ref.resource_ref == 'notification_rule.arn':
                 return ref.resource._stack
+            elif ref.resource_ref == 'name':
+                return ref.resource._template.get_codepipeline_name()
 
         elif schemas.IDeploymentPipelineSourceCodeCommit.providedBy(ref.resource):
             # CodeCommit Source
