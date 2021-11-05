@@ -1,4 +1,4 @@
-from awacs.aws import Allow, Action, Principal, Statement, Condition, MultiFactorAuthPresent, PolicyDocument, StringEquals
+from awacs.aws import Allow, Action, Principal, Statement, Condition, MultiFactorAuthPresent, PolicyDocument, StringLike
 from awacs.aws import Bool as AWACSBool
 from awacs.sts import AssumeRole
 from getpass import getpass
@@ -7,6 +7,7 @@ from paco.cftemplates.cftemplates import StackTemplate
 from paco.core.exception import StackException
 from paco.core.exception import PacoErrorCode
 from paco.models.references import Reference
+from paco.models import schemas
 import troposphere
 import troposphere.cloudformation
 import troposphere.iam
@@ -121,6 +122,76 @@ class IAMUserAccountDelegates(StackTemplate):
                 Roles=[ troposphere.Ref(assume_role_res) ]
             )
             self.template.add_resource(managed_policy_res)
+
+
+    def init_systemsmanagersession_permission(self, permission_config, assume_role_res):
+        if 'ManagedPolicyArns' not in assume_role_res.properties.keys():
+            assume_role_res.properties['ManagedPolicyArns'] = []
+
+        resource_group_condition_list = []
+        for resource in permission_config.resources:
+            resource_ref = Reference(resource)
+            # Initialize The network environments that we need access into
+            resource_obj = resource_ref.get_model_obj(self.paco_ctx.project)
+            if schemas.IResourceGroup.providedBy(resource_obj):
+                resource_group_condition_list.append(
+                    StringLike({
+                        'ssm:resourceTag/Paco-Application-Group-Name': resource_obj.name
+                    })
+                )
+
+        if len(resource_group_condition_list) == 0:
+            return
+
+        statement_list = []
+        statement_list.append(
+            Statement(
+                Sid='SessionManagerStartSession',
+                Effect=Allow,
+                Action=[
+                    Action('ssm', 'StartSession'),
+                ],
+                Resource=[
+                    'arn:aws:ec2:*:*:instance/*',
+                    'arn:aws:ssm:*::document/AWS-StartPortForwardingSession'
+                ],
+                Condition=Condition(resource_group_condition_list)
+            )
+        )
+        statement_list.append(
+            Statement(
+                Sid='SessionManagerPortForward',
+                Effect=Allow,
+                Action=[
+                    Action('ssm', 'StartSession'),
+                ],
+                Resource=[
+                    'arn:aws:ssm:*::document/AWS-StartPortForwardingSession'
+                ]
+            )
+        )
+        statement_list.append(
+            Statement(
+                Sid='SessionManagerTerminateSession',
+                Effect=Allow,
+                Action=[
+                    Action('ssm', 'TerminateSession'),
+                    Action('ssm', 'ResumeSession'),
+                ],
+                Resource=[
+                    'arn:aws:ssm:*:*:session/${aws:username}-*'
+                ]
+            )
+        )
+        managed_policy_res = troposphere.iam.ManagedPolicy(
+            title=self.create_cfn_logical_id_join(["SystemsManagerSession"]),
+            PolicyDocument=PolicyDocument(
+                Version="2012-10-17",
+                Statement=statement_list
+            ),
+            Roles=[ troposphere.Ref(assume_role_res) ]
+        )
+        self.template.add_resource(managed_policy_res)
 
     def init_deploymentpipelines_permission(self, permission_config, assume_role_res):
         if 'ManagedPolicyArns' not in assume_role_res.properties.keys():
@@ -275,6 +346,9 @@ class IAMUserAccountDelegates(StackTemplate):
                         manual_approval_resource_list.append(f'arn:aws:codepipeline:{self.aws_region}:{self.account_id}:{pipeline_name}:/{stage_type}/Approval')
                         print(f'arn:aws:codepipeline:{self.aws_region}:{self.account_id}:{pipeline_name}:/{stage_type}/Approval\n')
 
+
+        if len(manual_approval_resource_list) == 0:
+            return
 
         statement_list = []
         statement_list.append(

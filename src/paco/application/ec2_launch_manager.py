@@ -1090,8 +1090,12 @@ statement:
 
 . {self.paco_base_path}/EC2Manager/ec2lm_functions.bash
 
+INSTANCE_AMI_TYPE={resource.instance_ami_type_generic}
+NVME_CLI=nvme-cli
+
 EBS_MOUNT_FOLDER_LIST=ebs_mount_folder_list
 EBS_VOLUME_UUID_LIST=ebs_volume_uuid_list
+LINUX_DEVICE=""
 
 # Attach EBS Volume
 function ec2lm_attach_ebs_volume() {{
@@ -1107,21 +1111,62 @@ function ec2lm_attach_ebs_volume() {{
     return 1
 }}
 
+
+function ec2lm_volume_linux_device() {{
+    if [ "$INSTANCE_AMI_TYPE" == "ubuntu" ] ; then
+        EBS_VOLUME_ID=$1
+        for DEVICE in $(lsblk -n -o NAME -p -d |grep -v loop)
+        do
+            DEVICE_VOLUME_ID="vol-"$(nvme id-ctrl -H $DEVICE |grep 'sn        : vol' | awk -F 'vol' '{{print $2}}')
+            if [ "$DEVICE_VOLUME_ID" == "$EBS_VOLUME_ID" ]; then
+                echo $DEVICE
+                return 0
+            fi
+        done
+        return 1
+    else
+        DEVICE=$2
+        OUTPUT=$(file -s $DEVICE)
+        if [[ $OUTPUT == *"No such file or directory"* ]] ; then
+            return 1
+        else
+            echo $DEVICE
+            return 0
+        fi
+    fi
+    return 1
+}}
+
 # Checks if a volume has been attached
 # ec2lm_volume_is_attached <device>
 # Return: 0 == True
 #         1 == False
 function ec2lm_volume_is_attached() {{
-    DEVICE=$1
-    OUTPUT=$(file -s $DEVICE)
-    if [[ $OUTPUT == *"No such file or directory"* ]] ; then
+    if [ "$INSTANCE_AMI_TYPE" == "ubuntu" ] ; then
+        EBS_VOLUME_ID=$1
+        for DEVICE in $(lsblk -n -o NAME -p -d |grep -v loop)
+        do
+            DEVICE_VOLUME_ID="vol-"$(nvme id-ctrl -H $DEVICE |grep 'sn        : vol' | awk -F 'vol' '{{print $2}}')
+            if [ "$DEVICE_VOLUME_ID" == "$EBS_VOLUME_ID" ]; then
+                echo "Made it!"
+                return 0
+            fi
+        done
         return 1
+    else
+        DEVICE=$2
+        OUTPUT=$(file -s $DEVICE)
+        if [[ $OUTPUT == *"No such file or directory"* ]] ; then
+            return 1
+        else
+            return 0
+        fi
     fi
     return 0
 }}
 
-# Checks if a volume has been attached
-# ec2lm_volume_is_attached <device>
+# Get the Volume UUID
+# ec2lm_get_volume_uuid <device>
 # Return: 0 == True
 #         1 == False
 function ec2lm_get_volume_uuid() {{
@@ -1150,9 +1195,9 @@ function process_volume_mount()
     fi
 
     # Setup the mount folder
-    if [ -e $MOUNT_FOLDER ] ; then
-        mv $MOUNT_FOLDER ${{MOUNT_FOLDER%%/}}.old
-    fi
+    # if [ -e $MOUNT_FOLDER ] ; then
+    #     mv $MOUNT_FOLDER ${{MOUNT_FOLDER%%/}}.old
+    # fi
     mkdir -p $MOUNT_FOLDER
 
     TIMEOUT_SECS=300
@@ -1163,39 +1208,46 @@ function process_volume_mount()
         echo "[ERROR] EC2LM: EBS: $OUTPUT"
         cat /tmp/ec2lm_attach.output
         exit 1
+    else
+        echo $OUTPUT
     fi
 
     # Initialize filesystem if blank
-    echo "EC2LM: EBS: Waiting for volume to become available: $EBS_DEVICE"
+    echo "EC2LM: EBS: Waiting for volume to become available: $EBS_VOLUMEID on $EBS_DEVICE"
     TIMEOUT_SECS=30
-    OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_volume_is_attached $EBS_DEVICE)
+    OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_volume_is_attached $EBS_VOLUME_ID $EBS_DEVICE)
     if [ $? -eq 1 ] ; then
         echo "EC2LM: EBS: Error: Unable to detect the attached volume $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE."
         echo "[ERROR] EC2LM: EBS: $OUTPUT"
         exit 1
     fi
 
+    LINUX_DEVICE=$(ec2lm_volume_linux_device $EBS_VOLUME_ID $EBS_DEVICE)
+
+    # LINUX_DEVICE is set in ec2lm_volume_is_attached()
+    echo "EC2LM: EBS: Initializing Volume $EBS_VOLUME_ID on linux device $LINUX_DEVICE"
+
     # Format: Make a filesystem if the device
-    FILE_FMT=$(file -s $EBS_DEVICE)
-    BLANK_FMT="$EBS_DEVICE: data"
+    FILE_FMT=$(file -s $LINUX_DEVICE)
+    BLANK_FMT="$LINUX_DEVICE: data"
     if [ "$FILE_FMT" == "$BLANK_FMT" ] ; then
         echo "EC2LM: EBS: Initializing EBS Volume with FS type $FILESYSTEM"
-        /sbin/mkfs -t $FILESYSTEM $EBS_DEVICE
+        /sbin/mkfs -t $FILESYSTEM $LINUX_DEVICE
     fi
 
     # Setup fstab
-    echo "EC2LM: EBS: Getting Volume UUID for $EBS_DEVICE"
+    echo "EC2LM: EBS: Getting Volume UUID for $LINUX_DEVICE"
     TIMEOUT_SECS=30
-    VOLUME_UUID=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_get_volume_uuid $EBS_DEVICE)
+    VOLUME_UUID=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_get_volume_uuid $LINUX_DEVICE)
     if [ $? -eq 1 ] ; then
-        echo "[ERROR] EC2LM: EBS: Unable to get volume UUID for $EBS_DEVICE"
+        echo "[ERROR] EC2LM: EBS: Unable to get volume UUID for $LINUX_DEVICE"
         echo "[ERROR] EC2LM: EBS: Error: $OUTPUT"
         /sbin/blkid
         exit 1
     fi
 
     # /etc/fstab entry
-    echo "EC2LM: EBS: $EBS_DEVICE UUID: $VOLUME_UUID"
+    echo "EC2LM: EBS: $LINUX_DEVICE UUID: $VOLUME_UUID"
     FSTAB_ENTRY="UUID=$VOLUME_UUID $MOUNT_FOLDER $FILESYSTEM defaults,nofail 0 2"
     echo "EC2LM: EBS: Configuring /etc/fstab: $FSTAB_ENTRY"
     grep -v -E "^UUID=$VOLUME_UUID" /etc/fstab >/tmp/fstab.ebs_new
@@ -1215,6 +1267,11 @@ function process_volume_mount()
 
 function run_launch_bundle()
 {{
+    # Initialize
+    if [ "$INSTANCE_AMI_TYPE" == "ubuntu" ] ; then
+        apt-get install nvme-cli -y
+        export NVME_CLI=nvme-cli
+    fi
     # Process Mounts
     :>$EBS_MOUNT_FOLDER_LIST".new"
     :>$EBS_VOLUME_UUID_LIST".new"

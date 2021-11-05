@@ -257,7 +257,7 @@ class IAMController(Controller):
             if permission_config not in permissions_by_account[account_name]:
                 permissions_by_account[account_name].append(permission_config)
 
-     # DeploymentPipelines
+    # DeploymentPipelines
     def init_deploymentpipelines_permission(self, permission_config, permissions_by_account):
         """
         Iterates over each pipeline reference and adds its permission config
@@ -289,7 +289,17 @@ class IAMController(Controller):
                     if permission_config not in permissions_by_account[account_name]:
                         permissions_by_account[account_name].append(permission_config)
 
-
+# DeploymentPipelines
+    def init_systemsmanagersession_permission(self, permission_config, permissions_by_account):
+        """
+        Iterates over each SystemsManagerSession resource reference and adds its permission config
+        to the map of permissions by account.
+        """
+        for resource_ref in permission_config.resources:
+            #resource_ref = Reference(resource)
+            account_name = resource_ref.split('paco.ref ')[1].split('.')[2]
+            if permission_config not in permissions_by_account[account_name]:
+                permissions_by_account[account_name].append(permission_config)
 
     def get_sdb_attribute_value(self, sdb_client, sdb_domain, item_name, attribute_name):
         attributes = sdb_client.get_attributes(
