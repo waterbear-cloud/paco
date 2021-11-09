@@ -343,8 +343,8 @@ class IAMUserAccountDelegates(StackTemplate):
                     if stage[stage_name].type == 'ManualApproval' and pipeline_ctx['permission'].find('ManualApproval') != -1:
                         pipeline_name = pipeline._stack.template.get_codepipeline_name()
                         stage_type = stage.name.capitalize()
-                        manual_approval_resource_list.append(f'arn:aws:codepipeline:{self.aws_region}:{self.account_id}:{pipeline_name}:/{stage_type}/Approval')
-                        print(f'arn:aws:codepipeline:{self.aws_region}:{self.account_id}:{pipeline_name}:/{stage_type}/Approval\n')
+                        manual_approval_resource_list.append(f'arn:aws:codepipeline:{self.aws_region}:{self.account_id}:{pipeline_name}/{stage_type}/Approval')
+                        # print(f'arn:aws:codepipeline:{self.aws_region}:{self.account_id}:{pipeline_name}/{stage_type}/Approval\n')
 
 
         if len(manual_approval_resource_list) == 0:
