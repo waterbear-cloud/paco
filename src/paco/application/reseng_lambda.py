@@ -15,12 +15,14 @@ class LambdaResourceEngine(ResourceEngine):
     def init_resource(self):
         # is this for Lambda@Edge?
         edge_enabled = False
+        if self.resource.region != None:
+            self.aws_region = self.resource.region
         if self.resource.edge != None and self.resource.edge.is_enabled():
             edge_enabled = True
 
         # Create function execution role
         role_name = 'iam_role'
-        if self.resource.iam_role.enabled == False:
+        if self.resource.iam_role and self.resource.iam_role.enabled == False:
             role_config_yaml = """
 instance_profile: false
 path: /
