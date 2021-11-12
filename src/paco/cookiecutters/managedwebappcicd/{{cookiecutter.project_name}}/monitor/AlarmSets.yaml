@@ -62,7 +62,6 @@ ASG:
       classification: health
       severity: critical
       metric_name: "StatusCheckFailed"
-      namespace: AWS/EC2
       period: 60
       evaluation_periods: 5
       statistic: Maximum
@@ -73,7 +72,6 @@ ASG:
       classification: performance
       severity: critical
       metric_name: "CPUUtilization"
-      namespace: AWS/EC2
       period: 60
       evaluation_periods: 30
       threshold: 90

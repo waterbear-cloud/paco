@@ -299,7 +299,11 @@ HINT: Ensure that the monitoring.log_sets for the resource is enabled and that t
                     alarm_export_dict['Namespace'] = "Paco/" + prefixed_log_group_name
                 else:
                     # if not supplied default to the Namespace for the Resource type
-                    alarm_export_dict['Namespace'] = vocabulary.cloudwatch[resource.type]['namespace']
+                    if 'namespace_by_metric_name' in vocabulary.cloudwatch[resource.type].keys() and alarm.metric_name in vocabulary.cloudwatch[resource.type]['namespace_by_metric_name'].keys():
+                        alarm_export_dict['Namespace'] = vocabulary.cloudwatch[resource.type]['namespace_by_metric_name'][alarm.metric_name]
+                    else:
+                        alarm_export_dict['Namespace'] = vocabulary.cloudwatch[resource.type]['namespace']
+
             else:
                 # Use the Namespace as directly supplied
                 alarm_export_dict['Namespace'] = alarm.namespace
