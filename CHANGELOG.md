@@ -1,11 +1,48 @@
 Changelog for Paco
 ==================
 
-9.3.20 (unreleased)
+9.3.20 (2021-11-23)
 -------------------
 
-- Nothing changed yet.
+### Fixed
 
+- EC2LM: EFS utils will only be installed if it does not already exist
+
+- EC2LMS: EFS: Moved tmp dir to root folder for CIS hardened ubuntu images.
+
+- EC2LMS: EFS: Mounting of EFS drives made idempotent
+
+- Fixed Ubuntu EFS launch bundle install
+
+- Fixed CodeDeploy agent install on CIS hardened imges.
+
+- Fixed external resource support to Route53 HostedZones
+
+### Added
+
+- Added ec2lm_set_dns_cname() function to EC2LM for more specific DNS modifications
+
+- Added ec2lm_set_dns() function to EC2LM
+
+- Added EC2LM support for ubuntu_18_cis ami type
+
+- Added region support to Lambda functions.
+
+- Implemented SystemsManagerSession IAM policy
+
+### Changed
+
+- Improved Release Phase deployment script reliability.
+
+- Automated ManualApproval resource.IAM DeploymentPipeline permissions
+
+- Automated namespace for AlarmSets for ASG
+
+- Fixed manual approval IAM DeploymentPipeline policy.
+
+- Fixed manual approval IAM DeploymentPipeline policy.
+
+- Fixed EBS EC2 Launch Bundle to work with Ubuntu nvme drives
 
 9.3.19 (2021-10-04)
 -------------------
