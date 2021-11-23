@@ -1104,7 +1104,7 @@ function ec2lm_attach_ebs_volume() {{
 
     aws ec2 attach-volume --region $REGION --volume-id $EBS_VOLUME_ID --instance-id $INSTANCE_ID --device $EBS_DEVICE 2>/tmp/ec2lm_attach.output
     RES=$?
-    if [ $? -eq 0 ] ; then
+    if [ $RES -eq 0 ] ; then
         echo "EC2LM: EBS: Successfully attached $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE"
         return 0
     fi
@@ -1213,8 +1213,8 @@ function process_volume_mount()
     fi
 
     # Initialize filesystem if blank
-    echo "EC2LM: EBS: Waiting for volume to become available: $EBS_VOLUMEID on $EBS_DEVICE"
-    TIMEOUT_SECS=30
+    echo "EC2LM: EBS: Waiting for volume to become available: $EBS_VOLUME_ID on $EBS_DEVICE"
+    TIMEOUT_SECS=120
     OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_volume_is_attached $EBS_VOLUME_ID $EBS_DEVICE)
     if [ $? -eq 1 ] ; then
         echo "EC2LM: EBS: Error: Unable to detect the attached volume $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE."
