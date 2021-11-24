@@ -542,13 +542,14 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         self.pipeline.configuration.resolve_ref_obj = self
         self.pipeline_account_ctx = self.paco_ctx.get_account_context(self.pipeline.configuration.account)
 
-        # S3 Artifacts Bucket:
-        s3_ctl = self.paco_ctx.get_controller('S3')
-        s3_bucket = get_model_obj_from_ref(self.pipeline.configuration.artifacts_bucket, self.paco_ctx.project)
-        self.artifacts_bucket_meta['obj'] = s3_bucket
-        self.artifacts_bucket_meta['ref'] = self.pipeline.configuration.artifacts_bucket
-        self.artifacts_bucket_meta['arn'] = s3_ctl.get_bucket_arn(self.artifacts_bucket_meta['ref'])
-        self.artifacts_bucket_meta['name'] = s3_bucket.get_bucket_name()
+        if self.resource.configuration.disable_codepipeline == False:
+            # S3 Artifacts Bucket:
+            s3_ctl = self.paco_ctx.get_controller('S3')
+            s3_bucket = get_model_obj_from_ref(self.pipeline.configuration.artifacts_bucket, self.paco_ctx.project)
+            self.artifacts_bucket_meta['obj'] = s3_bucket
+            self.artifacts_bucket_meta['ref'] = self.pipeline.configuration.artifacts_bucket
+            self.artifacts_bucket_meta['arn'] = s3_ctl.get_bucket_arn(self.artifacts_bucket_meta['ref'])
+            self.artifacts_bucket_meta['name'] = s3_bucket.get_bucket_name()
 
         # Resource can be in a Service or an Environment
         if hasattr(self, 'env_ctx'):
@@ -560,40 +561,41 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             self.deploy_region = self.aws_region
             self.base_aws_name = self.stack_group.get_aws_name()
 
-        # KMS Key
-        kms_refs = {}
-        # Application Account
-        kms_refs['paco.ref accounts.{}'.format(self.account_ctx.name)] = None
+        if self.resource.configuration.disable_codepipeline == False:
+            # KMS Key
+            kms_refs = {}
+            # Application Account
+            kms_refs['paco.ref accounts.{}'.format(self.account_ctx.name)] = None
 
-        # CodeCommit Account(s)
-        # ToDo: allows ALL CodeCommit accounts access, filter out non-CI/CD CodeCommit repos?
-        for codecommit_group in self.paco_ctx.project['resource']['codecommit'].values():
-            for repo in codecommit_group.values():
-                kms_refs[repo.account] = None
+            # CodeCommit Account(s)
+            # ToDo: allows ALL CodeCommit accounts access, filter out non-CI/CD CodeCommit repos?
+            for codecommit_group in self.paco_ctx.project['resource']['codecommit'].values():
+                for repo in codecommit_group.values():
+                    kms_refs[repo.account] = None
 
-        for key in kms_refs.keys():
-            self.kms_crypto_principle_list.append(
-                "paco.sub 'arn:aws:iam::${%s}:root'" % (key)
-            )
+            for key in kms_refs.keys():
+                self.kms_crypto_principle_list.append(
+                    "paco.sub 'arn:aws:iam::${%s}:root'" % (key)
+                )
 
-        # KMS stack
-        kms_config_dict = {
-            'admin_principal': {
-                'aws': [ "!Sub 'arn:aws:iam::${{AWS::AccountId}}:root'" ]
-            },
-            'crypto_principal': {
-                'aws': self.kms_crypto_principle_list
+            # KMS stack
+            kms_config_dict = {
+                'admin_principal': {
+                    'aws': [ "!Sub 'arn:aws:iam::${{AWS::AccountId}}:root'" ]
+                },
+                'crypto_principal': {
+                    'aws': self.kms_crypto_principle_list
+                }
             }
-        }
-        self.kms_stack = self.stack_group.add_new_stack(
-            self.aws_region,
-            self.resource,
-            cftemplates.KMS,
-            account_ctx=self.pipeline_account_ctx,
-            stack_tags=self.stack_tags,
-            support_resource_ref_ext='kms',
-            extra_context={'kms_config_dict': kms_config_dict}
-        )
+            self.kms_stack = self.stack_group.add_new_stack(
+                self.aws_region,
+                self.resource,
+                cftemplates.KMS,
+                account_ctx=self.pipeline_account_ctx,
+                stack_tags=self.stack_tags,
+                support_resource_ref_ext='kms',
+                extra_context={'kms_config_dict': kms_config_dict}
+            )
 
         # Initialize Stages
         if self.pipeline.stages != None:
@@ -613,20 +615,21 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             self.init_stage(self.pipeline.build)
             self.init_stage(self.pipeline.deploy)
 
-        # CodePipeline
-        self.pipeline._stack = self.stack_group.add_new_stack(
-            self.aws_region,
-            self.resource,
-            cftemplates.CodePipeline,
-            account_ctx=self.pipeline_account_ctx,
-            stack_tags=self.stack_tags,
-            extra_context={
-                'base_aws_name': self.base_aws_name,
-                'deploy_region': self.deploy_region,
-                'app_name': self.app.name,
-                'artifacts_bucket_name': self.artifacts_bucket_meta['name']
-            },
-        )
+        if self.resource.configuration.disable_codepipeline == False:
+            # CodePipeline
+            self.pipeline._stack = self.stack_group.add_new_stack(
+                self.aws_region,
+                self.resource,
+                cftemplates.CodePipeline,
+                account_ctx=self.pipeline_account_ctx,
+                stack_tags=self.stack_tags,
+                extra_context={
+                    'base_aws_name': self.base_aws_name,
+                    'deploy_region': self.deploy_region,
+                    'app_name': self.app.name,
+                    'artifacts_bucket_name': self.artifacts_bucket_meta['name']
+                },
+            )
 
         # Add Hooks to the CodePipeline Stack
         if self.pipeline.source != None:
@@ -639,51 +642,54 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         # Create Notifications Rules CFTemplate
         # Get the SNS topic to attach
         rules_arn_ref_list = []
-        env_name = '.'.join(self.app_engine.app.paco_ref_parts.split('.')[0:2])
-        notification_rules_stack = self.stack_group.add_new_stack(
-            self.aws_region,
-            self.resource,
-            cftemplates.NotificationRules,
-            account_ctx=self.pipeline_account_ctx,
-            stack_tags=self.stack_tags,
-            support_resource_ref_ext='notification_rules',
-            extra_context={'env_name': env_name, 'app_name': self.app.name, 'rules_arn_ref_list': rules_arn_ref_list}
-        )
+        if self.resource.configuration.disable_codepipeline == False:
+            env_name = '.'.join(self.app_engine.app.paco_ref_parts.split('.')[0:2])
+            notification_rules_stack = self.stack_group.add_new_stack(
+                self.aws_region,
+                self.resource,
+                cftemplates.NotificationRules,
+                account_ctx=self.pipeline_account_ctx,
+                stack_tags=self.stack_tags,
+                support_resource_ref_ext='notification_rules',
+                extra_context={'env_name': env_name, 'app_name': self.app.name, 'rules_arn_ref_list': rules_arn_ref_list}
+            )
 
-        # Stack hook to upload DeploymentPipeline configuration
-        # to the Paco S3 work bucket for use by external services
-        # notification rule arn associated with SNS topics and Slack Channels
-        self.add_notification_rules_stack_hooks(notification_rules_stack, rules_arn_ref_list)
+            # Stack hook to upload DeploymentPipeline configuration
+            # to the Paco S3 work bucket for use by external services
+            # notification rule arn associated with SNS topics and Slack Channels
+            self.add_notification_rules_stack_hooks(notification_rules_stack, rules_arn_ref_list)
 
-        # Add CodeBuild Role ARN to KMS Key principal now that the role is created
-        kms_config_dict['crypto_principal']['aws'] = self.kms_crypto_principle_list
-        kms_stack = self.stack_group.add_new_stack(
-            self.aws_region,
-            self.resource,
-            cftemplates.KMS,
-            account_ctx=self.pipeline_account_ctx,
-            stack_tags=self.stack_tags,
-            support_resource_ref_ext='kms',
-            extra_context={'kms_config_dict': kms_config_dict}
-        )
-        kms_stack.set_dependency(self.kms_stack, 'post-pipeline')
+        if self.resource.configuration.disable_codepipeline == False:
+            # Add CodeBuild Role ARN to KMS Key principal now that the role is created
+            kms_config_dict['crypto_principal']['aws'] = self.kms_crypto_principle_list
+            kms_stack = self.stack_group.add_new_stack(
+                self.aws_region,
+                self.resource,
+                cftemplates.KMS,
+                account_ctx=self.pipeline_account_ctx,
+                stack_tags=self.stack_tags,
+                support_resource_ref_ext='kms',
+                extra_context={'kms_config_dict': kms_config_dict}
+            )
+            kms_stack.set_dependency(self.kms_stack, 'post-pipeline')
 
         # Get the ASG Instance Role ARN
         if not self.pipeline.is_enabled():
             return
 
-        self.artifacts_bucket_policy_resource_arns.append(
-            "paco.sub '${%s}'" % (self.pipeline.paco_ref + '.codepipeline_role.arn')
-        )
+        if self.resource.configuration.disable_codepipeline == False:
+            self.artifacts_bucket_policy_resource_arns.append(
+                "paco.sub '${%s}'" % (self.pipeline.paco_ref + '.codepipeline_role.arn')
+            )
 
-        cpbd_s3_bucket_policy = {
-            'aws': self.artifacts_bucket_policy_resource_arns,
-            'action': [ 's3:*' ],
-            'effect': 'Allow',
-            'resource_suffix': [ '/*', '' ]
-        }
-        # the S3 Bucket Policy can be added to by multiple DeploymentPipelines
-        s3_ctl.add_bucket_policy(self.artifacts_bucket_meta['ref'], cpbd_s3_bucket_policy)
+            cpbd_s3_bucket_policy = {
+                'aws': self.artifacts_bucket_policy_resource_arns,
+                'action': [ 's3:*' ],
+                'effect': 'Allow',
+                'resource_suffix': [ '/*', '' ]
+            }
+            # the S3 Bucket Policy can be added to by multiple DeploymentPipelines
+            s3_ctl.add_bucket_policy(self.artifacts_bucket_meta['ref'], cpbd_s3_bucket_policy)
 
     def init_stage_action_github_source(self, action_config):
         "Initialize a GitHub.Source action"
@@ -1206,8 +1212,9 @@ run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PH
         if not action_config.is_enabled():
             return
 
-        self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (action_config.paco_ref + '.project_role.arn'))
-        self.kms_crypto_principle_list.append("paco.sub '${%s}'" % (action_config.paco_ref+'.project_role.arn'))
+        if self.resource.configuration.disable_codepipeline == False:
+            self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (action_config.paco_ref + '.project_role.arn'))
+            self.kms_crypto_principle_list.append("paco.sub '${%s}'" % (action_config.paco_ref+'.project_role.arn'))
 
         stack_hooks = None
         if action_config.release_phase != None and len(action_config.release_phase.ecs) > 0:

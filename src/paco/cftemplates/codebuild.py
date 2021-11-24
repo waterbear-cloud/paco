@@ -1,6 +1,7 @@
 from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action, Condition, StringEquals, StringLike
 from awacs.sts import AssumeRole
 from paco.cftemplates.cftemplates import StackTemplate
+from paco.core.exception import PacoException
 from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
 from paco.models.references import get_model_obj_from_ref, Reference
@@ -35,18 +36,19 @@ class CodeBuild(StackTemplate):
             description='The name to prefix resource names.',
             value=self.res_name_prefix,
         )
-        self.cmk_arn_param = self.create_cfn_parameter(
-            param_type='String',
-            name='CMKArn',
-            description='The KMS CMK Arn of the key used to encrypt deployment artifacts.',
-            value=pipeline_config.paco_ref + '.kms.arn',
-        )
-        self.artifacts_bucket_name_param = self.create_cfn_parameter(
-            param_type='String',
-            name='ArtifactsBucketName',
-            description='The name of the S3 Bucket to create that will hold deployment artifacts',
-            value=artifacts_bucket_name,
-        )
+        if pipeline_config.configuration.disable_codepipeline == False:
+            self.cmk_arn_param = self.create_cfn_parameter(
+                param_type='String',
+                name='CMKArn',
+                description='The KMS CMK Arn of the key used to encrypt deployment artifacts.',
+                value=pipeline_config.paco_ref + '.kms.arn',
+            )
+            self.artifacts_bucket_name_param = self.create_cfn_parameter(
+                param_type='String',
+                name='ArtifactsBucketName',
+                description='The name of the S3 Bucket to create that will hold deployment artifacts',
+                value=artifacts_bucket_name,
+            )
         self.codebuild_project_res = self.create_codebuild_cfn(
             template,
             pipeline_config,
@@ -154,25 +156,37 @@ class CodeBuild(StackTemplate):
         )
 
         # Project Policy
-        policy_statements = [
-            Statement(
-                Sid='S3Access',
-                Effect=Allow,
-                Action=[
-                    Action('s3', 'PutObject'),
-                    Action('s3', 'PutObjectAcl'),
-                    Action('s3', 'GetObject'),
-                    Action('s3', 'GetObjectAcl'),
-                    Action('s3', 'ListBucket'),
-                    Action('s3', 'DeleteObject'),
-                    Action('s3', 'GetBucketPolicy'),
-                    Action('s3', 'HeadObject'),
-                ],
-                Resource=[
-                    troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}'),
-                    troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}/*'),
-                ]
-            ),
+        policy_statements = []
+        if pipeline_config.configuration.disable_codepipeline == False:
+            policy_statements.extend([
+                Statement(
+                    Sid='S3Access',
+                    Effect=Allow,
+                    Action=[
+                        Action('s3', 'PutObject'),
+                        Action('s3', 'PutObjectAcl'),
+                        Action('s3', 'GetObject'),
+                        Action('s3', 'GetObjectAcl'),
+                        Action('s3', 'ListBucket'),
+                        Action('s3', 'DeleteObject'),
+                        Action('s3', 'GetBucketPolicy'),
+                        Action('s3', 'HeadObject'),
+                    ],
+                    Resource=[
+                        troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}'),
+                        troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}/*'),
+                    ]
+                ),
+                Statement(
+                    Sid='KMSCMK',
+                    Effect=Allow,
+                    Action=[
+                        Action('kms', '*')
+                    ],
+                    Resource=[ troposphere.Ref(self.cmk_arn_param) ]
+                )]
+            )
+        policy_statements.append(
             Statement(
                 Sid='CloudWatchLogsAccess',
                 Effect=Allow,
@@ -182,16 +196,8 @@ class CodeBuild(StackTemplate):
                     Action('logs', 'PutLogEvents'),
                 ],
                 Resource=[ 'arn:aws:logs:*:*:*' ]
-            ),
-            Statement(
-                Sid='KMSCMK',
-                Effect=Allow,
-                Action=[
-                    Action('kms', '*')
-                ],
-                Resource=[ troposphere.Ref(self.cmk_arn_param) ]
-            ),
-        ]
+            )
+        )
 
         release_phase = action_config.release_phase
         if release_phase != None and release_phase.ecs != None:
@@ -395,15 +401,20 @@ class CodeBuild(StackTemplate):
         # Environment Variables
         codebuild_env_vars = [
             {
-                'Name': 'ArtifactsBucket',
-                'Value': troposphere.Ref(self.artifacts_bucket_name_param),
-            }, {
                 'Name': 'DeploymentEnvironmentName',
                 'Value': troposphere.Ref(deploy_env_name_param)
-            }, {
-                'Name': 'KMSKey',
-                'Value': troposphere.Ref(self.cmk_arn_param)
-            }]
+            }
+        ]
+        if pipeline_config.configuration.disable_codepipeline == False:
+            codebuild_env_vars.extend([
+                {
+                    'Name': 'ArtifactsBucket',
+                    'Value': troposphere.Ref(self.artifacts_bucket_name_param),
+                }, {
+                    'Name': 'KMSKey',
+                    'Value': troposphere.Ref(self.cmk_arn_param)
+                }
+            ])
         # If ECS Release Phase, then add the config to the environment
         release_phase = action_config.release_phase
         if release_phase != None and release_phase.ecs != None:
@@ -420,13 +431,6 @@ class CodeBuild(StackTemplate):
                 idx += 1
 
         # CodeBuild: Environment
-        environment = troposphere.codebuild.Environment(
-            Type = 'LINUX_CONTAINER',
-            ComputeType = troposphere.Ref(compute_type_param),
-            Image = troposphere.Ref(image_param),
-            EnvironmentVariables = codebuild_env_vars,
-            PrivilegedMode = action_config.privileged_mode
-        )
         source = troposphere.codebuild.Source(
             Type='CODEPIPELINE',
         )
@@ -436,23 +440,54 @@ class CodeBuild(StackTemplate):
                 BuildSpec=action_config.buildspec,
             )
 
-        project_res = troposphere.codebuild.Project(
-            title='CodeBuildProject',
-            template=template,
-            Name=troposphere.Ref(self.resource_name_prefix_param),
-            Description=troposphere.Ref('AWS::StackName'),
-            ServiceRole=troposphere.GetAtt('CodeBuildProjectRole', 'Arn'),
-            EncryptionKey=troposphere.Ref(self.cmk_arn_param),
-            Artifacts=troposphere.codebuild.Artifacts(
-                Type='CODEPIPELINE'
-            ),
-            Environment=environment,
-            Source=source,
-            TimeoutInMinutes=troposphere.Ref(timeout_mins_param),
-            Tags=troposphere.codebuild.Tags(
+
+        project_dict = {
+            'Name': troposphere.Ref(self.resource_name_prefix_param),
+            'Artifacts': {
+                'Type': 'NO_ARTIFACTS'
+            },
+            'Description': troposphere.Ref('AWS::StackName'),
+            'ServiceRole': troposphere.GetAtt('CodeBuildProjectRole', 'Arn'),
+            'Environment': {
+                'Type': 'LINUX_CONTAINER',
+                'ComputeType': troposphere.Ref(compute_type_param),
+                'Image': troposphere.Ref(image_param),
+                'EnvironmentVariables': codebuild_env_vars,
+                'PrivilegedMode': action_config.privileged_mode
+            },
+            'Source': {
+                'Type': 'NO_SOURCE'
+            },
+            'TimeoutInMinutes': troposphere.Ref(timeout_mins_param),
+            'Tags': troposphere.codebuild.Tags(
                 Name=troposphere.Ref(self.resource_name_prefix_param)
             )
+        }
+
+        if action_config.buildspec:
+            project_dict['Source']['BuildSpec'] = action_config.buildspec
+
+        if pipeline_config.configuration.disable_codepipeline == False:
+            project_dict['EncryptionKey'] = troposphere.Ref(self.cmk_arn_param)
+            project_dict['Artifacts'] = {
+                'Type': 'CODEPIPELINE'
+            }
+            project_dict['Source']['Type'] = 'CODEPIPELINE'
+        elif action_config.source.github != None:
+            project_dict['Source']['Type'] = 'GITHUB'
+            project_dict['Source']['Location'] = action_config.source.github.location
+            project_dict['Source']['ReportBuildStatus'] = action_config.source.github.report_build_status
+        else:
+            raise PacoException("CodeBuild source must be configured when Codepipeline is disabled.")
+
+        if action_config.concurrent_build_limit > 0:
+            project_dict['ConcurrentBuildLimit'] = action_config.concurrent_build_limit
+
+        project_res = troposphere.codebuild.Project.from_dict(
+            'CodeBuildProject',
+            project_dict
         )
+        self.template.add_resource(project_res)
 
         self.create_output(
             title='ProjectArn',
