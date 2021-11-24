@@ -1,11 +1,14 @@
 Changelog for Paco
 ==================
 
-9.3.21 (unreleased)
+9.3.21 (2021-11-24)
 -------------------
 
-- Nothing changed yet.
+### Added
 
+- Implemented 'disable_codepipeline' to IDeploymentPipelineConfiguration to allow stage resource to be build independently.
+
+- Implemented CodeBuild GitHub source configuration
 
 9.3.20 (2021-11-23)
 -------------------
