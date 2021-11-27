@@ -540,7 +540,10 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
             return
         self.pipeline.resolve_ref_obj = self
         self.pipeline.configuration.resolve_ref_obj = self
-        self.pipeline_account_ctx = self.paco_ctx.get_account_context(self.pipeline.configuration.account)
+        if self.pipeline.configuration.account != None:
+            self.pipeline_account_ctx = self.paco_ctx.get_account_context(self.pipeline.configuration.account)
+        else:
+            self.pipeline_account_ctx = self.account_ctx
 
         if self.resource.configuration.disable_codepipeline == False:
             # S3 Artifacts Bucket:

@@ -281,7 +281,7 @@ class PacoContext(object):
             account_ref = self.get_ref(account_ref)
             return self.get_account_context(account_ref=account_ref)
         elif account_name == None:
-            raise InvalidAccountName("Get AccountContext failed. Must specify a valid account name")
+            raise InvalidAccountName("Get AccountContext failed. The account name provided is None.")
 
         if account_name in self.accounts:
             return self.accounts[account_name]

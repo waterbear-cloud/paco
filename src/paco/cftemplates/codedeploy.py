@@ -44,7 +44,11 @@ class CodeDeploy(StackTemplate):
         self.set_parameter('CodeDeployStyleOption', action_config.deploy_style_option)
         self.set_parameter('CodeDeployConfigType', action_config.minimum_healthy_hosts.type)
         self.set_parameter('CodeDeployConfigValue', action_config.minimum_healthy_hosts.value)
-        self.set_parameter('ToolsAccountId', pipeline_config.configuration.account+'.id')
+        if pipeline_config.configuration.account == None:
+          account_id_ref = f'paco.ref accounts.{self.account_ctx.get_name()}'
+        else:
+          account_id_ref = pipeline_config.configuration.account
+        self.set_parameter('PipelineAccountId', account_id_ref + '.id')
         deploy_kms_ref = pipeline_config.paco_ref + '.kms.arn'
         self.set_parameter('CMKArn', deploy_kms_ref)
         self.set_parameter('TargetInstanceRoleName', action_config.auto_scaling_group+'.instance_iam_role.name')
@@ -102,8 +106,8 @@ Parameters:
     Description: The name of the target group that will be managed by CodeDeploy during deployment
     Type: String
 
-  ToolsAccountId:
-    Description: The AWS Account ID of the Tools account
+  PipelineAccountId:
+    Description: The AWS Account ID of the CodePipeline
     Type: String
 
   CMKArn:
@@ -137,7 +141,7 @@ Resources:
           - Effect: Allow
             Principal:
               AWS:
-                - !Ref ToolsAccountId
+                - !Ref PipelineAccountId
             Action:
               - sts:AssumeRole
       Path: /
