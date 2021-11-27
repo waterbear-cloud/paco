@@ -125,13 +125,24 @@ class PacoBuckets():
         "True if the S3 Bucket for the account and region exists"
         bucket_name = self.get_bucket_name(account_ctx, region)
         s3_client = account_ctx.get_aws_client('s3', region)
-        try:
-            s3_client.get_bucket_location(Bucket=bucket_name)
-        except ClientError as error:
-            if error.response['Error']['Code'] != 'NoSuchBucket':
-                raise error
-            else:
-                return False
+        retry_count = 0
+        while True:
+            try:
+                s3_client.get_bucket_location(Bucket=bucket_name)
+            except ClientError as error:
+                if error.response['Error']['Code'] == 'ExpiredToken':
+                    retry_count += 1
+                    s3_client = account_ctx.get_aws_client('s3', region, force=True)
+                    print(f"paco_buckets: is_bucket_created: S3 Client Token Expired: Retry number {retry_count}")
+                    if retry_count > 10:
+                        print(f"paco_buckets: is_bucket_created: S3 client token refresh tried too many times, aborting.")
+                        raise error
+                    continue
+                elif error.response['Error']['Code'] != 'NoSuchBucket':
+                    raise error
+                else:
+                    return False
+            break
         return True
 
     def is_object_in_bucket(self, s3_key, account_ctx, region):
