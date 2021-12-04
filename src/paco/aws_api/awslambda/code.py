@@ -56,10 +56,15 @@ def upload_lambda_code(paco_buckets, zip_output, artifact_name, account_ctx, aws
 
 def update_lambda_code(resource, function_name, src, account_ctx, aws_region):
     "Update Lambda function code"
-    src_dir = Path(src)
     lambda_client = account_ctx.get_aws_client('lambda', aws_region)
     artifact_name = f'{resource.paco_ref_parts}.zip'
-    zip_output, md5_hash = create_zip_artifact(artifact_name, src_dir)
+    if not src.endswith('.zip'):
+        src_dir = Path(src)
+        artifact_name = f'{resource.paco_ref_parts}.zip'
+        zip_output, md5_hash = create_zip_artifact(artifact_name, src_dir)
+    else:
+        zip_output = src
+
     with open(zip_output,"rb") as f:
         zip_binary = f.read()
     lambda_client.update_function_code(
