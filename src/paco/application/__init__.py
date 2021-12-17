@@ -25,6 +25,7 @@ from paco.application.reseng_ecscluster import ECSClusterResourceEngine
 from paco.application.reseng_ecsservices import ECSServicesResourceEngine
 from paco.application.reseng_ecrrepository import ECRRepositoryResourceEngine
 from paco.application.reseng_iamuser import IAMUserResourceEngine
+from paco.application.reseng_iamrole import IAMRoleResourceEngine
 from paco.application.reseng_pinpointapplication import PinpointApplicationResourceEngine
 from paco.application.reseng_cognito import CognitoIdentityPoolResourceEngine, CognitoUserPoolResourceEngine
 from paco.application.reseng_dynamodb import DynamoDBResourceEngine

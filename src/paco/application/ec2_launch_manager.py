@@ -169,6 +169,7 @@ class EC2LaunchManager():
         s3_client = self.account_ctx.get_aws_client('s3')
         bundle_s3_key = os.path.join("LaunchBundles", bundle.package_filename)
         s3_client.upload_file(bundle.package_path, bucket_name, bundle_s3_key)
+        # print(f'Uploading bundle: {bundle.name}: {bundle.cache_id}')
 
     def stack_hook_cache_id(self, hook, bundle):
         "Cache method to return a bundle's cache id"
@@ -184,15 +185,11 @@ class EC2LaunchManager():
         stack_hooks = StackHooks()
         stack_hooks.add(
             name='UploadBundle.'+bundle.name,
-            stack_action='create',
+            stack_action=['create', 'update'],
             stack_timing='post',
             hook_method=self.upload_bundle_stack_hook,
             cache_method=self.stack_hook_cache_id,
             hook_arg=bundle
-        )
-        stack_hooks.add(
-            'UploadBundle.'+bundle.name, 'update', 'post',
-            self.upload_bundle_stack_hook, self.stack_hook_cache_id, bundle
         )
         s3_ctl = self.paco_ctx.get_controller('S3')
         s3_ctl.add_stack_hooks(resource_ref=bundle.bucket_ref, stack_hooks=stack_hooks)
@@ -1101,6 +1098,15 @@ LINUX_DEVICE=""
 function ec2lm_attach_ebs_volume() {{
     EBS_VOLUME_ID=$1
     EBS_DEVICE=$2
+    INSTANCE_ID=$3
+
+    set +e
+    ATTACHED_INSTANCE_ID=$(aws ec2 describe-volumes --volume-ids $EBS_VOLUME_ID --region $REGION --query "Volumes[*].Attachments[*].[InstanceId]" --filter Name=volume-id,Values=$EBS_VOLUME_ID --output text)
+    set -e
+    if [ "$ATTACHED_INSTANCE_ID" == "$INSTANCE_ID" ] ; then
+        echo "EC2LM: EBS: $EBS_VOLUME_ID is already attached to $INSTANCE_ID as $EBS_DEVICE"
+        return 0
+    fi
 
     aws ec2 attach-volume --region $REGION --volume-id $EBS_VOLUME_ID --instance-id $INSTANCE_ID --device $EBS_DEVICE 2>/tmp/ec2lm_attach.output
     RES=$?
@@ -1202,7 +1208,7 @@ function process_volume_mount()
 
     TIMEOUT_SECS=300
     echo "EC2LM: EBS: Attaching $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE: Timeout = $TIMEOUT_SECS"
-    OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_attach_ebs_volume $EBS_VOLUME_ID $EBS_DEVICE)
+    OUTPUT=$(ec2lm_timeout $TIMEOUT_SECS ec2lm_attach_ebs_volume $EBS_VOLUME_ID $EBS_DEVICE $INSTANCE_ID)
     if [ $? -eq 1 ] ; then
         echo "[ERROR] EC2LM: EBS: Unable to attach $EBS_VOLUME_ID to $INSTANCE_ID as $EBS_DEVICE"
         echo "[ERROR] EC2LM: EBS: $OUTPUT"
