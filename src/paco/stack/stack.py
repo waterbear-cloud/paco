@@ -939,11 +939,11 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
     @property
     def cfn_client(self):
         if hasattr(self, '_cfn_client') == False:
-            force = False
-            if hasattr(self, "_cfn_client_expired") and self._cfn_client_expired == True:
-                force = True
-                self._cfn_client_expired = False
-            self._cfn_client = self.account_ctx.get_aws_client('cloudformation', self.aws_region, force=force)
+            #force = False
+            #if hasattr(self, "_cfn_client_expired") and self._cfn_client_expired == True:
+            #    force = True
+            #    self._cfn_client_expired = False
+            self._cfn_client = self.account_ctx.get_aws_client('cloudformation', self.aws_region)
         return self._cfn_client
 
     def set_dependency(self, stack, dependency_name):
@@ -1225,12 +1225,10 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
     def handle_token_expired(self, location=''):
         """Resets the client handler to force a session reload. location is used for debugging
         to help identify the places where token expiry was failing."""
-        if hasattr(self, '_cfn_client') == True:
-            delattr(self, '_cfn_client')
-        self._cfn_client_expired = True
         if location != '':
             location = '_' + location
         self.log_action("Token", "Retry" + location, "Expired")
+        self._cfn_client = self.account_ctx.get_aws_client('cloudformation', self.aws_region, force=True)
 
     def set_template(self, template):
         self.template = template
@@ -1510,11 +1508,14 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
 
         # skip the UPDATE action if the last applied cache id is equal to cache id
         if self.is_stack_cached() == True:
+
             if self.change_protected:
                 self.log_action("Provision", "Protected")
-            else:
-                self.log_action("Provision", "Cache")
+                return
+            self.log_action("Provision", "Cache")
             return
+        elif self.change_protected:
+            print("Warning: The Change Protected resource is not cached.")
 
         self.get_status()
         if self.is_failed():

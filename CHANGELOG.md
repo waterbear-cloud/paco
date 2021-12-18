@@ -1,11 +1,22 @@
 Changelog for Paco
 ==================
 
-9.3.22 (unreleased)
+9.3.22 (2021-12-17)
 -------------------
 
-- Nothing changed yet.
+### Added
 
+- Implemented IAM Role resources
+
+- lambda deploy command can now upload pre-made .zip files if the path ends in .zip.
+
+- Added TokenExpired retry support to paco_buckets.is_bucket_created()
+
+- Added TokenExpired retry support to paco_buckets.is_bucket_created()
+
+### Changed
+
+- DeploymentPipeline will now default to environments account when one is not specified.
 
 9.3.21 (2021-11-24)
 -------------------
