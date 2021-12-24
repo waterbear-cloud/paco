@@ -56,6 +56,34 @@ class LaunchBundle():
         self.bundle_folder = self.name
         self.package_filename = str.join('.', [self.bundle_folder, 'tgz'])
         self.package_path = os.path.join(self.bundles_path, self.package_filename)
+        self.cache_id_filename = str.join('.', [self.bundle_folder, 'cache_id'])
+        self.package_cache_id_path = os.path.join(self.bundles_path, self.cache_id_filename)
+
+    def is_cached(self):
+        if os.path.isfile(self.package_cache_id_path):
+            last_cache_id = None
+            with open(self.package_cache_id_path, "r") as cache_fd:
+                last_cache_id = cache_fd.read()
+            if last_cache_id == self.cache_id:
+                return True
+        return False
+
+    def upload(self, paco_ctx, account_ctx):
+
+        if not paco_ctx.nocache and self.is_cached():
+            return
+
+        s3_ctl = paco_ctx.get_controller('S3')
+        bucket_name = s3_ctl.get_bucket_name(self.bucket_ref)
+        s3_client = account_ctx.get_aws_client('s3')
+
+        # Bundle
+        bundle_s3_key = os.path.join("LaunchBundles", self.package_filename)
+        response = s3_client.upload_file(self.package_path, bucket_name, bundle_s3_key)
+        # Cache ID
+        utils.write_to_file(self.bundles_path, self.cache_id_filename, self.cache_id)
+        cache_id_s3_key = os.path.join("LaunchBundles", self.cache_id_filename)
+        response = s3_client.upload_file(self.package_cache_id_path, bucket_name, cache_id_s3_key)
 
     def set_launch_script(self, launch_script, enabled=True):
         """Set the script run to launch the bundle. By convention, this file
@@ -158,18 +186,13 @@ class EC2LaunchManager():
         ec2lm_functions_cache_id = ''
         if bucket_name in self.ec2lm_functions_script.keys():
             ec2lm_functions_cache_id = utils.md5sum(str_data=self.ec2lm_functions_script[bucket_name])
-        if cache_context not in self.cache_id:
+        if cache_context not in self.cache_id.keys():
             return ec2lm_functions_cache_id
         return self.cache_id[cache_context] + ec2lm_functions_cache_id
 
     def upload_bundle_stack_hook(self, hook, bundle):
         "Uploads the launch bundle to an S3 bucket"
-        s3_ctl = self.paco_ctx.get_controller('S3')
-        bucket_name = s3_ctl.get_bucket_name(bundle.bucket_ref)
-        s3_client = self.account_ctx.get_aws_client('s3')
-        bundle_s3_key = os.path.join("LaunchBundles", bundle.package_filename)
-        s3_client.upload_file(bundle.package_path, bucket_name, bundle_s3_key)
-        # print(f'Uploading bundle: {bundle.name}: {bundle.cache_id}')
+        bundle.upload(self.paco_ctx, self.account_ctx)
 
     def stack_hook_cache_id(self, hook, bundle):
         "Cache method to return a bundle's cache id"
@@ -179,7 +202,7 @@ class EC2LaunchManager():
         """Adds stack hook which will upload launch bundle to an S3 bucket when
         the stack is created or updated."""
         cache_context = '.'.join([bundle.resource.app_name, bundle.resource.group_name, bundle.resource.name])
-        if cache_context not in self.cache_id:
+        if cache_context not in self.cache_id.keys():
             self.cache_id[cache_context] = ''
         self.cache_id[cache_context] += bundle.cache_id
         stack_hooks = StackHooks()
@@ -232,20 +255,6 @@ class EC2LaunchManager():
             region=self.aws_region,
             cache_id=cache_id
         )
-        # ssm_client = self.account_ctx.get_aws_client('ssm', aws_region=self.aws_region)
-        # ssm_log_group_name = prefixed_name(resource, 'paco_ssm', self.paco_ctx.legacy_flag)
-        # ssm_client.send_command(
-        #     Targets=[{
-        #         'Key': 'tag:aws:cloudformation:stack-name',
-        #         'Values': [resource.stack.get_name()]
-        #     },],
-        #     DocumentName='paco_ec2lm_update_instance',
-        #     Parameters={ 'CacheId': [cache_id] },
-        #     CloudWatchOutputConfig={
-        #         'CloudWatchLogGroupName': ssm_log_group_name,
-        #         'CloudWatchOutputEnabled': True,
-        #     },
-        # )
 
     def ec2lm_update_instances_cache(self, hook, bucket_resource):
         "Cache method for EC2LM resource"
@@ -401,12 +410,22 @@ function ec2lm_timeout() {{
 
 }}
 
+# Sync EC2LM Folder
+function ec2lm_sync_folder() {{
+    echo "EC2LM: Folder: Sync Begin: aws s3 cp --recursive --region=$REGION s3://{ec2lm_bucket_name} $EC2LM_FOLDER"
+    aws s3 cp --recursive --region=$REGION s3://{ec2lm_bucket_name} $EC2LM_FOLDER
+    echo "EC2LM: Folder: Sync End"
+}}
+
 # Launch Bundles
 function ec2lm_launch_bundles() {{
     CACHE_ID=$1
+    SYNC_FLAG=$2
 
     export EC2LM_IGNORE_CACHE=false
     export EC2LM_ON_LAUNCH=false
+    EC2LM_CACHE_FILE=$EC2LM_FOLDER/ec2lm_cache_id.md5
+    EC2LM_CACHE_FILE_PROCESSED=$EC2LM_FOLDER/ec2lm_cache_id.md5.processed
     if [ "$CACHE_ID" == "on_launch" ] ; then
         export EC2LM_IGNORE_CACHE=true
         export EC2LM_ON_LAUNCH=true
@@ -414,13 +433,21 @@ function ec2lm_launch_bundles() {{
 
     # Compare new EC2LM contents cache id with existing
     OLD_CACHE_ID="none"
-    if [ -e "$EC2LM_FOLDER/ec2lm_cache_id.md5" ] ; then
-        OLD_CACHE_ID=$(<$EC2LM_FOLDER/ec2lm_cache_id.md5)
+    if [ -e "$EC2LM_CACHE_FILE_PROCESSED" ] ; then
+        OLD_CACHE_ID=$(<$EC2LM_CACHE_FILE_PROCESSED)
     fi
+
+    echo "EC2LM: -----------------------------------------------------"
+    echo "EC2LM: Launch Bundles Start: $(date)"
+    echo "EC2LM: CACHE_ID=$CACHE_ID"
+    echo "EC2LM: OLD_CACHE_ID=$OLD_CACHE_ID"
+    echo "EC2LM: EC2LM_IGNORE_CACHE=$EC2LM_IGNORE_CACHE"
+    echo "EC2LM: EC2LM_ON_LAUNCH=$EC2LM_ON_LAUNCH"
 
     if [ "$EC2LM_IGNORE_CACHE" == "false" ] ; then
         if [ "$CACHE_ID" == "$OLD_CACHE_ID" ] ; then
-            echo "Cache Id unchanged. Skipping ec2lm_launch_bundles."
+            echo "EC2LM: Cache Id unchanged. Skipping ec2lm_launch_bundles."
+            echo "EC2LM: Launch Bundles End: $(date)"
             return
         fi
     fi
@@ -435,11 +462,16 @@ function ec2lm_launch_bundles() {{
     flock -n 100
     if [ $? -ne 0 ] ; then
         echo “[ERROR] EC2LM LaunchBundles: Unable to obtain EC2LM lock.”
+        echo "EC2LM: Launch Bundles End: $(date)"
         return 1
     fi
 
     # Synchronize latest bundle contents
-    aws s3 sync s3://{ec2lm_bucket_name}/ --region=$REGION $EC2LM_FOLDER
+    if [ "$SYNC_FLAG" != "nosync" ] ; then
+        ec2lm_sync_folder
+    else
+        echo "EC2LM: Launch Bundles: Folder sync skipped"
+    fi
 
     # Run launch bundles
     mkdir -p $EC2LM_FOLDER/LaunchBundles/
@@ -450,22 +482,29 @@ function ec2lm_launch_bundles() {{
     do
         BUNDLE_FOLDER=$BUNDLE_NAME
         BUNDLE_PACKAGE=$BUNDLE_NAME".tgz"
-        BUNDLE_PACKAGE_CACHE_ID=$BUNDLE_PACKAGE".cache"
+        BUNDLE_PACKAGE_CACHE_ID=$BUNDLE_NAME".cache_id"
+        BUNDLE_PACKAGE_CACHE_ID_PROCESSED=$BUNDLE_PACKAGE_CACHE_ID".processed"
         if [ ! -f "$BUNDLE_PACKAGE" ] ; then
             echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Skipping missing package: $BUNDLE_PACKAGE"
             continue
         fi
         # Check if this bundle has changed
-        NEW_BUNDLE_CACHE_ID=$(md5sum $BUNDLE_PACKAGE | awk '{{print $1}}')
+        NEW_BUNDLE_CACHE_ID="cache id file is missing"
+
+        if [ -e $BUNDLE_PACKAGE_CACHE_ID ] ; then
+            NEW_BUNDLE_CACHE_ID=$(cat $BUNDLE_PACKAGE_CACHE_ID)
+        fi
         if [ "$EC2LM_IGNORE_CACHE" == "false" ] ; then
-            if [ -f $BUNDLE_PACKAGE_CACHE_ID ] ; then
-                OLD_BUNDLE_CACHE_ID=$(cat $BUNDLE_PACKAGE_CACHE_ID)
+            if [ -e $BUNDLE_PACKAGE_CACHE_ID_PROCESSED ] ; then
+                OLD_BUNDLE_CACHE_ID=$(cat $BUNDLE_PACKAGE_CACHE_ID_PROCESSED)
                 if [ "$NEW_BUNDLE_CACHE_ID" == "$OLD_BUNDLE_CACHE_ID" ] ; then
-                    echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Skipping unchanged bundle: $BUNDLE_PACKAGE: $NEW_BUNDLE_CACHE_ID == $OLD_BUNDLE_CACHE_ID"
+                    echo "EC2LM: LaunchBundles: Skipping cached bundle: $BUNDLE_NAME: $BUNDLE_PACKAGE: $NEW_BUNDLE_CACHE_ID == $OLD_BUNDLE_CACHE_ID"
                     continue
                 fi
             fi
         fi
+        echo "EC2LM: ==== $BUNDLE_PACKAGE"
+        echo "EC2LM: SSHAccess: Begin"
         echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Unpacking $BUNDLE_PACKAGE"
         tar xvfz $BUNDLE_PACKAGE
         chown -R root.root $BUNDLE_FOLDER
@@ -476,9 +515,12 @@ function ec2lm_launch_bundles() {{
         # Save the Bundle Cache ID after launch completion
         echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Saving new cache id: $NEW_BUNDLE_CACHE_ID"
         cd ..
-        echo -n "$NEW_BUNDLE_CACHE_ID" >$BUNDLE_PACKAGE_CACHE_ID
-        echo "EC2LM: LaunchBundles: $BUNDLE_NAME: Done"
+        cp -f $BUNDLE_PACKAGE_CACHE_ID $BUNDLE_PACKAGE_CACHE_ID_PROCESSED
+        echo "EC2LM: ========"
     done
+    echo "EC2LM: Storing new cache id: $CACHE_ID"
+    cp $EC2LM_CACHE_FILE $EC2LM_CACHE_FILE_PROCESSED
+    echo "EC2LM: Launch Bundles End: $(date)"
 }}
 
 # Instance Tags
@@ -1671,7 +1713,12 @@ statement:
                             "runCommand": [
                                 '#!/bin/bash',
                                 f'. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash',
-                                'ec2lm_launch_bundles ' + '{{CacheId}}' + '>>/var/log/paco/ec2lm.log',
+                                # Sync the folder
+                                f'ec2lm_sync_folder >>/var/log/paco/ec2lm.log',
+                                # Reload the ec2lm_functions.bash just in case it has changed
+                                f'. {self.paco_base_path}/EC2Manager/ec2lm_functions.bash',
+                                # Pass in 'nosync' because we just synced above
+                                'ec2lm_launch_bundles ' + '{{CacheId}}' + ' nosync >>/var/log/paco/ec2lm.log',
                             ]
                         }
                     }
@@ -1727,14 +1774,18 @@ AUTH_CONTENTS='{auth_key_contents}'
 
 function run_launch_bundle() {{
     # Remove everything after '# Autogenerated by Paco'
+    echo "EC2LM: SSHAccess: Updating SSH authentication file: $AUTH_KEY_FILE"
     sed -i '/# Autogenerated by Paco - do not edit after this line/Q' $AUTH_KEY_FILE
     # append Paco public keys
     echo -e "$AUTH_CONTENTS" >> $AUTH_KEY_FILE
+    echo "EC2LM: SSHAccess: End"
 }}
 
 function disable_launch_bundle() {{
     # Remove everything after '# Autogenerated by Paco'
+    echo "EC2LM: SSHAccess: Disabling Paco SSH authentication: $AUTH_KEY_FILE"
     sed -i '/# Autogenerated by Paco - do not edit after this line/Q' $AUTH_KEY_FILE
+    echo "EC2LM: SSHAccess: End"
 }}
 """
         ssh_lb.set_launch_script(launch_script, ssh_enabled)
