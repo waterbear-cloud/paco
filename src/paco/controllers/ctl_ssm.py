@@ -80,6 +80,8 @@ class SSMController(Controller):
         )
         for instance in ec2_response['Reservations'][0]['Instances']:
             instance_id = instance['InstanceId']
+            if instance['State']['Name'] != 'Running':
+                continue
             while True:
                 # TODO: Needs a try for InvocationDoesNotExist Exception
                 try:
@@ -90,7 +92,7 @@ class SSMController(Controller):
                 except Exception as e:
                     # An instance may need more time if we get here, try again.
                     # breakpoint()
-                    print(f"{e}")
+                    print(f"{instance_id}: {e}")
                     break
                 if command_response['Status'] not in ('Pending', 'InProgress', 'Delayed'):
                     if command_response['Status'] == 'Success':

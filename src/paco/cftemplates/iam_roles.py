@@ -212,11 +212,8 @@ Outputs:
         # Role
         role_path_param_name = self.get_cf_resource_name_prefix(role_id) + "RolePath"
         iam_role_table['role_path_param_name'] = role_path_param_name
-        if role_config.global_role_name:
-            iam_role_table['role_name'] = role_config.role_name
-        else:
-            # Hashed name to avoid conflicts between environments, etc.
-            iam_role_table['role_name'] = self.gen_iam_role_name("Role", role_ref, role_id)
+        # Hashed name to avoid conflicts between environments, etc.
+        iam_role_table['role_name'] = self.gen_iam_role_name("Role", role)
         iam_role_table['cf_resource_name_prefix'] = self.get_cf_resource_name_prefix(role_id)
 
         # Assume Role Principal
@@ -254,7 +251,7 @@ Outputs:
 
         # Instance Profile
         if role_config.instance_profile == True:
-            iam_role_table['profile_name'] = self.gen_iam_role_name("Profile", role_ref, role_id)
+            iam_role_table['profile_name'] = self.gen_iam_role_name("Profile", role)
             iam_role_table['instance_profile'] = iam_profile_fmt.format(iam_role_table)
         else:
             iam_role_table['instance_profile'] = ""
@@ -273,9 +270,12 @@ Outputs:
         template_table['outputs_yaml'] = outputs_yaml
         self.set_template(template_fmt.format(template_table))
 
-    def gen_iam_role_name(self, role_type, role_ref, role_id):
+    def gen_iam_role_name(self, role_type, role):
         "Generate a name valid in CloudFormation"
-        iam_context_hash = md5sum(str_data=role_ref)[:8].upper()
+        if role.global_role_name == True:
+            return f'{role.role_name}-{role_type[0]}'
+        role_id = self.resource.name + '-' + role.name
+        iam_context_hash = md5sum(str_data=role.paco_ref_parts)[:8].upper()
         role_name = self.create_resource_name_join(
             name_list=[iam_context_hash, role_type[0], role_id],
             separator='-',

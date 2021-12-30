@@ -103,10 +103,9 @@ class RoleContext():
             support_resource_ref_ext=role_ext,
         )
         self.role_template = self.role_stack.template
-        role_id = self.resource.name + '-' + self.role.name
-        self.role_name = self.role_template.gen_iam_role_name("Role", self.role.paco_ref_parts, role_id)
+        self.role_name = self.role_template.gen_iam_role_name("Role", self.role)
         self.role_arn = "arn:aws:iam::{0}:role/{1}".format(self.account_ctx.get_id(), self.role_name)
-        role_profile_name = self.role_template.gen_iam_role_name("Profile", self.role.paco_ref_parts, role_id)
+        role_profile_name = self.role_template.gen_iam_role_name("Profile", self.role)
         self.role_profile_arn = "arn:aws:iam::{0}:instance-profile/{1}".format(self.account_ctx.get_id(), role_profile_name)
 
     def aws_name(self):

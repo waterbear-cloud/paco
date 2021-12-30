@@ -31,6 +31,8 @@ class VPCEndpoints(StackTemplate):
             # Generate a RouteTable Ids
             for segment_id in endpoint.segments:
                 for az_idx in range(1, network_config.availability_zones+1):
+                    if endpoint.availability_zone != 'all' and str(az_idx) != endpoint.availability_zone:
+                        continue
                     # Route Table: TODO: Not needed until we support GATEWAY endpoint types
                     # route_table_id_param_name = self.create_cfn_logical_id_join(
                     #     str_list=['RouteTable', segment_id, 'AZ', str(az_idx)],
