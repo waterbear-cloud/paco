@@ -28,6 +28,8 @@ class VPCEndpoints(StackTemplate):
             value=f'{network_config.paco_ref}.vpc.id'
         )
         for (endpoint_name, endpoint) in self.resource.endpoints.items():
+            if endpoint.is_enabled() == False:
+                continue
             # Generate a RouteTable Ids
             for segment_id in endpoint.segments:
                 for az_idx in range(1, network_config.availability_zones+1):
