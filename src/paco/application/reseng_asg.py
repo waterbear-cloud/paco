@@ -369,10 +369,7 @@ statement:
         },
         "metrics": {
                 "append_dimensions": {
-                        "AutoScalingGroupName": "${aws:AutoScalingGroupName}",
-                        "ImageId": "${aws:ImageId}",
-                        "InstanceId": "${aws:InstanceId}",
-                        "InstanceType": "${aws:InstanceType}"
+                        "AutoScalingGroupName": "${aws:AutoScalingGroupName}"
                 },
                 "metrics_collected": {
                         "LogicalDisk": {
