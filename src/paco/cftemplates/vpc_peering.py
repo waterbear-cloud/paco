@@ -1,6 +1,6 @@
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.models.locations import get_parent_by_interface
-from paco.models import schemas
+from paco.models import schemas, references
 import troposphere
 import troposphere.ec2
 import troposphere.route53
@@ -35,18 +35,20 @@ class VPCPeering(StackTemplate):
         any_peering_enabled = False
         for peer in vpc_config.peering.keys():
             peer_config = vpc_config.peering[peer]
-            if peer_config.is_enabled():
+            if peer_config.is_enabled() and peer_config.peer_type == 'requester':
                 any_peering_enabled = True
             else:
                 continue
+
+            if peer_config.network_environment != None:
+                peer_config = self.get_peer_config(peer_config)
+
             vpc_peering_connection_res = troposphere.ec2.VPCPeeringConnection(
                 'VPCPeeringConnection' + peer.title(),
                 PeerOwnerId = peer_config.peer_account_id,
                 PeerRegion = peer_config.peer_region,
                 PeerVpcId = peer_config.peer_vpcid,
-                PeerRoleArn = 'arn:aws:iam::{}:role/{}'.format(
-                    peer_config.peer_account_id, peer_config.peer_role_name
-                ),
+                PeerRoleArn = f'arn:aws:iam::{peer_config.peer_account_id}:role/{peer_config.peer_role_name}',
                 VpcId = troposphere.Ref(vpc_id_param)
             )
 
@@ -71,4 +73,22 @@ class VPCPeering(StackTemplate):
                     self.template.add_resource(peer_route_res)
 
         self.set_enabled(any_peering_enabled)
+
+    def get_peer_config(self, peer_config):
+        # Get Config
+        netenv_ref = references.Reference(peer_config.network_environment + '.network')
+        netenv_config = netenv_ref.resolve(self.paco_ctx.project)
+
+        # Peer Account ID
+        peer_config.peer_account_id = self.paco_ctx.get_ref(netenv_config.aws_account + '.id')
+
+        # Peer Region
+        peer_config.peer_region = netenv_ref.region
+
+        # Peer VPC Id
+        peer_config.peer_vpcid = self.paco_ctx.get_ref(netenv_config.vpc.paco_ref + '.id')
+
+        # Peer Role name is not yet automated and needs manual configuration
+
+        return peer_config
 

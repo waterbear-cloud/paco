@@ -1249,6 +1249,7 @@ run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PH
             stack_tags=self.stack_tags,
             stack_hooks=stack_hooks,
             extra_context={
+                'env_ctx': self.env_ctx,
                 'base_aws_name': self.base_aws_name,
                 'app_name': self.app.name,
                 'action_config': action_config,

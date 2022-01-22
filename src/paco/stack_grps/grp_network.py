@@ -1,11 +1,17 @@
+from paco import utils
+from paco.core.yaml import YAML
+from paco.models import schemas, iam
+from paco.models.locations import get_parent_by_interface
+from paco.models.references import Reference
 from paco.stack import StackOrder, Stack, StackGroup, StackTags
-from paco.models import schemas
 from pprint import pprint
 import paco.cftemplates
 import paco.models.networks
 import paco.models.loader
-from paco.models.locations import get_parent_by_interface
-from paco import utils
+import zope
+
+yaml=YAML()
+yaml.default_flow_sytle = False
 
 class NetworkStackGroup(StackGroup):
     """StackGroup to manage all the stacks for a Network: VPC, NAT Gateway, VPC Peering, Security Groups, Segments"""
@@ -131,6 +137,15 @@ class NetworkStackGroup(StackGroup):
             for peer_id in peering_config.keys():
                 peer_config = vpc_config.peering[peer_id]
                 peer_config.resolve_ref_obj = self
+                # Add role to the target network account
+                if peer_config.network_environment != None and peer_config.peer_type == 'accepter':
+                    netenv_ref = Reference(peer_config.network_environment + '.network')
+                    requester_netenv_config = netenv_ref.resolve(self.paco_ctx.project)
+                    requester_account_id = self.paco_ctx.get_ref(requester_netenv_config.aws_account + '.id')
+                    accepter_vpc_id = self.paco_ctx.get_ref(vpc_config.paco_ref+'.id')
+                    # Only create the role if we are cross account
+                    if self.account_ctx.id != requester_account_id:
+                        self.gen_vpc_peering_accepter_role(peer_config, vpc_config, accepter_vpc_id, requester_account_id)
             self.peering_stack = self.add_new_stack(
                 self.region,
                 vpc_config,
@@ -178,6 +193,72 @@ class NetworkStackGroup(StackGroup):
 
     def get_segment_stack(self, segment_id):
         return self.segment_dict[segment_id]
+
+    def gen_vpc_peering_accepter_role(self, peer_config, vpc_config, accepter_vpc_id, requester_account_id):
+        iam_ctl = self.paco_ctx.get_controller('IAM')
+        accepter_region = self.region
+        accepter_account_id = self.account_ctx.id
+
+        role_yaml = f"""
+assume_role_policy:
+  effect: Allow
+  aws:
+    - '{requester_account_id}'
+instance_profile: false
+path: /
+policies:
+  - name: root
+    statement:
+      - effect: Allow
+        action:
+          - ec2:AcceptVpcPeeringConnection
+      - effect: Allow
+        action:
+          - ec2:AcceptVpcPeeringConnection
+        condition:
+          StringEquals:
+            ec2:AccepterVpc: placeholder
+        resource:
+          - 'arn:aws:ec2:{accepter_region}:{accepter_account_id}:vpc-peering-connection/*'
+"""
+
+        # condition:
+        #   StringEquals:
+        #     'ec2:AccepterVpc': 'arn:aws:ec2:{accepter_region}:{accepter_account_id}:vpc/{accepter_vpc_id}'
+
+
+        role_config_dict = yaml.load(role_yaml)
+        role_config_dict['policies'][0]['statement'][1]['condition'] = {
+            'StringEquals': {
+                 'ec2:AccepterVpc': { "Fn::Sub" : [ f'arn:aws:ec2:{accepter_region}:{accepter_account_id}:vpc/${{VpcId}}', { "VpcId": {"Ref" : "VpcId"} } ] }
+            }
+        }
+        role_config = iam.Role('accepter_role', peer_config)
+        role_config.apply_config(role_config_dict)
+        role_config.enabled = True
+        role_config.role_name = 'Peer-Accepter'
+
+        role_config.policies[0].statement[0].resource = [f"!Sub 'arn:aws:ec2:{accepter_region}:{accepter_account_id}:vpc/${{VpcId}}'"]
+
+        # IAM Roles Parameters
+        iam_role_params = [{
+            'key': 'VpcId',
+            'value': vpc_config.paco_ref+'.id',
+            'type': 'String',
+            'description': 'Acceptor VPC ID'
+        }]
+
+        iam_ctl.add_role(
+            account_ctx=self.account_ctx,
+            region=self.region,
+            resource=peer_config,
+            role=role_config,
+            iam_role_id=f'VPC-Peer-{peer_config.name}-Accepter',
+            stack_group=self,
+            stack_tags=self.stack_tags,
+            template_params=iam_role_params
+        )
+        peer_config.peer_role_name = iam_ctl.role_name(role_config.paco_ref_parts)
 
     def resolve_ref(self, ref):
         if ref.raw.endswith('network.vpc.id'):

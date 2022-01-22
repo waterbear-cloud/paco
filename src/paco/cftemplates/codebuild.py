@@ -13,12 +13,12 @@ import troposphere.sns
 
 
 class CodeBuild(StackTemplate):
-    def __init__(self, stack, paco_ctx, base_aws_name, app_name, action_config, artifacts_bucket_name):
+    def __init__(self, stack, paco_ctx, env_ctx, base_aws_name, app_name, action_config, artifacts_bucket_name):
         pipeline_config = stack.resource
         config_ref = action_config.paco_ref_parts
         super().__init__(stack, paco_ctx, iam_capabilities=["CAPABILITY_NAMED_IAM"])
         self.set_aws_name('CodeBuild', self.resource_group_name, self.resource.name)
-
+        self.env_ctx = env_ctx
         # Troposphere Template Initialization
         self.init_template('Deployment: CodeBuild')
         template = self.template
@@ -482,6 +482,54 @@ class CodeBuild(StackTemplate):
 
         if action_config.concurrent_build_limit > 0:
             project_dict['ConcurrentBuildLimit'] = action_config.concurrent_build_limit
+
+        if action_config.vpc_config != None:
+            vpc_config = action_config.vpc_config
+            vpc_id_param = self.create_cfn_parameter(
+                name='VPC',
+                param_type='AWS::EC2::VPC::Id',
+                description='The VPC Id',
+                value='paco.ref netenv.{}.<environment>.<region>.network.vpc.id'.format(self.env_ctx.netenv.name),
+            )
+
+            security_group_list = []
+            for sg_ref in vpc_config.security_groups:
+                ref = Reference(sg_ref)
+                sg_param_name = self.gen_cf_logical_name('SecurityGroupId'+ref.parts[-2]+ref.parts[-1])
+                sg_param = self.create_cfn_parameter(
+                    name=sg_param_name,
+                    param_type='String',
+                    description='Security Group Id',
+                    value=sg_ref + '.id',
+                )
+                security_group_list.append(troposphere.Ref(sg_param))
+
+            # security_group_list_param = self.create_cfn_ref_list_param(
+            #     param_type='List<AWS::EC2::SecurityGroup::Id>',
+            #     name='SecurityGroupList',
+            #     description='List of security group ids to attach to CodeBuild.',
+            #     value=vpc_config.security_groups,
+            #     ref_attribute='id',
+            # )
+            subnet_list = []
+            for segment_ref in vpc_config.segments:
+                segment_name = segment_ref.split('.')[-1]
+                segment_param = self.create_cfn_parameter(
+                    name=segment_name,
+                    param_type='List<AWS::EC2::Subnet::Id>',
+                    description=f'VPC Subnet Id List for CodeBuild VPC Config',
+                    value=segment_ref + '.subnet_id_list'
+                )
+                subnet_list.append(troposphere.Ref(segment_param))
+
+            if len(subnet_list) == 0:
+                raise PacoException("CodeBuild VPC Config must have at least one segment defined.")
+
+            project_dict['VpcConfig'] = {
+                'VpcId': troposphere.Ref(vpc_id_param),
+                'SecurityGroupIds': security_group_list,
+                'Subnets': subnet_list
+            }
 
         project_res = troposphere.codebuild.Project.from_dict(
             'CodeBuildProject',

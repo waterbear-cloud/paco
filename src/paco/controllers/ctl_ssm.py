@@ -105,7 +105,7 @@ class SSMController(Controller):
                             print(f"Command stderr: {instance_id}: {command_response['StandardErrorContent']}")
                     break
 
-# Install the Agent
+    # Send SSM Command
     def send_command(self, account_ctx, region, resource, parameters, targets, document_name):
         ssm_client = account_ctx.get_aws_client('ssm', aws_region=region)
         ssm_log_group_name = prefixed_name(resource, 'paco_ssm', self.paco_ctx.legacy_flag)
