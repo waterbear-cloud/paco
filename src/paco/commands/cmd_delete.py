@@ -23,6 +23,7 @@ def delete_command(
     disable_validation,
     quiet_changes_only,
     hooks_only,
+    cfn_lint,
     config_scope,
     home='.'
 ):
@@ -38,6 +39,7 @@ def delete_command(
         disable_validation,
         quiet_changes_only,
         hooks_only,
+        cfn_lint,
         config_scope,
         home
     )

@@ -10,6 +10,7 @@ from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
 from paco.stack.interfaces import IStack, ICloudFormationStack
 from paco.utils import md5sum, dict_of_dicts_merge, list_to_comma_string, write_to_file
+from pprint import pprint
 from shutil import copyfile
 from deepdiff import DeepDiff
 from zope.interface import implementer
@@ -18,6 +19,7 @@ import os.path
 import pathlib
 import re
 import ruamel.yaml
+import subprocess
 import sys
 
 
@@ -386,6 +388,7 @@ class BaseStack():
         self.support_resource_ref_ext = support_resource_ref_ext
         self.dependency_stack = None
         self.dependency_group = False
+        self.template_synced = False
         if hooks == None:
             self.hooks = StackHooks(self)
         else:
@@ -978,6 +981,8 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
                 print("WARNING: Template is reaching size limit of 1 MB: Current size: {} bytes ".format(yaml_path.stat().st_size))
                 print("template: {}".format(yaml_path))
 
+        return yaml_path
+
     def set_parameter(
         self,
         param_key,
@@ -1319,23 +1324,28 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
         Creates or updates the CloudFormation template body to a Paco Bucket
         Returns a template URL to object in the S3 Bucket
         """
-        template_region = self.aws_region
-        if self.paco_ctx.project.shared_state != None:
-            if self.paco_ctx.project.shared_state.cloudformation_region != None:
-                template_region = self.paco_ctx.project.shared_state.cloudformation_region
-        s3_key = f"Paco/CloudFormationTemplates/{self.get_name()}.yaml"
-        bucket_name = self.paco_ctx.paco_buckets.upload_fileobj(
-            file_contents=self.template.body,
-            s3_key=s3_key,
-            account_ctx=self.account_ctx,
-            region=template_region
-        )
-        # https://paco-waterbear-networks-tools-usw2-wbpaco88.s3-us-west-2.amazonaws.com/Paco/CloudFormationTemplates/NE-anet-dev-Secrets-SecretsManager.yaml
-        if self.aws_region == 'us-east-1':
-            # us-east-1 is a 'special' S3 region that does not include the region in the URL
-            return f"https://{bucket_name}.s3.amazonaws.com/{s3_key}"
-        else:
-            return f"https://{bucket_name}.s3-{template_region}.amazonaws.com/{s3_key}"
+        if self.template_synced == False:
+            template_region = self.aws_region
+            if self.paco_ctx.project.shared_state != None:
+                if self.paco_ctx.project.shared_state.cloudformation_region != None:
+                    template_region = self.paco_ctx.project.shared_state.cloudformation_region
+            s3_key = f"Paco/CloudFormationTemplates/{self.get_name()}.yaml"
+            bucket_name = self.paco_ctx.paco_buckets.upload_fileobj(
+                file_contents=self.template.body,
+                s3_key=s3_key,
+                account_ctx=self.account_ctx,
+                region=template_region
+            )
+            # https://paco-waterbear-networks-tools-usw2-wbpaco88.s3-us-west-2.amazonaws.com/Paco/CloudFormationTemplates/NE-anet-dev-Secrets-SecretsManager.yaml
+            if self.aws_region == 'us-east-1':
+                # us-east-1 is a 'special' S3 region that does not include the region in the URL
+                self.template_sync_bucket = f"https://{bucket_name}.s3.amazonaws.com/{s3_key}"
+            else:
+                self.template_sync_bucket = f"https://{bucket_name}.s3-{template_region}.amazonaws.com/{s3_key}"
+
+            self.template_synced = True
+
+        return self.template_sync_bucket
 
     def create_stack(self):
         "Create an AWS CloudFormation stack"
@@ -1568,22 +1578,36 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
             if self.paco_ctx.quiet_changes_only == False:
                 self.paco_ctx.log_action_col("Validate", "Protected", self.account_ctx.get_name() + '.' + self.aws_region, short_yaml_path, col_2_size=col_2_size)
             return
-        self.generate_template()
+        yaml_path = self.generate_template()
+
         new_str = ''
         if applied_file_path.exists() == False:
             new_str = ':new'
         self.paco_ctx.log_action_col("Validate", "Template"+new_str, self.account_ctx.get_name() + '.' + self.aws_region, short_yaml_path, col_2_size=col_2_size)
-        try:
-            template_url = self.sync_template_to_s3bucket()
-            self.cfn_client.validate_template(TemplateURL=template_url)
-        except ClientError as e:
-            if e.response['Error']['Code'] == 'ValidationError':
-                message = "Validation Error: {}\nStack: {}\nTemplate: {}\n".format(
-                    e.response['Error']['Message'],
-                    self.get_name(),
-                    self.get_yaml_path()
-                )
-                raise StackException(PacoErrorCode.TemplateValidationError, message=message)
+
+        # Locally lint CloudFormation - (Extra checks but slows Validate down)
+        if self.paco_ctx.cfn_lint == True:
+            args = ("cfn-lint", "-i", "W", "-t", yaml_path)
+            popen = subprocess.Popen(args, stdout=subprocess.PIPE)
+            link_ret = popen.wait()
+            cfn_lint_output = popen.stdout.read()
+            if link_ret != 0:
+                message = f"CFN-LINT: Template: {yaml_path}\n{cfn_lint_output}"
+                pprint(message)
+                raise StackException(PacoErrorCode.TemplateValidationError, "cfn-lint")
+        else:
+            try:
+                template_url = self.sync_template_to_s3bucket()
+                self.cfn_client.validate_template(TemplateURL=template_url)
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'ValidationError':
+                    message = "Validation Error: {}\nStack: {}\nTemplate: {}\n".format(
+                        e.response['Error']['Message'],
+                        self.get_name(),
+                        self.get_yaml_path()
+                    )
+                    raise StackException(PacoErrorCode.TemplateValidationError, message=message)
+
         self.validate_template_changes()
 
     def delete(self):

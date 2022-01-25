@@ -65,6 +65,7 @@ def init_cloud_command(
     disable_validation,
     quiet_changes_only,
     hooks_only,
+    cfn_lint,
     config_scope,
     home
 ):
@@ -76,6 +77,7 @@ def init_cloud_command(
     paco_ctx.disable_validation = disable_validation
     paco_ctx.quiet_changes_only = quiet_changes_only
     paco_ctx.hooks_only = hooks_only
+    paco_ctx.cfn_lint = cfn_lint
     paco_ctx.command = command_name
     paco_ctx.config_scope = config_scope
     init_paco_home_option(paco_ctx, home)
@@ -287,6 +289,12 @@ def cloud_options(func):
         is_flag=True,
         default=False,
         help='When updating a stack, only run the hooks and skip the stack update.'
+    )(func)
+    func = click.option(
+        '-l', '--cfn-lint',
+        is_flag=True,
+        default=False,
+        help='Call cfn-lint on CloudFormation templates.'
     )(func)
     return func
 

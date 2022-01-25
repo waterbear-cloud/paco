@@ -295,7 +295,6 @@ Resources:
   CodeDeployConfiguration:
     Type: AWS::CodeDeploy::DeploymentConfig
     Properties:
-      DeploymentConfigName: !Ref ResourceNamePrefix
       MinimumHealthyHosts:
         Type: !Ref CodeDeployConfigType
         Value: !Ref CodeDeployConfigValue

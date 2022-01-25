@@ -99,37 +99,6 @@ Conditions:
 Resources:
 
 #------------------------------------------------------------------------------
-#  NACLs
-
-#  Network ACL
-  NACLAZ3:
-    Type: AWS::EC2::NetworkAcl
-    Properties:
-      VpcId: !Ref VPC
-#      Tags:
-
-# Inbound NACL: Allow All
-  NACLAZ3EntryInboundAll:
-    Type: AWS::EC2::NetworkAclEntry
-    Properties:
-      CidrBlock: 0.0.0.0/0
-      Protocol: '-1'
-      RuleAction: allow
-      RuleNumber: '100'
-      NetworkAclId: !Ref NACLAZ3
-
-# Outbound NACL: Allow All
-  NACLAZ3EntryOutboundAll:
-    Type: AWS::EC2::NetworkAclEntry
-    Properties:
-      CidrBlock: 0.0.0.0/0
-      Egress: 'true'
-      Protocol: '-1'
-      RuleAction: allow
-      RuleNumber: '100'
-      NetworkAclId: !Ref NACLAZ3
-
-#------------------------------------------------------------------------------
 # Availability Zone 1
 
 # ---------------------------
@@ -147,9 +116,9 @@ Resources:
     Type: AWS::EC2::NetworkAclEntry
     Properties:
       CidrBlock: 0.0.0.0/0
-      Protocol: '-1'
+      Protocol: -1
       RuleAction: allow
-      RuleNumber: '100'
+      RuleNumber: 100
       NetworkAclId: !Ref NACLAZ1
 
 # Outbound NACL: Allow All
@@ -157,10 +126,10 @@ Resources:
     Type: AWS::EC2::NetworkAclEntry
     Properties:
       CidrBlock: 0.0.0.0/0
-      Egress: 'true'
-      Protocol: '-1'
+      Egress: true
+      Protocol: -1
       RuleAction: allow
-      RuleNumber: '100'
+      RuleNumber: 100
       NetworkAclId: !Ref NACLAZ1
 
 # ---------------------------
@@ -224,9 +193,9 @@ Resources:
     Condition: AZ2Enabled
     Properties:
       CidrBlock: 0.0.0.0/0
-      Protocol: '-1'
+      Protocol: -1
       RuleAction: allow
-      RuleNumber: '100'
+      RuleNumber: 100
       NetworkAclId: !Ref NACLAZ2
 
 # Outbound NACL: Allow All
@@ -235,10 +204,10 @@ Resources:
     Condition: AZ2Enabled
     Properties:
       CidrBlock: 0.0.0.0/0
-      Egress: 'true'
-      Protocol: '-1'
+      Egress: true
+      Protocol: -1
       RuleAction: allow
-      RuleNumber: '100'
+      RuleNumber: 100
       NetworkAclId: !Ref NACLAZ2
 
 # ---------------------------
@@ -308,9 +277,9 @@ Resources:
     Condition: AZ3Enabled
     Properties:
       CidrBlock: 0.0.0.0/0
-      Protocol: '-1'
+      Protocol: -1
       RuleAction: allow
-      RuleNumber: '100'
+      RuleNumber: 100
       NetworkAclId: !Ref NACLAZ3
 
 # Outbound NACL: Allow All
@@ -319,10 +288,10 @@ Resources:
     Condition: AZ3Enabled
     Properties:
       CidrBlock: 0.0.0.0/0
-      Egress: 'true'
-      Protocol: '-1'
+      Egress: true
+      Protocol: -1
       RuleAction: allow
-      RuleNumber: '100'
+      RuleNumber: 100
       NetworkAclId: !Ref NACLAZ3
 
 # ---------------------------

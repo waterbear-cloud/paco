@@ -132,8 +132,8 @@ class SecurityGroups(StackTemplate):
                 rule_name = self.create_cfn_logical_id(sg_name + sg_rule_hash + sg_rule_type + sg_rule_config.name)
                 # FromPort and ToPort
                 if sg_rule_config.port != -1:
-                    rule_dict['FromPort'] = str(sg_rule_config.port)
-                    rule_dict['ToPort'] = str(sg_rule_config.port)
+                    rule_dict['FromPort'] = sg_rule_config.port
+                    rule_dict['ToPort'] = sg_rule_config.port
                 else:
                     rule_dict['FromPort'] = sg_rule_config.from_port
                     rule_dict['ToPort'] = sg_rule_config.to_port
