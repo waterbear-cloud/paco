@@ -347,6 +347,7 @@ class CodeBuild(StackTemplate):
             ),
             Roles=[troposphere.Ref(project_role_res)]
         )
+        project_policy_res.DependsOn = project_role_res
         template.add_resource(project_policy_res)
 
         # User defined policies
@@ -511,30 +512,62 @@ class CodeBuild(StackTemplate):
             #     value=vpc_config.security_groups,
             #     ref_attribute='id',
             # )
-            subnet_list = []
+            subnet_id_list = []
+            az_size = self.env_ctx.netenv[self.account_ctx.name][self.aws_region].network.availability_zones
             for segment_ref in vpc_config.segments:
-                segment_name = segment_ref.split('.')[-1]
-                segment_param = self.create_cfn_parameter(
-                    name=segment_name,
-                    param_type='List<AWS::EC2::Subnet::Id>',
-                    description=f'VPC Subnet Id List for CodeBuild VPC Config',
-                    value=segment_ref + '.subnet_id_list'
-                )
-                subnet_list.append(troposphere.Ref(segment_param))
+                for az_idx in range(1, az_size+1):
+                    segment_name = self.create_cfn_logical_id(f"Segment{segment_ref.split('.')[-1]}AZ{az_idx}")
+                    subnet_id_param = self.create_cfn_parameter(
+                        name=segment_name,
+                        param_type='AWS::EC2::Subnet::Id',
+                        description=f'VPC Subnet Id in AZ{az_idx} for CodeBuild VPC Config',
+                        value=segment_ref + f'.az{az_idx}.subnet_id'
+                    )
+                    subnet_id_list.append(troposphere.Ref(subnet_id_param))
 
-            if len(subnet_list) == 0:
+            if len(subnet_id_list) == 0:
                 raise PacoException("CodeBuild VPC Config must have at least one segment defined.")
+
+
+            # VPC Config Permissions
+            policy_statements.append(
+                Statement(
+                    Sid='VpcConfigPermissions',
+                    Effect=Allow,
+                    Action=[
+                        Action('ec2', 'CreateNetworkInterface'),
+                        Action('ec2', 'DescribeDhcpOptions'),
+                        Action('ec2', 'DescribeNetworkInterfaces'),
+                        Action('ec2', 'DeleteNetworkInterface'),
+                        Action('ec2', 'DescribeSubnets'),
+                        Action('ec2', 'DescribeSecurityGroups'),
+                        Action('ec2', 'DescribeVpcs'),
+                    ],
+                    Resource=[ '*' ]
+                )
+            )
+            policy_statements.append(
+                Statement(
+                    Sid='VpcConfigNetworkInterface',
+                    Effect=Allow,
+                    Action=[
+                        Action('ec2', 'CreateNetworkInterfacePermission'),
+                    ],
+                    Resource=[ f'arn:aws:ec2:{self.aws_region}:{self.account_ctx.name}:network-interface/*' ]
+                )
+            )
 
             project_dict['VpcConfig'] = {
                 'VpcId': troposphere.Ref(vpc_id_param),
                 'SecurityGroupIds': security_group_list,
-                'Subnets': subnet_list
+                'Subnets': subnet_id_list
             }
 
         project_res = troposphere.codebuild.Project.from_dict(
             'CodeBuildProject',
             project_dict
         )
+        project_res.DependsOn = project_policy_res
         self.template.add_resource(project_res)
 
         self.create_output(
