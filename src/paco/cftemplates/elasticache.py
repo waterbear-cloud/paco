@@ -31,7 +31,7 @@ class ElastiCache(StackTemplate):
         vpc_sg_list = []
         for sg_ref in elasticache_config.security_groups:
             ref = Reference(sg_ref)
-            sg_param_name = 'SecurityGroupId'+ref.parts[-2]+ref.parts[-1]
+            sg_param_name = self.create_cfn_logical_id('SecurityGroupId'+ref.parts[-2]+ref.parts[-1])
             sg_param = self.create_cfn_parameter(
                 name=sg_param_name,
                 param_type='String',

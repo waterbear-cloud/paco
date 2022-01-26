@@ -1,6 +1,8 @@
 from paco.cftemplates.cftemplates import StackTemplate
+from paco.core.exception import PacoException
 from paco.models.locations import get_parent_by_interface
 from paco.models import schemas, references
+from paco.models.references import Reference
 import troposphere
 import troposphere.ec2
 import troposphere.route53
@@ -12,10 +14,10 @@ class VPCPeering(StackTemplate):
         stack,
         paco_ctx,
     ):
-        vpc_config = stack.resource
-        network_config = get_parent_by_interface(vpc_config, schemas.INetwork)
-        env_name = get_parent_by_interface(vpc_config, schemas.IEnvironment).name
-        netenv_name = get_parent_by_interface(vpc_config, schemas.INetworkEnvironment).name
+        peering_config = stack.resource
+        network_config = get_parent_by_interface(peering_config, schemas.INetwork)
+        env_name = get_parent_by_interface(peering_config, schemas.IEnvironment).name
+        netenv_name = get_parent_by_interface(peering_config, schemas.INetworkEnvironment).name
         super().__init__(
             stack,
             paco_ctx,
@@ -33,8 +35,8 @@ class VPCPeering(StackTemplate):
 
         # Peer
         any_peering_enabled = False
-        for peer in vpc_config.peering.keys():
-            peer_config = vpc_config.peering[peer]
+        for peer in peering_config.keys():
+            peer_config = peering_config[peer]
             if peer_config.is_enabled() and peer_config.peer_type == 'requester':
                 any_peering_enabled = True
             else:
@@ -55,22 +57,34 @@ class VPCPeering(StackTemplate):
             self.template.add_resource(vpc_peering_connection_res)
             # Routes
             for route in peer_config.routing:
-                for az in range(0, network_config.availability_zones):
-                    az_str = str(az+1)
-                    resource_name_suffix = peer.title() + 'AZ' + az_str
+                for peer_az in range(0, network_config.availability_zones):
+                    peer_az_str = str(peer_az+1)
+                    resource_name_suffix = peer.title() + 'AZ' + peer_az_str
                     route_table_param = self.create_cfn_parameter(
                         name='PeerRouteTableId' + resource_name_suffix,
                         param_type='String',
-                        description='The route table ID for AZ {}.'.format(az_str),
-                        value='{}.az{}.route_table.id'.format(route.segment, az_str),
+                        description='The route table ID for AZ {}.'.format(peer_az_str),
+                        value='{}.az{}.route_table.id'.format(route.local_segment, peer_az_str),
                     )
-                    peer_route_res = troposphere.ec2.Route(
-                        'PeeringRoute' + resource_name_suffix,
-                        DestinationCidrBlock = route.cidr,
-                        VpcPeeringConnectionId = troposphere.Ref(vpc_peering_connection_res),
-                        RouteTableId = troposphere.Ref(route_table_param)
-                    )
-                    self.template.add_resource(peer_route_res)
+
+                    remote_availability_zones = self.paco_ctx.get_ref(peer_config.network_environment+'.network.availability_zones')
+                    for route_az in range(0, remote_availability_zones):
+                        route_az_str = str(route_az+1)
+                        if route.remote_segment != None:
+                            route_cidr = self.paco_ctx.get_ref(route.remote_segment+f'.az{route_az_str}_cidr')
+                        elif route.cidr != None:
+                            raise PacoException("cidr is not supported yet, please use remote_segment.")
+                        else:
+                            raise PacoException("remote_segment must be specified in VPC Peer.")
+
+                        peer_route_name = self.create_cfn_logical_id_join(['PeeringRoute', resource_name_suffix, f'RemoteAZ{route_az_str}'], camel_case=True)
+                        peer_route_res = troposphere.ec2.Route(
+                            peer_route_name,
+                            DestinationCidrBlock = route_cidr,
+                            VpcPeeringConnectionId = troposphere.Ref(vpc_peering_connection_res),
+                            RouteTableId = troposphere.Ref(route_table_param)
+                        )
+                        self.template.add_resource(peer_route_res)
 
         self.set_enabled(any_peering_enabled)
 

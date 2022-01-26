@@ -148,7 +148,7 @@ class NetworkStackGroup(StackGroup):
                         self.gen_vpc_peering_accepter_role(peer_config, vpc_config, accepter_vpc_id, requester_account_id)
             self.peering_stack = self.add_new_stack(
                 self.region,
-                vpc_config,
+                vpc_config.peering,
                 paco.cftemplates.VPCPeering,
                 stack_tags=StackTags(self.stack_tags),
             )
@@ -233,7 +233,7 @@ policies:
                  'ec2:AccepterVpc': { "Fn::Sub" : [ f'arn:aws:ec2:{accepter_region}:{accepter_account_id}:vpc/${{VpcId}}', { "VpcId": {"Ref" : "VpcId"} } ] }
             }
         }
-        role_config = iam.Role('accepter_role', peer_config)
+        role_config = iam.Role(f'Peering-{peer_config.name}-accepter-role', peer_config)
         role_config.apply_config(role_config_dict)
         role_config.enabled = True
         role_config.role_name = 'Peer-Accepter'
@@ -247,11 +247,10 @@ policies:
             'type': 'String',
             'description': 'Acceptor VPC ID'
         }]
-
         iam_ctl.add_role(
             account_ctx=self.account_ctx,
             region=self.region,
-            resource=peer_config,
+            resource=vpc_config,
             role=role_config,
             iam_role_id=f'VPC-Peer-{peer_config.name}-Accepter',
             stack_group=self,

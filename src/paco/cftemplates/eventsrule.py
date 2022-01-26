@@ -3,12 +3,14 @@ CloudWatch Events Rule template
 """
 
 from paco.cftemplates.cftemplates import StackTemplate
-from paco.models import vocabulary
+from paco.models import vocabulary, schemas
+from paco.models.references import get_model_obj_from_ref, Reference
 from paco.utils import hash_smaller
 from awacs.aws import Allow, Statement, Policy, Principal
 from enum import Enum
 from io import StringIO
 import awacs.awslambda
+import awacs.codebuild
 import awacs.sts
 import base64
 import os
@@ -41,6 +43,9 @@ class EventsRule(StackTemplate):
         # Init a Troposphere template
         self.init_template('CloudWatch EventsRule')
 
+        if eventsrule.is_enabled() == False:
+            return
+
         # Parameters
         schedule_expression_param = self.create_cfn_parameter(
             param_type = 'String',
@@ -59,13 +64,14 @@ class EventsRule(StackTemplate):
         targets = []
         self.target_params = {}
         for index in range(0, len(eventsrule.targets)):
+            target = eventsrule.targets[index]
             # Target Parameters
             target_name = 'Target{}'.format(index)
             self.target_params[target_name + 'Arn'] = self.create_cfn_parameter(
                 param_type='String',
                 name=target_name + 'Arn',
                 description=target_name + ' Arn for the Events Rule.',
-                value=eventsrule.targets[index].target + '.arn',
+                value=target.target + '.arn',
             )
             self.target_params[target_name] = self.create_cfn_parameter(
                 param_type='String',
@@ -77,8 +83,8 @@ class EventsRule(StackTemplate):
                 'Arn': troposphere.Ref(self.target_params[target_name + 'Arn']),
                 'Id': troposphere.Ref(self.target_params[target_name]),
             }
-            if eventsrule.targets[index].input_json != None:
-                cfn_export_dict['Input'] = eventsrule.targets[index].input_json
+            if target.input_json != None:
+                cfn_export_dict['Input'] = target.input_json
 
             # Events Rule Targets
             targets.append(
@@ -87,6 +93,20 @@ class EventsRule(StackTemplate):
                     cfn_export_dict
                 )
             )
+
+            # Lambda Policy Actions
+            target_ref = Reference(target.target)
+            if target_ref.parts[-1] == 'project' and target_ref.parts[-3] == 'build':
+                codebuild_target_ref = f'paco.ref {".".join(target_ref.parts[:-1])}'
+                target_model_obj = get_model_obj_from_ref(codebuild_target_ref, self.paco_ctx.project)
+            else:
+                target_model_obj = get_model_obj_from_ref(target.target, self.paco_ctx.project)
+
+            if schemas.IDeploymentPipelineBuildCodeBuild.providedBy(target_model_obj):
+                target_policy_actions = [awacs.codebuild.StartBuild]
+            elif schemas.ILambda.providedBy(target_model_obj):
+                target_policy_actions = [awacs.awslambda.InvokeFunction]
+
 
             # IAM Role Resources to allow Event to invoke Target
             target_invocation_role_resource = troposphere.iam.Role(
@@ -109,7 +129,7 @@ class EventsRule(StackTemplate):
                             Statement=[
                                 Statement(
                                     Effect=Allow,
-                                    Action=[awacs.awslambda.InvokeFunction],
+                                    Action=target_policy_actions,
                                     Resource=[troposphere.Ref(self.target_params[target_name + 'Arn'])],
                                 )
                             ]
@@ -134,6 +154,7 @@ class EventsRule(StackTemplate):
             Description=troposphere.Ref(description_param),
             ScheduleExpression=troposphere.Ref(schedule_expression_param),
             Targets=targets,
+            RoleArn=troposphere.Ref(target_invocation_role_resource),
             State=enabled_state
         )
         self.template.add_resource(event_rule_resource)

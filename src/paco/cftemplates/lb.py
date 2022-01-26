@@ -215,6 +215,12 @@ class LBBase(StackTemplate):
             cfn_export_dict['TargetGroupAttributes'] = [
                 {'Key': 'deregistration_delay.timeout_seconds', 'Value': str(target_group.connection_drain_timeout) }
             ]
+            # TODO: Preserve Client IP
+            # if self.lb_config.type == 'LBNetwork':
+            #     cfn_export_dict['TargetGroupAttributes'].append({
+            #         'Key': 'preserve_client_ip.enabled', 'Value': 'false'
+            #     })
+
             cfn_export_dict['VpcId'] = troposphere.Ref(vpc_param)
             if target_group.target_type != 'instance':
                 cfn_export_dict['TargetType'] = target_group.target_type
