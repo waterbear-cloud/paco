@@ -363,6 +363,16 @@ Outputs:
   SubnetIdAZ3:
     Condition: AZ3Enabled
     Value: !Sub '${{SubnetAZ3}}'
+
+  SubnetIdAZ1Arn:
+    Value: !Sub 'arn:aws:ec2:${{AWS::Region}}:${{AWS::AccountId}}:subnet/${{SubnetAZ1}}'
+  SubnetIdAZ2Arn:
+    Condition: AZ2Enabled
+    Value: !Sub 'arn:aws:ec2:${{AWS::Region}}:${{AWS::AccountId}}:subnet/${{SubnetAZ2}}'
+  SubnetIdAZ3Arn:
+    Condition: AZ3Enabled
+    Value: !Sub 'arn:aws:ec2:${{AWS::Region}}:${{AWS::AccountId}}:subnet/${{SubnetAZ3}}'
+
   AvailabilityZone1:
     Value: !GetAtt [SubnetAZ1, AvailabilityZone]
   AvailabilityZone2:
@@ -395,13 +405,16 @@ Outputs:
 
         self.stack.register_stack_output_config(segment_config_ref+'.subnet_id_list', 'SubnetIdList')
         self.stack.register_stack_output_config(segment_config_ref+'.az1.subnet_id', 'SubnetIdAZ1')
+        self.stack.register_stack_output_config(segment_config_ref+'.az1.subnet_id.arn', 'SubnetIdAZ1Arn')
         self.stack.register_stack_output_config(segment_config_ref+'.az1.availability_zone', 'AvailabilityZone1')
         self.stack.register_stack_output_config(segment_config_ref+'.az1.route_table.id', 'RouteTableIdAZ1')
         if availability_zones > 1:
             self.stack.register_stack_output_config(segment_config_ref+'.az2.subnet_id', 'SubnetIdAZ2')
+            self.stack.register_stack_output_config(segment_config_ref+'.az2.subnet_id.arn', 'SubnetIdAZ2Arn')
             self.stack.register_stack_output_config(segment_config_ref+'.az2.availability_zone', 'AvailabilityZone2')
             self.stack.register_stack_output_config(segment_config_ref+'.az2.route_table.id', 'RouteTableIdAZ2')
         if availability_zones > 2:
             self.stack.register_stack_output_config(segment_config_ref+'.az3.subnet_id', 'SubnetIdAZ3')
+            self.stack.register_stack_output_config(segment_config_ref+'.az3.subnet_id.arn', 'SubnetIdAZ3Arn')
             self.stack.register_stack_output_config(segment_config_ref+'.az3.availability_zone', 'AvailabilityZone3')
             self.stack.register_stack_output_config(segment_config_ref+'.az3.route_table.id', 'RouteTableIdAZ3')

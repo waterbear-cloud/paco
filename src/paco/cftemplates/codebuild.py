@@ -1,4 +1,4 @@
-from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action, Condition, StringEquals, StringLike
+from awacs.aws import Allow, Statement, Policy, PolicyDocument, Principal, Action, Condition, StringEquals, StringLike, ArnEquals
 from awacs.sts import AssumeRole
 from paco.cftemplates.cftemplates import StackTemplate
 from paco.core.exception import PacoException
@@ -478,6 +478,8 @@ class CodeBuild(StackTemplate):
             project_dict['Source']['Type'] = 'GITHUB'
             project_dict['Source']['Location'] = action_config.source.github.location
             project_dict['Source']['ReportBuildStatus'] = action_config.source.github.report_build_status
+            if action_config.source.github.deployment_branch_name != None:
+                project_dict['SourceVersion'] = action_config.source.github.deployment_branch_name
         else:
             raise PacoException("CodeBuild source must be configured when Codepipeline is disabled.")
 
@@ -513,9 +515,11 @@ class CodeBuild(StackTemplate):
             #     ref_attribute='id',
             # )
             subnet_id_list = []
+            subnet_arn_list = []
             az_size = self.env_ctx.netenv[self.account_ctx.name][self.aws_region].network.availability_zones
             for segment_ref in vpc_config.segments:
                 for az_idx in range(1, az_size+1):
+                    # Subnet Ids
                     segment_name = self.create_cfn_logical_id(f"Segment{segment_ref.split('.')[-1]}AZ{az_idx}")
                     subnet_id_param = self.create_cfn_parameter(
                         name=segment_name,
@@ -524,6 +528,14 @@ class CodeBuild(StackTemplate):
                         value=segment_ref + f'.az{az_idx}.subnet_id'
                     )
                     subnet_id_list.append(troposphere.Ref(subnet_id_param))
+                    # Subnet Arns
+                    subnet_arn_param = self.create_cfn_parameter(
+                        name=segment_name+'Arn',
+                        param_type='String',
+                        description=f'VPC Subnet Id ARN in AZ{az_idx} for CodeBuild VPC Config',
+                        value=segment_ref + f'.az{az_idx}.subnet_id.arn'
+                    )
+                    subnet_arn_list.append(troposphere.Ref(subnet_arn_param))
 
             if len(subnet_id_list) == 0:
                 raise PacoException("CodeBuild VPC Config must have at least one segment defined.")
@@ -553,7 +565,17 @@ class CodeBuild(StackTemplate):
                     Action=[
                         Action('ec2', 'CreateNetworkInterfacePermission'),
                     ],
-                    Resource=[ f'arn:aws:ec2:{self.aws_region}:{self.account_ctx.name}:network-interface/*' ]
+                    Resource=[ f'arn:aws:ec2:{self.aws_region}:{self.account_ctx.id}:network-interface/*' ],
+                    Condition=Condition(
+                        [
+                            StringEquals({
+                                "ec2:AuthorizedService": "codebuild.amazonaws.com"
+                            }),
+                            ArnEquals({
+                                "ec2:Subnet": subnet_arn_list
+                            })
+                        ]
+                    )
                 )
             )
 

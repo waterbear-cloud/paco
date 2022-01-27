@@ -32,7 +32,7 @@ class SecurityGroups(StackTemplate):
             template_name = 'SG'
         self.set_aws_name(template_name, sg_group_id, rules_id)
 
-        self.source_group_param_cache = {}
+        self.troposphere_param_cache = {}
 
         # Troposphere Template Initialization
         self.init_template('Security Groups')
@@ -121,7 +121,7 @@ class SecurityGroups(StackTemplate):
             # Ingress and Egress rules
             for sg_rule_config in sg_rule_list:
                 rule_dict = {
-                    'GroupId': self.create_group_param_ref(sg_group_config_ref, template),
+                    'GroupId': self.create_group_param_ref('Source', sg_group_config_ref),
                     'IpProtocol': str(sg_rule_config.protocol),
                     'FromPort': None,
                     'ToPort': None,
@@ -150,15 +150,27 @@ class SecurityGroups(StackTemplate):
                 elif sg_rule_config.cidr_ip_v6 != '':
                     rule_dict['CidrIpv6'] = sg_rule_config.cidr_ip_v6
                 elif getattr(sg_rule_config, 'source_security_group', '') != '':
+                    # Source Security Group Id
                     if references.is_ref(sg_rule_config.source_security_group):
                         rule_dict['SourceSecurityGroupId'] = self.create_group_param_ref(
-                            sg_rule_config.source_security_group, template)
+                            'Source',
+                            sg_rule_config.source_security_group)
                     else:
                         rule_dict['SourceSecurityGroupId'] = sg_rule_config.source_security_group
+                    # Source Security Group Owner Id
+                    if sg_rule_config.source_security_group_owner != None and getattr(sg_rule_config, 'source_security_group_owner', '') != '':
+                        if references.is_ref(sg_rule_config.source_security_group_owner):
+                            rule_dict['SourceSecurityGroupOwnerId'] = self.create_group_owner_param_ref(
+                                'Source',
+                                sg_rule_config.source_security_group_owner)
+                        else:
+                            rule_dict['SourceSecurityGroupOwnerId'] = sg_rule_config.source_security_group_owner
                 elif getattr(sg_rule_config, 'destination_security_group', '') != '':
+                    # Destination Security Group Id
                     if references.is_ref(sg_rule_config.destination_security_group):
                         rule_dict['DestinationSecurityGroupId'] = self.create_group_param_ref(
-                            sg_rule_config.destination_security_group, template)
+                            'Destination',
+                            sg_rule_config.destination_security_group)
                     else:
                         rule_dict['DestinationSecurityGroupId'] = sg_rule_config.destination_security_group
                 else:
@@ -169,7 +181,7 @@ class SecurityGroups(StackTemplate):
                 template.add_resource(rule_res)
 
 
-    def create_group_param_ref(self, group_ref, template):
+    def create_param_from_ref(self, group_ref, param_type, param_name, param_description, ref_att):
         """
         Creates a Security Group Id parameter and returns a Ref()
         to it. It caches the parameter to allow multiple references
@@ -180,17 +192,42 @@ class SecurityGroups(StackTemplate):
         if self.paco_ctx.legacy_flag('aim_name_2019_11_28') == True:
             hash_ref = 'aim' + group_ref[4:]
         group_ref_hash = utils.md5sum(str_data=hash_ref)
-        if group_ref_hash in self.source_group_param_cache.keys():
-            return troposphere.Ref(self.source_group_param_cache[group_ref_hash])
+        if group_ref_hash in self.troposphere_param_cache.keys():
+            return troposphere.Ref(self.troposphere_param_cache[group_ref_hash])
 
         source_sg_param = self.create_cfn_parameter(
-            param_type='AWS::EC2::SecurityGroup::Id',
-            name='SourceGroupId' + group_ref_hash,
-            description='Source Security Group - ' + hash_ref,
-            value=group_ref + '.id',
+            param_type=param_type,
+            name=param_name + group_ref_hash,
+            description=f'{param_description} - {hash_ref}',
+            value=f'{group_ref}.{ref_att}'
         )
+        self.troposphere_param_cache[group_ref_hash] = source_sg_param
 
-        self.source_group_param_cache[group_ref_hash] = source_sg_param
-        return troposphere.Ref(self.source_group_param_cache[group_ref_hash])
+        return troposphere.Ref(self.troposphere_param_cache[group_ref_hash])
 
+    def create_group_param_ref(self, group_type, group_ref):
+        """
+        Creates a Security Group Id parameter and returns a Ref()
+        to it. It caches the parameter to allow multiple references
+        from a single Parameter.
+        """
+        return self.create_param_from_ref(
+            group_ref,
+            'AWS::EC2::SecurityGroup::Id',
+            f'{group_type}GroupId',
+            f'{group_type} Security Group',
+            'id')
+
+    def create_group_owner_param_ref(self, group_type, group_ref):
+        """
+        Creates a Security Group Id parameter and returns a Ref()
+        to it. It caches the parameter to allow multiple references
+        from a single Parameter.
+        """
+        return self.create_param_from_ref(
+            group_ref,
+            'String',
+            f'{group_type}GroupOwnerId',
+            f'{group_type} Security Group Owner Id',
+            'id')
 
