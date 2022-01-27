@@ -1,11 +1,50 @@
 Changelog for Paco
 ==================
 
-9.3.23 (unreleased)
+9.3.23 (2022-01-27)
 -------------------
 
-- Nothing changed yet.
+### Added
 
+- Added deployment_branch_name to CodeBuild GitHub source configuration
+
+- Added source_security_group_owner to SecurityGroup for cross account access
+
+- Added IAM Policy conditions on CodeBuild VPCConfig Service Role
+
+- Added CodeBuild support to EventsRules
+
+- Added SubnetId ARNs to segment's CFN outputs
+
+- Added CodeBuild support to EventsRule
+
+- Automated VPC Peering between netenvs
+
+- Added -l --cfn-lint argument to perform extra CloudFormation error detection
+
+- Added VpcConfig to codebuild configuration
+
+- Added availability_zone config to VPC endpoints
+
+### Fixed
+
+- Fixed elasticache security group CFN Parameter logical name
+
+### Changed
+
+- Removed CodeDeployConfiguration Name to allow CF to replace resource when HOST_COUNT is changed.
+
+- Removed string value from Port numbers
+
+- Removed duplicate NACLAZ3 entries in segments CF templates
+
+- Removed unneeded dimensions from windows cloudwatch config.
+
+- Implemend enable/disable for VPC endpoints.
+
+- SSM wait command now skips instances that are not running
+
+- Improved EC2LM bundle caching and updates.
 
 9.3.22 (2021-12-17)
 -------------------
