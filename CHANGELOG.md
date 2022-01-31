@@ -1,11 +1,12 @@
 Changelog for Paco
 ==================
 
-9.3.24 (unreleased)
+9.3.24 (2022-01-31)
 -------------------
 
-- Nothing changed yet.
+### Added
 
+- Added CodeBuild Artifacts configuration
 
 9.3.23 (2022-01-27)
 -------------------
