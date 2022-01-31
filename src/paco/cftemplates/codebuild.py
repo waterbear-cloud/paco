@@ -486,11 +486,12 @@ class CodeBuild(StackTemplate):
                 project_dict['Artifacts'] = {
                     'Type': action_config.artifacts.type,
                     'Location': troposphere.Ref(self.artifacts_bucket_name_param),
-                    'Path': action_config.artifacts.path,
                     'NamespaceType': action_config.artifacts.namespace_type,
                     'Packaging': action_config.artifacts.packaging,
                     'Name': action_config.artifacts.name
                 }
+                if action_config.artifacts.path != None:
+                    project_dict['Artifacts']['Path'] = action_config.artifacts.path
             if action_config.source.github != None:
                 project_dict['Source']['Type'] = 'GITHUB'
                 project_dict['Source']['Location'] = action_config.source.github.location
