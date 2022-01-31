@@ -36,6 +36,7 @@ class CodeBuild(StackTemplate):
             description='The name to prefix resource names.',
             value=self.res_name_prefix,
         )
+        self.enable_artifacts_bucket = True
         if pipeline_config.configuration.disable_codepipeline == False:
             self.cmk_arn_param = self.create_cfn_parameter(
                 param_type='String',
@@ -43,12 +44,17 @@ class CodeBuild(StackTemplate):
                 description='The KMS CMK Arn of the key used to encrypt deployment artifacts.',
                 value=pipeline_config.paco_ref + '.kms.arn',
             )
+        elif action_config.artifacts == None or action_config.artifacts.type == 'NO_ARTIFACTS':
+            self.enable_artifacts_bucket = False
+
+        if self.enable_artifacts_bucket:
             self.artifacts_bucket_name_param = self.create_cfn_parameter(
                 param_type='String',
                 name='ArtifactsBucketName',
                 description='The name of the S3 Bucket to create that will hold deployment artifacts',
                 value=artifacts_bucket_name,
             )
+
         self.codebuild_project_res = self.create_codebuild_cfn(
             template,
             pipeline_config,
@@ -157,8 +163,8 @@ class CodeBuild(StackTemplate):
 
         # Project Policy
         policy_statements = []
-        if pipeline_config.configuration.disable_codepipeline == False:
-            policy_statements.extend([
+        if self.enable_artifacts_bucket:
+            policy_statements.append(
                 Statement(
                     Sid='S3Access',
                     Effect=Allow,
@@ -176,7 +182,10 @@ class CodeBuild(StackTemplate):
                         troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}'),
                         troposphere.Sub('arn:aws:s3:::${ArtifactsBucketName}/*'),
                     ]
-                ),
+                )
+            )
+        if pipeline_config.configuration.disable_codepipeline == False:
+            policy_statements.append(
                 Statement(
                     Sid='KMSCMK',
                     Effect=Allow,
@@ -184,7 +193,7 @@ class CodeBuild(StackTemplate):
                         Action('kms', '*')
                     ],
                     Resource=[ troposphere.Ref(self.cmk_arn_param) ]
-                )]
+                )
             )
         policy_statements.append(
             Statement(
@@ -407,15 +416,19 @@ class CodeBuild(StackTemplate):
             }
         ]
         if pipeline_config.configuration.disable_codepipeline == False:
-            codebuild_env_vars.extend([
+            codebuild_env_vars.append(
                 {
-                    'Name': 'ArtifactsBucket',
-                    'Value': troposphere.Ref(self.artifacts_bucket_name_param),
-                }, {
                     'Name': 'KMSKey',
                     'Value': troposphere.Ref(self.cmk_arn_param)
                 }
-            ])
+            )
+        if self.enable_artifacts_bucket:
+            codebuild_env_vars.append(
+                {
+                    'Name': 'ArtifactsBucket',
+                    'Value': troposphere.Ref(self.artifacts_bucket_name_param),
+                }
+            )
         # If ECS Release Phase, then add the config to the environment
         release_phase = action_config.release_phase
         if release_phase != None and release_phase.ecs != None:
@@ -432,16 +445,6 @@ class CodeBuild(StackTemplate):
                 idx += 1
 
         # CodeBuild: Environment
-        source = troposphere.codebuild.Source(
-            Type='CODEPIPELINE',
-        )
-        if action_config.buildspec != None and action_config.buildspec != '':
-            source = troposphere.codebuild.Source(
-                Type='CODEPIPELINE',
-                BuildSpec=action_config.buildspec,
-            )
-
-
         project_dict = {
             'Name': troposphere.Ref(self.resource_name_prefix_param),
             'Artifacts': {
@@ -474,14 +477,28 @@ class CodeBuild(StackTemplate):
                 'Type': 'CODEPIPELINE'
             }
             project_dict['Source']['Type'] = 'CODEPIPELINE'
-        elif action_config.source.github != None:
-            project_dict['Source']['Type'] = 'GITHUB'
-            project_dict['Source']['Location'] = action_config.source.github.location
-            project_dict['Source']['ReportBuildStatus'] = action_config.source.github.report_build_status
-            if action_config.source.github.deployment_branch_name != None:
-                project_dict['SourceVersion'] = action_config.source.github.deployment_branch_name
         else:
-            raise PacoException("CodeBuild source must be configured when Codepipeline is disabled.")
+            if action_config.artifacts == None or action_config.artifacts.type == 'NO_ARTIFACTS':
+                project_dict['Artifacts'] = {
+                    'Type': 'NO_ARTIFACTS',
+                }
+            else:
+                project_dict['Artifacts'] = {
+                    'Type': action_config.artifacts.type,
+                    'Location': troposphere.Ref(self.artifacts_bucket_name_param),
+                    'Path': action_config.artifacts.path,
+                    'NamespaceType': action_config.artifacts.namespace_type,
+                    'Packaging': action_config.artifacts.packaging,
+                    'Name': action_config.artifacts.name
+                }
+            if action_config.source.github != None:
+                project_dict['Source']['Type'] = 'GITHUB'
+                project_dict['Source']['Location'] = action_config.source.github.location
+                project_dict['Source']['ReportBuildStatus'] = action_config.source.github.report_build_status
+                if action_config.source.github.deployment_branch_name != None:
+                    project_dict['SourceVersion'] = action_config.source.github.deployment_branch_name
+            else:
+                raise PacoException("CodeBuild source must be configured when Codepipeline is disabled.")
 
         if action_config.concurrent_build_limit > 0:
             project_dict['ConcurrentBuildLimit'] = action_config.concurrent_build_limit

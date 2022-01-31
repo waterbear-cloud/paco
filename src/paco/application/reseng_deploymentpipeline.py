@@ -545,14 +545,14 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         else:
             self.pipeline_account_ctx = self.account_ctx
 
-        if self.resource.configuration.disable_codepipeline == False:
-            # S3 Artifacts Bucket:
-            s3_ctl = self.paco_ctx.get_controller('S3')
-            s3_bucket = get_model_obj_from_ref(self.pipeline.configuration.artifacts_bucket, self.paco_ctx.project)
-            self.artifacts_bucket_meta['obj'] = s3_bucket
-            self.artifacts_bucket_meta['ref'] = self.pipeline.configuration.artifacts_bucket
-            self.artifacts_bucket_meta['arn'] = s3_ctl.get_bucket_arn(self.artifacts_bucket_meta['ref'])
-            self.artifacts_bucket_meta['name'] = s3_bucket.get_bucket_name()
+        # S3 Artifacts Bucket:
+        s3_ctl = self.paco_ctx.get_controller('S3')
+        s3_bucket = get_model_obj_from_ref(self.pipeline.configuration.artifacts_bucket, self.paco_ctx.project)
+
+        self.artifacts_bucket_meta['obj'] = s3_bucket
+        self.artifacts_bucket_meta['ref'] = self.pipeline.configuration.artifacts_bucket
+        self.artifacts_bucket_meta['arn'] = s3_ctl.get_bucket_arn(self.artifacts_bucket_meta['ref'])
+        self.artifacts_bucket_meta['name'] = s3_bucket.get_bucket_name()
 
         # Resource can be in a Service or an Environment
         if hasattr(self, 'env_ctx'):
