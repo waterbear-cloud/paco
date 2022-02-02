@@ -28,10 +28,15 @@ class EFS(StackTemplate):
         )
 
         # Elastic File System
+        if efs_config.enable_automatic_backups == True:
+            efs_backup_policy = 'ENABLED'
+        else:
+            efs_backup_policy = 'DISABLED'
         efs_res = troposphere.efs.FileSystem(
             title = 'EFS',
             template = self.template,
-            Encrypted=troposphere.Ref(encrypted_param)
+            Encrypted=troposphere.Ref(encrypted_param),
+            BackupPolicy=troposphere.efs.BackupPolicy(Status=efs_backup_policy)
         )
         self.create_output(
             title=efs_res.title + 'Id',
