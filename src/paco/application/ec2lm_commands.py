@@ -22,7 +22,9 @@ user_data_script = {
 	'update_packages': {
 		'amazon': 'yum update -y',
 		'centos': 'yum update -y',
-		'ubuntu': 'apt-get update -y && apt-get upgrade -y'
+		'ubuntu': """apt-get update -y
+DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::=--force-confnew -o Dpkg::Options::=--force-confdef dist-upgrade -y --allow-downgrades --allow-remove-essential --allow-change-held-packages
+"""
 	},
 	'install_aws_cli': {
 		'amazon': '', # AWS is installed by default on Amazon linux

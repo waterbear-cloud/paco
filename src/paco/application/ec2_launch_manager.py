@@ -358,6 +358,7 @@ EC2LM_FOLDER='{self.paco_base_path}/EC2Manager/'
 EC2LM_{tool_name}_NETWORK_ENVIRONMENT="{resource.netenv_name}"
 EC2LM_{tool_name}_ENVIRONMENT="{resource.env_name}"
 EC2LM_{tool_name}_ENVIRONMENT_REF={resource.env_region_obj.paco_ref_parts}
+CODEDEPLOY_BIN="/opt/codedeploy-agent/bin/codedeploy-agent"
 
 # Escape a string for sed replacements
 function sed_escape() {{
@@ -529,6 +530,35 @@ function ec2lm_instance_tag_value() {{
     aws ec2 describe-tags --region $REGION --filter "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=$TAG_NAME" --query 'Tags[0].Value' |tr -d '"'
 }}
 
+# Is a CodeDeploy deployment in place?
+function ec2lm_wait_for_codedeploy() {{
+    if [ ! -e $CODEDEPLOY_BIN ] ; then
+        return 0
+    fi
+    set +e
+    # 15 minutes
+    SLEEP_SECS=10
+    TIMEOUT_MINS=15
+    TIMEOUT_COUNT=$(($((60*$TIMEOUT_MINS))/$SLEEP_SECS))
+    T_COUNT=0
+    while :
+    do
+        OUTPUT=$($CODEDEPLOY_BIN stop 2>/dev/null)
+        if [ $? -eq 0 ] ; then
+            break
+        fi
+        echo "EC2LM: CodeDeploy: A deployment is in progress, waiting for deployment to complete."
+        sleep $SLEEP_SECS
+        T_COUNT=$(($T_COUNT+1))
+        if [ $T_COUNT -eq $TIMEOUT_COUNT ] ; then
+            echo "EC2LM: CodeDeploy: ERROR: Timeout after $TIMEOUT_MINS minutes waiting for deployment to complete."
+            exit 1
+        fi
+    done
+    $CODEDEPLOY_BIN start 2>/dev/null
+    set -e
+}}
+
 # Signal the ASG resource
 function ec2lm_signal_asg_resource() {{
     STATUS=$1
@@ -544,6 +574,7 @@ function ec2lm_signal_asg_resource() {{
         # Sleep to allow ALB healthcheck to succeed otherwise older instances will begin to shutdown
         echo "EC2LM: Signal ASG Resource: Sleeping for {oldest_health_check_timeout} seconds to allow target healthcheck to succeed."
         sleep {oldest_health_check_timeout}
+        ec2lm_wait_for_codedeploy
         echo "EC2LM: Signal ASG Resource: Signaling ASG Resource: $EC2LM_STACK_NAME: $ASG_LOGICAL_ID: $INSTANCE_ID: $STATUS"
         aws cloudformation signal-resource --region $REGION --stack $EC2LM_STACK_NAME --logical-resource-id $ASG_LOGICAL_ID --unique-id $INSTANCE_ID --status $STATUS
     else
