@@ -571,10 +571,11 @@ function ec2lm_signal_asg_resource() {{
     if [[ "$STACK_STATUS" == *"PROGRESS" ]]; then
         # ASG Rolling Update
         ASG_LOGICAL_ID=$(ec2lm_instance_tag_value 'aws:cloudformation:logical-id')
+        # Wait for deployments if they are ongoing
+        ec2lm_wait_for_codedeploy
         # Sleep to allow ALB healthcheck to succeed otherwise older instances will begin to shutdown
         echo "EC2LM: Signal ASG Resource: Sleeping for {oldest_health_check_timeout} seconds to allow target healthcheck to succeed."
         sleep {oldest_health_check_timeout}
-        ec2lm_wait_for_codedeploy
         echo "EC2LM: Signal ASG Resource: Signaling ASG Resource: $EC2LM_STACK_NAME: $ASG_LOGICAL_ID: $INSTANCE_ID: $STATUS"
         aws cloudformation signal-resource --region $REGION --stack $EC2LM_STACK_NAME --logical-resource-id $ASG_LOGICAL_ID --unique-id $INSTANCE_ID --status $STATUS
     else
