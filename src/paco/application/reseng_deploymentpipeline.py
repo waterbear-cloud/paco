@@ -1226,7 +1226,6 @@ run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PH
 
     def stack_hook_codebuild_github_access_token(self, hook, config):
         "Sets the GitHub Personal Access token on the CodeBuild project"
-        # breakpoint()
         codebuild_client = self.account_ctx.get_aws_client('codebuild')
         secrets_client = self.account_ctx.get_aws_client('secretsmanager')
 
