@@ -1,11 +1,12 @@
 Changelog for Paco
 ==================
 
-9.3.26 (unreleased)
+9.3.26 (2022-02-09)
 -------------------
 
-- Nothing changed yet.
+### Added
 
+- Added Build Batch configuration to CodeBuild
 
 9.3.25 (2022-02-08)
 -------------------
