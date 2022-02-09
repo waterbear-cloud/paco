@@ -279,6 +279,13 @@ function run_task() {
     echo "aws ecs run-task --cluster ${CLUSTER_ID} --task-definition ${REGISTERED_TASK_DEFINITION_ARN} --tags \"key=PACO-RELEASE-PHASE,value=${RELEASE_PHASE_NAME}\" --query 'tasks[0].[taskArn,containerInstanceArn]' --output text"
     RESPONSE=$(aws ecs run-task --cluster ${CLUSTER_ID} --task-definition ${REGISTERED_TASK_DEFINITION_ARN} --tags "key=PACO-RELEASE-PHASE,value=${RELEASE_PHASE_NAME}" --query 'tasks[0].[taskArn,containerInstanceArn]' --output text)
     echo "RESPONSE: ${RESPONSE}"
+    # TODO: Get Service Logs if possible
+    # if [ "$RESPONSE" == "NONE" ] ; then
+    #     aws ecs list-tasks --cluster ${CLUSTER_ID} --desired-status STOPPED --query 'taskArns[0]' --output json
+    #     aws logs get-log-events --log-group-name loft47-staging-saas-ecs-api-api --log-stream-name api/api/08a6ff141d74445690f4dc8a7a7e815c --profile loft-staging |jq -r .events[].message
+    #     break
+    # fi
+
     TASK_ARN=$(echo $RESPONSE | awk '{print $1}')
     CONTAINER_INSTANCE_ARN=$(echo $RESPONSE | awk '{print $2}')
     TASK_ID=$(echo $TASK_ARN |awk -F '/' '{print $3}')
@@ -1211,6 +1218,52 @@ run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PH
                 self.aws_region,
             )
 
+
+    def stack_hook_codebuild_github_access_token_cache_id(self, hook, config):
+        "Cache method to return a cache id"
+        self.codebuild_github_access_token_cache_id = config.obj_hash()
+        return self.codebuild_github_access_token_cache_id
+
+    def stack_hook_codebuild_github_access_token(self, hook, config):
+        "Sets the GitHub Personal Access token on the CodeBuild project"
+        # breakpoint()
+        codebuild_client = self.account_ctx.get_aws_client('codebuild')
+        secrets_client = self.account_ctx.get_aws_client('secretsmanager')
+
+        secret = secrets_client.get_secret_value(SecretId=Reference(config.github_access_token).ref)
+
+        response = codebuild_client.import_source_credentials(
+            username=config.github_owner,
+            token=secret['SecretString'],
+            serverType='GITHUB',
+            authType='PERSONAL_ACCESS_TOKEN',
+            shouldOverwrite=True
+        )
+
+        if config.trigger_on_push == True:
+            project_name = hook['stack'].template.get_project_name()
+            filter_groups = [[
+                    {
+                        'type': 'EVENT',
+                        'pattern': 'PUSH'
+                    }
+                ]]
+
+            try:
+                response = codebuild_client.create_webhook(
+                    projectName=project_name,
+                    filterGroups=filter_groups
+                )
+            except Exception as e:
+                if e.response['Error']['Code'] == 'ResourceAlreadyExistsException':
+                    response = codebuild_client.update_webhook(
+                        projectName=project_name,
+                        filterGroups=filter_groups
+                    )
+                else:
+                    raise InvalidAWSConfiguration(f"Unable to create CodeBuild Webhook for Project '{project_name}': {e.response['Error']['Code']}")
+
+
     def init_stage_action_codebuild_build(self, action_config):
         if not action_config.is_enabled():
             return
@@ -1219,9 +1272,8 @@ run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PH
             self.artifacts_bucket_policy_resource_arns.append("paco.sub '${%s}'" % (action_config.paco_ref + '.project_role.arn'))
             self.kms_crypto_principle_list.append("paco.sub '${%s}'" % (action_config.paco_ref+'.project_role.arn'))
 
-        stack_hooks = None
+        stack_hooks = StackHooks()
         if action_config.release_phase != None and len(action_config.release_phase.ecs) > 0:
-            stack_hooks = StackHooks()
             stack_hooks.add(
                 name='CodeBuild.ECSReleasePhase',
                 stack_action='create',
@@ -1239,6 +1291,17 @@ run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PH
                 hook_arg=action_config
             )
             self.codebuild_ecs_release_phase_ssm()
+
+        if action_config.source != None and action_config.source.github != None:
+            if action_config.source.github.github_access_token:
+                stack_hooks.add(
+                    name='CodeBuild.GitHubAccessToken',
+                    stack_action=['create', 'update'],
+                    stack_timing='post',
+                    hook_method=self.stack_hook_codebuild_github_access_token,
+                    cache_method=self.stack_hook_codebuild_github_access_token_cache_id,
+                    hook_arg=action_config.source.github
+                )
 
 
         action_config._stack = self.stack_group.add_new_stack(
@@ -1323,3 +1386,7 @@ run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PH
                 # self.cpbd_codepipebuild_template will fail if there are two deployments
                 # this application... corner case, but might happen?
                 return ref.resource._stack.template.get_project_arn()
+            elif ref.resource_ref == 'project.name':
+                # self.cpbd_codepipebuild_template will fail if there are two deployments
+                # this application... corner case, but might happen?
+                return ref.resource._stack.template.get_project_name()

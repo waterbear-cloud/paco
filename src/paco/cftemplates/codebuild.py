@@ -493,11 +493,13 @@ class CodeBuild(StackTemplate):
                 if action_config.artifacts.path != None:
                     project_dict['Artifacts']['Path'] = action_config.artifacts.path
             if action_config.source.github != None:
+                github_config = action_config.source.github
                 project_dict['Source']['Type'] = 'GITHUB'
-                project_dict['Source']['Location'] = action_config.source.github.location
-                project_dict['Source']['ReportBuildStatus'] = action_config.source.github.report_build_status
-                if action_config.source.github.deployment_branch_name != None:
-                    project_dict['SourceVersion'] = action_config.source.github.deployment_branch_name
+                location = f'https://github.com/{github_config.github_owner}/{github_config.github_repository}.git'
+                project_dict['Source']['Location'] = location
+                project_dict['Source']['ReportBuildStatus'] = github_config.report_build_status
+                if github_config.deployment_branch_name != None:
+                    project_dict['SourceVersion'] = github_config.deployment_branch_name
             else:
                 raise PacoException("CodeBuild source must be configured when Codepipeline is disabled.")
 
@@ -627,3 +629,6 @@ class CodeBuild(StackTemplate):
 
     def get_project_arn(self):
         return "arn:aws:codebuild:{}:{}:project/".format(self.aws_region, self.account_ctx.get_id()) + self.res_name_prefix
+
+    def get_project_name(self):
+        return self.res_name_prefix
