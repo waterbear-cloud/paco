@@ -1,11 +1,24 @@
 Changelog for Paco
 ==================
 
-9.3.25 (unreleased)
+9.3.25 (2022-02-08)
 -------------------
 
-- Nothing changed yet.
+### Added
 
+- Added github access source configuration to CodeBuild
+
+- Added enable_automatic_backups to IEFS
+
+### Changed
+
+- Made ec2lm_signal_asg_resource wait for deployments before waiting for the healthcheck timeout.
+
+- Updated ubuntu package update command with noninteractive arguments.
+
+- ec2lm_signal_asg_resource will now wait for CodeDeploy deployments before signaling CloudFormation.
+
+- Enabled encryption at rest on EFS by default
 
 9.3.24 (2022-01-31)
 -------------------
