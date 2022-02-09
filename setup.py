@@ -40,7 +40,7 @@ setup(
         'Setuptools',
         'tldextract',
         'pexpect',
-        'troposphere >= 3.0.2',
+        'troposphere >= 3.2.2',
         'awacs',
         'deepdiff >= 4.3.2',
         'gitpython',

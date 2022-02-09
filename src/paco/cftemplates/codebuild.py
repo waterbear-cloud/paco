@@ -605,12 +605,82 @@ class CodeBuild(StackTemplate):
                 'Subnets': subnet_id_list
             }
 
+        # Batch Build Config
+        batch_service_role_res = None
+        if action_config.build_batch_config != None and action_config.build_batch_config.is_enabled():
+            batch_config = action_config.build_batch_config
+
+            batch_service_role_name = self.create_iam_resource_name(
+                name_list=[self.res_name_prefix, 'CodeBuild-BuildBatch-ServiceRole'],
+                filter_id='IAM.Role.RoleName'
+            )
+            batch_service_role_res = troposphere.iam.Role(
+                title='CodeBuildBuildBatchConfigServiceRole',
+                template=template,
+                RoleName=batch_service_role_name,
+                AssumeRolePolicyDocument=PolicyDocument(
+                    Version="2012-10-17",
+                    Statement=[
+                        Statement(
+                            Effect=Allow,
+                            Action=[ AssumeRole ],
+                            Principal=Principal("Service", ['codebuild.amazonaws.com']),
+                        )
+                    ]
+                )
+            )
+
+            project_dict['BuildBatchConfig'] = {
+                'BatchReportMode': batch_config.batch_report_mode,
+                'CombineArtifacts': batch_config.combine_artifacts,
+                'TimeoutInMins': batch_config.timeout_in_mins,
+                'ServiceRole': troposphere.GetAtt(batch_service_role_res, 'Arn'),
+                'Restrictions': {
+                    'ComputeTypesAllowed': batch_config.restrictions.compute_types_allowed,
+                    'MaximumBuildsAllowed': batch_config.restrictions.maximum_builds_allowed
+                }
+            }
+
         project_res = troposphere.codebuild.Project.from_dict(
             'CodeBuildProject',
             project_dict
         )
         project_res.DependsOn = project_policy_res
+        if action_config.build_batch_config != None and action_config.build_batch_config.is_enabled():
+            project_res.DependsOn = batch_service_role_res
+
         self.template.add_resource(project_res)
+
+        if batch_service_role_res != None:
+            build_batch_policy_statements = []
+            build_batch_policy_statements.append(
+                Statement(
+                    Sid='BatchServiceRole',
+                    Effect=Allow,
+                    Action=[
+                        Action('codebuild', 'StartBuild'),
+                        Action('codebuild', 'StopBuild'),
+                        Action('codebuild', 'RetryBuild')
+                    ],
+                    Resource=[ troposphere.GetAtt(project_res, 'Arn')]
+                )
+            )
+
+            batch_policy_name = self.create_iam_resource_name(
+                name_list=[self.res_name_prefix, 'CodeBuild-BatchPolicy'],
+                filter_id='IAM.Policy.PolicyName'
+            )
+            batch_policy_res = troposphere.iam.PolicyType(
+                title='CodeBuildBuildBatchPolicy',
+                template=template,
+                PolicyName=batch_policy_name,
+                PolicyDocument=PolicyDocument(
+                    Statement=build_batch_policy_statements
+                ),
+                Roles=[troposphere.Ref(batch_service_role_res)]
+            )
+
+            batch_policy_res.DependsOn = project_res
 
         self.create_output(
             title='ProjectArn',
