@@ -1241,10 +1241,15 @@ run_release_phase "${{CLUSTER_ID_{idx}}}" "${{SERVICE_ID_{idx}}}" "${{RELEASE_PH
 
         if config.trigger_on_push == True:
             project_name = hook['stack'].template.get_project_name()
+            deployment_branch_name = config.deployment_branch_name.replace('/', '\/')
             filter_groups = [[
                     {
                         'type': 'EVENT',
-                        'pattern': 'PUSH'
+                        'pattern': 'PUSH',
+                    },
+                    {
+                        'type': 'HEAD_REF',
+                        'pattern': f'^refs/heads/{deployment_branch_name}$'
                     }
                 ]]
 

@@ -47,12 +47,14 @@ class EventsRule(StackTemplate):
             return
 
         # Parameters
-        schedule_expression_param = self.create_cfn_parameter(
-            param_type = 'String',
-            name = 'ScheduleExpression',
-            description = 'ScheduleExpression for the Event Rule.',
-            value = eventsrule.schedule_expression,
-        )
+        schedule_expression_param = None
+        if eventsrule.schedule_expression:
+            schedule_expression_param = self.create_cfn_parameter(
+                param_type = 'String',
+                name = 'ScheduleExpression',
+                description = 'ScheduleExpression for the Event Rule.',
+                value = eventsrule.schedule_expression,
+            )
         description_param = self.create_cfn_parameter(
             param_type = 'String',
             name = 'EventDescription',
@@ -157,14 +159,22 @@ class EventsRule(StackTemplate):
             enabled_state = 'ENABLED'
         else:
             enabled_state = 'DISABLED'
-        event_rule_resource = troposphere.events.Rule(
+
+
+        events_rule_dict = {
+            'Name': name,
+            'Description': troposphere.Ref(description_param),
+            'RoleArn': troposphere.GetAtt(target_invocation_role_resource, 'Arn'),
+            'Targets': targets,
+            'State': enabled_state
+        }
+
+        if schedule_expression_param != None:
+            events_rule_dict['ScheduleExpression'] = troposphere.Ref(schedule_expression_param)
+
+        event_rule_resource = troposphere.events.Rule.from_dict(
             'EventRule',
-            Name=name,
-            Description=troposphere.Ref(description_param),
-            ScheduleExpression=troposphere.Ref(schedule_expression_param),
-            RoleArn=troposphere.GetAtt(target_invocation_role_resource, 'Arn'),
-            Targets=targets,
-            State=enabled_state
+            evens_rule_dict
         )
         event_rule_resource.DependsOn = target_invocation_role_resource
         self.template.add_resource(event_rule_resource)
