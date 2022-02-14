@@ -143,12 +143,12 @@ class EventsRule(StackTemplate):
                 cfn_export_dict['Input'] = target.input_json
 
             # Events Rule Targets
-            targets.append(
-                troposphere.events.Target.from_dict(
-                    target_name,
-                    cfn_export_dict
-                )
-            )
+            targets.append(cfn_export_dict)
+            #     troposphere.events.Target.from_dict(
+            #         target_name,
+            #         cfn_export_dict
+            #     )
+            # )
 
         # Events Rule Resource
         # The Name is needed so that a Lambda can be created and it's Lambda ARN output
@@ -159,7 +159,6 @@ class EventsRule(StackTemplate):
             enabled_state = 'ENABLED'
         else:
             enabled_state = 'DISABLED'
-
 
         events_rule_dict = {
             'Name': name,
@@ -174,7 +173,7 @@ class EventsRule(StackTemplate):
 
         event_rule_resource = troposphere.events.Rule.from_dict(
             'EventRule',
-            evens_rule_dict
+            events_rule_dict
         )
         event_rule_resource.DependsOn = target_invocation_role_resource
         self.template.add_resource(event_rule_resource)
