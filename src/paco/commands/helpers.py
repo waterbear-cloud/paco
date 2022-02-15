@@ -354,10 +354,11 @@ def handle_exceptions(func):
 
             if error_name in ('InvalidPacoProjectFile', 'UnusedPacoProjectField', 'InvalidPacoReference'):
                 # Click fixme: in paco init commands args[0] doesn't get set so home is stashed in a global var
-                if len(args) == 0:
+                if len(args) == 0 or hasattr(args[0], 'home') == False:
                     home = os.environ.get('PACO_HOME')
                 else:
                     home = args[0].home
+
                 click.echo("Invalid Paco project configuration files at {}".format(home))
                 if hasattr(error, 'args'):
                     if len(error.args) > 0:
