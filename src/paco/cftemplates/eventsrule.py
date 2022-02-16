@@ -17,6 +17,10 @@ import os
 import troposphere
 import troposphere.events
 import troposphere.iam
+from paco.core.yaml import YAML
+
+yaml=YAML()
+yaml.default_flow_sytle = False
 
 
 def create_event_rule_name(eventsrule):
@@ -94,6 +98,7 @@ class EventsRule(StackTemplate):
                 target_model_obj = get_model_obj_from_ref(target.target, self.paco_ctx.project)
 
             # IAM Role Polcies by Resource type
+            target_policy_actions = None
             if schemas.IDeploymentPipelineBuildCodeBuild.providedBy(target_model_obj):
                 # CodeBuild Project
                 target_policy_actions = [awacs.codebuild.StartBuild]
@@ -102,43 +107,47 @@ class EventsRule(StackTemplate):
                 target_policy_actions = [awacs.awslambda.InvokeFunction]
 
 
-            # IAM Role Resources to allow Event to invoke Target
-            target_invocation_role_resource = troposphere.iam.Role(
-                'TargetInvocationRole',
-                AssumeRolePolicyDocument=Policy(
-                    Version='2012-10-17',
-                    Statement=[
-                        Statement(
-                            Effect=Allow,
-                            Action=[awacs.sts.AssumeRole],
-                            Principal=Principal('Service',['events.amazonaws.com'])
+            target_invocation_role_resource = None
+            if target_policy_actions != None:
+                # IAM Role Resources to allow Event to invoke Target
+                target_invocation_role_resource = troposphere.iam.Role(
+                    'TargetInvocationRole',
+                    AssumeRolePolicyDocument=Policy(
+                        Version='2012-10-17',
+                        Statement=[
+                            Statement(
+                                Effect=Allow,
+                                Action=[awacs.sts.AssumeRole],
+                                Principal=Principal('Service',['events.amazonaws.com'])
+                            )
+                        ],
+                    ),
+                    Policies=[
+                        troposphere.iam.Policy(
+                            PolicyName="TargetInvocation",
+                            PolicyDocument=Policy(
+                                Version='2012-10-17',
+                                Statement=[
+                                    Statement(
+                                        Effect=Allow,
+                                        Action=target_policy_actions,
+                                        Resource=[troposphere.Ref(self.target_params[target_name + 'Arn'])],
+                                    )
+                                ]
+                            )
                         )
                     ],
-                ),
-                Policies=[
-                    troposphere.iam.Policy(
-                        PolicyName="TargetInvocation",
-                        PolicyDocument=Policy(
-                            Version='2012-10-17',
-                            Statement=[
-                                Statement(
-                                    Effect=Allow,
-                                    Action=target_policy_actions,
-                                    Resource=[troposphere.Ref(self.target_params[target_name + 'Arn'])],
-                                )
-                            ]
-                        )
-                    )
-                ],
-            )
-            self.template.add_resource(target_invocation_role_resource)
+                )
+                self.template.add_resource(target_invocation_role_resource)
 
             # Create Target CFN Resources
             cfn_export_dict = {
                 'Arn': troposphere.Ref(self.target_params[target_name + 'Arn']),
-                'Id': troposphere.Ref(self.target_params[target_name]),
-                'RoleArn': troposphere.GetAtt(target_invocation_role_resource, 'Arn')
+                'Id': troposphere.Ref(self.target_params[target_name])
             }
+
+            if target_invocation_role_resource != None:
+                cfn_export_dict['RoleArn'] = troposphere.GetAtt(target_invocation_role_resource, 'Arn')
             if target.input_json != None:
                 cfn_export_dict['Input'] = target.input_json
 
@@ -163,19 +172,33 @@ class EventsRule(StackTemplate):
         events_rule_dict = {
             'Name': name,
             'Description': troposphere.Ref(description_param),
-            'RoleArn': troposphere.GetAtt(target_invocation_role_resource, 'Arn'),
             'Targets': targets,
             'State': enabled_state
         }
 
+        if target_invocation_role_resource != None:
+            events_rule_dict['RoleArn'] = troposphere.GetAtt(target_invocation_role_resource, 'Arn')
+
         if schedule_expression_param != None:
             events_rule_dict['ScheduleExpression'] = troposphere.Ref(schedule_expression_param)
+        else:
+            event_pattern_yaml = """
+source:
+    - aws.codepipeline
+detail-type:
+    - 'CodePipeline Pipeline Execution State Change'
+detail:
+    state:
+    - STARTED
+"""
+            events_rule_dict['EventPattern'] = yaml.load(event_pattern_yaml)
 
         event_rule_resource = troposphere.events.Rule.from_dict(
             'EventRule',
             events_rule_dict
         )
-        event_rule_resource.DependsOn = target_invocation_role_resource
+        if target_invocation_role_resource != None:
+            event_rule_resource.DependsOn = target_invocation_role_resource
         self.template.add_resource(event_rule_resource)
 
         # Outputs
