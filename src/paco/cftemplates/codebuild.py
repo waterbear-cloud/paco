@@ -453,7 +453,7 @@ class CodeBuild(StackTemplate):
             'Description': troposphere.Ref('AWS::StackName'),
             'ServiceRole': troposphere.GetAtt('CodeBuildProjectRole', 'Arn'),
             'Environment': {
-                'Type': 'LINUX_CONTAINER',
+                'Type': action_config.environment_type,
                 'ComputeType': troposphere.Ref(compute_type_param),
                 'Image': troposphere.Ref(image_param),
                 'EnvironmentVariables': codebuild_env_vars,
