@@ -52,6 +52,19 @@ class SSMController(Controller):
             },
         )
 
+    def command_update_codedeploy_agent(self, resource, account_ctx, region):
+        parameters = {
+            'action': ['Install'],
+            'name': ["AWSCodeDeployAgent"],
+            'version': ["latest"],
+        }
+        targets=[{
+            'Key': 'tag:aws:cloudformation:stack-name',
+            'Values': [resource.stack.get_name()]
+        }]
+
+        self.send_command(account_ctx, region, resource, parameters, targets, 'AWS-ConfigureAWSPackage')
+
     def command_update_ssm_agent(self, resource, account_ctx, region):
         ssm_client = account_ctx.get_aws_client('ssm', aws_region=region)
         ssm_log_group_name = prefixed_name(resource, 'paco_ssm', self.paco_ctx.legacy_flag)

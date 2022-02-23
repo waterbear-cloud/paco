@@ -131,6 +131,7 @@ role_name: %s""" % ("ASGInstance")
             self.update_windows_ssm_agent()
             self.update_windows_cloudwatch_agent()
             self.update_windows_patching()
+            self.update_windows_codedeploy_agent()
 
 
         # For ECS ASGs add an ECS Hook
@@ -152,6 +153,22 @@ role_name: %s""" % ("ASGInstance")
 
     def update_windows_patching(self):
         pass
+
+    def asg_hook_update_codedeploy_agent(self, hook, asg):
+        ssm_ctl = self.paco_ctx.get_controller('SSM')
+        ssm_ctl.command_update_codedeploy_agent(asg, self.account_ctx, self.aws_region)
+
+    def update_windows_codedeploy_agent(self):
+        # TODO: Make this work with Linux too
+        self.stack.hooks.add(
+            name='UpdateCodeDeployAgent.' + self.resource.name,
+            stack_action=['create', 'update'],
+            stack_timing='post',
+            hook_method=self.asg_hook_update_codedeploy_agent,
+            cache_method=None,
+            hook_arg=self.resource
+        )
+
 
     def asg_hook_update_ssm_agent(self, hook, asg):
         ssm_ctl = self.paco_ctx.get_controller('SSM')

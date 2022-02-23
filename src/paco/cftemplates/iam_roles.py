@@ -185,6 +185,9 @@ Outputs:
         iam_role_outputs_fmt = """
   {0[cf_resource_name_prefix]:s}Role:
     Value: !Ref {0[cf_resource_name_prefix]:s}Role
+
+  {0[cf_resource_name_prefix]:s}RoleArn:
+    Value: !GetAtt {0[cf_resource_name_prefix]:s}Role.Arn
 """
 
         iam_profile_outputs_fmt = """
@@ -268,7 +271,11 @@ Outputs:
         template_table['parameters_yaml'] = parameters_yaml
         template_table['resources_yaml'] = resources_yaml
         template_table['outputs_yaml'] = outputs_yaml
+
         self.set_template(template_fmt.format(template_table))
+
+        self.stack.register_stack_output_config(role.paco_ref_parts+'.arn', iam_role_table['cf_resource_name_prefix']+'RoleArn')
+        self.stack.register_stack_output_config(role.paco_ref_parts+'.name', iam_role_table['cf_resource_name_prefix']+'Role')
 
     def gen_iam_role_name(self, role_type, role):
         "Generate a name valid in CloudFormation"
