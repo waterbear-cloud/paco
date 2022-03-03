@@ -653,7 +653,7 @@ class DeploymentPipelineResourceEngine(ResourceEngine):
         # Get the SNS topic to attach
         rules_arn_ref_list = []
         if self.resource.configuration.disable_codepipeline == False:
-            env_name = '.'.join(self.app_engine.app.paco_ref_parts.split('.')[0:2])
+            env_name = f'{self.env_ctx.netenv.name}-{self.env_ctx.env.name}'
             notification_rules_stack = self.stack_group.add_new_stack(
                 self.aws_region,
                 self.resource,

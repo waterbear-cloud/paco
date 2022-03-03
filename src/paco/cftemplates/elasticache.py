@@ -1,5 +1,5 @@
 from paco.cftemplates.cftemplates import StackTemplate
-from paco.models.references import Reference
+from paco.models.references import Reference, get_model_obj_from_ref
 from paco.models import vocabulary, schemas
 import troposphere
 import troposphere.elasticache
@@ -11,7 +11,7 @@ class ElastiCache(StackTemplate):
     A replication group is a collection of cache clusters, where one of the clusters is a
     primary read-write cluster and the others are read-only replicas.
     """
-    def __init__(self, stack, paco_ctx):
+    def __init__(self, stack, paco_ctx, env_ctx):
         elasticache_config = stack.resource
         config_ref = elasticache_config.paco_ref_parts
         super().__init__(stack, paco_ctx)
@@ -101,3 +101,24 @@ class ElastiCache(StackTemplate):
             value=troposphere.GetAtt(cache_cluster_res, 'ReadEndPoint.Ports'),
             ref=config_ref + ".readendpoint.ports",
         )
+
+
+        route53_ctl = self.paco_ctx.get_controller('route53')
+        for ec_dns in self.resource.dns:
+            if self.resource.is_dns_enabled() == True:
+                # alias_dns_ref = self.resource.paco_ref + '.dnsname'
+                # alias_hosted_zone_ref = self.resource.paco_ref + '.canonicalhostedzoneid'
+                hosted_zone = get_model_obj_from_ref(ec_dns.hosted_zone, self.paco_ctx.project)
+                account_ctx = self.paco_ctx.get_account_context(account_ref=hosted_zone.account)
+                route53_ctl.add_record_set(
+                    account_ctx,
+                    self.aws_region,
+                    self.resource,
+                    enabled=self.resource.is_enabled(),
+                    dns=ec_dns,
+                    record_set_type='CNAME',
+                    resource_records=[f'{self.resource.paco_ref}.primaryendpoint.address'],
+                    stack_group=self.stack.stack_group,
+                    async_stack_provision=True,
+                    config_ref=self.resource.paco_ref_parts + '.dns'
+                )

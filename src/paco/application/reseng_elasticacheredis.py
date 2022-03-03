@@ -11,4 +11,7 @@ class ElastiCacheRedisResourceEngine(ResourceEngine):
             self.resource,
             cftemplates.ElastiCache,
             stack_tags=self.stack_tags,
+            extra_context={
+                'env_ctx': self.env_ctx
+            }
         )
