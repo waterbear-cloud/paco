@@ -324,7 +324,6 @@ class CodeBuild(StackTemplate):
                 )
             )
 
-
         if len(action_config.secrets) > 0:
             secrets_arn_list = []
             for secret_ref in action_config.secrets:
@@ -492,7 +491,9 @@ class CodeBuild(StackTemplate):
                 }
                 if action_config.artifacts.path != None:
                     project_dict['Artifacts']['Path'] = action_config.artifacts.path
-            if action_config.source.github != None:
+            if action_config.source == None:
+                project_dict['Source']['Type'] = 'NO_SOURCE'
+            elif action_config.source.github != None:
                 github_config = action_config.source.github
                 project_dict['Source']['Type'] = 'GITHUB'
                 location = f'https://github.com/{github_config.github_owner}/{github_config.github_repository}.git'
