@@ -541,6 +541,7 @@ function ec2lm_wait_for_codedeploy() {{
     TIMEOUT_MINS=15
     TIMEOUT_COUNT=$(($((60*$TIMEOUT_MINS))/$SLEEP_SECS))
     T_COUNT=0
+    DEPLOYMENT_INPROGRESS=False
     while :
     do
         OUTPUT=$($CODEDEPLOY_BIN stop 2>/dev/null)
@@ -548,6 +549,7 @@ function ec2lm_wait_for_codedeploy() {{
             break
         fi
         echo "EC2LM: CodeDeploy: A deployment is in progress, waiting for deployment to complete."
+        DEPLOYMENT_INPROGRESS=True
         sleep $SLEEP_SECS
         T_COUNT=$(($T_COUNT+1))
         if [ $T_COUNT -eq $TIMEOUT_COUNT ] ; then
@@ -555,6 +557,10 @@ function ec2lm_wait_for_codedeploy() {{
             exit 1
         fi
     done
+    if [ "$DEPLOYMENT_INPROGRESS" == "True" ]; then
+        echo "EC2LM: CodeDeploy: Deployment finished."
+    fi
+    echo "EC2LM: Starting CodeDeploy Agent"
     $CODEDEPLOY_BIN start 2>/dev/null
     set -e
 }}
@@ -2324,7 +2330,7 @@ function stop_agent() {{
         return 0
     fi
     set +e
-    TIMEOUT=60
+    TIMEOUT=90
     SLEEP_SECS=10
     T_COUNT=0
     echo "EC2LM: CodeDeploy: Attempting to stop Agent"
