@@ -1,32 +1,33 @@
 Changelog for Paco
 ==================
 
-9.3.28 (unreleased)
+9.3.28 (2022-03-04)
 -------------------
 
-- Nothing changed yet.
+### Changed
 
+- Updated paco.models dependency
 
 9.3.27 (2022-03-04)
 -------------------
 
 ### Fixed
 
-    - Fixed EventsRule Targets after troposphere upgrade.
-    - Fixed a corner case where home is missing from paco command arguments
+- Fixed EventsRule Targets after troposphere upgrade.
+- Fixed a corner case where home is missing from paco command arguments
 ### Added
 
-    - Added deployment branch to GitHUb webhook filters.
-    - Codebuild now supports NO_SOURCE
-    - Added DNS to ElastiCache
-    - Added  SSM command  to install CodeDeploy on Windows servers
-    - Added IAM Role Name and Arn to stack outputs
-    - Added Environment Type to CodeBuild DeploymentPipelie configuration
-    - Added basic support for CodePipeline and EventPattern eventrules
+- Added deployment branch to GitHUb webhook filters.
+- Codebuild now supports NO_SOURCE
+- Added DNS to ElastiCache
+- Added  SSM command  to install CodeDeploy on Windows servers
+- Added IAM Role Name and Arn to stack outputs
+- Added Environment Type to CodeBuild DeploymentPipelie configuration
+- Added basic support for CodePipeline and EventPattern eventrules
 
 ### Changed
 
-    - Updated CodeDeploy EC2LM wait for deployment logic
+- Updated CodeDeploy EC2LM wait for deployment logic
 
 9.3.26 (2022-02-09)
 -------------------
