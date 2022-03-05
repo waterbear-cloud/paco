@@ -1444,7 +1444,7 @@ A Stack can cache it's templates to the filesystem or check them against AWS and
         if self.paco_ctx.yes == False:
             print("\n"+self.get_name())
             answer = self.paco_ctx.input_confirm_action("DELETE stack? Are you sure?", default='n')
-            if answer in ['N', 'n']:
+            if answer not in ['Y', 'y']:
                 self.log_action("Delete", "Aborted")
                 return
         self.get_status()
