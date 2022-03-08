@@ -861,13 +861,21 @@ class CodePipeline(StackTemplate):
                     value=action.deployment_branch_name,
                 )
                 full_repository_id = f'{action.bitbucket_owner}/{action.bitbucket_repository}'
-                bitbucket_connection_dict = {}
-                bitbucket_connection_arn_res = troposphere.codestarconnections.Connection(
-                    title="BitbucketConnection",
-                    template=self.template,
-                    ConnectionName=self.create_resource_name(full_repository_id, filter_id='CodeStar.Connection', hash_long_names=True),
-                    ProviderType="Bitbucket"
-                )
+                if action.codestar_connection_arn == None:
+                    bitbucket_connection_arn_res = troposphere.codestarconnections.Connection(
+                        title="BitbucketConnection",
+                        template=self.template,
+                        ConnectionName=self.create_resource_name(full_repository_id, filter_id='CodeStar.Connection', hash_long_names=True),
+                        ProviderType="Bitbucket"
+                    )
+                else:
+                    bitbucket_connection_arn_res = self.create_cfn_parameter(
+                        param_type='String',
+                        name='BitBucketSourceCodeStarConnectionArn',
+                        description='The ARN of the CodeStart Connection to BitBucket.',
+                        value=action.codestar_connection_arn,
+                    )
+
                 codestar_connection_role_name = self.get_bitbucket_codestar_connection_role_name()
                 self.codestar_connection_role_res = troposphere.iam.Role(
                     title='CodeStarConnectionRole',
