@@ -108,6 +108,16 @@ class SNSTopics(StackTemplate):
                 )
                 statement_list.append(statement)
 
+            if topic.events_bridge_notification_access:
+                statement = Statement(
+                    Effect = Allow,
+                    Sid = 'EventBridgeNotificationAccess',
+                    Principal = Principal("Service", 'events.amazonaws.com'),
+                    Action = [ awacs.sns.Publish ],
+                    Resource = [troposphere.Ref(topic_resource)],
+                )
+                statement_list.append(statement)
+
             # Add CloudWatch service
             statement = Statement(
                 Effect = Allow,

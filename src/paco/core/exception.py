@@ -122,3 +122,6 @@ class InvalidAWSRegion(PacoBaseException):
 
 class MissingSNSTopics(PacoBaseException):
     title = "The account or region does not have the necessary SNS topics provisioned"
+
+class InvalidEventsRuleEventPatternSource(PacoBaseException):
+    title = "The source for the EventsRule Event Pattern is not implemented"

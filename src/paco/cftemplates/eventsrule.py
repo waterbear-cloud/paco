@@ -2,9 +2,13 @@
 CloudWatch Events Rule template
 """
 
+from paco import utils
 from paco.cftemplates.cftemplates import StackTemplate
-from paco.models import vocabulary, schemas
-from paco.models.references import get_model_obj_from_ref, Reference
+from paco.commands.display.jsonoutput import auto_export_obj_to_dict
+from paco.core.exception import InvalidEventsRuleEventPatternSource
+from paco.models import vocabulary, schemas, registry
+from paco.models.locations import get_parent_by_interface
+from paco.models.references import get_model_obj_from_ref, Reference, is_ref
 from paco.utils import hash_smaller
 from awacs.aws import Allow, Statement, Policy, Principal
 from enum import Enum
@@ -44,6 +48,8 @@ class EventsRule(StackTemplate):
         config_ref = eventsrule.paco_ref_parts
         self.set_aws_name('EventsRule', self.resource_group_name, self.resource_name)
 
+        self.notification_groups = {}
+
         # Init a Troposphere template
         self.init_template('CloudWatch EventsRule')
 
@@ -66,21 +72,65 @@ class EventsRule(StackTemplate):
             value = eventsrule.description,
         )
 
+        # Monitoring Target
+        monitoring = self.resource.monitoring
+        if monitoring != None and monitoring.is_enabled() == True:
+            notifications = None
+            if monitoring.notifications != None and len(monitoring.notifications.keys()) > 0:
+                notifications = monitoring.notifications
+            else:
+                app_config = get_parent_by_interface(self.resource, schemas.IApplication)
+                notifications = app_config.notifications
+
+            if notifications != None and len(notifications.keys()) > 0:
+                notify_param_cache = []
+                for notify_group_name in notifications.keys():
+                    for sns_group_name in notifications[notify_group_name].groups:
+                        notify_param = self.create_notification_param(sns_group_name)
+                        # Only append if the are unique
+                        if notify_param not in notify_param_cache:
+                            eventsrule.targets.append(notify_param)
+                            notify_param_cache.append(notify_param)
+
         # Targets
         targets = []
         self.target_params = {}
+        target_invocation_role_resource = None
         for index in range(0, len(eventsrule.targets)):
             target = eventsrule.targets[index]
             # Target Parameters
             target_name = 'Target{}'.format(index)
 
             # Target CFN Parameters
-            self.target_params[target_name + 'Arn'] = self.create_cfn_parameter(
-                param_type='String',
-                name=target_name + 'Arn',
-                description=target_name + ' Arn for the Events Rule.',
-                value=target.target + '.arn',
-            )
+            # Check if we already have a parameter object
+            target_policy_actions = None
+            if isinstance(target, troposphere.Parameter):
+                self.target_params[target_name + 'Arn'] = target
+            else:
+                self.target_params[target_name + 'Arn'] = self.create_cfn_parameter(
+                    param_type='String',
+                    name=target_name + 'Arn',
+                    description=target_name + ' Arn for the Events Rule.',
+                    value=target.target + '.arn',
+                )
+
+                # If the target is a reference, get the target object from the model
+                # to check what type of resource we need to configure for
+                target_ref = Reference(target.target)
+                if target_ref.parts[-1] == 'project' and target_ref.parts[-3] == 'build':
+                    codebuild_target_ref = f'paco.ref {".".join(target_ref.parts[:-1])}'
+                    target_model_obj = get_model_obj_from_ref(codebuild_target_ref, self.paco_ctx.project)
+                else:
+                    target_model_obj = get_model_obj_from_ref(target.target, self.paco_ctx.project)
+
+                # Lambda Policy Actions
+                if schemas.IDeploymentPipelineBuildCodeBuild.providedBy(target_model_obj):
+                    # CodeBuild Project
+                    target_policy_actions = [awacs.codebuild.StartBuild]
+                elif schemas.ILambda.providedBy(target_model_obj):
+                    # Lambda Function
+                    target_policy_actions = [awacs.awslambda.InvokeFunction]
+
             self.target_params[target_name] = self.create_cfn_parameter(
                 param_type='String',
                 name=target_name,
@@ -88,26 +138,7 @@ class EventsRule(StackTemplate):
                 value=target_name,
             )
 
-            # IAM Role
-            # Lambda Policy Actions
-            target_ref = Reference(target.target)
-            if target_ref.parts[-1] == 'project' and target_ref.parts[-3] == 'build':
-                codebuild_target_ref = f'paco.ref {".".join(target_ref.parts[:-1])}'
-                target_model_obj = get_model_obj_from_ref(codebuild_target_ref, self.paco_ctx.project)
-            else:
-                target_model_obj = get_model_obj_from_ref(target.target, self.paco_ctx.project)
-
             # IAM Role Polcies by Resource type
-            target_policy_actions = None
-            if schemas.IDeploymentPipelineBuildCodeBuild.providedBy(target_model_obj):
-                # CodeBuild Project
-                target_policy_actions = [awacs.codebuild.StartBuild]
-            elif schemas.ILambda.providedBy(target_model_obj):
-                # Lambda Function
-                target_policy_actions = [awacs.awslambda.InvokeFunction]
-
-
-            target_invocation_role_resource = None
             if target_policy_actions != None:
                 # IAM Role Resources to allow Event to invoke Target
                 target_invocation_role_resource = troposphere.iam.Role(
@@ -148,16 +179,11 @@ class EventsRule(StackTemplate):
 
             if target_invocation_role_resource != None:
                 cfn_export_dict['RoleArn'] = troposphere.GetAtt(target_invocation_role_resource, 'Arn')
-            if target.input_json != None:
+            if hasattr(target, 'input_json') and target.input_json != None:
                 cfn_export_dict['Input'] = target.input_json
 
             # Events Rule Targets
             targets.append(cfn_export_dict)
-            #     troposphere.events.Target.from_dict(
-            #         target_name,
-            #         cfn_export_dict
-            #     )
-            # )
 
         # Events Rule Resource
         # The Name is needed so that a Lambda can be created and it's Lambda ARN output
@@ -181,7 +207,27 @@ class EventsRule(StackTemplate):
 
         if schedule_expression_param != None:
             events_rule_dict['ScheduleExpression'] = troposphere.Ref(schedule_expression_param)
+        elif eventsrule.event_pattern != None:
+            source_value_list = []
+            for pattern_source in eventsrule.event_pattern.source:
+                if is_ref(pattern_source):
+                    source_obj = get_model_obj_from_ref(pattern_source, self.paco_ctx.project)
+                    if schemas.IDeploymentPipelineBuildCodeBuild.providedBy(source_obj):
+                        source_value_list.append('aws.codebuild')
+                    else:
+                        raise InvalidEventsRuleEventPatternSource(pattern_source)
+                else:
+                    source_value_list.append(pattern_source)
+
+            event_pattern_dict = {
+                'source': source_value_list,
+                'detail-type': self.obj_to_dict(eventsrule.event_pattern.detail_type),
+                'detail': self.obj_to_dict(eventsrule.event_pattern.detail)
+            }
+            event_pattern_yaml = yaml.dump(event_pattern_dict)
+            events_rule_dict['EventPattern'] = yaml.load(event_pattern_yaml)
         else:
+            # Defaults to a CodePipeline events rule
             event_pattern_yaml = """
 source:
     - aws.codepipeline
@@ -213,3 +259,40 @@ detail:
             ref=config_ref + '.arn',
         )
 
+
+
+    def create_notification_param(self, group):
+        "Create a CFN Parameter for a Notification Group"
+        if registry.EVENTSRULE_NOTIFICATION_RULE_HOOK != None:
+            notification_ref = registry.EVENTSRULE_NOTIFICATION_RULE_HOOK(self.resource, self.account_ctx.name, self.aws_region)
+        else:
+            notification_ref = self.paco_ctx.project['resource']['sns'].computed[self.account_ctx.name][self.stack.aws_region][group].paco_ref + '.arn'
+
+        # Re-use existing Parameter or create new one
+        param_name = 'Notification{}'.format(utils.md5sum(str_data=notification_ref))
+        if param_name not in self.notification_groups:
+            notification_param = self.create_cfn_parameter(
+                param_type='String',
+                name=param_name,
+                description='SNS Topic to notify',
+                value=notification_ref,
+                min_length=1, # prevent borked empty values from breaking notification
+            )
+            self.notification_groups[param_name] = notification_param
+        return self.notification_groups[param_name]
+
+
+    def obj_to_dict(self, obj):
+        if isinstance(obj, dict):
+            new_dict = {}
+            for key in obj.keys():
+                if isinstance(obj[key], dict) or isinstance(obj[key], list):
+                    new_dict[key] = self.obj_to_dict(obj[key])
+            return new_dict
+        elif isinstance(obj, list):
+            new_list = []
+            for item in obj:
+                new_list.append(self.obj_to_dict(item))
+            return new_list
+        else:
+            return obj

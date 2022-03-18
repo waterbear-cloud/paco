@@ -75,8 +75,9 @@ class ResourceEngine():
                     stack_tags=self.stack_tags
                 )
         elif getattr(self.resource, 'monitoring', None) != None and \
-            self.resource.monitoring.enabled and \
-            getattr(self.resource.monitoring, 'alarm_sets', None) != None:
+                self.resource.monitoring.enabled and \
+                getattr(self.resource.monitoring, 'alarm_sets', None) != None and \
+                len(self.resource.monitoring.alarm_sets) > 0:
             self.stack_group.add_new_stack(
                 self.aws_region,
                 self.resource,

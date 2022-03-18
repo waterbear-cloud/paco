@@ -259,10 +259,16 @@ statement:
     def update_windows_cloudwatch_agent(self):
 
         iam_policy_name = '-'.join([self.resource.name, 'cloudwatchagent'])
+        ssm_ctl = self.paco_ctx.get_controller('SSM')
+        ssm_parameter_name = ssm_ctl.gen_cloudwatch_config_param_store_name(self.resource)
         policy_config_yaml = f"""
 policy_name: '{iam_policy_name}'
 enabled: true
 statement:
+  - effect: Allow
+    action:
+      - "ssm:GetParameter"
+    resource: 'arn:aws:ssm:{self.aws_region}:{self.account_ctx.id}:parameter/{ssm_parameter_name}'
   - effect: Allow
     resource: "*"
     action:

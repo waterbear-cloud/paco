@@ -27,7 +27,6 @@ SSM_DOCUMENT_UPDATE_WINDOWS_CLOUDWATCH_AGENT = {
         }
     ]
 }
-
 class SSMController(Controller):
     def __init__(self, paco_ctx):
         super().__init__(paco_ctx, "Resource", "SSM")
@@ -133,6 +132,9 @@ class SSMController(Controller):
 
         self.wait_for_command(ssm_client, account_ctx, region, resource, response['Command']['CommandId'])
 
+    def gen_cloudwatch_config_param_store_name(self, resource):
+        return f'Paco-CloudWatch-Config-{resource.stack.get_name()}'
+
     def command_update_cloudwatch_agent(self, resource, account_ctx, region, cloudwatch_config_json):
         ssm_documents = self.paco_ctx.project['resource']['ssm'].ssm_documents
         if 'paco_windows_cloudwatch_agent_update' not in ssm_documents:
@@ -152,7 +154,7 @@ class SSMController(Controller):
         ssm_client = account_ctx.get_aws_client('ssm', aws_region=region)
 
         # Create Config Parameter Store
-        cloudwatch_config_param_store_name = f'Paco-CloudWatch-Config-{resource.stack.get_name()}'
+        cloudwatch_config_param_store_name = self.gen_cloudwatch_config_param_store_name(resource)
         response = ssm_client.put_parameter(
             Name=cloudwatch_config_param_store_name,
             Description='CloudWatch Configuration',

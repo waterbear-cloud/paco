@@ -98,6 +98,7 @@ def override_cw_alarm_description(hook):
         raise LoaderRegistrationError(f"Only one Service can override CloudWatch Alarm Description.")
     paco.models.registry.CW_ALARM_DESCRIPTION_HOOK = hook
 
+# CodeStar Notification Rules
 def override_codestar_notification_rule(hook):
     """
     Add a hook to change CodeStar Notification Rule's to your own custom list of SNS Topics.
@@ -116,6 +117,23 @@ def override_codestar_notification_rule(hook):
     if paco.models.registry.CODESTAR_NOTIFICATION_RULE_HOOK != None:
         raise LoaderRegistrationError(f"Only one Service can override CodeStar Notification Rules.")
     paco.models.registry.CODESTAR_NOTIFICATION_RULE_HOOK = hook
+
+def override_eventsrule_notification_rule(hook):
+    """
+    Add a hook to obtain the Notification Service's arn.
+
+    .. code-block:: python
+
+        def override_codestar_notification_rule(snstopics, alarm):
+            "Override normal alarm actions with the SNS Topic ARN for the custom Notification Lambda"
+            return ["paco.ref service.notify...snstopic.arn"]
+
+        paco.extend.add_codestart_notification_rule_hook(override_codestar_notification_rule)
+
+    """
+    if paco.models.registry.EVENTSRULE_NOTIFICATION_RULE_HOOK != None:
+        raise LoaderRegistrationError(f"Only one Service can override EventsRule Notification Rules.")
+    paco.models.registry.EVENTSRULE_NOTIFICATION_RULE_HOOK = hook
 
 def add_extend_model_hook(extend_hook):
     """
