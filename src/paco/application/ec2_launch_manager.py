@@ -520,6 +520,9 @@ function ec2lm_launch_bundles() {{
         echo "EC2LM: ========"
     done
     echo "EC2LM: Storing new cache id: $CACHE_ID"
+    if [ ! -e "$EC2LM_CACHE_FILE" ] ; then
+        echo "$CACHE_ID" >$EC2LM_CACHE_FILE
+    fi
     cp $EC2LM_CACHE_FILE $EC2LM_CACHE_FILE_PROCESSED
     echo "EC2LM: Launch Bundles End: $(date)"
 }}

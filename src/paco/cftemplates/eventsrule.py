@@ -4,7 +4,6 @@ CloudWatch Events Rule template
 
 from paco import utils
 from paco.cftemplates.cftemplates import StackTemplate
-from paco.commands.display.jsonoutput import auto_export_obj_to_dict
 from paco.core.exception import InvalidEventsRuleEventPatternSource
 from paco.models import vocabulary, schemas, registry
 from paco.models.locations import get_parent_by_interface
@@ -37,7 +36,7 @@ class EventsRule(StackTemplate):
     def __init__(
         self,
         stack,
-        paco_ctx,
+        paco_ctx
     ):
         super().__init__(
             stack,
@@ -83,6 +82,7 @@ class EventsRule(StackTemplate):
                 notifications = app_config.notifications
 
             if notifications != None and len(notifications.keys()) > 0:
+                # Create the CF Param for the SNS ARN we need to Publish to
                 notify_param_cache = []
                 for notify_group_name in notifications.keys():
                     for sns_group_name in notifications[notify_group_name].groups:
@@ -221,8 +221,8 @@ class EventsRule(StackTemplate):
 
             event_pattern_dict = {
                 'source': source_value_list,
-                'detail-type': self.obj_to_dict(eventsrule.event_pattern.detail_type),
-                'detail': self.obj_to_dict(eventsrule.event_pattern.detail)
+                'detail-type': utils.obj_to_dict(eventsrule.event_pattern.detail_type),
+                'detail': utils.obj_to_dict(eventsrule.event_pattern.detail)
             }
             event_pattern_yaml = yaml.dump(event_pattern_dict)
             events_rule_dict['EventPattern'] = yaml.load(event_pattern_yaml)
@@ -280,19 +280,3 @@ detail:
             )
             self.notification_groups[param_name] = notification_param
         return self.notification_groups[param_name]
-
-
-    def obj_to_dict(self, obj):
-        if isinstance(obj, dict):
-            new_dict = {}
-            for key in obj.keys():
-                if isinstance(obj[key], dict) or isinstance(obj[key], list):
-                    new_dict[key] = self.obj_to_dict(obj[key])
-            return new_dict
-        elif isinstance(obj, list):
-            new_list = []
-            for item in obj:
-                new_list.append(self.obj_to_dict(item))
-            return new_list
-        else:
-            return obj

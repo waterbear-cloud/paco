@@ -2,6 +2,7 @@
 ResourceEngines initialize a Resource for an Application
 """
 from paco.models import schemas
+from paco.models.references import Reference
 import paco.cftemplates
 
 class ResourceEngine():
@@ -24,6 +25,10 @@ class ResourceEngine():
             self.env = self.env_ctx.env_region
         self.app_id = self.app_engine.app.name
         self.gen_iam_role_id = self.app_engine.gen_iam_role_id
+        if app_engine.ref_type == 'service':
+            res_ref = Reference(resource.paco_ref)
+            self.service_name = res_ref.parts[1]
+            self.service_account = res_ref.parts[2]
 
     def init_resource(self):
         "Initialize the Resource"

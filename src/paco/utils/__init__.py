@@ -212,3 +212,18 @@ def write_to_file(folder, filename, data):
         else:
             raise PacoException(PacoErrorCode.Unknown, message=f"utils: write_to_file: unsupported data type {type(data)}")
     file_path_new.rename(file_path)
+
+def obj_to_dict(self, obj):
+    if isinstance(obj, dict):
+        new_dict = {}
+        for key in obj.keys():
+            if isinstance(obj[key], dict) or isinstance(obj[key], list):
+                new_dict[key] = self.obj_to_dict(obj[key])
+        return new_dict
+    elif isinstance(obj, list):
+        new_list = []
+        for item in obj:
+            new_list.append(self.obj_to_dict(item))
+        return new_list
+    else:
+        return obj
