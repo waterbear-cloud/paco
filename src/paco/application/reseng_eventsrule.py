@@ -1,8 +1,11 @@
-from paco import cftemplates
+import json
+import paco.cftemplates.eventsrule
+
 from paco.application.res_engine import ResourceEngine
 from paco.core.yaml import YAML
-import paco.cftemplates.eventsrule
+from paco.models import schemas
 from paco.models.locations import get_parent_by_interface
+from paco.models.references import get_model_obj_from_ref
 from paco.stack import StackHooks
 from paco import utils
 
@@ -19,8 +22,8 @@ class EventsRuleResourceEngine(ResourceEngine):
             name='EventsRule.State',
             stack_action=['create', 'update'],
             stack_timing='post',
-            hook_method=self.stack_hook_codebuild_state,
-            cache_method=self.stack_hook_codebuild_state_cache_id
+            hook_method=self.stack_hook_eventsrule_state,
+            cache_method=self.stack_hook_eventsrule_state_cache_id,
         )
 
         # CloudWatch Events Rule
@@ -30,20 +33,10 @@ class EventsRuleResourceEngine(ResourceEngine):
             paco.cftemplates.eventsrule.EventsRule,
             account_ctx=self.account_ctx,
             stack_tags=self.stack_tags,
-            #stack_hooks=stack_hooks
+            stack_hooks=stack_hooks
         )
 
-    def stack_hook_codebuild_state_cache_id(self, hook, config):
-        return "placeholder"
-
-    def stack_hook_codebuild_state(self, hook, config):
-        if self.app_engine.ref_type == 'service':
-            netenv_id = self.service_name
-            env_id = self.service_account
-        else:
-            netenv_id = self.app_engine.env_ctx.netenv.name
-            env_id = self.app_engine.env_ctx.netenv.name
-
+    def gen_state_config(self, source):
         monitoring = self.resource.monitoring
         if monitoring != None and monitoring.is_enabled() == True:
             notifications = None
@@ -53,12 +46,45 @@ class EventsRuleResourceEngine(ResourceEngine):
                 app_config = get_parent_by_interface(self.resource, schemas.IApplication)
                 notifications = app_config.notifications
 
-            if notifications != None and len(notifications.keys()) > 0:
-                # Store the Notification state for this EventRule
-                state_key = f'{netenv_id}-{env_id}-{app_id}-{grp_id}-{self.resource.name}'
-                state_config = {
-                    'nontifications': utils.obj_to_dict(notifications)
-                }
+        source_obj = get_model_obj_from_ref(source, self.paco_ctx.project)
+        state_config = {
+            'type': source_obj.type,
+            'notifications': []
+        }
+        if notifications == None or len(notifications.keys()) <= 0:
+            return state_config
+            # Store the Notification state for this EventRule
+        if self.resource.event_pattern == None:
+            return state_config
+
+        if source_obj.type == 'CodeBuild.Build':
+            state_config['project_name'] = source_obj._stack.template.get_project_name()
+
+            state_config['notifications'] =  {}
+            for group_id in notifications.keys():
+                notify_group = notifications[group_id]
+                state_config['notifications'][group_id] = {}
+                state_config['notifications'][group_id]['severity'] = notify_group.severity
+                state_config['notifications'][group_id]['groups'] = []
+                state_config['notifications'][group_id]['groups'].extend(notify_group.groups)
+                state_config['notifications'][group_id]['slack_channels'] = []
+                state_config['notifications'][group_id]['slack_channels'].extend(notify_group.slack_channels)
+
+        return state_config
+
+    def stack_hook_eventsrule_state_cache_id(self, hook, config):
+        state_list = []
+        for source in self.resource.event_pattern.source:
+            state_config = self.gen_state_config(source)
+            state_list.append(state_config)
+
+        return utils.md5sum(str_data=json.dumps(state_list))
+
+    def stack_hook_eventsrule_state(self, hook, config):
+        for source in self.resource.event_pattern.source:
+            state_config = self.gen_state_config(source)
+            if state_config != None:
+                state_key = state_config['project_name']
                 self.paco_ctx.store_resource_state(
                     self.resource.type,
                     state_key,

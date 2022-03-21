@@ -209,20 +209,25 @@ class EventsRule(StackTemplate):
             events_rule_dict['ScheduleExpression'] = troposphere.Ref(schedule_expression_param)
         elif eventsrule.event_pattern != None:
             source_value_list = []
+            project_name_list = []
             for pattern_source in eventsrule.event_pattern.source:
                 if is_ref(pattern_source):
                     source_obj = get_model_obj_from_ref(pattern_source, self.paco_ctx.project)
                     if schemas.IDeploymentPipelineBuildCodeBuild.providedBy(source_obj):
                         source_value_list.append('aws.codebuild')
+                        project_name_list.append(source_obj._stack.template.get_project_name())
                     else:
                         raise InvalidEventsRuleEventPatternSource(pattern_source)
                 else:
                     source_value_list.append(pattern_source)
 
+            if len(project_name_list) > 0:
+                eventsrule.event_pattern.detail['project-name'] = project_name_list
+
             event_pattern_dict = {
                 'source': source_value_list,
                 'detail-type': utils.obj_to_dict(eventsrule.event_pattern.detail_type),
-                'detail': utils.obj_to_dict(eventsrule.event_pattern.detail)
+                'detail': utils.obj_to_dict(eventsrule.event_pattern.detail),
             }
             event_pattern_yaml = yaml.dump(event_pattern_dict)
             events_rule_dict['EventPattern'] = yaml.load(event_pattern_yaml)
